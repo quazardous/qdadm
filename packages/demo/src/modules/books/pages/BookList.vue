@@ -3,11 +3,16 @@
  * BookList - Book listing page
  *
  * Uses useListPageBuilder with simplified v-bind/v-on pattern
+ * Genre filter options are loaded dynamically from genres entity
  */
 
-import { useListPageBuilder, ListPage } from 'qdadm'
+import { onMounted } from 'vue'
+import { useListPageBuilder, ListPage, useOrchestrator } from 'qdadm'
 import Tag from 'primevue/tag'
 import Column from 'primevue/column'
+
+const { getManager } = useOrchestrator()
+const genresManager = getManager('genres')
 
 // ============ LIST BUILDER ============
 const list = useListPageBuilder({ entity: 'books' })
@@ -19,16 +24,25 @@ list.setSearch({
 })
 
 // ============ FILTERS ============
+// Start with placeholder, options loaded on mount
 list.addFilter('genre', {
   placeholder: 'All Genres',
-  options: [
+  options: [{ label: 'All', value: null }]
+})
+
+// Load genre options from entity manager
+onMounted(async () => {
+  const { items } = await genresManager.list({ page_size: 100 })
+  const options = [
     { label: 'All', value: null },
-    { label: 'Fiction', value: 'fiction' },
-    { label: 'Non-Fiction', value: 'non-fiction' },
-    { label: 'Science Fiction', value: 'sci-fi' },
-    { label: 'Fantasy', value: 'fantasy' },
-    { label: 'Mystery', value: 'mystery' }
+    ...items.map(g => ({ label: g.name, value: g.id }))
   ]
+  // Update filter options
+  list.removeFilter('genre')
+  list.addFilter('genre', {
+    placeholder: 'All Genres',
+    options
+  })
 })
 
 

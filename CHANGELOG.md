@@ -5,6 +5,12 @@ All notable changes to qdadm will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.15.1] - 2025-12-21
+
+### Added
+- `Kernel.hashMode`: Option for hash-based routing (`/#/path`) for static hosting (GitHub Pages)
+  - No server config needed, Ctrl+R works everywhere
+
 ## [0.15.0] - 2025-12-21
 
 ### Added
