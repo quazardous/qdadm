@@ -1,11 +1,10 @@
 <script setup>
 /**
- * PageHeader - Reusable page header with breadcrumb, title and actions
+ * PageHeader - Reusable page header with title and actions
  *
  * Props:
  * - title: Page title (simple string) OR
  * - titleParts: { action, entityName, entityLabel } for decorated rendering
- * - breadcrumb: Array of { label, to?, icon? } - optional breadcrumb items
  *
  * Title rendering:
  * - Simple: "Edit Agent" → <h1>Edit Agent</h1>
@@ -16,14 +15,9 @@
  * - subtitle: Optional content next to title
  * - actions: Action buttons on the right
  *
- * Note: When features.breadcrumb is enabled in AppLayout, the layout handles
- * breadcrumb rendering globally. PageHeader only renders its own breadcrumb
- * when the global feature is disabled.
+ * Note: Breadcrumb is handled globally by AppLayout.
  */
 import { computed, inject } from 'vue'
-import Breadcrumb from './Breadcrumb.vue'
-
-const features = inject('qdadmFeatures', { breadcrumb: false })
 
 // Auto-injected title from useForm (if available)
 const injectedTitleParts = inject('qdadmPageTitleParts', null)
@@ -39,10 +33,6 @@ const props = defineProps({
   },
   subtitle: {
     type: String,
-    default: null
-  },
-  breadcrumb: {
-    type: Array,
     default: null
   }
 })
@@ -63,17 +53,11 @@ const titleBase = computed(() => {
   }
   return props.title
 })
-
-// Only show PageHeader breadcrumb if global breadcrumb feature is disabled
-const showBreadcrumb = computed(() => {
-  return props.breadcrumb?.length && !features.breadcrumb
-})
 </script>
 
 <template>
   <div class="page-header">
     <div class="page-header-content">
-      <Breadcrumb v-if="showBreadcrumb" :items="breadcrumb" />
       <div class="page-header-row">
         <div class="page-header-left">
           <div>
@@ -105,6 +89,7 @@ const showBreadcrumb = computed(() => {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  min-height: 2.5rem; /* Consistent height with or without action buttons */
 }
 
 .page-header-left {

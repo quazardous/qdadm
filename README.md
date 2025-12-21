@@ -2,7 +2,7 @@
 
 **Vue 3 admin framework. PrimeVue. Zero boilerplate.**
 
-[![Live Demo](https://img.shields.io/badge/demo-live-brightgreen)](https://quazardous.github.io/qdadm/login)
+[![Live Demo](https://img.shields.io/badge/demo-live-brightgreen)](https://quazardous.github.io/qdadm/)
 
 ```bash
 npm install qdadm

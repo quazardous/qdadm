@@ -44,15 +44,25 @@ const registry = {
    * Add routes for this module
    * @param {string} prefix - Path prefix for all routes (e.g., 'agents')
    * @param {Array} moduleRoutes - Route definitions with relative paths
-   * @param {object} options - { entity?: string } - Entity name for permission checking
+   * @param {object} options - Route options
+   * @param {string} [options.entity] - Entity name for permission checking
+   * @param {object} [options.parent] - Parent entity config for child routes
+   * @param {string} options.parent.entity - Parent entity name (e.g., 'books')
+   * @param {string} options.parent.param - Route param for parent ID (e.g., 'bookId')
+   * @param {string} options.parent.foreignKey - Foreign key field (e.g., 'book_id')
+   * @param {string} [options.parent.itemRoute] - Override parent item route (auto: parentEntity.routePrefix + '-edit')
+   * @param {string} [options.label] - Label for navlinks (defaults to entity labelPlural)
    */
   addRoutes(prefix, moduleRoutes, options = {}) {
+    const { entity, parent, label } = options
     const prefixedRoutes = moduleRoutes.map(route => ({
       ...route,
       path: route.path ? `${prefix}/${route.path}` : prefix,
       meta: {
         ...route.meta,
-        ...(options.entity && { entity: options.entity })
+        ...(entity && { entity }),
+        ...(parent && { parent }),
+        ...(label && { navLabel: label })
       }
     }))
     routes.push(...prefixedRoutes)
@@ -191,6 +201,19 @@ export function getEntityConfigs() {
  */
 export function getEntityConfig(name) {
   return entityConfigs.get(name)
+}
+
+/**
+ * Get sibling routes (routes sharing the same parent entity + param)
+ * @param {string} parentEntity - Parent entity name
+ * @param {string} parentParam - Parent route param
+ * @returns {Array} Routes with matching parent config
+ */
+export function getSiblingRoutes(parentEntity, parentParam) {
+  return routes.filter(route => {
+    const parent = route.meta?.parent
+    return parent?.entity === parentEntity && parent?.param === parentParam
+  })
 }
 
 /**

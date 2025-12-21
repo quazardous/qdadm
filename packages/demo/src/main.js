@@ -30,12 +30,14 @@ import 'qdadm/styles'
 import 'primeicons/primeicons.css'
 
 import App from './App.vue'
+import { version } from '../package.json'
 import { authAdapter } from './adapters/authAdapter'
 
 // Fixtures for initial data (seeded to localStorage on first load)
 import usersFixture from './fixtures/users.json'
 import booksFixture from './fixtures/books.json'
 import loansFixture from './fixtures/loans.json'
+import genresFixture from './fixtures/genres.json'
 
 // ============================================================================
 // FIELD OPTIONS
@@ -65,6 +67,7 @@ const roleOptions = [
 const usersStorage = new LocalStorage({ key: 'qdadm_demo_users' })
 const booksStorage = new LocalStorage({ key: 'qdadm_demo_books' })
 const loansStorage = new LocalStorage({ key: 'qdadm_demo_loans' })
+const genresStorage = new LocalStorage({ key: 'qdadm_demo_genres' })
 
 // ============================================================================
 // FIXTURE SEEDING
@@ -85,6 +88,7 @@ function seedIfEmpty(storage, fixture) {
 seedIfEmpty(usersStorage, usersFixture)
 seedIfEmpty(booksStorage, booksFixture)
 seedIfEmpty(loansStorage, loansFixture)
+seedIfEmpty(genresStorage, genresFixture)
 
 // Export for authAdapter (validates login against stored users)
 export { usersStorage }
@@ -180,7 +184,8 @@ class LoansManager extends EntityManager {
    */
   async list(params = {}) {
     if (!this._isAdmin()) {
-      params.user_id = authAdapter.getUser()?.id
+      params.filters = params.filters || {}
+      params.filters.user_id = authAdapter.getUser()?.id
       params.cacheSafe = true  // Ownership filter is session-bound, safe to cache
     }
     return super.list(params)
@@ -287,6 +292,23 @@ const managers = {
       read: { type: 'boolean', label: 'Read?', default: false }
     },
     storage: loansStorage
+  }),
+
+  genres: new EntityManager({
+    name: 'genres',
+    label: 'Genre',
+    labelPlural: 'Genres',
+    routePrefix: 'genre',
+    labelField: 'name',
+    fields: {
+      name: { type: 'text', label: 'Name', required: true, default: '' },
+      description: { type: 'text', label: 'Description', default: '' }
+    },
+    // Child: books filtered by genre
+    children: {
+      books: { entity: 'books', foreignKey: 'genre', label: 'Books' }
+    },
+    storage: genresStorage
   })
 }
 
@@ -330,7 +352,7 @@ const kernel = new Kernel({
   app: {
     name: 'Book Manager',
     shortName: 'Books',
-    version: '0.1.0'
+    version
   },
   primevue: {
     plugin: PrimeVue,

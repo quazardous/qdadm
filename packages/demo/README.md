@@ -1,5 +1,7 @@
 # qdadm-demo
 
+[![Live Demo](https://img.shields.io/badge/demo-live-brightgreen)](https://quazardous.github.io/qdadm/)
+
 Demo application showcasing [qdadm](https://github.com/quazardous/qdadm) framework features.
 
 ## Quick Start

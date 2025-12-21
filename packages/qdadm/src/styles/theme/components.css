@@ -284,3 +284,46 @@
   background: var(--p-primary-100);
   color: var(--fad-primary);
 }
+
+/* ==========================================================================
+ * Page Navigation (breadcrumb + navlinks)
+ * ========================================================================== */
+
+.fad-page-nav {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--fad-space-sm);
+}
+
+.fad-page-nav-breadcrumb {
+  flex: 1;
+}
+
+.fad-page-nav-links {
+  display: flex;
+  align-items: center;
+  gap: var(--fad-space-sm);
+  font-size: var(--fad-font-size-sm);
+}
+
+.fad-page-nav-separator {
+  color: var(--fad-text-muted);
+}
+
+.fad-page-nav-link {
+  color: var(--fad-primary);
+  text-decoration: none;
+  transition: color var(--fad-transition-fast);
+}
+
+.fad-page-nav-link:hover {
+  color: var(--fad-primary-hover);
+  text-decoration: underline;
+}
+
+.fad-page-nav-link--active {
+  color: var(--fad-text-primary);
+  font-weight: var(--fad-font-weight-medium);
+  pointer-events: none;
+}

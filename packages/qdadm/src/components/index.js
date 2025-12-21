@@ -7,6 +7,7 @@ export { default as AppLayout } from './layout/AppLayout.vue'
 export { default as PageLayout } from './layout/PageLayout.vue'
 export { default as PageHeader } from './layout/PageHeader.vue'
 export { default as Breadcrumb } from './layout/Breadcrumb.vue'
+export { default as PageNav } from './layout/PageNav.vue'
 
 // Forms
 export { default as FormField } from './forms/FormField.vue'

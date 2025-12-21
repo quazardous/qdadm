@@ -5,6 +5,39 @@ All notable changes to qdadm will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.15.0] - 2025-12-21
+
+### Added
+- **Child Routes Support**: Navigate to filtered child entity lists
+  - `PageNav` component: Provides breadcrumb + navlinks to AppLayout via inject
+  - `ListPage` slot `#nav`: Inject PageNav without extra wrapper
+  - Route meta `parent: { entity, foreignKey, param }` for auto-filtering
+  - Auto-breadcrumb chain: Parent > Entity Label > Child
+  - Navlinks for sibling routes (e.g., Details | Books)
+- `LocalStorage.list({ search })`: Substring search across all string fields
+- `useBreadcrumb` composable: Auto-generate breadcrumb from route
+
+### Fixed
+- `LocalStorage` filters: Use exact match (`===`) instead of substring (`includes`)
+  - Fixes "fiction" matching "non-fiction"
+- `PageHeader`: Consistent height with `min-height: 2.5rem` (with or without action buttons)
+
+### Changed
+- `AppLayout`: Global breadcrumb bar with navlinks support
+  - Child pages override via `provide/inject` pattern
+  - Flat breadcrumb style (transparent, no border)
+
+## [0.14.4] - 2025-12-21
+
+### Fixed
+- Storage adapters: Use `params.filters` object for field filters (was using spread params)
+  - Affects `LocalStorage`, `MemoryStorage`, `ApiStorage`
+  - Fixes filter not working with `useListPageBuilder`
+
+### Changed
+- **Storage interface**: `list()` now expects `{ filters: { field: value } }` instead of spreading filters directly
+  - Example: `storage.list({ page: 1, filters: { genre: 'fiction' } })`
+
 ## [0.14.3] - 2025-12-21
 
 ### Fixed

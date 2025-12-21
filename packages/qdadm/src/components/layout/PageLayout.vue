@@ -3,22 +3,21 @@
  * PageLayout - Base layout for dashboard pages
  *
  * Provides:
- * - Auto-generated breadcrumb
  * - PageHeader with title and actions
  * - CardsGrid zone (optional)
  * - Main content slot
  *
- * Use this for custom pages that don't follow the standard list pattern.
- * For CRUD list pages, use ListPage instead.
+ * Slots:
+ * - #nav: For PageNav component (provides breadcrumb data to AppLayout)
+ * - #header-actions: Custom header action buttons
+ * - default: Main content
  *
- * Note: UnsavedChangesDialog is rendered automatically by AppLayout
- * via provide/inject from useBareForm/useForm.
+ * Note: Breadcrumb is handled globally by AppLayout.
+ * Use PageNav in #nav slot to customize breadcrumb for child routes.
  */
-import { toRef } from 'vue'
 import PageHeader from './PageHeader.vue'
 import CardsGrid from '../display/CardsGrid.vue'
 import Button from 'primevue/button'
-import { useBreadcrumb } from '../../composables/useBreadcrumb'
 
 const props = defineProps({
   // Header - use title OR titleParts (for decorated entity label)
@@ -26,24 +25,10 @@ const props = defineProps({
   titleParts: { type: Object, default: null },  // { action, entityName, entityLabel }
   subtitle: { type: String, default: null },
   headerActions: { type: Array, default: () => [] },
-  breadcrumb: { type: Array, default: null },  // Override auto breadcrumb
-
-  // Entity data for dynamic breadcrumb labels
-  entity: { type: Object, default: null },
-  manager: { type: Object, default: null },  // EntityManager - provides labelField automatically
 
   // Cards
   cards: { type: Array, default: () => [] },
   cardsColumns: { type: [Number, String], default: 'auto' }
-})
-
-// Auto-generate breadcrumb from route, using entity data for labels
-// getEntityLabel from manager handles both string field and callback
-const { breadcrumbItems } = useBreadcrumb({
-  entity: toRef(() => props.entity),  // Make reactive
-  getEntityLabel: props.manager
-    ? (e) => props.manager.getEntityLabel(e)
-    : (e) => e?.name || null  // Fallback if no manager
 })
 
 function resolveLabel(label) {
@@ -53,7 +38,13 @@ function resolveLabel(label) {
 
 <template>
   <div>
-    <PageHeader :title="title" :title-parts="titleParts" :breadcrumb="props.breadcrumb || breadcrumbItems">
+    <!-- Nav slot for PageNav (provides data to AppLayout, renders nothing visible) -->
+    <slot name="nav" />
+
+    <PageHeader
+      :title="title"
+      :title-parts="titleParts"
+    >
       <template #subtitle>
         <slot name="subtitle">
           <span v-if="subtitle" class="page-subtitle">{{ subtitle }}</span>

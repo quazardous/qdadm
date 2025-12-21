@@ -2,7 +2,6 @@ import { ref, computed, watch, onMounted, inject, provide } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useToast } from 'primevue/usetoast'
 import { useConfirm } from 'primevue/useconfirm'
-import { useBreadcrumb } from './useBreadcrumb'
 
 // Cookie utilities for pagination persistence
 const COOKIE_NAME = 'qdadm_pageSize'
@@ -146,7 +145,6 @@ export function useListPageBuilder(config = {}) {
   const route = useRoute()
   const toast = useToast()
   const confirm = useConfirm()
-  const { breadcrumbItems } = useBreadcrumb()
 
   // Get EntityManager via orchestrator
   const orchestrator = inject('qdadmOrchestrator')
@@ -735,6 +733,16 @@ export function useListPageBuilder(config = {}) {
         if (typeof filterDef?.local_filter === 'function') continue
         filters[name] = value
       }
+
+      // Auto-add parent filter from route config
+      const parentConfig = route.meta?.parent
+      if (parentConfig?.foreignKey && parentConfig?.param) {
+        const parentId = route.params[parentConfig.param]
+        if (parentId) {
+          filters[parentConfig.foreignKey] = parentId
+        }
+      }
+
       if (Object.keys(filters).length > 0) {
         params.filters = filters
       }
@@ -1009,7 +1017,6 @@ export function useListPageBuilder(config = {}) {
   const listProps = computed(() => ({
     // Header
     title: manager.labelPlural,
-    breadcrumb: breadcrumbItems.value,
     headerActions: headerActions.value,
 
     // Cards
@@ -1142,9 +1149,6 @@ export function useListPageBuilder(config = {}) {
     toast,
     confirm,
     router,
-
-    // Breadcrumb
-    breadcrumb: breadcrumbItems,
 
     // ListPage integration
     props: listProps,

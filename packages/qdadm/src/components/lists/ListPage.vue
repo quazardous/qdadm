@@ -29,7 +29,6 @@ const props = defineProps({
   // Header
   title: { type: String, required: true },
   subtitle: { type: String, default: null },
-  breadcrumb: { type: Array, default: null },
   headerActions: { type: Array, default: () => [] },
 
   // Cards
@@ -207,7 +206,10 @@ function onSort(event) {
 
 <template>
   <div>
-    <PageHeader :title="title" :subtitle="subtitle" :breadcrumb="breadcrumb">
+    <!-- Nav slot for PageNav (child routes) -->
+    <slot name="nav" />
+
+    <PageHeader :title="title" :subtitle="subtitle">
       <template #actions>
         <slot name="header-actions" ></slot>
         <Button

@@ -58,23 +58,44 @@ export class LocalStorage {
 
   /**
    * List entities with pagination/filtering
-   * @param {object} params - { page, page_size, sort_by, sort_order, ...filters }
+   * @param {object} params - Query parameters
+   * @param {number} [params.page=1] - Page number (1-based)
+   * @param {number} [params.page_size=20] - Items per page
+   * @param {string} [params.sort_by] - Field to sort by
+   * @param {string} [params.sort_order='asc'] - Sort order ('asc' or 'desc')
+   * @param {object} [params.filters] - Field filters { field: value }
+   * @param {string} [params.search] - Search query (substring match on string fields)
    * @returns {Promise<{ items: Array, total: number }>}
    */
   async list(params = {}) {
-    const { page = 1, page_size = 20, sort_by, sort_order = 'asc', ...filters } = params
+    const { page = 1, page_size = 20, sort_by, sort_order = 'asc', filters = {}, search } = params
 
     let items = this._getAll()
 
-    // Apply filters
+    // Apply filters (exact match for dropdown filters)
     for (const [key, value] of Object.entries(filters)) {
       if (value === null || value === undefined || value === '') continue
       items = items.filter(item => {
         const itemValue = item[key]
+        // Use exact match for filters (case-insensitive for strings)
         if (typeof value === 'string' && typeof itemValue === 'string') {
-          return itemValue.toLowerCase().includes(value.toLowerCase())
+          return itemValue.toLowerCase() === value.toLowerCase()
         }
         return itemValue === value
+      })
+    }
+
+    // Apply search (substring match on all string fields)
+    if (search && search.trim()) {
+      const query = search.toLowerCase().trim()
+      items = items.filter(item => {
+        // Search in all string fields
+        for (const value of Object.values(item)) {
+          if (typeof value === 'string' && value.toLowerCase().includes(query)) {
+            return true
+          }
+        }
+        return false
       })
     }
 

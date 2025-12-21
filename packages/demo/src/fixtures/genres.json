@@ -1,0 +1,7 @@
+[
+  { "id": "fiction", "name": "Fiction", "description": "Literary works of imagination" },
+  { "id": "non-fiction", "name": "Non-Fiction", "description": "Factual and informational works" },
+  { "id": "sci-fi", "name": "Science Fiction", "description": "Speculative fiction with scientific themes" },
+  { "id": "fantasy", "name": "Fantasy", "description": "Fiction with magical or supernatural elements" },
+  { "id": "mystery", "name": "Mystery", "description": "Stories involving crime and detective work" }
+]

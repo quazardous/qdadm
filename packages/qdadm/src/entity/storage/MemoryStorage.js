@@ -48,11 +48,16 @@ export class MemoryStorage {
 
   /**
    * List entities with pagination/filtering
-   * @param {object} params - { page, page_size, sort_by, sort_order, ...filters }
+   * @param {object} params - Query parameters
+   * @param {number} [params.page=1] - Page number (1-based)
+   * @param {number} [params.page_size=20] - Items per page
+   * @param {string} [params.sort_by] - Field to sort by
+   * @param {string} [params.sort_order='asc'] - Sort order ('asc' or 'desc')
+   * @param {object} [params.filters] - Field filters { field: value }
    * @returns {Promise<{ items: Array, total: number }>}
    */
   async list(params = {}) {
-    const { page = 1, page_size = 20, sort_by, sort_order = 'asc', ...filters } = params
+    const { page = 1, page_size = 20, sort_by, sort_order = 'asc', filters = {} } = params
 
     let items = this._getAll()
 

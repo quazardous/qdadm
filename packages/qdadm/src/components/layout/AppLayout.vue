@@ -12,7 +12,7 @@
  *   </AppLayout>
  */
 
-import { ref, watch, onMounted, computed, inject, useSlots } from 'vue'
+import { ref, watch, onMounted, computed, inject, provide, useSlots } from 'vue'
 import { RouterLink, RouterView, useRouter, useRoute } from 'vue-router'
 import { useNavigation } from '../../composables/useNavigation'
 import { useApp } from '../../composables/useApp'
@@ -126,7 +126,18 @@ const slots = useSlots()
 const hasSlotContent = computed(() => !!slots.default)
 
 // Breadcrumb (auto-generated from route)
-const { breadcrumbItems } = useBreadcrumb()
+const { breadcrumbItems: defaultBreadcrumb } = useBreadcrumb()
+
+// Allow child pages to override breadcrumb via provide/inject
+const breadcrumbOverride = ref(null)
+const navlinksOverride = ref(null)
+provide('qdadmBreadcrumbOverride', breadcrumbOverride)
+provide('qdadmNavlinksOverride', navlinksOverride)
+
+// Use override if provided, otherwise default
+const breadcrumbItems = computed(() => breadcrumbOverride.value || defaultBreadcrumb.value)
+const navlinks = computed(() => navlinksOverride.value || [])
+
 // Show breadcrumb if enabled, has items, and not on home page
 const showBreadcrumb = computed(() => {
   if (!features.breadcrumb || breadcrumbItems.value.length === 0) return false
@@ -203,19 +214,35 @@ const showBreadcrumb = computed(() => {
 
     <!-- Main content -->
     <main class="main-content">
-      <!-- Breadcrumb (auto-generated, can be disabled via features.breadcrumb: false) -->
-      <Breadcrumb v-if="showBreadcrumb" :model="breadcrumbItems" class="layout-breadcrumb">
-        <template #item="{ item }">
-          <RouterLink v-if="item.to" :to="item.to" class="breadcrumb-link">
-            <i v-if="item.icon" :class="item.icon"></i>
-            <span>{{ item.label }}</span>
-          </RouterLink>
-          <span v-else class="breadcrumb-current">
-            <i v-if="item.icon" :class="item.icon"></i>
-            <span>{{ item.label }}</span>
-          </span>
-        </template>
-      </Breadcrumb>
+      <!-- Breadcrumb + Navlinks bar -->
+      <div v-if="showBreadcrumb" class="layout-nav-bar">
+        <Breadcrumb :model="breadcrumbItems" class="layout-breadcrumb">
+          <template #item="{ item }">
+            <RouterLink v-if="item.to" :to="item.to" class="breadcrumb-link">
+              <i v-if="item.icon" :class="item.icon"></i>
+              <span>{{ item.label }}</span>
+            </RouterLink>
+            <span v-else class="breadcrumb-current">
+              <i v-if="item.icon" :class="item.icon"></i>
+              <span>{{ item.label }}</span>
+            </span>
+          </template>
+        </Breadcrumb>
+
+        <!-- Navlinks (provided by PageNav for child routes) -->
+        <div v-if="navlinks.length > 0" class="layout-navlinks">
+          <template v-for="(link, index) in navlinks" :key="link.to?.name || index">
+            <span v-if="index > 0" class="layout-navlinks-separator">|</span>
+            <RouterLink
+              :to="link.to"
+              class="layout-navlink"
+              :class="{ 'layout-navlink--active': link.active }"
+            >
+              {{ link.label }}
+            </RouterLink>
+          </template>
+        </div>
+      </div>
 
       <div class="page-content">
         <!-- Use slot if provided, otherwise RouterView for nested routes -->
@@ -454,5 +481,76 @@ const showBreadcrumb = computed(() => {
 
 .powered-by-text strong {
   color: var(--p-surface-300, #cbd5e1);
+}
+
+/* Nav bar (breadcrumb + navlinks) - aligned with sidebar header */
+.layout-nav-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.5rem;
+  padding-bottom: 0;
+}
+
+.layout-navlinks {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+}
+
+.layout-navlinks-separator {
+  color: var(--p-surface-400, #94a3b8);
+}
+
+.layout-navlink {
+  color: var(--p-primary-500, #3b82f6);
+  text-decoration: none;
+  transition: color 0.15s;
+}
+
+.layout-navlink:hover {
+  color: var(--p-primary-700, #1d4ed8);
+  text-decoration: underline;
+}
+
+.layout-navlink--active {
+  color: var(--p-surface-700, #334155);
+  font-weight: 500;
+  pointer-events: none;
+}
+
+/* Override PrimeVue Breadcrumb styles for flat look */
+.layout-nav-bar :deep(.p-breadcrumb) {
+  background: transparent;
+  border: none;
+  padding: 0;
+  border-radius: 0;
+}
+
+.layout-nav-bar :deep(.p-breadcrumb-list) {
+  gap: 0.5rem;
+}
+
+.layout-nav-bar :deep(.p-breadcrumb-item-link),
+.layout-nav-bar .breadcrumb-link {
+  color: var(--p-primary-500, #3b82f6);
+  text-decoration: none;
+  font-size: 0.875rem;
+}
+
+.layout-nav-bar :deep(.p-breadcrumb-item-link:hover),
+.layout-nav-bar .breadcrumb-link:hover {
+  color: var(--p-primary-700, #1d4ed8);
+  text-decoration: underline;
+}
+
+.layout-nav-bar .breadcrumb-current {
+  color: var(--p-surface-600, #475569);
+  font-size: 0.875rem;
+}
+
+.layout-nav-bar :deep(.p-breadcrumb-separator) {
+  color: var(--p-surface-400, #94a3b8);
 }
 </style>

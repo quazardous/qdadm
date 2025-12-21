@@ -29,6 +29,23 @@ export function init(registry) {
     }
   ])
 
+  // Child route: loans for a specific book
+  registry.addRoutes('books/:bookId/loans', [
+    {
+      path: '',
+      name: 'book-loans',
+      component: () => import('./pages/BookLoans.vue')
+    }
+  ], {
+    entity: 'loans',
+    parent: {
+      entity: 'books',
+      param: 'bookId',
+      foreignKey: 'book_id'
+    },
+    label: 'Loans'
+  })
+
   // ============ NAVIGATION ============
   registry.addNavItem({
     section: 'Library',
