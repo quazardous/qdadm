@@ -313,6 +313,7 @@ const managers = {
 
 const kernel = new Kernel({
   root: App,
+  basePath: import.meta.env.BASE_URL,
   // Auto-discover modules from ./modules/*/init.js
   // Each module exports init(registry) function
   modules: import.meta.glob('./modules/*/init.js', { eager: true }),

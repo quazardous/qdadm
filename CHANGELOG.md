@@ -5,6 +5,11 @@ All notable changes to qdadm will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.14.3] - 2025-12-21
+
+### Fixed
+- Demo: Pass `basePath` to Kernel for correct Vue Router base path on GitHub Pages
+
 ## [0.14.2] - 2025-12-21
 
 ### Added
