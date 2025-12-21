@@ -18,6 +18,11 @@
  * ```
  */
 export class LocalStorage {
+  /**
+   * LocalStorage is already in-memory, no need for EntityManager cache layer
+   */
+  supportsCaching = false
+
   constructor(options = {}) {
     const {
       key,

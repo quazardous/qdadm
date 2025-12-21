@@ -5,6 +5,7 @@
  */
 
 import { Orchestrator } from './orchestrator/Orchestrator.js'
+import qdadmLogo from './assets/logo.svg'
 
 /**
  * Creates the qdadm plugin with the given configuration
@@ -55,6 +56,7 @@ export function createQdadm(options) {
       const features = {
         auth: true,
         poweredBy: true,
+        breadcrumb: true,
         ...options.features
       }
 
@@ -64,7 +66,7 @@ export function createQdadm(options) {
         shortName: 'Admin',
         logo: null,
         logoSmall: null,
-        favicon: null,
+        favicon: qdadmLogo,
         version: null,
         theme: {
           primary: '#3B82F6',

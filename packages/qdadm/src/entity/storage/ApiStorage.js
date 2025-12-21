@@ -21,6 +21,11 @@
  * ```
  */
 export class ApiStorage {
+  /**
+   * API calls benefit from EntityManager cache layer to reduce network requests
+   */
+  supportsCaching = true
+
   constructor(options = {}) {
     const {
       endpoint,

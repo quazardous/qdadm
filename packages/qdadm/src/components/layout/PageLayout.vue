@@ -21,8 +21,9 @@ import Button from 'primevue/button'
 import { useBreadcrumb } from '../../composables/useBreadcrumb'
 
 const props = defineProps({
-  // Header
-  title: { type: String, required: true },
+  // Header - use title OR titleParts (for decorated entity label)
+  title: { type: String, default: null },
+  titleParts: { type: Object, default: null },  // { action, entityName, entityLabel }
   subtitle: { type: String, default: null },
   headerActions: { type: Array, default: () => [] },
   breadcrumb: { type: Array, default: null },  // Override auto breadcrumb
@@ -52,7 +53,7 @@ function resolveLabel(label) {
 
 <template>
   <div>
-    <PageHeader :title="title" :breadcrumb="props.breadcrumb || breadcrumbItems">
+    <PageHeader :title="title" :title-parts="titleParts" :breadcrumb="props.breadcrumb || breadcrumbItems">
       <template #subtitle>
         <slot name="subtitle">
           <span v-if="subtitle" class="page-subtitle">{{ subtitle }}</span>

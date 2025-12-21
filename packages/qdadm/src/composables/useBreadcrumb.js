@@ -131,8 +131,16 @@ export function useBreadcrumb(options = {}) {
     return items
   }
 
+  // Action segments that should be excluded from breadcrumb
+  const actionSegments = ['edit', 'create', 'show', 'view', 'new', 'delete']
+
   /**
    * Build breadcrumb automatically from route path
+   *
+   * Breadcrumb shows navigable parents only:
+   * - Excludes action segments (edit, create, show, etc.)
+   * - Excludes IDs
+   * - All items have links (to navigate back to parent)
    */
   function buildFromPath(entity, getEntityLabel) {
     const items = []
@@ -147,19 +155,17 @@ export function useBreadcrumb(options = {}) {
       const segment = segments[i]
       currentPath += `/${segment}`
 
-      // Handle IDs: numeric, UUID, ULID, or any alphanumeric string > 10 chars - use entity label instead
+      // Skip action segments (edit, create, show, etc.)
+      if (actionSegments.includes(segment.toLowerCase())) {
+        continue
+      }
+
+      // Skip IDs: numeric, UUID, ULID, or any alphanumeric string > 10 chars
       const isId = /^\d+$/.test(segment) ||  // numeric
         segment.match(/^[0-9a-f-]{36}$/i) ||  // UUID
         segment.match(/^[0-7][0-9a-hjkmnp-tv-z]{25}$/i) ||  // ULID
-        (segment.match(/^[a-z0-9]+$/i) && segment.length > 10)  // Generated ID (like LocalStorage)
+        (segment.match(/^[a-z0-9]+$/i) && segment.length > 10)  // Generated ID
       if (isId) {
-        // If we have entity data, show its label instead of the ID
-        if (entity && getEntityLabel) {
-          const entityLabel = getEntityLabel(entity)
-          if (entityLabel) {
-            items.push({ label: entityLabel, to: null, icon: null })
-          }
-        }
         continue
       }
 
@@ -179,12 +185,15 @@ export function useBreadcrumb(options = {}) {
         icon: i === 0 ? iconMap[segment] : null
       }
 
-      // Last item has no link
-      if (i === segments.length - 1) {
-        item.to = null
-      }
-
       items.push(item)
+    }
+
+    // Remove last item if it matches current route (we only show parents)
+    if (items.length > 1) {
+      const lastItem = items[items.length - 1]
+      if (lastItem.to?.name === route.name) {
+        items.pop()
+      }
     }
 
     return items

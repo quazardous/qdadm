@@ -26,7 +26,7 @@
  * })
  * ```
  */
-import { ref, watch, onMounted, inject } from 'vue'
+import { ref, computed, watch, onMounted, inject, provide } from 'vue'
 import { useBareForm } from './useBareForm'
 import { deepClone } from '../utils/transformers'
 
@@ -83,6 +83,8 @@ export function useForm(options = {}) {
     checkDirty,
     // Helpers
     cancel,
+    // Breadcrumb
+    breadcrumb,
     // Guard dialog for unsaved changes
     guardDialog
   } = useBareForm({
@@ -224,6 +226,42 @@ export function useForm(options = {}) {
     load()
   })
 
+  // ============ COMPUTED TITLE ============
+
+  /**
+   * Entity display label (e.g., "David Berlioz" for an agent)
+   * Uses manager.getEntityLabel() with labelField config
+   */
+  const entityLabel = computed(() => {
+    return manager.getEntityLabel(form.value)
+  })
+
+  /**
+   * Auto-generated page title
+   * - Edit mode: "Edit Agent: David Berlioz"
+   * - Create mode: "Create Agent"
+   */
+  const pageTitle = computed(() => {
+    if (isEdit.value) {
+      const label = entityLabel.value
+      return label ? `Edit ${entityName}: ${label}` : `Edit ${entityName}`
+    }
+    return `Create ${entityName}`
+  })
+
+  /**
+   * Structured page title for decorated rendering
+   * Returns { action, entityName, entityLabel } for custom styling
+   */
+  const pageTitleParts = computed(() => ({
+    action: isEdit.value ? 'Edit' : 'Create',
+    entityName,
+    entityLabel: isEdit.value ? entityLabel.value : null
+  }))
+
+  // Provide title parts for automatic PageHeader consumption
+  provide('qdadmPageTitleParts', pageTitleParts)
+
   return {
     // Manager access
     manager,
@@ -248,7 +286,15 @@ export function useForm(options = {}) {
     checkDirty,
     isFieldDirty,
 
+    // Breadcrumb (auto-generated from route)
+    breadcrumb,
+
     // Guard dialog (for UnsavedChangesDialog - pass to PageLayout)
-    guardDialog
+    guardDialog,
+
+    // Title helpers
+    entityLabel,
+    pageTitle,
+    pageTitleParts
   }
 }

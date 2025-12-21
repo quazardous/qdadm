@@ -1,4 +1,4 @@
-import { ref, computed, watch, onMounted, inject } from 'vue'
+import { ref, computed, watch, onMounted, inject, provide } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useToast } from 'primevue/usetoast'
 import { useConfirm } from 'primevue/useconfirm'
@@ -154,6 +154,9 @@ export function useListPageBuilder(config = {}) {
     throw new Error('[qdadm] Orchestrator not provided. Make sure to use createQdadm() with entityFactory.')
   }
   const manager = orchestrator.get(entity)
+
+  // Provide entity context for child components (e.g., SeverityTag auto-discovery)
+  provide('mainEntity', entity)
 
   // Read config from manager with option overrides
   const entityName = config.entityName ?? manager.label
@@ -663,71 +666,35 @@ export function useListPageBuilder(config = {}) {
     searchConfig.value = { ...searchConfig.value, ...searchCfg }
   }
 
-  // ============ SMART FILTER MODE ============
-  // Threshold priority: config option > manager.localFilterThreshold > default (100)
-  const resolvedThreshold = computed(() => {
-    if (autoFilterThreshold !== 100) return autoFilterThreshold  // Explicit config
-    return manager?.localFilterThreshold ?? 100
-  })
+  // ============ CACHE MODE ============
+  // EntityManager handles caching and filtering automatically via query()
+  // This computed applies any custom local_filter callbacks on top
+  const fromCache = ref(false)
 
-  const effectiveFilterMode = computed(() => {
-    if (filterMode !== 'auto') return filterMode
-    // Switch to local if we have few items
-    return items.value.length > 0 && items.value.length < resolvedThreshold.value ? 'local' : 'manager'
-  })
-
-  // Computed for local filtering
-  // Only applied when effectiveFilterMode === 'local'
-  // In manager mode, items are already filtered by the manager
   const filteredItems = computed(() => {
-    const isLocalMode = effectiveFilterMode.value === 'local'
-
-    // In manager mode, return items as-is (manager already filtered)
-    if (!isLocalMode) {
-      return items.value
-    }
-
-    // Local mode: apply all filtering client-side
     let result = [...items.value]
 
-    // Apply search
-    // local_search: false = manager only, skip in local mode
-    if (searchQuery.value && searchConfig.value.local_search !== false) {
-      const query = searchQuery.value.toLowerCase()
-      // Default: search on configured fields
-      const localSearch = searchConfig.value.local_search || (
-        searchConfig.value.fields?.length
-          ? (item, q) => searchConfig.value.fields.some(field =>
-              String(item[field] || '').toLowerCase().includes(q)
-            )
-          : null
-      )
-      if (localSearch) {
-        result = result.filter(item => localSearch(item, query))
-      }
-    }
-
-    // Apply filters
+    // Apply custom local_filter callbacks (UI-specific post-filters)
     for (const [name, value] of Object.entries(filterValues.value)) {
       if (value === null || value === undefined || value === '') continue
       const filterDef = filtersMap.value.get(name)
 
-      // local_filter: false = manager only, skip in local mode
-      if (filterDef?.local_filter === false) continue
+      // Only apply if there's a custom local_filter callback
+      if (typeof filterDef?.local_filter !== 'function') continue
 
-      // Default: simple equality on field
-      const localFilter = filterDef?.local_filter || ((item, val) => {
-        const itemValue = item[name]
-        if (val === '__null__') return itemValue === null || itemValue === undefined
-        return itemValue === val
-      })
-      result = result.filter(item => localFilter(item, value))
+      result = result.filter(item => filterDef.local_filter(item, value))
+    }
+
+    // Apply custom local_search callback
+    if (searchQuery.value && typeof searchConfig.value.local_search === 'function') {
+      const query = searchQuery.value.toLowerCase()
+      result = result.filter(item => searchConfig.value.local_search(item, query))
     }
 
     return result
   })
 
-  // Items to display - always use filteredItems (handles both modes correctly)
+  // Items to display
   const displayItems = computed(() => filteredItems.value)
 
   // ============ LOADING ============
@@ -736,36 +703,40 @@ export function useListPageBuilder(config = {}) {
   async function loadItems(extraParams = {}, { force = false } = {}) {
     if (!manager) return
 
-    // Skip API call if local filtering and data already loaded (unless forced)
-    if (!force && effectiveFilterMode.value === 'local' && items.value.length > 0) {
-      return
+    // If forced, invalidate the manager's cache first
+    if (force && manager.invalidateCache) {
+      manager.invalidateCache()
     }
 
     loading.value = true
     try {
+      // Build query params
       let params = { ...extraParams }
 
-      if (serverSide) {
-        params.page = page.value
-        params.page_size = pageSize.value
-        if (sortField.value) {
-          params.sort_by = sortField.value
-          params.sort_order = sortOrder.value === 1 ? 'asc' : 'desc'
-        }
+      // Pagination and sorting
+      params.page = page.value
+      params.page_size = pageSize.value
+      if (sortField.value) {
+        params.sort_by = sortField.value
+        params.sort_order = sortOrder.value === 1 ? 'asc' : 'desc'
       }
 
-      // Add search param to manager (only if no local_search callback)
-      if (searchQuery.value && searchConfig.value.fields?.length && !searchConfig.value.local_search) {
+      // Add search param (skip if custom local_search callback)
+      if (searchQuery.value && typeof searchConfig.value.local_search !== 'function') {
         params.search = searchQuery.value
       }
 
-      // Add filter values to manager (skip filters with local_filter - they're local-only)
+      // Add filter values (skip filters with custom local_filter callback)
+      const filters = {}
       for (const [name, value] of Object.entries(filterValues.value)) {
         if (value === null || value === undefined || value === '') continue
         const filterDef = filtersMap.value.get(name)
-        // Skip virtual filters (those with local_filter) - not sent to manager
-        if (filterDef?.local_filter) continue
-        params[name] = value
+        // Skip filters with custom local_filter - they're applied in filteredItems
+        if (typeof filterDef?.local_filter === 'function') continue
+        filters[name] = value
+      }
+      if (Object.keys(filters).length > 0) {
+        params.filters = filters
       }
 
       // Hook: modify params before request
@@ -773,7 +744,13 @@ export function useListPageBuilder(config = {}) {
         params = onBeforeLoad(params) || params
       }
 
-      const response = await manager.list(params)
+      // Use manager.query() for automatic cache handling
+      const response = manager.query
+        ? await manager.query(params)
+        : await manager.list(params)
+
+      // Track if response came from cache
+      fromCache.value = response.fromCache || false
 
       // Hook: transform response
       let processedData
@@ -812,13 +789,13 @@ export function useListPageBuilder(config = {}) {
     pageSize.value = event.rows
     // Save page size preference to cookie
     setCookie(COOKIE_NAME, event.rows, COOKIE_EXPIRY_DAYS)
-    if (serverSide) loadItems()
+    loadItems()
   }
 
   function onSort(event) {
     sortField.value = event.sortField
     sortOrder.value = event.sortOrder
-    if (serverSide) loadItems()
+    loadItems()
   }
 
   // ============ NAVIGATION ============
@@ -827,11 +804,11 @@ export function useListPageBuilder(config = {}) {
   }
 
   function goToEdit(item) {
-    router.push({ name: `${routePrefix}-edit`, params: { [resolvedDataKey]: item[resolvedDataKey] } })
+    router.push({ name: `${routePrefix}-edit`, params: { id: item[resolvedDataKey] } })
   }
 
   function goToShow(item) {
-    router.push({ name: `${routePrefix}-show`, params: { [resolvedDataKey]: item[resolvedDataKey] } })
+    router.push({ name: `${routePrefix}-show`, params: { id: item[resolvedDataKey] } })
   }
 
   // ============ DELETE ============
@@ -1126,7 +1103,7 @@ export function useListPageBuilder(config = {}) {
     filters,
     filterValues,
     filteredItems,
-    effectiveFilterMode,
+    fromCache,  // true if last query used cache
     addFilter,
     removeFilter,
     setFilterValue,

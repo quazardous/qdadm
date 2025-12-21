@@ -20,7 +20,7 @@ const props = defineProps({
   },
   scopePrefix: {
     type: String,
-    default: 'faketual' // Prefix for scope strings (e.g., "faketual.resource:action")
+    default: 'app' // Prefix for scope strings (e.g., "app.resource:action")
   },
   // Default resources/actions if API not available
   defaultResources: {

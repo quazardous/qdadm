@@ -18,12 +18,14 @@ import { useNavigation } from '../../composables/useNavigation'
 import { useApp } from '../../composables/useApp'
 import { useAuth } from '../../composables/useAuth'
 import { useGuardDialog } from '../../composables/useGuardStore'
+import { useBreadcrumb } from '../../composables/useBreadcrumb'
 import Button from 'primevue/button'
+import Breadcrumb from 'primevue/breadcrumb'
 import UnsavedChangesDialog from '../dialogs/UnsavedChangesDialog.vue'
 import qdadmLogo from '../../assets/logo.svg'
 import { version as qdadmVersion } from '../../../package.json'
 
-const features = inject('qdadmFeatures', { poweredBy: true })
+const features = inject('qdadmFeatures', { poweredBy: true, breadcrumb: true })
 
 // Guard dialog from shared store (registered by useBareForm/useForm when a form is active)
 const guardDialog = useGuardDialog()
@@ -122,6 +124,16 @@ function handleLogout() {
 // Check if slot content is provided
 const slots = useSlots()
 const hasSlotContent = computed(() => !!slots.default)
+
+// Breadcrumb (auto-generated from route)
+const { breadcrumbItems } = useBreadcrumb()
+// Show breadcrumb if enabled, has items, and not on home page
+const showBreadcrumb = computed(() => {
+  if (!features.breadcrumb || breadcrumbItems.value.length === 0) return false
+  // Don't show on home page (just "Dashboard" with no parents)
+  if (route.name === 'dashboard') return false
+  return true
+})
 </script>
 
 <template>
@@ -191,6 +203,20 @@ const hasSlotContent = computed(() => !!slots.default)
 
     <!-- Main content -->
     <main class="main-content">
+      <!-- Breadcrumb (auto-generated, can be disabled via features.breadcrumb: false) -->
+      <Breadcrumb v-if="showBreadcrumb" :model="breadcrumbItems" class="layout-breadcrumb">
+        <template #item="{ item }">
+          <RouterLink v-if="item.to" :to="item.to" class="breadcrumb-link">
+            <i v-if="item.icon" :class="item.icon"></i>
+            <span>{{ item.label }}</span>
+          </RouterLink>
+          <span v-else class="breadcrumb-current">
+            <i v-if="item.icon" :class="item.icon"></i>
+            <span>{{ item.label }}</span>
+          </span>
+        </template>
+      </Breadcrumb>
+
       <div class="page-content">
         <!-- Use slot if provided, otherwise RouterView for nested routes -->
         <slot v-if="hasSlotContent" />
@@ -389,6 +415,8 @@ const hasSlotContent = computed(() => !!slots.default)
   padding: 1.5rem;
   overflow-y: auto;
 }
+
+/* Breadcrumb styles are in main.css */
 
 /* Dark mode support */
 .dark-mode .sidebar {

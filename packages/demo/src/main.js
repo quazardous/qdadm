@@ -181,8 +181,9 @@ class LoansManager extends EntityManager {
   async list(params = {}) {
     if (!this._isAdmin()) {
       params.user_id = authAdapter.getUser()?.id
+      params.cacheSafe = true  // Ownership filter is session-bound, safe to cache
     }
-    return this.storage.list(params)
+    return super.list(params)
   }
 
   /**
@@ -249,6 +250,12 @@ const managers = {
       loans: { entity: 'loans', foreignKey: 'book_id', label: 'Loans' }
     },
     storage: booksStorage
+  }).setSeverityMap('genre', {
+    'fiction': 'info',
+    'non-fiction': 'secondary',
+    'sci-fi': 'primary',
+    'fantasy': 'warn',
+    'mystery': 'danger'
   }),
 
   users: new UsersManager({

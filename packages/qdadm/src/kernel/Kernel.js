@@ -53,11 +53,14 @@ export class Kernel {
    * @param {object} options
    * @param {object} options.root - Root Vue component
    * @param {object} options.modules - Result of import.meta.glob for module init files
+   * @param {object} options.modulesOptions - Options for initModules (e.g., { coreNavItems })
    * @param {string[]} options.sectionOrder - Navigation section order
    * @param {object} options.managers - Entity managers { name: EntityManager }
    * @param {object} options.authAdapter - Auth adapter for login/logout
    * @param {object} options.pages - Page components { login, layout }
-   * @param {string} options.homeRoute - Route name for home redirect
+   * @param {string} options.homeRoute - Route name for home redirect (or object { name, component })
+   * @param {Array} options.coreRoutes - Additional routes as layout children (before module routes)
+   * @param {string} options.basePath - Base path for router (e.g., '/dashboard/')
    * @param {object} options.app - App config { name, shortName, version, logo, theme }
    * @param {object} options.features - Feature toggles { auth, poweredBy }
    * @param {object} options.primevue - PrimeVue config { plugin, theme, options }
@@ -90,7 +93,7 @@ export class Kernel {
       setSectionOrder(this.options.sectionOrder)
     }
     if (this.options.modules) {
-      initModules(this.options.modules)
+      initModules(this.options.modules, this.options.modulesOptions || {})
     }
   }
 
@@ -98,7 +101,7 @@ export class Kernel {
    * Create Vue Router with auth guard
    */
   _createRouter() {
-    const { pages, homeRoute, authAdapter } = this.options
+    const { pages, homeRoute, coreRoutes, basePath, authAdapter } = this.options
 
     // Validate required pages
     if (!pages?.login) {
@@ -107,6 +110,23 @@ export class Kernel {
     if (!pages?.layout) {
       throw new Error('[Kernel] pages.layout is required')
     }
+
+    // Build home route
+    let homeRouteConfig
+    if (typeof homeRoute === 'object' && homeRoute.component) {
+      // homeRoute is a route config with component
+      homeRouteConfig = { path: '', ...homeRoute }
+    } else {
+      // homeRoute is a route name for redirect
+      homeRouteConfig = { path: '', redirect: { name: homeRoute || 'home' } }
+    }
+
+    // Build layout children: home + coreRoutes + moduleRoutes
+    const layoutChildren = [
+      homeRouteConfig,
+      ...(coreRoutes || []),
+      ...getRoutes()
+    ]
 
     // Build routes
     const routes = [
@@ -119,15 +139,12 @@ export class Kernel {
         path: '/',
         component: pages.layout,
         meta: { requiresAuth: true },
-        children: [
-          { path: '', redirect: { name: homeRoute || 'home' } },
-          ...getRoutes()
-        ]
+        children: layoutChildren
       }
     ]
 
     this.router = createRouter({
-      history: createWebHistory(),
+      history: createWebHistory(basePath),
       routes
     })
 

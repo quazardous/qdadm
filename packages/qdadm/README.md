@@ -1,14 +1,10 @@
 # qdadm
 
-Vue 3 framework for building admin dashboards with PrimeVue.
+**Vue 3 admin framework. PrimeVue. Zero boilerplate.**
 
-## Features
+Full documentation: [../../README.md](../../README.md)
 
-- **Kernel**: All-in-one bootstrap (Vue app, router, Pinia, PrimeVue, auth guard)
-- **EntityManager**: CRUD operations with permission control (`canRead`/`canCreate`/`canUpdate`/`canDelete`)
-- **Module System**: Auto-discovery of modules with routes and navigation
-- **Components**: Forms, lists, dialogs, editors ready to use
-- **Composables**: `useForm`, `useListPageBuilder`, `useBareForm`, etc.
+Changelog: [../../CHANGELOG.md](../../CHANGELOG.md)
 
 ## Installation
 
@@ -16,7 +12,7 @@ Vue 3 framework for building admin dashboards with PrimeVue.
 npm install qdadm
 ```
 
-## Quick Start with Kernel
+## Quick Start
 
 ```js
 import { Kernel, EntityManager, LocalStorage } from 'qdadm'
@@ -24,134 +20,47 @@ import PrimeVue from 'primevue/config'
 import Aura from '@primeuix/themes/aura'
 import 'qdadm/styles'
 
-import App from './App.vue'
-import { authAdapter } from './adapters/authAdapter'
-
-const managers = {
-  books: new EntityManager({
-    name: 'books',
-    storage: new LocalStorage({ key: 'my_books' }),
-    fields: {
-      title: { type: 'text', label: 'Title', required: true },
-      author: { type: 'text', label: 'Author' }
-    }
-  })
-}
-
 const kernel = new Kernel({
   root: App,
   modules: import.meta.glob('./modules/*/init.js', { eager: true }),
-  sectionOrder: ['Library'],
-  managers,
-  authAdapter,
-  pages: {
-    login: () => import('./pages/LoginPage.vue'),
-    layout: () => import('./pages/MainLayout.vue')
+  managers: {
+    books: new EntityManager({
+      name: 'books',
+      storage: new LocalStorage({ key: 'books' }),
+      labelField: 'title'
+    })
   },
+  authAdapter,
+  pages: { login: LoginPage, layout: MainLayout },
   homeRoute: 'book',
-  app: { name: 'My App', version: '1.0.0' },
+  app: { name: 'My App' },
   primevue: { plugin: PrimeVue, theme: Aura }
 })
 
 kernel.createApp().mount('#app')
 ```
 
-## Manual Bootstrap (without Kernel)
+## Exports
 
 ```js
-import { createQdadm, initModules, getRoutes } from 'qdadm'
+// Main
+import { Kernel, createQdadm, EntityManager, ApiStorage, LocalStorage } from 'qdadm'
 
-// Init modules
-initModules(import.meta.glob('./modules/*/init.js', { eager: true }))
+// Composables
+import { useForm, useBareForm, useListPageBuilder } from 'qdadm/composables'
 
-// Create router with getRoutes()
-const router = createRouter({
-  history: createWebHistory(),
-  routes: [
-    { path: '/login', component: LoginPage },
-    { path: '/', component: Layout, children: getRoutes() }
-  ]
-})
+// Components
+import { ListPage, PageLayout, FormField, FormActions } from 'qdadm/components'
 
-// Install plugin
-app.use(createQdadm({ managers, authAdapter, router, toast }))
+// Module system
+import { initModules, getRoutes, setSectionOrder } from 'qdadm/module'
+
+// Utilities
+import { formatDate, truncate } from 'qdadm/utils'
+
+// Styles
+import 'qdadm/styles'
 ```
-
-## Module Structure
-
-```
-modules/
-└── books/
-    ├── init.js          # Route & nav registration
-    └── pages/
-        ├── BookList.vue
-        └── BookForm.vue
-```
-
-**init.js:**
-```js
-export function init(registry) {
-  registry.addRoutes('books', [
-    { path: '', name: 'book', component: () => import('./pages/BookList.vue') },
-    { path: 'create', name: 'book-create', component: () => import('./pages/BookForm.vue') },
-    { path: ':id/edit', name: 'book-edit', component: () => import('./pages/BookForm.vue') }
-  ], { entity: 'books' })
-
-  registry.addNavItem({
-    section: 'Library',
-    route: 'book',
-    icon: 'pi pi-book',
-    label: 'Books',
-    entity: 'books'
-  })
-
-  registry.addRouteFamily('book', ['book-'])
-}
-```
-
-## EntityManager Permissions
-
-```js
-class UsersManager extends EntityManager {
-  canRead() {
-    return authAdapter.getUser()?.role === 'admin'
-  }
-  canCreate() {
-    return authAdapter.getUser()?.role === 'admin'
-  }
-  canUpdate(entity) {
-    return authAdapter.getUser()?.role === 'admin'
-  }
-  canDelete(entity) {
-    return authAdapter.getUser()?.role === 'admin'
-  }
-}
-```
-
-When `canRead()` returns false:
-- Navigation items are hidden
-- Routes redirect to `/`
-
-## Components
-
-| Category | Components |
-|----------|------------|
-| Layout | `AppLayout`, `PageLayout`, `PageHeader`, `Breadcrumb` |
-| Forms | `FormField`, `FormActions`, `FormTabs`, `FormTab` |
-| Lists | `ListPage`, `ActionButtons`, `FilterBar` |
-| Editors | `JsonViewer`, `KeyValueEditor`, `VanillaJsonEditor` |
-| Dialogs | `SimpleDialog`, `MultiStepDialog`, `UnsavedChangesDialog` |
-| Display | `CardsGrid`, `CopyableId`, `EmptyState` |
-
-## Composables
-
-| Composable | Description |
-|------------|-------------|
-| `useForm` | Form with validation, dirty state, navigation guard |
-| `useBareForm` | Lightweight form without routing |
-| `useListPageBuilder` | Paginated list with filters and actions |
-| `useTabSync` | Sync tabs with URL query params |
-| `useBreadcrumb` | Dynamic breadcrumb from route |
 
 ## Peer Dependencies
 
