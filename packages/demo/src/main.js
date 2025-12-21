@@ -192,13 +192,36 @@ class LoansManager extends EntityManager {
   }
 
   /**
-   * Override create() to enforce user_id for non-admin
+   * Enrich loan with book_title and username for display
+   */
+  async _enrichLoan(data) {
+    if (data.book_id) {
+      const book = await booksStorage.get(data.book_id)
+      data.book_title = book?.title || '?'
+    }
+    if (data.user_id) {
+      const user = await usersStorage.get(data.user_id)
+      data.username = user?.username || '?'
+    }
+  }
+
+  /**
+   * Override create() to enforce user_id for non-admin and enrich
    */
   async create(data) {
     if (!this._isAdmin()) {
       data.user_id = authAdapter.getUser()?.id
     }
+    await this._enrichLoan(data)
     return this.storage.create(data)
+  }
+
+  /**
+   * Override update() to enrich loan data
+   */
+  async update(id, data) {
+    await this._enrichLoan(data)
+    return this.storage.update(id, data)
   }
 
   canRead(loan = null) {
@@ -282,8 +305,10 @@ const managers = {
     label: 'Loan',
     labelPlural: 'Loans',
     routePrefix: 'loan',
-    // labelField can be a callback for complex labels
-    labelField: (loan) => `Loan #${loan.id?.slice(-6) || 'new'}`,
+    // labelField: "book_title - username" (enriched in create/update)
+    labelField: (loan) => loan.book_title && loan.username
+      ? `${loan.book_title} - ${loan.username}`
+      : `Loan #${loan.id?.slice(-6) || 'new'}`,
     fields: {
       book_id: { type: 'text', label: 'Book', required: true, default: '' },
       user_id: { type: 'text', label: 'User', required: true, default: '' },
@@ -340,6 +365,11 @@ const kernel = new Kernel({
   // Auto-discover modules from ./modules/*/init.js
   // Each module exports init(registry) function
   modules: import.meta.glob('./modules/*/init.js', { eager: true }),
+  modulesOptions: {
+    coreNavItems: [
+      { section: 'Library', route: 'home', icon: 'pi pi-home', label: 'Home' }
+    ]
+  },
   // Navigation sections order
   sectionOrder: ['Library', 'Administration'],
   managers,
@@ -348,8 +378,11 @@ const kernel = new Kernel({
     login: () => import('./pages/LoginPage.vue'),
     layout: () => import('./pages/MainLayout.vue')
   },
-  // Redirect to this route after login
-  homeRoute: 'book',
+  // Home page with welcome/presentation
+  homeRoute: {
+    name: 'home',
+    component: () => import('./pages/WelcomePage.vue')
+  },
   app: {
     name: 'Book Manager',
     shortName: 'Books',

@@ -5,6 +5,33 @@ All notable changes to qdadm will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.16.0] - 2025-12-21
+
+### Added
+- `useNavContext` composable: Route-aware navigation context for breadcrumb and navlinks
+  - Builds navigation from route path pattern analysis (not heuristics)
+  - Supports N levels of nested routes via recursive parent chain
+  - Auto-fetches entity labels from EntityManager
+  - Path pattern: static segments → list, param segments → item, action segments → ignored
+  - Route meta: `entity` (required), `parent: { entity, param }` (for child routes)
+
+### Changed
+- `AppLayout`: Uses `useNavContext` instead of `useBreadcrumb` for navigation
+- Sidebar header: Version tag now displayed below title
+- Route meta `entity` declaration required for proper breadcrumb generation
+
+### Deprecated
+- `useBreadcrumb`: Replaced by `useNavContext` (still exported for backwards compat)
+
+## [0.15.2] - 2025-12-21
+
+### Added
+- `usePageTitle` composable: Provide custom title for PageHeader in custom pages
+  - Simple title: `usePageTitle('My Custom Page')`
+  - Decorated title: `usePageTitle({ action: 'View', entityName: 'Stats', entityLabel: 'Dashboard' })`
+  - Reactive updates via `setTitle()`
+  - For standard CRUD pages, `useForm` handles this automatically
+
 ## [0.15.1] - 2025-12-21
 
 ### Added

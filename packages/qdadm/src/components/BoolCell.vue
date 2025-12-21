@@ -3,8 +3,8 @@
  * BoolCell - Standardized boolean display for list columns
  *
  * Tristate display:
- * - true: green check
- * - false: red cross
+ * - true / "true" / 1: green check
+ * - false / "false" / 0: red cross
  * - null/undefined: empty
  *
  * Usage:
@@ -14,15 +14,20 @@
  *   </template>
  * </Column>
  */
-defineProps({
+import { computed } from 'vue'
+
+const props = defineProps({
   value: {
-    type: Boolean,
+    type: [Boolean, String, Number],
     default: null
   }
 })
+
+const isTrue = computed(() => props.value === true || props.value === 'true' || props.value === 1)
+const isFalse = computed(() => props.value === false || props.value === 'false' || props.value === 0)
 </script>
 
 <template>
-  <i v-if="value === true" class="pi pi-check" style="color: var(--p-green-500)" />
-  <i v-else-if="value === false" class="pi pi-times" style="color: var(--p-red-500)" />
+  <i v-if="isTrue" class="pi pi-check" style="color: var(--p-green-500)" />
+  <i v-else-if="isFalse" class="pi pi-times" style="color: var(--p-red-500)" />
 </template>

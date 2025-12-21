@@ -42,16 +42,12 @@ const effectiveTitleParts = computed(() => {
   return props.titleParts || injectedTitleParts?.value || null
 })
 
+// Simple title from usePageTitle('My Title')
+const simpleTitle = computed(() => effectiveTitleParts.value?.simple)
+
 // Compute title display
 const hasDecoratedTitle = computed(() => {
   return effectiveTitleParts.value?.entityLabel
-})
-
-const titleBase = computed(() => {
-  if (effectiveTitleParts.value) {
-    return `${effectiveTitleParts.value.action} ${effectiveTitleParts.value.entityName}`
-  }
-  return props.title
 })
 </script>
 
@@ -62,8 +58,9 @@ const titleBase = computed(() => {
         <div class="page-header-left">
           <div>
             <h1 class="page-title">
-              <template v-if="hasDecoratedTitle"><span class="entity-label">{{ effectiveTitleParts.entityLabel }}</span></template>
-              <span v-if="effectiveTitleParts" class="action-badge">{{ effectiveTitleParts.action }} {{ effectiveTitleParts.entityName }}</span>
+              <template v-if="simpleTitle">{{ simpleTitle }}</template>
+              <template v-else-if="hasDecoratedTitle"><span class="entity-label">{{ effectiveTitleParts.entityLabel }}</span></template>
+              <span v-if="effectiveTitleParts && !simpleTitle" class="action-badge">{{ effectiveTitleParts.action }} {{ effectiveTitleParts.entityName }}</span>
               <template v-if="!effectiveTitleParts">{{ title }}</template>
             </h1>
             <p v-if="subtitle" class="page-subtitle">{{ subtitle }}</p>

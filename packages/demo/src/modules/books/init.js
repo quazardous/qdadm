@@ -27,7 +27,7 @@ export function init(registry) {
       name: 'book-edit',
       component: () => import('./pages/BookForm.vue')
     }
-  ])
+  ], { entity: 'books' })
 
   // Child route: loans for a specific book
   registry.addRoutes('books/:bookId/loans', [

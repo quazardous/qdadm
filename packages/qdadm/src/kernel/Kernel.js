@@ -210,6 +210,10 @@ export class Kernel {
     // Router
     app.use(this.router)
 
+    // Extract home route name for breadcrumb
+    const { homeRoute } = this.options
+    const homeRouteName = typeof homeRoute === 'object' ? homeRoute.name : homeRoute
+
     // qdadm plugin
     app.use(createQdadm({
       orchestrator: this.orchestrator,
@@ -218,6 +222,7 @@ export class Kernel {
       router: this.router,
       toast: app.config.globalProperties.$toast,
       app: this.options.app,
+      homeRoute: homeRouteName,
       features: {
         auth: !!authAdapter,
         poweredBy: true,

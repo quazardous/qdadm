@@ -41,11 +41,7 @@ const roleField = manager.getFieldConfig('role')
 </script>
 
 <template>
-  <PageLayout
-    :title="isEdit ? `Edit ${manager.label}: ${manager.getEntityLabel(form)}` : `Add ${manager.label}`"
-    :entity="form"
-    :manager="manager"
-  >
+  <PageLayout>
     <Card v-if="!loading">
       <template #content>
         <div class="form-grid">

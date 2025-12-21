@@ -22,6 +22,7 @@ import qdadmLogo from './assets/logo.svg'
  * @param {object} options.features - Optional: Feature toggles (auth, poweredBy)
  * @param {object} options.builtinModules - Optional: Builtin modules configuration
  * @param {object} options.endpoints - Optional: API endpoints configuration
+ * @param {string} options.homeRoute - Optional: Home route name for breadcrumb
  * @returns {object} Vue plugin
  */
 export function createQdadm(options) {
@@ -110,6 +111,10 @@ export function createQdadm(options) {
 
       if (options.modules?.sectionOrder) {
         app.provide('qdadmSectionOrder', options.modules.sectionOrder)
+      }
+
+      if (options.homeRoute) {
+        app.provide('qdadmHomeRoute', options.homeRoute)
       }
 
       // Add route guard for entity permissions

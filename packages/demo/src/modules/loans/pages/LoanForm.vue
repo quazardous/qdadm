@@ -78,11 +78,7 @@ function formatDate(date) {
 </script>
 
 <template>
-  <PageLayout
-    :title="isEdit ? `Edit ${manager.label}` : `New ${manager.label}`"
-    :entity="form"
-    :manager="manager"
-  >
+  <PageLayout>
     <Card v-if="!loading">
       <template #content>
         <div class="form-grid">

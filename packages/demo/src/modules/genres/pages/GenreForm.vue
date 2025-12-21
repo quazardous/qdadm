@@ -1,10 +1,10 @@
 <script setup>
 /**
- * GenreForm - Edit genre page with PageNav for child navigation
+ * GenreForm - Create/Edit genre page
  */
 
 import { useRoute } from 'vue-router'
-import { useForm, PageLayout, FormField, FormActions, PageNav } from 'qdadm'
+import { useForm, PageLayout, FormField, FormActions } from 'qdadm'
 import Card from 'primevue/card'
 import InputText from 'primevue/inputtext'
 import Textarea from 'primevue/textarea'
@@ -28,15 +28,7 @@ const {
 </script>
 
 <template>
-  <PageLayout
-    :title="isEdit ? `Edit ${manager.label}: ${form.name}` : `Add ${manager.label}`"
-    :entity="form"
-    :manager="manager"
-  >
-    <template #nav>
-      <PageNav :entity="form" />
-    </template>
-
+  <PageLayout>
     <div v-if="loading" class="loading-state">
       <i class="pi pi-spin pi-spinner" style="font-size: 2rem"></i>
     </div>

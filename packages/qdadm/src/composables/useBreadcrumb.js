@@ -1,4 +1,4 @@
-import { computed } from 'vue'
+import { computed, inject } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
 /**
@@ -35,9 +35,11 @@ import { useRoute, useRouter } from 'vue-router'
 export function useBreadcrumb(options = {}) {
   const route = useRoute()
   const router = useRouter()
+  const homeRouteName = inject('qdadmHomeRoute', null)
 
   // Label mapping for common route names
   const labelMap = {
+    home: 'Home',
     dashboard: 'Dashboard',
     users: 'Users',
     roles: 'Roles',
@@ -102,13 +104,15 @@ export function useBreadcrumb(options = {}) {
   }
 
   /**
-   * Get home breadcrumb item (dashboard if exists, otherwise null)
+   * Get home breadcrumb item from configured homeRoute
    */
   function getHomeItem() {
-    if (routeExists('dashboard')) {
-      return { label: 'Dashboard', to: { name: 'dashboard' }, icon: 'pi pi-home' }
+    if (!homeRouteName || !routeExists(homeRouteName)) {
+      return null
     }
-    return null
+    // Use label from labelMap or capitalize route name
+    const label = labelMap[homeRouteName] || capitalize(homeRouteName)
+    return { label, to: { name: homeRouteName }, icon: 'pi pi-home' }
   }
 
   /**

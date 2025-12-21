@@ -100,11 +100,7 @@ function getStatusLabel(loan) {
 </script>
 
 <template>
-  <PageLayout
-    :title="isEdit ? `Edit ${manager.label}: ${manager.getEntityLabel(form)}` : `Add ${manager.label}`"
-    :entity="form"
-    :manager="manager"
-  >
+  <PageLayout>
     <div v-if="loading" class="loading-state">
       <i class="pi pi-spin pi-spinner" style="font-size: 2rem"></i>
     </div>

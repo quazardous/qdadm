@@ -8,12 +8,10 @@
  */
 
 import { ref, onMounted } from 'vue'
-import { useRoute } from 'vue-router'
-import { useListPageBuilder, ListPage, PageNav, PageLayout, useOrchestrator, BoolCell } from 'qdadm'
+import { useListPageBuilder, ListPage, PageNav, useOrchestrator, BoolCell } from 'qdadm'
 import Column from 'primevue/column'
 import Tag from 'primevue/tag'
 
-const route = useRoute()
 const { getManager } = useOrchestrator()
 
 // ============ LIST BUILDER ============
@@ -58,13 +56,12 @@ function getStatusLabel(loan) {
 </script>
 
 <template>
-  <PageLayout title="Loans">
+  <ListPage v-bind="list.props.value" v-on="list.events">
     <template #nav>
       <PageNav />
     </template>
 
-    <ListPage v-bind="list.props.value" v-on="list.events">
-      <template #columns>
+    <template #columns>
         <Column field="user_id" header="Borrower">
           <template #body="{ data }">
             {{ getUserName(data.user_id) }}
@@ -92,11 +89,10 @@ function getStatusLabel(loan) {
         </Column>
       </template>
 
-      <template #empty>
-        <div class="text-center p-4 text-color-secondary">
-          No loans for this book
-        </div>
-      </template>
-    </ListPage>
-  </PageLayout>
+    <template #empty>
+      <div class="text-center p-4 text-color-secondary">
+        No loans for this book
+      </div>
+    </template>
+  </ListPage>
 </template>

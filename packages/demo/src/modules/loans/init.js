@@ -24,7 +24,7 @@ export function init(registry) {
       name: 'loan-edit',
       component: () => import('./pages/LoanForm.vue')
     }
-  ])
+  ], { entity: 'loans' })
 
   // ============ NAVIGATION ============
   registry.addNavItem({

@@ -18,7 +18,7 @@ import { useNavigation } from '../../composables/useNavigation'
 import { useApp } from '../../composables/useApp'
 import { useAuth } from '../../composables/useAuth'
 import { useGuardDialog } from '../../composables/useGuardStore'
-import { useBreadcrumb } from '../../composables/useBreadcrumb'
+import { useNavContext } from '../../composables/useNavContext'
 import Button from 'primevue/button'
 import Breadcrumb from 'primevue/breadcrumb'
 import UnsavedChangesDialog from '../dialogs/UnsavedChangesDialog.vue'
@@ -125,18 +125,18 @@ function handleLogout() {
 const slots = useSlots()
 const hasSlotContent = computed(() => !!slots.default)
 
-// Breadcrumb (auto-generated from route)
-const { breadcrumbItems: defaultBreadcrumb } = useBreadcrumb()
+// Navigation context (breadcrumb + navlinks from route config)
+const { breadcrumb: defaultBreadcrumb, navlinks: defaultNavlinks } = useNavContext()
 
-// Allow child pages to override breadcrumb via provide/inject
+// Allow child pages to override breadcrumb/navlinks via provide/inject
 const breadcrumbOverride = ref(null)
 const navlinksOverride = ref(null)
 provide('qdadmBreadcrumbOverride', breadcrumbOverride)
 provide('qdadmNavlinksOverride', navlinksOverride)
 
-// Use override if provided, otherwise default
+// Use override if provided, otherwise default from useNavContext
 const breadcrumbItems = computed(() => breadcrumbOverride.value || defaultBreadcrumb.value)
-const navlinks = computed(() => navlinksOverride.value || [])
+const navlinks = computed(() => navlinksOverride.value || defaultNavlinks.value)
 
 // Show breadcrumb if enabled, has items, and not on home page
 const showBreadcrumb = computed(() => {
@@ -152,8 +152,10 @@ const showBreadcrumb = computed(() => {
     <!-- Sidebar -->
     <aside class="sidebar">
       <div class="sidebar-header">
-        <img v-if="app.logo" :src="app.logo" :alt="app.name" class="sidebar-logo" />
-        <h1 v-else>{{ app.name }}</h1>
+        <div class="sidebar-header-top">
+          <img v-if="app.logo" :src="app.logo" :alt="app.name" class="sidebar-logo" />
+          <h1 v-else>{{ app.name }}</h1>
+        </div>
         <span v-if="app.version" class="version">v{{ app.version }}</span>
       </div>
 
@@ -289,6 +291,13 @@ const showBreadcrumb = computed(() => {
   padding: 1.5rem;
   border-bottom: 1px solid var(--p-surface-700, #334155);
   display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.5rem;
+}
+
+.sidebar-header-top {
+  display: flex;
   align-items: center;
   gap: 0.5rem;
 }
@@ -305,7 +314,7 @@ const showBreadcrumb = computed(() => {
 }
 
 .version {
-  font-size: 0.75rem;
+  font-size: 0.625rem;
   color: var(--p-surface-400, #94a3b8);
   background: var(--p-surface-700, #334155);
   padding: 0.125rem 0.375rem;

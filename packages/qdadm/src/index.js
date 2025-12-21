@@ -27,3 +27,6 @@ export * from './module/index.js'
 
 // Utils
 export * from './utils/index.js'
+
+// Assets
+export { default as qdadmLogo } from './assets/logo.svg'

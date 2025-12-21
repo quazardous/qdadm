@@ -25,6 +25,7 @@ import { useOrchestrator } from '../../orchestrator/useOrchestrator.js'
 // Inject override refs from AppLayout
 const breadcrumbOverride = inject('qdadmBreadcrumbOverride', null)
 const navlinksOverride = inject('qdadmNavlinksOverride', null)
+const homeRouteName = inject('qdadmHomeRoute', null)
 
 const props = defineProps({
   entity: { type: Object, default: null },
@@ -60,9 +61,23 @@ watch(() => [parentConfig.value, route.params], async () => {
   }
 }, { immediate: true })
 
+// Home breadcrumb item
+const homeItem = computed(() => {
+  if (!homeRouteName) return null
+  const routes = router.getRoutes()
+  if (!routes.some(r => r.name === homeRouteName)) return null
+  const label = homeRouteName === 'dashboard' ? 'Dashboard' : 'Home'
+  return { label, to: { name: homeRouteName }, icon: 'pi pi-home' }
+})
+
 // Build breadcrumb items
 const breadcrumbItems = computed(() => {
   const items = []
+
+  // Always start with Home if configured
+  if (homeItem.value) {
+    items.push(homeItem.value)
+  }
 
   if (!parentConfig.value) {
     // No parent - use simple breadcrumb from entity
