@@ -1,0 +1,430 @@
+<script setup>
+/**
+ * AppLayout - Generic admin layout with sidebar navigation
+ *
+ * Navigation is auto-built from moduleRegistry.
+ * Branding comes from createQdadm({ app: {...} }) config.
+ * Auth is optional via authAdapter.
+ *
+ * Usage:
+ *   <AppLayout>
+ *     <RouterView />
+ *   </AppLayout>
+ */
+
+import { ref, watch, onMounted, computed, inject, useSlots } from 'vue'
+import { RouterLink, RouterView, useRouter, useRoute } from 'vue-router'
+import { useNavigation } from '../../composables/useNavigation'
+import { useApp } from '../../composables/useApp'
+import { useAuth } from '../../composables/useAuth'
+import { useGuardDialog } from '../../composables/useGuardStore'
+import Button from 'primevue/button'
+import UnsavedChangesDialog from '../dialogs/UnsavedChangesDialog.vue'
+import qdadmLogo from '../../assets/logo.svg'
+import { version as qdadmVersion } from '../../../package.json'
+
+const features = inject('qdadmFeatures', { poweredBy: true })
+
+// Guard dialog from shared store (registered by useBareForm/useForm when a form is active)
+const guardDialog = useGuardDialog()
+
+const router = useRouter()
+const route = useRoute()
+const app = useApp()
+const { navSections, isNavActive, sectionHasActiveItem, handleNavClick } = useNavigation()
+const { isAuthenticated, user, logout, authEnabled } = useAuth()
+
+// LocalStorage key for collapsed sections state (namespaced by app)
+const STORAGE_KEY = computed(() => `${app.shortName.toLowerCase()}_nav_collapsed`)
+
+// Collapsed sections state (section title -> boolean)
+const collapsedSections = ref({})
+
+/**
+ * Load collapsed state from localStorage
+ */
+function loadCollapsedState() {
+  try {
+    const stored = localStorage.getItem(STORAGE_KEY.value)
+    if (stored) {
+      collapsedSections.value = JSON.parse(stored)
+    }
+  } catch (e) {
+    console.warn('Failed to load nav state:', e)
+  }
+}
+
+/**
+ * Save collapsed state to localStorage
+ */
+function saveCollapsedState() {
+  try {
+    localStorage.setItem(STORAGE_KEY.value, JSON.stringify(collapsedSections.value))
+  } catch (e) {
+    console.warn('Failed to save nav state:', e)
+  }
+}
+
+/**
+ * Toggle section collapsed state
+ */
+function toggleSection(sectionTitle) {
+  collapsedSections.value[sectionTitle] = !collapsedSections.value[sectionTitle]
+  saveCollapsedState()
+}
+
+/**
+ * Check if section should be shown expanded
+ * - Never collapsed if it contains active item
+ * - Otherwise respect user preference
+ */
+function isSectionExpanded(section) {
+  if (sectionHasActiveItem(section)) {
+    return true
+  }
+  return !collapsedSections.value[section.title]
+}
+
+// Load state on mount
+onMounted(() => {
+  loadCollapsedState()
+})
+
+// Auto-expand section when navigating to an item in it
+watch(() => route.path, () => {
+  for (const section of navSections.value) {
+    if (sectionHasActiveItem(section) && collapsedSections.value[section.title]) {
+      // Auto-expand but don't save (user can collapse again if they want)
+      collapsedSections.value[section.title] = false
+    }
+  }
+})
+
+const userInitials = computed(() => {
+  const username = user.value?.username
+  if (!username) return '?'
+  return username.substring(0, 2).toUpperCase()
+})
+
+const userDisplayName = computed(() => {
+  return user.value?.username || user.value?.name || 'User'
+})
+
+const userSubtitle = computed(() => {
+  return user.value?.email || user.value?.role || ''
+})
+
+function handleLogout() {
+  logout()
+  router.push({ name: 'login' })
+}
+
+// Check if slot content is provided
+const slots = useSlots()
+const hasSlotContent = computed(() => !!slots.default)
+</script>
+
+<template>
+  <div class="app-layout">
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <img v-if="app.logo" :src="app.logo" :alt="app.name" class="sidebar-logo" />
+        <h1 v-else>{{ app.name }}</h1>
+        <span v-if="app.version" class="version">v{{ app.version }}</span>
+      </div>
+
+      <nav class="sidebar-nav">
+        <div v-for="section in navSections" :key="section.title" class="nav-section">
+          <div
+            class="nav-section-title"
+            :class="{ 'nav-section-active': sectionHasActiveItem(section) }"
+            @click="toggleSection(section.title)"
+          >
+            <span>{{ section.title }}</span>
+            <i
+              class="nav-section-chevron pi"
+              :class="isSectionExpanded(section) ? 'pi-chevron-down' : 'pi-chevron-right'"
+            ></i>
+          </div>
+          <div class="nav-section-items" :class="{ 'nav-section-collapsed': !isSectionExpanded(section) }">
+            <RouterLink
+              v-for="item in section.items"
+              :key="item.route"
+              :to="{ name: item.route }"
+              class="nav-item"
+              :class="{ 'nav-item-active': isNavActive(item) }"
+              @click="handleNavClick($event, item)"
+            >
+              <i :class="item.icon"></i>
+              <span>{{ item.label }}</span>
+            </RouterLink>
+          </div>
+        </div>
+      </nav>
+
+      <div v-if="authEnabled" class="sidebar-footer">
+        <div class="user-info">
+          <div class="user-avatar">{{ userInitials }}</div>
+          <div class="user-details">
+            <div class="user-name">{{ userDisplayName }}</div>
+            <div class="user-role">{{ userSubtitle }}</div>
+          </div>
+          <Button
+            icon="pi pi-sign-out"
+            severity="secondary"
+            text
+            rounded
+            @click="handleLogout"
+            v-tooltip.top="'Logout'"
+          />
+        </div>
+      </div>
+
+      <div v-if="features.poweredBy" class="powered-by">
+        <img :src="qdadmLogo" alt="qdadm" class="powered-by-logo" />
+        <span class="powered-by-text">
+          powered by <strong>qdadm</strong> v{{ qdadmVersion }}
+        </span>
+      </div>
+    </aside>
+
+    <!-- Main content -->
+    <main class="main-content">
+      <div class="page-content">
+        <!-- Use slot if provided, otherwise RouterView for nested routes -->
+        <slot v-if="hasSlotContent" />
+        <RouterView v-else />
+      </div>
+    </main>
+
+    <!-- Unsaved Changes Dialog (auto-rendered when a form registers guardDialog) -->
+    <UnsavedChangesDialog
+      v-if="guardDialog"
+      :visible="guardDialog.visible.value"
+      :saving="guardDialog.saving.value"
+      :message="guardDialog.message"
+      :hasOnSave="guardDialog.hasOnSave"
+      @saveAndLeave="guardDialog.onSaveAndLeave"
+      @leave="guardDialog.onLeave"
+      @stay="guardDialog.onStay"
+    />
+    <!-- Note: guardDialog is a shallowRef, Vue auto-unwraps it in templates -->
+  </div>
+</template>
+
+<style scoped>
+.app-layout {
+  display: flex;
+  min-height: 100vh;
+}
+
+.sidebar {
+  width: var(--fad-sidebar-width, 15rem);
+  background: var(--p-surface-800, #1e293b);
+  color: var(--p-surface-0, white);
+  display: flex;
+  flex-direction: column;
+  position: fixed;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  z-index: 100;
+}
+
+.sidebar-header {
+  padding: 1.5rem;
+  border-bottom: 1px solid var(--p-surface-700, #334155);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.sidebar-header h1 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin: 0;
+}
+
+.sidebar-logo {
+  max-height: 32px;
+  max-width: 160px;
+}
+
+.version {
+  font-size: 0.75rem;
+  color: var(--p-surface-400, #94a3b8);
+  background: var(--p-surface-700, #334155);
+  padding: 0.125rem 0.375rem;
+  border-radius: 0.25rem;
+}
+
+.sidebar-nav {
+  flex: 1;
+  overflow-y: auto;
+  padding: 1rem 0;
+}
+
+.nav-section {
+  margin-bottom: 0.5rem;
+}
+
+.nav-section-title {
+  padding: 0.5rem 1.5rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--p-surface-400, #94a3b8);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+  user-select: none;
+  transition: color 0.15s;
+}
+
+.nav-section-title:hover {
+  color: var(--p-surface-200, #e2e8f0);
+}
+
+.nav-section-active {
+  color: var(--p-primary-400, #60a5fa);
+}
+
+.nav-section-chevron {
+  font-size: 0.625rem;
+  transition: transform 0.2s;
+}
+
+.nav-section-items {
+  max-height: 500px;
+  overflow: hidden;
+  transition: max-height 0.2s ease-out, opacity 0.15s;
+}
+
+.nav-section-collapsed {
+  max-height: 0;
+  opacity: 0;
+}
+
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.625rem 1.5rem;
+  color: var(--p-surface-300, #cbd5e1);
+  text-decoration: none;
+  transition: all 0.15s;
+}
+
+.nav-item:hover {
+  background: var(--p-surface-700, #334155);
+  color: var(--p-surface-0, white);
+}
+
+.nav-item-active {
+  background: var(--p-primary-600, #2563eb);
+  color: var(--p-surface-0, white);
+}
+
+.nav-item i {
+  font-size: 1rem;
+  width: 1.25rem;
+  text-align: center;
+}
+
+.sidebar-footer {
+  padding: 1rem 1.5rem;
+  border-top: 1px solid var(--p-surface-700, #334155);
+}
+
+.user-info {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.user-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--p-primary-600, #2563eb);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.user-details {
+  flex: 1;
+  min-width: 0;
+}
+
+.user-name {
+  font-weight: 500;
+  font-size: 0.875rem;
+}
+
+.user-role {
+  font-size: 0.75rem;
+  color: var(--p-surface-400, #94a3b8);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.main-content {
+  flex: 1;
+  margin-left: var(--fad-sidebar-width, 15rem);
+  background: var(--p-surface-50, #f8fafc);
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.page-content {
+  flex: 1;
+  padding: 1.5rem;
+  overflow-y: auto;
+}
+
+/* Dark mode support */
+.dark-mode .sidebar {
+  background: var(--p-surface-900);
+}
+
+.dark-mode .main-content {
+  background: var(--p-surface-900);
+}
+
+.powered-by {
+  padding: 0.75rem 1rem;
+  border-top: 1px solid var(--p-surface-700, #334155);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  opacity: 0.6;
+  transition: opacity 0.15s;
+}
+
+.powered-by:hover {
+  opacity: 1;
+}
+
+.powered-by-logo {
+  width: 1.25rem;
+  height: 1.25rem;
+}
+
+.powered-by-text {
+  font-size: 0.625rem;
+  color: var(--p-surface-400, #94a3b8);
+  letter-spacing: 0.02em;
+}
+
+.powered-by-text strong {
+  color: var(--p-surface-300, #cbd5e1);
+}
+</style>

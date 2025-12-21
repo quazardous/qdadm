@@ -1,0 +1,17 @@
+/**
+ * Dialog Content Styles
+ * Styles for modal dialog content
+ */
+
+/* Dialog content spacing */
+.dialog-content {
+  margin-bottom: 1rem;
+}
+
+/* Dialog section title */
+.dialog-section-title {
+  font-size: 0.875rem;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+  color: var(--p-surface-600);
+}

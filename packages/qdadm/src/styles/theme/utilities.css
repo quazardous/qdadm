@@ -1,0 +1,172 @@
+/**
+ * Utility Classes
+ *
+ * Minimal utility classes for common patterns.
+ * Keep it small - use components for complex layouts.
+ */
+
+/* ==========================================================================
+ * Display
+ * ========================================================================== */
+
+.d-none { display: none !important; }
+.d-block { display: block !important; }
+.d-flex { display: flex !important; }
+.d-inline-flex { display: inline-flex !important; }
+.d-grid { display: grid !important; }
+
+/* ==========================================================================
+ * Flexbox
+ * ========================================================================== */
+
+.flex-row { flex-direction: row; }
+.flex-column { flex-direction: column; }
+.flex-wrap { flex-wrap: wrap; }
+.flex-1 { flex: 1; }
+.flex-auto { flex: auto; }
+.flex-none { flex: none; }
+
+.items-start { align-items: flex-start; }
+.items-center { align-items: center; }
+.items-end { align-items: flex-end; }
+.items-stretch { align-items: stretch; }
+
+.justify-start { justify-content: flex-start; }
+.justify-center { justify-content: center; }
+.justify-end { justify-content: flex-end; }
+.justify-between { justify-content: space-between; }
+.justify-around { justify-content: space-around; }
+
+.gap-xs { gap: var(--fad-space-xs); }
+.gap-sm { gap: var(--fad-space-sm); }
+.gap-md { gap: var(--fad-space-md); }
+.gap-lg { gap: var(--fad-space-lg); }
+.gap-xl { gap: var(--fad-space-xl); }
+
+/* ==========================================================================
+ * Width
+ * ========================================================================== */
+
+.w-full { width: 100% !important; }
+.w-auto { width: auto !important; }
+.w-50 { width: 50%; }
+.max-w-full { max-width: 100%; }
+
+/* ==========================================================================
+ * Spacing (margin/padding)
+ * ========================================================================== */
+
+/* Margin */
+.m-0 { margin: 0; }
+.m-auto { margin: auto; }
+.mt-0 { margin-top: 0; }
+.mt-xs { margin-top: var(--fad-space-xs); }
+.mt-sm { margin-top: var(--fad-space-sm); }
+.mt-md { margin-top: var(--fad-space-md); }
+.mt-lg { margin-top: var(--fad-space-lg); }
+.mt-xl { margin-top: var(--fad-space-xl); }
+
+.mb-0 { margin-bottom: 0; }
+.mb-xs { margin-bottom: var(--fad-space-xs); }
+.mb-sm { margin-bottom: var(--fad-space-sm); }
+.mb-md { margin-bottom: var(--fad-space-md); }
+.mb-lg { margin-bottom: var(--fad-space-lg); }
+.mb-xl { margin-bottom: var(--fad-space-xl); }
+
+.ml-auto { margin-left: auto; }
+.mr-auto { margin-right: auto; }
+.mx-auto { margin-left: auto; margin-right: auto; }
+
+/* Padding */
+.p-0 { padding: 0; }
+.p-xs { padding: var(--fad-space-xs); }
+.p-sm { padding: var(--fad-space-sm); }
+.p-md { padding: var(--fad-space-md); }
+.p-lg { padding: var(--fad-space-lg); }
+.p-xl { padding: var(--fad-space-xl); }
+
+.px-md { padding-left: var(--fad-space-md); padding-right: var(--fad-space-md); }
+.py-md { padding-top: var(--fad-space-md); padding-bottom: var(--fad-space-md); }
+
+/* ==========================================================================
+ * Text
+ * ========================================================================== */
+
+.text-left { text-align: left; }
+.text-center { text-align: center; }
+.text-right { text-align: right; }
+
+.text-xs { font-size: var(--fad-font-size-xs); }
+.text-sm { font-size: var(--fad-font-size-sm); }
+.text-md { font-size: var(--fad-font-size-md); }
+.text-lg { font-size: var(--fad-font-size-lg); }
+.text-xl { font-size: var(--fad-font-size-xl); }
+.text-2xl { font-size: var(--fad-font-size-2xl); }
+
+.font-normal { font-weight: var(--fad-font-weight-normal); }
+.font-medium { font-weight: var(--fad-font-weight-medium); }
+.font-semibold { font-weight: var(--fad-font-weight-semibold); }
+.font-bold { font-weight: var(--fad-font-weight-bold); }
+
+.text-primary { color: var(--fad-text-primary); }
+.text-secondary { color: var(--fad-text-secondary); }
+.text-muted { color: var(--fad-text-secondary); }
+.text-success { color: var(--fad-success); }
+.text-warning { color: var(--fad-warning); }
+.text-danger { color: var(--fad-danger); }
+
+.truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ==========================================================================
+ * Visibility
+ * ========================================================================== */
+
+.visible { visibility: visible; }
+.invisible { visibility: hidden; }
+.opacity-0 { opacity: 0; }
+.opacity-50 { opacity: 0.5; }
+.opacity-100 { opacity: 1; }
+
+/* ==========================================================================
+ * Borders
+ * ========================================================================== */
+
+.border { border: var(--fad-border-width) solid var(--fad-border-color); }
+.border-0 { border: none; }
+.border-top { border-top: var(--fad-border-width) solid var(--fad-border-color); }
+.border-bottom { border-bottom: var(--fad-border-width) solid var(--fad-border-color); }
+
+.rounded-sm { border-radius: var(--fad-radius-sm); }
+.rounded-md { border-radius: var(--fad-radius-md); }
+.rounded-lg { border-radius: var(--fad-radius-lg); }
+.rounded-full { border-radius: var(--fad-radius-full); }
+
+/* ==========================================================================
+ * Cursor
+ * ========================================================================== */
+
+.cursor-pointer { cursor: pointer; }
+.cursor-default { cursor: default; }
+.cursor-not-allowed { cursor: not-allowed; }
+
+/* ==========================================================================
+ * Overflow
+ * ========================================================================== */
+
+.overflow-hidden { overflow: hidden; }
+.overflow-auto { overflow: auto; }
+.overflow-y-auto { overflow-y: auto; }
+.overflow-x-auto { overflow-x: auto; }
+
+/* ==========================================================================
+ * Position
+ * ========================================================================== */
+
+.relative { position: relative; }
+.absolute { position: absolute; }
+.fixed { position: fixed; }
+.sticky { position: sticky; }

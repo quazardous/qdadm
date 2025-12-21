@@ -1,0 +1,23 @@
+[
+  {
+    "id": "01JFXYZ001USER0ADMIN001",
+    "username": "admin",
+    "password": "admin",
+    "role": "admin",
+    "created_at": "2024-01-01T00:00:00.000Z"
+  },
+  {
+    "id": "01JFXYZ002USER0BOBBY001",
+    "username": "bob",
+    "password": "bob",
+    "role": "user",
+    "created_at": "2024-01-15T10:30:00.000Z"
+  },
+  {
+    "id": "01JFXYZ003USER0JUNE0001",
+    "username": "june",
+    "password": "june",
+    "role": "user",
+    "created_at": "2024-02-01T14:00:00.000Z"
+  }
+]

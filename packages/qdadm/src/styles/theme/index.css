@@ -1,0 +1,10 @@
+/**
+ * Faketual Admin Design System - Theme
+ *
+ * Import this file to get all theme styles.
+ * Use the fad-* classes in your components.
+ */
+
+@import './tokens.css';
+@import './utilities.css';
+@import './components.css';

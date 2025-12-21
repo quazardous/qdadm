@@ -1,0 +1,48 @@
+/**
+ * Alert and Notice Boxes
+ * Warning, info, and system notice styles
+ */
+
+/* Warning banner (yellow) - for system notices */
+.alert-warning {
+  background: var(--p-yellow-50);
+  padding: 1rem;
+  margin-bottom: 1rem;
+  border-radius: 0.5rem;
+  border: 1px solid var(--p-yellow-200);
+}
+
+.alert-warning-icon {
+  color: var(--p-yellow-600);
+}
+
+.alert-warning-text {
+  margin-left: 0.5rem;
+  color: var(--p-yellow-700);
+}
+
+/* Info banner (orange) - for important notices */
+.alert-info {
+  color: var(--p-orange-600);
+  margin-bottom: 1rem;
+}
+
+/* Key info panel - for displaying read-only metadata */
+.key-info-panel {
+  background: var(--p-surface-50);
+  padding: 1rem;
+  margin-bottom: 1rem;
+  border-radius: 0.5rem;
+}
+
+.key-info-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2rem;
+  align-items: center;
+}
+
+.key-info-item small {
+  color: var(--p-surface-500);
+  display: block;
+}

@@ -1,0 +1,12 @@
+{
+  "name": "qdadm-monorepo",
+  "private": true,
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "npm run dev -w packages/demo",
+    "build": "npm run build -w packages/demo",
+    "preview": "npm run preview -w packages/demo"
+  }
+}

@@ -1,0 +1,48 @@
+{
+  "name": "qdadm",
+  "version": "0.13.0",
+  "description": "Vue 3 framework for admin dashboards with PrimeVue",
+  "author": "quazardous",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/quazardous/qdadm.git"
+  },
+  "homepage": "https://github.com/quazardous/qdadm#readme",
+  "bugs": {
+    "url": "https://github.com/quazardous/qdadm/issues"
+  },
+  "type": "module",
+  "main": "src/index.js",
+  "exports": {
+    ".": "./src/index.js",
+    "./composables": "./src/composables/index.js",
+    "./components": "./src/components/index.js",
+    "./module": "./src/module/index.js",
+    "./utils": "./src/utils/index.js",
+    "./styles": "./src/styles/index.css"
+  },
+  "files": [
+    "src",
+    "README.md",
+    "CHANGELOG.md",
+    "LICENSE"
+  ],
+  "peerDependencies": {
+    "vue": "^3.3.0",
+    "vue-router": "^4.0.0",
+    "primevue": "^4.0.0",
+    "pinia": "^2.0.0",
+    "vanilla-jsoneditor": "^0.23.0"
+  },
+  "keywords": [
+    "vue",
+    "vue3",
+    "admin",
+    "dashboard",
+    "framework",
+    "primevue",
+    "crud",
+    "entity-manager"
+  ]
+}

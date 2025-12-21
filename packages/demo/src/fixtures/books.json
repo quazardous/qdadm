@@ -1,0 +1,66 @@
+[
+  {
+    "id": "01JFXYZ010BOOK0DUNE0001",
+    "title": "Dune",
+    "author": "Frank Herbert",
+    "year": 1965,
+    "genre": "sci-fi",
+    "created_at": "2024-01-10T08:00:00.000Z"
+  },
+  {
+    "id": "01JFXYZ011BOOK0LOTR0001",
+    "title": "The Lord of the Rings",
+    "author": "J.R.R. Tolkien",
+    "year": 1954,
+    "genre": "fantasy",
+    "created_at": "2024-01-10T08:15:00.000Z"
+  },
+  {
+    "id": "01JFXYZ012BOOK0NEUROM01",
+    "title": "Neuromancer",
+    "author": "William Gibson",
+    "year": 1984,
+    "genre": "sci-fi",
+    "created_at": "2024-01-10T08:30:00.000Z"
+  },
+  {
+    "id": "01JFXYZ013BOOK0SHERLO01",
+    "title": "The Hound of the Baskervilles",
+    "author": "Arthur Conan Doyle",
+    "year": 1902,
+    "genre": "mystery",
+    "created_at": "2024-01-10T08:45:00.000Z"
+  },
+  {
+    "id": "01JFXYZ014BOOK0SAPIEN01",
+    "title": "Sapiens: A Brief History of Humankind",
+    "author": "Yuval Noah Harari",
+    "year": 2011,
+    "genre": "non-fiction",
+    "created_at": "2024-01-10T09:00:00.000Z"
+  },
+  {
+    "id": "01JFXYZ015BOOK0FOUNDA01",
+    "title": "Foundation",
+    "author": "Isaac Asimov",
+    "year": 1951,
+    "genre": "sci-fi",
+    "created_at": "2024-01-10T09:15:00.000Z"
+  },
+  {
+    "id": "01JFXYZ016BOOK0GATSBY01",
+    "title": "The Great Gatsby",
+    "author": "F. Scott Fitzgerald",
+    "year": 1925,
+    "genre": "fiction",
+    "created_at": "2024-01-10T09:30:00.000Z"
+  },
+  {
+    "id": "01JFXYZ017BOOK0HPOTTE01",
+    "title": "Harry Potter and the Philosopher's Stone",
+    "author": "J.K. Rowling",
+    "year": 1997,
+    "genre": "fantasy",
+    "created_at": "2024-01-10T09:45:00.000Z"
+  }
+]

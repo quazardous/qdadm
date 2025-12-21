@@ -1,0 +1,29 @@
+/**
+ * qdadm - Vue 3 Admin Dashboard Framework
+ *
+ * A framework for building admin dashboards with Vue 3, PrimeVue, and Vue Router.
+ */
+
+// Kernel (simplified bootstrap)
+export * from './kernel/index.js'
+
+// Plugin (manual bootstrap)
+export { createQdadm } from './plugin.js'
+
+// Entity system
+export * from './entity/index.js'
+
+// Orchestrator
+export * from './orchestrator/index.js'
+
+// Composables
+export * from './composables/index.js'
+
+// Components
+export * from './components/index.js'
+
+// Module system
+export * from './module/index.js'
+
+// Utils
+export * from './utils/index.js'
