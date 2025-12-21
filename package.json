@@ -7,7 +7,6 @@
   "scripts": {
     "dev": "npm run dev -w packages/demo",
     "build": "npm run build -w packages/demo",
-    "preview": "npm run preview -w packages/demo",
-    "deploy": "npm run build && wrangler pages deploy ./packages/demo/dist --project-name=qdadm-demo"
+    "preview": "npm run preview -w packages/demo"
   }
 }

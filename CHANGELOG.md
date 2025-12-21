@@ -8,7 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ## [0.14.2] - 2025-12-21
 
 ### Added
-- Cloudflare Pages deployment: `wrangler.jsonc` + `npm run deploy`
+- GitHub Pages deployment via GitHub Actions (auto-deploy on push to main)
 
 ## [0.14.1] - 2025-12-21
 
