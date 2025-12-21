@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted, watch, inject } from 'vue'
+import { ref, computed, onMounted, watch, inject } from 'vue'
 import AutoComplete from 'primevue/autocomplete'
 import Select from 'primevue/select'
 import Button from 'primevue/button'
@@ -13,28 +13,39 @@ const props = defineProps({
     type: Boolean,
     default: false
   },
-  // Scope configuration
+  // Scope configuration (can be overridden globally via provide('scopeConfig', {...}))
   scopeEndpoint: {
     type: String,
-    default: '/reference/scopes' // Endpoint to load scope definition from API
+    default: null
   },
   scopePrefix: {
     type: String,
-    default: 'app' // Prefix for scope strings (e.g., "app.resource:action")
+    default: null
   },
   // Default resources/actions if API not available
   defaultResources: {
     type: Array,
-    default: () => ['api', 'users', 'roles', 'apikeys']
+    default: null
   },
   defaultActions: {
     type: Array,
-    default: () => ['read', 'write', 'grant']
+    default: null
   }
 })
 
 // Get API adapter (optional)
 const api = inject('apiAdapter', null)
+
+// Get global scope config (optional) - allows app-level configuration
+const globalScopeConfig = inject('scopeConfig', {})
+
+// Computed config with priority: props > globalConfig > defaults
+const config = computed(() => ({
+  endpoint: props.scopeEndpoint ?? globalScopeConfig.endpoint ?? '/reference/scopes',
+  prefix: props.scopePrefix ?? globalScopeConfig.prefix ?? 'app',
+  resources: props.defaultResources ?? globalScopeConfig.resources ?? ['api', 'users', 'roles', 'apikeys'],
+  actions: props.defaultActions ?? globalScopeConfig.actions ?? ['read', 'write', 'grant']
+}))
 
 const emit = defineEmits(['update:modelValue'])
 
@@ -57,8 +68,6 @@ const allResources = computed(() => ['*', ...scopeDefinition.value.resources])
 // All actions with access prefix
 const allActions = computed(() => ['access', ...scopeDefinition.value.actions])
 
-import { computed } from 'vue'
-
 /**
  * Search resources for autocomplete
  */
@@ -79,7 +88,7 @@ function searchResources(event) {
 function parseScope(scope) {
   if (!scope) return { resource: '', action: '' }
   // prefix.resource:action
-  const regex = new RegExp(`^${props.scopePrefix}\\.([^:]+):(.+)$`)
+  const regex = new RegExp(`^${config.value.prefix}\\.([^:]+):(.+)$`)
   const match = scope.match(regex)
   if (match) {
     return { resource: match[1], action: match[2] }
@@ -92,7 +101,7 @@ function parseScope(scope) {
  */
 function buildScope(resource, action) {
   if (!resource || !action) return ''
-  return `${props.scopePrefix}.${resource}:${action}`
+  return `${config.value.prefix}.${resource}:${action}`
 }
 
 // Initialize from modelValue
@@ -154,22 +163,22 @@ async function loadScopeDefinition() {
     if (!api) {
       // No API adapter, use defaults
       scopeDefinition.value = {
-        resources: [...props.defaultResources],
-        actions: [...props.defaultActions],
+        resources: [...config.value.resources],
+        actions: [...config.value.actions],
       }
       return
     }
 
-    const data = await api.request('GET', props.scopeEndpoint)
+    const data = await api.request('GET', config.value.endpoint)
     scopeDefinition.value = {
-      resources: data.resources || [...props.defaultResources],
-      actions: data.actions || [...props.defaultActions],
+      resources: data.resources || [...config.value.resources],
+      actions: data.actions || [...config.value.actions],
     }
   } catch (error) {
     console.error('[ScopeEditor] Failed to load scope definition:', error)
     scopeDefinition.value = {
-      resources: [...props.defaultResources],
-      actions: [...props.defaultActions],
+      resources: [...config.value.resources],
+      actions: [...config.value.actions],
     }
   } finally {
     loading.value = false

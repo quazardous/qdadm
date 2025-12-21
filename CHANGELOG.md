@@ -5,7 +5,17 @@ All notable changes to qdadm will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.14.2] - 2025-12-21
+
+### Added
+- Cloudflare Pages deployment: `wrangler.jsonc` + `npm run deploy`
+
 ## [0.14.1] - 2025-12-21
+
+### Added
+- `ScopeEditor`: Global config via `provide('scopeConfig', { prefix, endpoint, resources, actions })`
+  - Priority: props > globalConfig > defaults
+  - Allows app-level scope prefix without per-component props
 
 ### Changed
 - `ScopeEditor`: Default `scopePrefix` is now "app" (generic default)
