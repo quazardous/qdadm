@@ -5,7 +5,7 @@ Vue 3 framework for building admin dashboards with PrimeVue.
 ## Features
 
 - **Kernel**: All-in-one bootstrap (Vue app, router, Pinia, PrimeVue, auth guard)
-- **EntityManager**: CRUD operations with permission control (`canRead`/`canWrite`)
+- **EntityManager**: CRUD operations with permission control (`canRead`/`canCreate`/`canUpdate`/`canDelete`)
 - **Module System**: Auto-discovery of modules with routes and navigation
 - **Components**: Forms, lists, dialogs, editors ready to use
 - **Composables**: `useForm`, `useListPageBuilder`, `useBareForm`, etc.
@@ -116,7 +116,13 @@ class UsersManager extends EntityManager {
   canRead() {
     return authAdapter.getUser()?.role === 'admin'
   }
-  canWrite() {
+  canCreate() {
+    return authAdapter.getUser()?.role === 'admin'
+  }
+  canUpdate(entity) {
+    return authAdapter.getUser()?.role === 'admin'
+  }
+  canDelete(entity) {
     return authAdapter.getUser()?.role === 'admin'
   }
 }
