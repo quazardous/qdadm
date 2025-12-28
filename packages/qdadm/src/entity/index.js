@@ -9,3 +9,6 @@ export { EntityManager, createEntityManager } from './EntityManager.js'
 
 // Storage adapters
 export * from './storage/index.js'
+
+// Auth adapters
+export * from './auth/index.js'

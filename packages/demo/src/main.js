@@ -18,12 +18,13 @@
  *    - BooksManager: everyone can read/write, admin-only delete
  *    - LoansManager: ownership-based (users see only their loans)
  *
- * 4. FIXTURE SEEDING
- *    - JSON fixtures in ./fixtures/ folder
- *    - Seed to localStorage if empty on first load
+ * 4. MOCKAPISTORAGE
+ *    - In-memory storage with localStorage persistence
+ *    - Fixtures loaded via initialData option
+ *    - Data survives page refresh
  */
 
-import { Kernel, EntityManager, LocalStorage } from 'qdadm'
+import { Kernel, EntityManager, MockApiStorage } from 'qdadm'
 import PrimeVue from 'primevue/config'
 import Aura from '@primeuix/themes/aura'
 import 'qdadm/styles'
@@ -32,6 +33,7 @@ import 'primeicons/primeicons.css'
 import App from './App.vue'
 import { version } from '../package.json'
 import { authAdapter } from './adapters/authAdapter'
+import { demoEntityAuthAdapter } from './adapters/entityAuthAdapter'
 
 // Fixtures for initial data (seeded to localStorage on first load)
 import usersFixture from './fixtures/users.json'
@@ -61,34 +63,26 @@ const roleOptions = [
 // ============================================================================
 // STORAGE INSTANCES
 // ============================================================================
-// LocalStorage wraps browser localStorage with CRUD operations.
-// Each entity gets its own storage instance with a unique key.
+// MockApiStorage provides in-memory storage with localStorage persistence.
+// Uses initialData to seed fixtures on first load (when localStorage is empty).
+// localStorage key pattern: mockapi_${entityName}_data
 
-const usersStorage = new LocalStorage({ key: 'qdadm_demo_users' })
-const booksStorage = new LocalStorage({ key: 'qdadm_demo_books' })
-const loansStorage = new LocalStorage({ key: 'qdadm_demo_loans' })
-const genresStorage = new LocalStorage({ key: 'qdadm_demo_genres' })
-
-// ============================================================================
-// FIXTURE SEEDING
-// ============================================================================
-// On first load, seed fixtures to localStorage if empty.
-// This provides initial demo data without a backend.
-
-function seedIfEmpty(storage, fixture) {
-  const key = storage.key
-  if (!key) return
-  const existing = localStorage.getItem(key)
-  if (!existing || existing === '[]') {
-    localStorage.setItem(key, JSON.stringify(fixture))
-    console.log(`[demo] Seeded ${fixture.length} items to ${key}`)
-  }
-}
-
-seedIfEmpty(usersStorage, usersFixture)
-seedIfEmpty(booksStorage, booksFixture)
-seedIfEmpty(loansStorage, loansFixture)
-seedIfEmpty(genresStorage, genresFixture)
+const usersStorage = new MockApiStorage({
+  entityName: 'users',
+  initialData: usersFixture
+})
+const booksStorage = new MockApiStorage({
+  entityName: 'books',
+  initialData: booksFixture
+})
+const loansStorage = new MockApiStorage({
+  entityName: 'loans',
+  initialData: loansFixture
+})
+const genresStorage = new MockApiStorage({
+  entityName: 'genres',
+  initialData: genresFixture
+})
 
 // Export for authAdapter (validates login against stored users)
 export { usersStorage }
@@ -149,16 +143,34 @@ class BooksManager extends EntityManager {
 }
 
 /**
- * LoansManager - Ownership-based access
+ * LoansManager - Ownership-based access + Related Entity Labels
  *
- * Demonstrates row-level permissions:
- * - Admin sees all loans
- * - Regular user only sees their own loans
+ * Demonstrates two patterns:
  *
- * Pattern:
- *   1. Override list() to filter by user_id
- *   2. Override canRead/canUpdate/canDelete with entity parameter
- *   3. Check ownership when entity is provided
+ * 1. ROW-LEVEL PERMISSIONS
+ *    - Admin sees all loans
+ *    - Regular user only sees their own loans
+ *    - Override list() to filter, canRead/canUpdate/canDelete for row checks
+ *
+ * 2. RELATED ENTITY LABELS (Enrichment Pattern)
+ *    ─────────────────────────────────────────
+ *    Problem: Loan has book_id and user_id, but we want to display
+ *    "Le Petit Prince - bob" in breadcrumb/title instead of IDs.
+ *
+ *    Solution: Enrich data with related entity fields at fetch time.
+ *
+ *    Why not async labelField?
+ *    - getEntityLabel() is sync (used in computed, templates)
+ *    - Async would require await everywhere, break reactivity
+ *    - Would cause N+1 queries and UI flicker
+ *
+ *    Pattern:
+ *    1. Add _enrichLoan() to fetch related data and add display fields
+ *    2. Override get(), create(), update() to call _enrichLoan()
+ *    3. Use enriched fields in labelField callback (sync)
+ *
+ *    Result: labelField can be sync while using related entity data:
+ *      labelField: (loan) => `${loan.book_title} - ${loan.username}`
  */
 class LoansManager extends EntityManager {
   /**
@@ -191,8 +203,18 @@ class LoansManager extends EntityManager {
     return super.list(params)
   }
 
+  // ============ ENRICHMENT PATTERN ============
+  // Fetch related entity data and add display fields to the loan object.
+  // This allows labelField to be synchronous while showing related entity info.
+
   /**
-   * Enrich loan with book_title and username for display
+   * Enrich loan with related entity display fields
+   *
+   * Fetches book and user to add:
+   * - book_title: for display in lists, breadcrumb, title
+   * - username: for display in lists, breadcrumb, title
+   *
+   * These fields are used by labelField callback (defined in entity config below)
    */
   async _enrichLoan(data) {
     if (data.book_id) {
@@ -203,6 +225,18 @@ class LoansManager extends EntityManager {
       const user = await usersStorage.get(data.user_id)
       data.username = user?.username || '?'
     }
+  }
+
+  /**
+   * Override get() to enrich loan data
+   * Called by: useForm (edit page), useNavContext (breadcrumb)
+   */
+  async get(id) {
+    const data = await this.storage.get(id)
+    if (data) {
+      await this._enrichLoan(data)
+    }
+    return data
   }
 
   /**
@@ -305,7 +339,9 @@ const managers = {
     label: 'Loan',
     labelPlural: 'Loans',
     routePrefix: 'loan',
-    // labelField: "book_title - username" (enriched in create/update)
+    // ENRICHMENT PATTERN: labelField uses enriched fields (book_title, username)
+    // added by _enrichLoan() in get()/create()/update() - see LoansManager above.
+    // This keeps labelField sync while displaying related entity data.
     labelField: (loan) => loan.book_title && loan.username
       ? `${loan.book_title} - ${loan.username}`
       : `Loan #${loan.id?.slice(-6) || 'new'}`,
@@ -374,6 +410,7 @@ const kernel = new Kernel({
   sectionOrder: ['Library', 'Administration'],
   managers,
   authAdapter,
+  entityAuthAdapter: demoEntityAuthAdapter,
   pages: {
     login: () => import('./pages/LoginPage.vue'),
     layout: () => import('./pages/MainLayout.vue')
@@ -396,4 +433,72 @@ const kernel = new Kernel({
 
 // Create and mount the app
 // kernel.createApp() does all initialization, returns Vue app for mount()
-kernel.createApp().mount('#app')
+const app = kernel.createApp()
+
+// ============================================================================
+// FEATURE DEMONSTRATIONS: Hooks and Zones
+// ============================================================================
+// These features require access to hooks/zones which are created during
+// kernel.createApp(). Register them after createApp() but before mount().
+
+// ---------- LIFECYCLE HOOKS ----------
+// Demonstrate presave/postsave/predelete hooks for audit timestamps
+
+/**
+ * presave hook: Add/update audit timestamps
+ * Called before create() and update()
+ */
+kernel.hooks.register('books:presave', (context) => {
+  const { record, isNew } = context
+  const now = new Date().toISOString()
+  if (isNew) {
+    record.created_at = now
+  }
+  record.updated_at = now
+}, { priority: 50 })
+
+/**
+ * postsave hook: Log save operations
+ * Called after create() and update()
+ */
+kernel.hooks.register('books:postsave', (context) => {
+  const { result, isNew } = context
+  console.log(`[demo] Book ${isNew ? 'created' : 'updated'}: ${result.title}`)
+}, { priority: 50 })
+
+/**
+ * predelete hook: Log delete operations
+ * Called before delete() - can throw to abort
+ */
+kernel.hooks.register('books:predelete', (context) => {
+  console.log(`[demo] About to delete book ID: ${context.id}`)
+}, { priority: 50 })
+
+// ---------- ALTER HOOKS ----------
+// Demonstrate list:alter and menu:alter hooks
+
+/**
+ * menu:alter hook: Add a custom nav item
+ */
+kernel.hooks.register('menu:alter', (context) => {
+  // Find Library section and add a divider hint
+  const librarySection = context.sections.find(s => s.title === 'Library')
+  if (librarySection) {
+    // Items already include Books, Loans, Genres from modules
+    // This demonstrates that menu:alter can modify navigation
+  }
+  return context
+}, { priority: 50 })
+
+// ---------- ZONE REGISTRY ----------
+// Zone blocks would typically be registered here for sidebar/footer content
+// Example (uncomment to test):
+// const zones = kernel.getZoneRegistry()
+// zones.registerBlock('app:footer', {
+//   id: 'demo-footer',
+//   component: { template: '<div>Demo Footer Block</div>' },
+//   weight: 50
+// })
+
+// Mount the app
+app.mount('#app')

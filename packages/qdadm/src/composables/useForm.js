@@ -7,6 +7,7 @@
  * - Unsaved changes guard (via useBareForm)
  * - Toast notifications
  * - Navigation helpers
+ * - form:alter hook for extensibility
  *
  * Usage:
  * ```js
@@ -25,9 +26,45 @@
  *   entityName: 'User'                     // Override manager.label
  * })
  * ```
+ *
+ * ## form:alter Hook
+ *
+ * The composable invokes `form:alter` and `{entity}:form:alter` hooks after
+ * form initialization (load for edit, or initial data for create). This allows
+ * modules to modify form configuration dynamically.
+ *
+ * Hook context structure:
+ * @typedef {object} FormAlterConfig
+ * @property {string} entity - Entity name
+ * @property {Array} fields - Field definitions from manager
+ * @property {boolean} isEdit - Whether form is in edit mode
+ * @property {*} entityId - Entity ID (null for create)
+ * @property {object} form - Current form data
+ * @property {object} manager - EntityManager reference
+ *
+ * @example
+ * // Register a hook to modify form fields
+ * hooks.register('form:alter', (config) => {
+ *   if (config.entity === 'books') {
+ *     // Add a computed field
+ *     config.fields.push({ name: 'fullTitle', computed: true, readonly: true })
+ *   }
+ *   return config
+ * })
+ *
+ * @example
+ * // Entity-specific hook
+ * hooks.register('books:form:alter', (config) => {
+ *   // Modify field visibility based on edit mode
+ *   if (!config.isEdit) {
+ *     config.fields = config.fields.filter(f => f.name !== 'internal_id')
+ *   }
+ *   return config
+ * })
  */
 import { ref, computed, watch, onMounted, inject, provide } from 'vue'
 import { useBareForm } from './useBareForm'
+import { useHooks } from './useHooks'
 import { deepClone } from '../utils/transformers'
 
 export function useForm(options = {}) {
@@ -53,6 +90,9 @@ export function useForm(options = {}) {
   }
   const manager = orchestrator.get(entity)
 
+  // Get HookRegistry for form:alter hook (optional, may not exist in tests)
+  const hooks = useHooks()
+
   // Read config from manager with option overrides
   const routePrefix = options.routePrefix ?? manager.routePrefix
   const entityName = options.entityName ?? manager.label
@@ -61,6 +101,23 @@ export function useForm(options = {}) {
   // Form-specific state
   const form = ref(deepClone(initialData))
   const originalData = ref(null)
+
+  /**
+   * Altered fields configuration after form:alter hook processing
+   *
+   * Contains the field definitions modified by registered hooks.
+   * Modules can register form:alter hooks to modify field visibility,
+   * add/remove fields, change labels, or modify validation rules.
+   *
+   * @type {import('vue').Ref<Array<object>>}
+   */
+  const alteredFields = ref([])
+
+  /**
+   * Whether form:alter hooks have been invoked
+   * @type {import('vue').Ref<boolean>}
+   */
+  const hooksInvoked = ref(false)
 
   // Dirty state getter
   const dirtyStateGetter = getDirtyState || (() => ({ form: form.value }))
@@ -98,11 +155,81 @@ export function useForm(options = {}) {
   // Watch for changes
   watch(form, checkDirty, { deep: true })
 
+  // ============ FORM:ALTER HOOK ============
+
+  /**
+   * Invoke form:alter hooks to allow modules to modify form configuration
+   *
+   * Builds a config snapshot from current state, passes it through the hook chain,
+   * and stores the altered fields configuration.
+   *
+   * Hook context structure:
+   * @typedef {object} FormAlterConfig
+   * @property {string} entity - Entity name
+   * @property {Array} fields - Field definitions from manager.getFormFields()
+   * @property {boolean} isEdit - Whether form is in edit mode
+   * @property {*} entityId - Entity ID (null for create)
+   * @property {object} form - Current form data
+   * @property {object} manager - EntityManager reference
+   *
+   * @example
+   * // Register a hook to add a custom field
+   * hooks.register('form:alter', (config) => {
+   *   if (config.entity === 'books') {
+   *     config.fields.push({ name: 'custom', type: 'text', label: 'Custom' })
+   *   }
+   *   return config
+   * })
+   *
+   * @example
+   * // Register entity-specific hook
+   * hooks.register('books:form:alter', (config) => {
+   *   // Hide internal_id in create mode
+   *   if (!config.isEdit) {
+   *     config.fields = config.fields.filter(f => f.name !== 'internal_id')
+   *   }
+   *   return config
+   * })
+   */
+  async function invokeFormAlterHook() {
+    if (!hooks) return
+
+    // Get fields from manager (if available)
+    const managerFields = typeof manager.getFormFields === 'function'
+      ? manager.getFormFields()
+      : (manager.fields || [])
+
+    // Build config snapshot
+    const configSnapshot = {
+      entity,
+      fields: deepClone(managerFields),
+      isEdit: isEdit.value,
+      entityId: entityId.value,
+      form: form.value,
+      manager,
+    }
+
+    // Invoke generic form:alter hook
+    let alteredConfig = await hooks.alter('form:alter', configSnapshot)
+
+    // Invoke entity-specific hook: {entity}:form:alter
+    const entityHookName = `${entity}:form:alter`
+    if (hooks.hasHook(entityHookName)) {
+      alteredConfig = await hooks.alter(entityHookName, alteredConfig)
+    }
+
+    // Store altered fields for consumption by FormPage
+    alteredFields.value = alteredConfig.fields || []
+    hooksInvoked.value = true
+  }
+
   // Load entity
   async function load() {
     if (!isEdit.value) {
       form.value = deepClone(initialData)
       takeSnapshot()
+      // Invoke form:alter hooks for create mode
+      await invokeFormAlterHook()
       return
     }
 
@@ -113,6 +240,9 @@ export function useForm(options = {}) {
       form.value = data
       originalData.value = deepClone(data)
       takeSnapshot()
+
+      // Invoke form:alter hooks after data is loaded
+      await invokeFormAlterHook()
 
       if (onLoadSuccess) {
         await onLoadSuccess(data)
@@ -275,6 +405,11 @@ export function useForm(options = {}) {
     isEdit,
     entityId,
     originalData,
+
+    // form:alter hook results
+    alteredFields,
+    hooksInvoked,
+    invokeFormAlterHook,
 
     // Actions
     load,

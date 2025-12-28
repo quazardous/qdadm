@@ -4,10 +4,18 @@
  *
  * Uses useListPageBuilder with simplified v-bind/v-on pattern
  * Genre filter options are loaded dynamically from genres entity
+ *
+ * ZONE EXTENSIBILITY DEMO
+ * =======================
+ * This page demonstrates cross-module zone extension:
+ * - 'books-list-header' zone renders the page header area
+ * - Loans module extends this zone to show loan statistics
+ *
+ * See: modules/loans/components/LoansZoneSetup.vue for extension code
  */
 
 import { onMounted } from 'vue'
-import { useListPageBuilder, ListPage, useOrchestrator } from 'qdadm'
+import { useListPageBuilder, ListPage, useOrchestrator, Zone } from 'qdadm'
 import Tag from 'primevue/tag'
 import Column from 'primevue/column'
 
@@ -69,6 +77,11 @@ function getGenreSeverity(genre) {
 
 <template>
   <ListPage v-bind="list.props.value" v-on="list.events">
+    <!-- Zone-based extensible header area -->
+    <template #beforeTable>
+      <Zone name="books-list-header" class="mb-3" />
+    </template>
+
     <template #columns>
       <Column field="title" header="Title" sortable />
       <Column field="author" header="Author" sortable />

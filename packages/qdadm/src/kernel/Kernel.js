@@ -45,8 +45,12 @@ import ConfirmationService from 'primevue/confirmationservice'
 import Tooltip from 'primevue/tooltip'
 
 import { createQdadm } from '../plugin.js'
-import { initModules, getRoutes, setSectionOrder } from '../module/moduleRegistry.js'
+import { initModules, getRoutes, setSectionOrder, alterMenuSections } from '../module/moduleRegistry.js'
 import { Orchestrator } from '../orchestrator/Orchestrator.js'
+import { createSignalBus } from './SignalBus.js'
+import { createZoneRegistry } from '../zones/ZoneRegistry.js'
+import { registerStandardZones } from '../zones/zones.js'
+import { createHookRegistry } from '../hooks/HookRegistry.js'
 
 export class Kernel {
   /**
@@ -56,7 +60,8 @@ export class Kernel {
    * @param {object} options.modulesOptions - Options for initModules (e.g., { coreNavItems })
    * @param {string[]} options.sectionOrder - Navigation section order
    * @param {object} options.managers - Entity managers { name: EntityManager }
-   * @param {object} options.authAdapter - Auth adapter for login/logout
+   * @param {object} options.authAdapter - Auth adapter for login/logout (app-level authentication)
+   * @param {object} options.entityAuthAdapter - Auth adapter for entity permissions (scope/silo checks)
    * @param {object} options.pages - Page components { login, layout }
    * @param {string} options.homeRoute - Route name for home redirect (or object { name, component })
    * @param {Array} options.coreRoutes - Additional routes as layout children (before module routes)
@@ -65,12 +70,17 @@ export class Kernel {
    * @param {object} options.app - App config { name, shortName, version, logo, theme }
    * @param {object} options.features - Feature toggles { auth, poweredBy }
    * @param {object} options.primevue - PrimeVue config { plugin, theme, options }
+   * @param {object} options.layouts - Layout components { list, form, dashboard, base }
    */
   constructor(options) {
     this.options = options
     this.vueApp = null
     this.router = null
+    this.signals = null
     this.orchestrator = null
+    this.zoneRegistry = null
+    this.hookRegistry = null
+    this.layoutComponents = null
   }
 
   /**
@@ -80,7 +90,11 @@ export class Kernel {
   createApp() {
     this._initModules()
     this._createRouter()
+    this._createSignalBus()
+    this._createHookRegistry()
     this._createOrchestrator()
+    this._createZoneRegistry()
+    this._createLayoutComponents()
     this._createVueApp()
     this._installPlugins()
     return this.vueApp
@@ -162,12 +176,63 @@ export class Kernel {
   }
 
   /**
-   * Create orchestrator with managers
+   * Create signal bus for event-driven communication
+   */
+  _createSignalBus() {
+    const debug = this.options.debug ?? false
+    this.signals = createSignalBus({ debug })
+  }
+
+  /**
+   * Create hook registry for Drupal-inspired extensibility
+   * Shares the same QuarKernel instance as the signal bus for unified event bus
+   */
+  _createHookRegistry() {
+    const debug = this.options.debug ?? false
+    // HookRegistry shares the same QuarKernel as SignalBus for unified event bus
+    // Both use the underlying kernel for event dispatch
+    this.hookRegistry = createHookRegistry({
+      kernel: this.signals.getKernel(),
+      debug,
+    })
+  }
+
+  /**
+   * Create orchestrator with managers and signal bus
+   * Injects entityAuthAdapter and hookRegistry into all managers for permission checks
+   * and lifecycle hook support.
    */
   _createOrchestrator() {
     this.orchestrator = new Orchestrator({
-      managers: this.options.managers || {}
+      managers: this.options.managers || {},
+      signals: this.signals,
+      hooks: this.hookRegistry,
+      entityAuthAdapter: this.options.entityAuthAdapter || null
     })
+  }
+
+  /**
+   * Create zone registry for extensible UI composition
+   * Registers standard zones during bootstrap.
+   */
+  _createZoneRegistry() {
+    const debug = this.options.debug ?? false
+    this.zoneRegistry = createZoneRegistry({ debug })
+    registerStandardZones(this.zoneRegistry)
+  }
+
+  /**
+   * Create layout components map for useLayoutResolver
+   * Maps layout types to their Vue components.
+   */
+  _createLayoutComponents() {
+    const layouts = this.options.layouts || {}
+    this.layoutComponents = {
+      list: layouts.list || layouts.ListLayout || null,
+      form: layouts.form || layouts.FormLayout || null,
+      dashboard: layouts.dashboard || layouts.DashboardLayout || null,
+      base: layouts.base || layouts.BaseLayout || null
+    }
   }
 
   /**
@@ -214,6 +279,24 @@ export class Kernel {
     const { homeRoute } = this.options
     const homeRouteName = typeof homeRoute === 'object' ? homeRoute.name : homeRoute
 
+    // Zone registry injection
+    app.provide('qdadmZoneRegistry', this.zoneRegistry)
+
+    // Dev mode: expose zone registry on window for DevTools inspection
+    if (this.options.debug && typeof window !== 'undefined') {
+      window.__qdadmZones = this.zoneRegistry
+      console.debug('[qdadm] Zone registry exposed on window.__qdadmZones')
+    }
+
+    // Signal bus injection
+    app.provide('qdadmSignals', this.signals)
+
+    // Hook registry injection
+    app.provide('qdadmHooks', this.hookRegistry)
+
+    // Layout components injection for useLayoutResolver
+    app.provide('qdadmLayoutComponents', this.layoutComponents)
+
     // qdadm plugin
     app.use(createQdadm({
       orchestrator: this.orchestrator,
@@ -253,5 +336,54 @@ export class Kernel {
    */
   getOrchestrator() {
     return this.orchestrator
+  }
+
+  /**
+   * Get the SignalBus instance
+   * @returns {SignalBus}
+   */
+  getSignals() {
+    return this.signals
+  }
+
+  /**
+   * Get the ZoneRegistry instance
+   * @returns {ZoneRegistry}
+   */
+  getZoneRegistry() {
+    return this.zoneRegistry
+  }
+
+  /**
+   * Get the HookRegistry instance
+   * @returns {HookRegistry}
+   */
+  getHookRegistry() {
+    return this.hookRegistry
+  }
+
+  /**
+   * Shorthand accessor for hook registry
+   * Allows `kernel.hooks.register(...)` syntax
+   * @returns {HookRegistry}
+   */
+  get hooks() {
+    return this.hookRegistry
+  }
+
+  /**
+   * Get the layout components map
+   * @returns {object} Layout components by type
+   */
+  getLayoutComponents() {
+    return this.layoutComponents
+  }
+
+  /**
+   * Shorthand accessor for layout components
+   * @returns {object}
+   */
+  get layouts() {
+    return this.layoutComponents
   }
 }

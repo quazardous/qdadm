@@ -1,31 +1,19 @@
 <script setup>
 /**
- * GenreList - List of all genres with link to child books
+ * GenreList - Simplest qdadm pattern demo
+ *
+ * Pattern: ~10 lines for reference/lookup data
+ * - Entity config via useListPageBuilder
+ * - Search + edit action via builder methods
+ * - Columns via #columns slot (pure declarative)
  */
-
 import { useListPageBuilder, ListPage } from 'qdadm'
 import Column from 'primevue/column'
-import Button from 'primevue/button'
-import { useRouter } from 'vue-router'
 
-const router = useRouter()
-
-// ============ LIST BUILDER ============
 const list = useListPageBuilder({ entity: 'genres' })
-
-// ============ SEARCH ============
-list.setSearch({
-  placeholder: 'Search genres...',
-  fields: ['name', 'description']
-})
-
-// ============ ROW ACTIONS ============
+list.setSearch({ placeholder: 'Search genres...', fields: ['name', 'description'] })
+list.addCreateAction()
 list.addEditAction()
-
-// Navigate to genre books
-function viewBooks(genre) {
-  router.push({ name: 'genre-books', params: { genreId: genre.id } })
-}
 </script>
 
 <template>
@@ -33,18 +21,6 @@ function viewBooks(genre) {
     <template #columns>
       <Column field="name" header="Name" sortable />
       <Column field="description" header="Description" />
-      <Column header="Books" style="width: 120px">
-        <template #body="{ data }">
-          <Button
-            label="View Books"
-            icon="pi pi-book"
-            size="small"
-            severity="secondary"
-            text
-            @click="viewBooks(data)"
-          />
-        </template>
-      </Column>
     </template>
   </ListPage>
 </template>

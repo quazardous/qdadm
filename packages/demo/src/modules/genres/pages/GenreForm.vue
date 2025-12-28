@@ -1,67 +1,31 @@
 <script setup>
 /**
- * GenreForm - Create/Edit genre page
+ * GenreForm - Simplest qdadm form pattern demo
+ *
+ * Pattern: ~10 lines for reference/lookup data form
+ * - Entity config via useFormPageBuilder
+ * - Auto-generate fields from EntityManager schema
+ * - FormPage handles loading, actions, dirty state
  */
-
-import { useRoute } from 'vue-router'
-import { useForm, PageLayout, FormField, FormActions } from 'qdadm'
-import Card from 'primevue/card'
+import { useFormPageBuilder, FormPage, FormField } from 'qdadm'
 import InputText from 'primevue/inputtext'
 import Textarea from 'primevue/textarea'
 
-const route = useRoute()
-
-// ============ FORM SETUP ============
-const {
-  manager,
-  form,
-  loading,
-  saving,
-  dirty,
-  isEdit,
-  submit,
-  cancel
-} = useForm({
-  entity: 'genres',
-  getId: () => route.params.id
-})
+const form = useFormPageBuilder({ entity: 'genres' })
+form.generateFields()
 </script>
 
 <template>
-  <PageLayout>
-    <div v-if="loading" class="loading-state">
-      <i class="pi pi-spin pi-spinner" style="font-size: 2rem"></i>
-    </div>
-
-    <Card v-else>
-      <template #content>
-        <div class="form-grid">
-          <FormField name="name" label="Name *">
-            <InputText v-model="form.name" id="name" class="w-full" />
-          </FormField>
-
-          <FormField name="description" label="Description">
-            <Textarea v-model="form.description" id="description" class="w-full" rows="3" />
-          </FormField>
-        </div>
-
-        <FormActions
-          :isEdit="isEdit"
-          :saving="saving"
-          :dirty="dirty"
-          @save="submit(false)"
-          @saveAndClose="submit(true)"
-          @cancel="cancel"
-        />
-      </template>
-    </Card>
-  </PageLayout>
+  <FormPage v-bind="form.props.value" v-on="form.events">
+    <template #fields>
+      <div class="form-grid">
+        <FormField name="name" label="Name *">
+          <InputText v-model="form.data.value.name" class="w-full" />
+        </FormField>
+        <FormField name="description" label="Description">
+          <Textarea v-model="form.data.value.description" class="w-full" rows="3" />
+        </FormField>
+      </div>
+    </template>
+  </FormPage>
 </template>
-
-<style scoped>
-.loading-state {
-  display: flex;
-  justify-content: center;
-  padding: 3rem;
-}
-</style>

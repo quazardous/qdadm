@@ -1,3 +1,6 @@
+import { PermissiveAuthAdapter } from './auth/PermissiveAdapter.js'
+import { AuthActions } from './auth/AuthAdapter.js'
+
 /**
  * EntityManager - Base class for entity CRUD operations
  *
@@ -59,7 +62,9 @@ export class EntityManager {
       // Relations
       children = {},      // { roles: { entity: 'roles', endpoint?: ':id/roles' } }
       parent = null,      // { entity: 'users', foreignKey: 'user_id' }
-      relations = {}      // { groups: { entity: 'groups', through: 'user_groups' } }
+      relations = {},     // { groups: { entity: 'groups', through: 'user_groups' } }
+      // Auth adapter (for permission checks)
+      authAdapter = null  // AuthAdapter instance or null (uses PermissiveAuthAdapter)
     } = options
 
     this.name = name
@@ -86,6 +91,12 @@ export class EntityManager {
     this._relations = relations
     this._orchestrator = null  // Set when registered
 
+    // Auth adapter (fallback to permissive if not provided)
+    this._authAdapter = authAdapter
+
+    // HookRegistry reference for lifecycle hooks (set by Orchestrator)
+    this._hooks = null
+
     // Severity maps for status fields (field → value → severity)
     this._severityMaps = {}
 
@@ -97,6 +108,153 @@ export class EntityManager {
       valid: false     // Is cache currently valid?
     }
     this._cacheLoading = null  // Promise when cache is being loaded
+
+    // SignalBus reference for event emission (set by Orchestrator)
+    this._signals = null
+  }
+
+  // ============ SIGNALS ============
+
+  /**
+   * Set the SignalBus reference (called by Orchestrator during registration)
+   * @param {SignalBus} signals
+   */
+  setSignals(signals) {
+    this._signals = signals
+  }
+
+  /**
+   * Set the HookRegistry reference (called by Orchestrator during registration)
+   * @param {HookRegistry} hooks
+   */
+  setHooks(hooks) {
+    this._hooks = hooks
+  }
+
+  /**
+   * Get the HookRegistry reference
+   * @returns {HookRegistry|null}
+   */
+  get hooks() {
+    return this._hooks
+  }
+
+  /**
+   * Emit entity signals after CRUD operations
+   * Emits both entity-specific and generic signals via SignalBus.emitEntity
+   * @param {string} action - 'created', 'updated', or 'deleted'
+   * @param {object} data - Signal payload data { entity, id, ... }
+   * @private
+   */
+  _emitSignal(action, data) {
+    if (!this._signals) return
+    // Use SignalBus.emitEntity for proper dual-signal emission
+    this._signals.emitEntity(this.name, action, data)
+  }
+
+  // ============ LIFECYCLE HOOKS ============
+
+  /**
+   * Invoke a lifecycle hook for this entity
+   *
+   * Invokes both entity-specific hook (e.g., 'books:presave') and
+   * generic hook (e.g., 'entity:presave'). Entity-specific hooks run first.
+   *
+   * @param {string} hookName - Hook name without entity prefix (e.g., 'presave')
+   * @param {object} context - Hook context passed to handlers
+   * @private
+   */
+  async _invokeHook(hookName, context) {
+    if (!this._hooks) return
+
+    // Invoke entity-specific hook first (e.g., 'books:presave')
+    await this._hooks.invoke(`${this.name}:${hookName}`, context)
+
+    // Invoke generic hook (e.g., 'entity:presave')
+    await this._hooks.invoke(`entity:${hookName}`, context)
+  }
+
+  /**
+   * Build hook context for presave operations
+   *
+   * @typedef {object} PresaveContext
+   * @property {string} entity - Entity name
+   * @property {object} record - Record data (can be mutated by handlers)
+   * @property {boolean} isNew - True for create, false for update
+   * @property {string|number} [id] - Record ID (only for update)
+   * @property {EntityManager} manager - This manager instance
+   *
+   * @param {object} data - Record data
+   * @param {boolean} isNew - True for create, false for update
+   * @param {string|number} [id] - Record ID (only for update)
+   * @returns {PresaveContext}
+   * @private
+   */
+  _buildPresaveContext(data, isNew, id = null) {
+    const context = {
+      entity: this.name,
+      record: data,
+      isNew,
+      manager: this
+    }
+    if (!isNew && id !== null) {
+      context.id = id
+    }
+    return context
+  }
+
+  /**
+   * Build hook context for postsave operations
+   *
+   * @typedef {object} PostsaveContext
+   * @property {string} entity - Entity name
+   * @property {object} record - Original record data
+   * @property {object} result - Saved entity returned from storage
+   * @property {boolean} isNew - True for create, false for update
+   * @property {string|number} [id] - Record ID
+   * @property {EntityManager} manager - This manager instance
+   *
+   * @param {object} data - Original record data
+   * @param {object} result - Saved entity from storage
+   * @param {boolean} isNew - True for create, false for update
+   * @param {string|number} [id] - Record ID
+   * @returns {PostsaveContext}
+   * @private
+   */
+  _buildPostsaveContext(data, result, isNew, id = null) {
+    const context = {
+      entity: this.name,
+      record: data,
+      result,
+      isNew,
+      manager: this
+    }
+    if (id !== null) {
+      context.id = id
+    } else if (result?.[this.idField]) {
+      context.id = result[this.idField]
+    }
+    return context
+  }
+
+  /**
+   * Build hook context for predelete operations
+   *
+   * @typedef {object} PredeleteContext
+   * @property {string} entity - Entity name
+   * @property {string|number} id - Record ID to be deleted
+   * @property {EntityManager} manager - This manager instance
+   *
+   * @param {string|number} id - Record ID to delete
+   * @returns {PredeleteContext}
+   * @private
+   */
+  _buildPredeleteContext(id) {
+    return {
+      entity: this.name,
+      id,
+      manager: this
+    }
   }
 
   // ============ METADATA ACCESSORS ============
@@ -160,8 +318,70 @@ export class EntityManager {
   // ============ PERMISSIONS ============
 
   /**
+   * Get the auth adapter (lazy-initialized PermissiveAuthAdapter if not set)
+   * @returns {AuthAdapter}
+   */
+  get authAdapter() {
+    if (!this._authAdapter) {
+      this._authAdapter = new PermissiveAuthAdapter()
+    }
+    return this._authAdapter
+  }
+
+  /**
+   * Set the auth adapter
+   * @param {AuthAdapter|null} adapter
+   */
+  set authAdapter(adapter) {
+    this._authAdapter = adapter
+  }
+
+  /**
+   * Check if the current user can perform an action, optionally on a specific record
+   *
+   * This is the primary permission check method. It combines:
+   * 1. Local restrictions (readOnly, scopeWhitelist)
+   * 2. Scope check via AuthAdapter.canPerform() - can user do this action type?
+   * 3. Silo check via AuthAdapter.canAccessRecord() - can user access this record?
+   *
+   * @param {string} action - Action to check: 'read', 'create', 'update', 'delete', 'list'
+   * @param {object} [record] - Optional: specific record to check (for silo validation)
+   * @returns {boolean} - true if action is allowed
+   *
+   * @example
+   * // Scope-only checks (no record)
+   * manager.canAccess('create')       // Can user create new items?
+   * manager.canAccess('list')         // Can user see the list?
+   *
+   * @example
+   * // Scope + silo checks (with record)
+   * manager.canAccess('read', item)   // Can user see this specific item?
+   * manager.canAccess('update', item) // Can user edit this specific item?
+   * manager.canAccess('delete', item) // Can user delete this specific item?
+   */
+  canAccess(action, record = null) {
+    // 1. Check readOnly restriction for write actions
+    if (this._readOnly && action !== AuthActions.READ && action !== AuthActions.LIST) {
+      return false
+    }
+
+    // 2. Scope check: can user perform this action on this entity type?
+    const canPerformAction = this.authAdapter.canPerform(this.name, action)
+    if (!canPerformAction) {
+      return false
+    }
+
+    // 3. Silo check: if record provided, can user access this specific record?
+    if (record !== null) {
+      return this.authAdapter.canAccessRecord(this.name, record)
+    }
+
+    return true
+  }
+
+  /**
    * Check if user can read entities
-   * Override in subclass or provide via options to implement custom logic
+   * Delegates to canAccess('read', entity)
    *
    * @param {object} [entity] - Optional: specific entity to check
    * @returns {boolean} - true if user can read
@@ -170,8 +390,7 @@ export class EntityManager {
    * With entity: specific read permission (e.g., can see this item)
    */
   canRead(entity = null) {
-    // Default: allow all reads
-    return true
+    return this.canAccess(AuthActions.READ, entity)
   }
 
   /**
@@ -184,18 +403,17 @@ export class EntityManager {
 
   /**
    * Check if user can create new entities
-   * Override in subclass to implement custom logic
+   * Delegates to canAccess('create')
    *
    * @returns {boolean} - true if user can create
    */
   canCreate() {
-    if (this._readOnly) return false
-    return true
+    return this.canAccess(AuthActions.CREATE)
   }
 
   /**
    * Check if user can update entities
-   * Override in subclass to implement custom logic
+   * Delegates to canAccess('update', entity)
    *
    * @param {object} [entity] - Optional: specific entity to check
    * @returns {boolean} - true if user can update
@@ -204,20 +422,28 @@ export class EntityManager {
    * With entity: specific update permission (e.g., can edit this item)
    */
   canUpdate(entity = null) {
-    if (this._readOnly) return false
-    return true
+    return this.canAccess(AuthActions.UPDATE, entity)
   }
 
   /**
    * Check if user can delete entities
-   * Override in subclass or provide via options to implement custom logic
+   * Delegates to canAccess('delete', entity)
    *
    * @param {object} [entity] - Optional: specific entity to check
    * @returns {boolean} - true if user can delete
    */
   canDelete(entity = null) {
-    if (this._readOnly) return false
-    return true
+    return this.canAccess(AuthActions.DELETE, entity)
+  }
+
+  /**
+   * Check if user can list entities
+   * Delegates to canAccess('list')
+   *
+   * @returns {boolean} - true if user can list
+   */
+  canList() {
+    return this.canAccess(AuthActions.LIST)
   }
 
   /**
@@ -465,13 +691,33 @@ export class EntityManager {
 
   /**
    * Create a new entity
+   *
+   * Lifecycle hooks invoked:
+   * - presave: Before storage.create(), can modify data or throw to abort
+   * - postsave: After successful storage.create(), for side effects
+   *
    * @param {object} data
    * @returns {Promise<object>} - The created entity
    */
   async create(data) {
     if (this.storage) {
-      const result = await this.storage.create(data)
+      // Invoke presave hooks (can modify data or throw to abort)
+      const presaveContext = this._buildPresaveContext(data, true)
+      await this._invokeHook('presave', presaveContext)
+
+      // Use potentially modified data from context
+      const result = await this.storage.create(presaveContext.record)
       this.invalidateCache()
+
+      // Invoke postsave hooks (for side effects)
+      const postsaveContext = this._buildPostsaveContext(data, result, true)
+      await this._invokeHook('postsave', postsaveContext)
+
+      this._emitSignal('created', {
+        entity: result,
+        manager: this.name,
+        id: result?.[this.idField]
+      })
       return result
     }
     throw new Error(`[EntityManager:${this.name}] create() not implemented`)
@@ -479,14 +725,34 @@ export class EntityManager {
 
   /**
    * Update an entity (PUT - full replacement)
+   *
+   * Lifecycle hooks invoked:
+   * - presave: Before storage.update(), can modify data or throw to abort
+   * - postsave: After successful storage.update(), for side effects
+   *
    * @param {string|number} id
    * @param {object} data
    * @returns {Promise<object>}
    */
   async update(id, data) {
     if (this.storage) {
-      const result = await this.storage.update(id, data)
+      // Invoke presave hooks (can modify data or throw to abort)
+      const presaveContext = this._buildPresaveContext(data, false, id)
+      await this._invokeHook('presave', presaveContext)
+
+      // Use potentially modified data from context
+      const result = await this.storage.update(id, presaveContext.record)
       this.invalidateCache()
+
+      // Invoke postsave hooks (for side effects)
+      const postsaveContext = this._buildPostsaveContext(data, result, false, id)
+      await this._invokeHook('postsave', postsaveContext)
+
+      this._emitSignal('updated', {
+        entity: result,
+        manager: this.name,
+        id
+      })
       return result
     }
     throw new Error(`[EntityManager:${this.name}] update() not implemented`)
@@ -494,14 +760,34 @@ export class EntityManager {
 
   /**
    * Partially update an entity (PATCH)
+   *
+   * Lifecycle hooks invoked:
+   * - presave: Before storage.patch(), can modify data or throw to abort
+   * - postsave: After successful storage.patch(), for side effects
+   *
    * @param {string|number} id
    * @param {object} data
    * @returns {Promise<object>}
    */
   async patch(id, data) {
     if (this.storage) {
-      const result = await this.storage.patch(id, data)
+      // Invoke presave hooks (can modify data or throw to abort)
+      const presaveContext = this._buildPresaveContext(data, false, id)
+      await this._invokeHook('presave', presaveContext)
+
+      // Use potentially modified data from context
+      const result = await this.storage.patch(id, presaveContext.record)
       this.invalidateCache()
+
+      // Invoke postsave hooks (for side effects)
+      const postsaveContext = this._buildPostsaveContext(data, result, false, id)
+      await this._invokeHook('postsave', postsaveContext)
+
+      this._emitSignal('updated', {
+        entity: result,
+        manager: this.name,
+        id
+      })
       return result
     }
     throw new Error(`[EntityManager:${this.name}] patch() not implemented`)
@@ -509,13 +795,25 @@ export class EntityManager {
 
   /**
    * Delete an entity
+   *
+   * Lifecycle hooks invoked:
+   * - predelete: Before storage.delete(), can throw to abort (for cascade checks)
+   *
    * @param {string|number} id
    * @returns {Promise<void>}
    */
   async delete(id) {
     if (this.storage) {
+      // Invoke predelete hooks (can throw to abort, e.g., for cascade checks)
+      const predeleteContext = this._buildPredeleteContext(id)
+      await this._invokeHook('predelete', predeleteContext)
+
       const result = await this.storage.delete(id)
       this.invalidateCache()
+      this._emitSignal('deleted', {
+        manager: this.name,
+        id
+      })
       return result
     }
     throw new Error(`[EntityManager:${this.name}] delete() not implemented`)

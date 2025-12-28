@@ -25,6 +25,15 @@ export * from './components/index.js'
 // Module system
 export * from './module/index.js'
 
+// Zones
+export * from './zones/index.js'
+
+// Hooks
+export * from './hooks/index.js'
+
+// Core (extension helpers)
+export * from './core/index.js'
+
 // Utils
 export * from './utils/index.js'
 

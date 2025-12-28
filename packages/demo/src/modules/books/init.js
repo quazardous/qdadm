@@ -11,21 +11,24 @@
 export function init(registry) {
 
   // ============ ROUTES ============
+  // Layout is auto-detected from route names (-create, -edit suffixes)
+  // or can be explicitly set via route meta: { meta: { layout: 'list' } }
   registry.addRoutes('books', [
     {
       path: '',
       name: 'book',  // routePrefix from EntityManager
-      component: () => import('./pages/BookList.vue')
+      component: () => import('./pages/BookList.vue'),
+      meta: { layout: 'list' }  // Explicit layout for list page (route name has no suffix)
     },
     {
       path: 'create',
-      name: 'book-create',
-      component: () => import('./pages/BookForm.vue')
+      name: 'book-create',  // Auto-detected as 'form' layout from -create suffix
+      component: () => import('./pages/BookCreate.vue')
     },
     {
       path: ':id/edit',
-      name: 'book-edit',
-      component: () => import('./pages/BookForm.vue')
+      name: 'book-edit',  // Auto-detected as 'form' layout from -edit suffix
+      component: () => import('./pages/BookEdit.vue')
     }
   ], { entity: 'books' })
 

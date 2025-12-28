@@ -1,7 +1,7 @@
 /**
  * Auth Adapter for demo
  *
- * Validates credentials against users stored in localStorage.
+ * Validates credentials against users stored via MockApiStorage.
  * Users are seeded from fixtures in main.js on first load.
  *
  * Demo accounts (password = username):
@@ -10,7 +10,8 @@
  */
 
 const AUTH_STORAGE_KEY = 'qdadm_demo_auth'
-const USERS_STORAGE_KEY = 'qdadm_demo_users'
+// MockApiStorage key pattern: mockapi_${entityName}_data
+const USERS_STORAGE_KEY = 'mockapi_users_data'
 
 function getStoredAuth() {
   try {
@@ -41,7 +42,7 @@ function getUsers() {
 export const authAdapter = {
   /**
    * Login with username/password
-   * Validates against users in localStorage (seeded from fixtures)
+   * Validates against users in MockApiStorage (seeded from fixtures)
    * @returns {Promise<{user: object, token: string}>}
    */
   async login({ username, password }) {

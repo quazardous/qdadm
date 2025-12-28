@@ -2,6 +2,7 @@ import { ref, computed, watch, onMounted, inject, provide } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useToast } from 'primevue/usetoast'
 import { useConfirm } from 'primevue/useconfirm'
+import { useHooks } from './useHooks.js'
 
 // Cookie utilities for pagination persistence
 const COOKIE_NAME = 'qdadm_pageSize'
@@ -168,6 +169,9 @@ export function useListPageBuilder(config = {}) {
   // Entity filters registry (optional, provided by consuming app)
   const entityFilters = inject('qdadmEntityFilters', {})
 
+  // Get HookRegistry for list:alter hook (optional, may not exist in tests)
+  const hooks = useHooks()
+
   // ============ STATE ============
   const items = ref([])
   const loading = ref(false)
@@ -191,6 +195,39 @@ export function useListPageBuilder(config = {}) {
     fields: [],
     debounce: 300
   })
+
+  // ============ COLUMNS ============
+  const columnsMap = ref(new Map())
+
+  /**
+   * Add a column to the list
+   * @param {string} field - Field name (unique identifier)
+   * @param {object} columnConfig - Column configuration
+   * @param {string} [columnConfig.header] - Column header label
+   * @param {boolean} [columnConfig.sortable] - Whether column is sortable
+   * @param {string} [columnConfig.style] - Inline style
+   * @param {Function} [columnConfig.body] - Custom body template function
+   */
+  function addColumn(field, columnConfig = {}) {
+    columnsMap.value.set(field, {
+      field,
+      header: columnConfig.header || field.charAt(0).toUpperCase() + field.slice(1),
+      ...columnConfig
+    })
+  }
+
+  function removeColumn(field) {
+    columnsMap.value.delete(field)
+  }
+
+  function updateColumn(field, updates) {
+    const existing = columnsMap.value.get(field)
+    if (existing) {
+      columnsMap.value.set(field, { ...existing, ...updates })
+    }
+  }
+
+  const columns = computed(() => Array.from(columnsMap.value.values()))
 
   // ============ HEADER ACTIONS ============
   const headerActionsMap = ref(new Map())
@@ -231,6 +268,48 @@ export function useListPageBuilder(config = {}) {
   }
 
   const headerActions = computed(() => getHeaderActions())
+
+  // ============ PERMISSION STATE ============
+
+  /**
+   * Whether the current user can create new entities
+   * Reactive computed based on manager.canCreate()
+   */
+  const canCreate = computed(() => manager.canCreate())
+
+  /**
+   * Whether the current user can delete entities (general scope check)
+   * For row-level checks, use canDeleteRow(row)
+   */
+  const canDelete = computed(() => manager.canDelete())
+
+  /**
+   * Check if user can edit a specific row (scope + silo check)
+   * @param {object} row - The row/record to check
+   * @returns {boolean}
+   */
+  function canEditRow(row) {
+    return manager.canUpdate(row)
+  }
+
+  /**
+   * Check if user can delete a specific row (scope + silo check)
+   * @param {object} row - The row/record to check
+   * @returns {boolean}
+   */
+  function canDeleteRow(row) {
+    return manager.canDelete(row)
+  }
+
+  /**
+   * Get actions for a row, filtering out those the user cannot perform
+   * This is the permission-aware version of getActions()
+   * @param {object} row - The row to get actions for
+   * @returns {Array} - Filtered list of actions the user can perform
+   */
+  function getRowActions(row) {
+    return getActions(row)
+  }
 
   /**
    * Add standard "Create" header action
@@ -520,70 +599,77 @@ export function useListPageBuilder(config = {}) {
 
   /**
    * Load filter options from API endpoints (for filters with optionsEndpoint)
+   * After loading, invokes filter:alter and {entity}:filter:alter hooks.
    */
   async function loadFilterOptions() {
     const entityConfig = entityFilters[entityName]
-    if (!entityConfig?.filters) return
 
-    for (const filterDef of entityConfig.filters) {
-      if (!filterDef.optionsEndpoint) continue
+    // Load options from API endpoints if configured
+    if (entityConfig?.filters) {
+      for (const filterDef of entityConfig.filters) {
+        if (!filterDef.optionsEndpoint) continue
 
-      try {
-        // Use manager.request for custom endpoints, or get another manager
-        const optionsManager = filterDef.optionsEntity
-          ? orchestrator.get(filterDef.optionsEntity)
-          : manager
+        try {
+          // Use manager.request for custom endpoints, or get another manager
+          const optionsManager = filterDef.optionsEntity
+            ? orchestrator.get(filterDef.optionsEntity)
+            : manager
 
-        let rawOptions
-        if (filterDef.optionsEntity) {
-          const response = await optionsManager.list({ page_size: 1000 })
-          rawOptions = response.items || []
-        } else {
-          rawOptions = await manager.request('GET', filterDef.optionsEndpoint)
-          rawOptions = Array.isArray(rawOptions) ? rawOptions : rawOptions?.items || []
-        }
-
-        // Build options array with "All" option first
-        let finalOptions = [{ label: 'All', value: null }]
-
-        // Add null option if configured
-        if (filterDef.includeNull) {
-          finalOptions.push(filterDef.includeNull)
-        }
-
-        // Map fetched options to standard { label, value } format
-        // optionLabelField/optionValueField specify which API fields to use
-        // labelMap: { value: 'Label' } for custom value-to-label mapping
-        // labelFallback: function(value) for unknown values (default: snakeToTitle)
-        const labelField = filterDef.optionLabelField || 'label'
-        const valueField = filterDef.optionValueField || 'value'
-        const labelMap = filterDef.labelMap || {}
-        const labelFallback = filterDef.labelFallback || snakeToTitle
-
-        const mappedOptions = rawOptions.map(opt => {
-          const value = opt[valueField] ?? opt.id ?? opt
-          // Priority: labelMap > API label field > fallback function
-          let label = labelMap[value]
-          if (!label) {
-            label = opt[labelField] || opt.name
+          let rawOptions
+          if (filterDef.optionsEntity) {
+            const response = await optionsManager.list({ page_size: 1000 })
+            rawOptions = response.items || []
+          } else {
+            rawOptions = await manager.request('GET', filterDef.optionsEndpoint)
+            rawOptions = Array.isArray(rawOptions) ? rawOptions : rawOptions?.items || []
           }
-          if (!label) {
-            label = labelFallback(value)
+
+          // Build options array with "All" option first
+          let finalOptions = [{ label: 'All', value: null }]
+
+          // Add null option if configured
+          if (filterDef.includeNull) {
+            finalOptions.push(filterDef.includeNull)
           }
-          return { label, value }
-        })
 
-        finalOptions = [...finalOptions, ...mappedOptions]
+          // Map fetched options to standard { label, value } format
+          // optionLabelField/optionValueField specify which API fields to use
+          // labelMap: { value: 'Label' } for custom value-to-label mapping
+          // labelFallback: function(value) for unknown values (default: snakeToTitle)
+          const labelField = filterDef.optionLabelField || 'label'
+          const valueField = filterDef.optionValueField || 'value'
+          const labelMap = filterDef.labelMap || {}
+          const labelFallback = filterDef.labelFallback || snakeToTitle
 
-        // Update filter options in map
-        const existing = filtersMap.value.get(filterDef.name)
-        if (existing) {
-          filtersMap.value.set(filterDef.name, { ...existing, options: finalOptions })
+          const mappedOptions = rawOptions.map(opt => {
+            const value = opt[valueField] ?? opt.id ?? opt
+            // Priority: labelMap > API label field > fallback function
+            let label = labelMap[value]
+            if (!label) {
+              label = opt[labelField] || opt.name
+            }
+            if (!label) {
+              label = labelFallback(value)
+            }
+            return { label, value }
+          })
+
+          finalOptions = [...finalOptions, ...mappedOptions]
+
+          // Update filter options in map
+          const existing = filtersMap.value.get(filterDef.name)
+          if (existing) {
+            filtersMap.value.set(filterDef.name, { ...existing, options: finalOptions })
+          }
+        } catch (error) {
+          console.warn(`Failed to load options for filter ${filterDef.name}:`, error)
         }
-      } catch (error) {
-        console.warn(`Failed to load options for filter ${filterDef.name}:`, error)
       }
     }
+
+    // Invoke filter:alter hooks after all options are loaded (always runs)
+    await invokeFilterAlterHook()
+
     // Trigger Vue reactivity by replacing the Map reference
     filtersMap.value = new Map(filtersMap.value)
   }
@@ -915,6 +1001,184 @@ export function useListPageBuilder(config = {}) {
   // Note: filterValues changes are handled directly in updateFilters() and clearFilters()
   // to avoid relying on watch reactivity which can be unreliable with object mutations
 
+  // ============ LIST:ALTER HOOK ============
+
+  /**
+   * Invoke list:alter hooks to allow modules to modify list configuration
+   *
+   * Builds a config snapshot from current state, passes it through the hook chain,
+   * and applies any modifications back to the internal maps.
+   *
+   * Hook context structure:
+   * @typedef {object} ListAlterConfig
+   * @property {string} entity - Entity name
+   * @property {Array} columns - Array of column definitions
+   * @property {Array} filters - Array of filter definitions
+   * @property {Array} actions - Array of row action definitions
+   * @property {Array} headerActions - Array of header action definitions
+   *
+   * @example
+   * // Register a hook to add a custom column
+   * hooks.register('list:alter', (config) => {
+   *   if (config.entity === 'books') {
+   *     config.columns.push({ field: 'custom', header: 'Custom' })
+   *   }
+   *   return config
+   * })
+   *
+   * @example
+   * // Register entity-specific hook
+   * hooks.register('books:list:alter', (config) => {
+   *   config.filters.push({ name: 'year', type: 'select', options: [...] })
+   *   return config
+   * })
+   */
+  async function invokeListAlterHook() {
+    if (!hooks) return
+
+    // Build config snapshot from current state
+    const configSnapshot = {
+      entity,
+      columns: Array.from(columnsMap.value.values()),
+      filters: Array.from(filtersMap.value.values()),
+      actions: Array.from(actionsMap.value.values()),
+      headerActions: Array.from(headerActionsMap.value.values()),
+    }
+
+    // Context passed to handlers
+    const hookContext = { entity, manager }
+
+    // Invoke generic list:alter hook
+    let alteredConfig = await hooks.alter('list:alter', configSnapshot, hookContext)
+
+    // Invoke entity-specific hook: {entity}:list:alter
+    const entityHookName = `${entity}:list:alter`
+    if (hooks.hasHook(entityHookName)) {
+      alteredConfig = await hooks.alter(entityHookName, alteredConfig, hookContext)
+    }
+
+    // Apply altered config back to the maps
+    applyAlteredConfig(alteredConfig)
+  }
+
+  // ============ FILTER:ALTER HOOK ============
+
+  /**
+   * Invoke filter:alter hooks to allow modules to modify filter options
+   *
+   * Builds a filters snapshot from current state, passes it through the hook chain,
+   * and applies any modifications back to the filtersMap. Runs after API options are
+   * loaded but before list:alter hook.
+   *
+   * Config object structure passed to handlers:
+   * @typedef {object} FilterAlterConfig
+   * @property {string} entity - Entity name (for conditional logic)
+   * @property {Array<object>} filters - Array of filter definitions with loaded options
+   * @property {string} filters[].name - Filter name/identifier
+   * @property {string} filters[].type - Filter type (select, multiselect, etc.)
+   * @property {Array<{label: string, value: *}>} filters[].options - Available options
+   *
+   * Hook invocation order:
+   * 1. `filter:alter` - Generic hook for all entities
+   * 2. `{entity}:filter:alter` - Entity-specific hook (e.g., `books:filter:alter`)
+   *
+   * @example
+   * // Add custom filter options dynamically
+   * hooks.register('filter:alter', (config) => {
+   *   if (config.entity === 'books') {
+   *     const statusFilter = config.filters.find(f => f.name === 'status')
+   *     if (statusFilter) {
+   *       statusFilter.options.push({ label: 'Archived', value: 'archived' })
+   *     }
+   *   }
+   *   return config
+   * })
+   *
+   * @example
+   * // Filter options based on user context (entity-specific)
+   * hooks.register('books:filter:alter', (config) => {
+   *   const genreFilter = config.filters.find(f => f.name === 'genre')
+   *   if (genreFilter) {
+   *     // Remove restricted options
+   *     genreFilter.options = genreFilter.options.filter(o => o.value !== 'restricted')
+   *   }
+   *   return config
+   * })
+   */
+  async function invokeFilterAlterHook() {
+    if (!hooks) return
+
+    // Build filters snapshot from current state
+    // Entity is included in the snapshot for handlers to filter by entity
+    const filterSnapshot = {
+      entity,
+      filters: Array.from(filtersMap.value.values()),
+    }
+
+    // Invoke generic filter:alter hook
+    let alteredFilters = await hooks.alter('filter:alter', filterSnapshot)
+
+    // Invoke entity-specific hook: {entity}:filter:alter
+    const entityHookName = `${entity}:filter:alter`
+    if (hooks.hasHook(entityHookName)) {
+      alteredFilters = await hooks.alter(entityHookName, alteredFilters)
+    }
+
+    // Apply altered filters back to the map
+    if (alteredFilters.filters) {
+      filtersMap.value.clear()
+      for (const filter of alteredFilters.filters) {
+        filtersMap.value.set(filter.name, filter)
+        // Preserve existing filter values or use defaults
+        if (filterValues.value[filter.name] === undefined) {
+          filterValues.value[filter.name] = filter.default ?? null
+        }
+      }
+    }
+  }
+
+  /**
+   * Apply altered configuration back to internal maps
+   * @param {ListAlterConfig} alteredConfig - The modified configuration
+   */
+  function applyAlteredConfig(alteredConfig) {
+    // Apply columns
+    if (alteredConfig.columns) {
+      columnsMap.value.clear()
+      for (const col of alteredConfig.columns) {
+        columnsMap.value.set(col.field, col)
+      }
+    }
+
+    // Apply filters
+    if (alteredConfig.filters) {
+      filtersMap.value.clear()
+      for (const filter of alteredConfig.filters) {
+        filtersMap.value.set(filter.name, filter)
+        // Preserve existing filter values or use defaults
+        if (filterValues.value[filter.name] === undefined) {
+          filterValues.value[filter.name] = filter.default ?? null
+        }
+      }
+    }
+
+    // Apply actions
+    if (alteredConfig.actions) {
+      actionsMap.value.clear()
+      for (const action of alteredConfig.actions) {
+        actionsMap.value.set(action.name, action)
+      }
+    }
+
+    // Apply header actions
+    if (alteredConfig.headerActions) {
+      headerActionsMap.value.clear()
+      for (const action of alteredConfig.headerActions) {
+        headerActionsMap.value.set(action.name, action)
+      }
+    }
+  }
+
   // ============ LIFECYCLE ============
   // Initialize from registry immediately (sync)
   initFromRegistry()
@@ -928,6 +1192,10 @@ export function useListPageBuilder(config = {}) {
       filterOptionsLoaded = true
       await loadFilterOptions()
     }
+
+    // Invoke list:alter hooks to allow modules to modify configuration
+    // This runs after initFromRegistry() and loadFilterOptions(), before loadItems()
+    await invokeListAlterHook()
 
     // Load data
     if (loadOnMount && manager) {
@@ -1022,6 +1290,9 @@ export function useListPageBuilder(config = {}) {
     // Cards
     cards: cards.value,
 
+    // Columns
+    columns: columns.value,
+
     // Table data
     items: displayItems.value,
     loading: loading.value,
@@ -1090,6 +1361,12 @@ export function useListPageBuilder(config = {}) {
     searchConfig,
     setSearch,
 
+    // Columns
+    columns,
+    addColumn,
+    removeColumn,
+    updateColumn,
+
     // Header Actions
     headerActions,
     addHeaderAction,
@@ -1124,9 +1401,16 @@ export function useListPageBuilder(config = {}) {
     addAction,
     removeAction,
     getActions,
+    getRowActions,  // Permission-aware alias for getActions
     addViewAction,
     addEditAction,
     addDeleteAction,
+
+    // Permissions
+    canCreate,
+    canDelete,
+    canEditRow,
+    canDeleteRow,
 
     // Data
     loadItems,

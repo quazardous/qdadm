@@ -5,3 +5,10 @@
  */
 
 export { Kernel } from './Kernel.js'
+export {
+  SignalBus,
+  createSignalBus,
+  SIGNALS,
+  SIGNAL_ACTIONS,
+  buildSignal,
+} from './SignalBus.js'

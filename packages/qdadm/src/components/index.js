@@ -4,12 +4,23 @@
 
 // Layout
 export { default as AppLayout } from './layout/AppLayout.vue'
+export { default as BaseLayout } from './layout/BaseLayout.vue'
 export { default as PageLayout } from './layout/PageLayout.vue'
 export { default as PageHeader } from './layout/PageHeader.vue'
 export { default as Breadcrumb } from './layout/Breadcrumb.vue'
 export { default as PageNav } from './layout/PageNav.vue'
+export { default as Zone } from './layout/Zone.vue'
+
+// Default zone components
+export { default as DefaultHeader } from './layout/defaults/DefaultHeader.vue'
+export { default as DefaultMenu } from './layout/defaults/DefaultMenu.vue'
+export { default as DefaultFooter } from './layout/defaults/DefaultFooter.vue'
+export { default as DefaultUserInfo } from './layout/defaults/DefaultUserInfo.vue'
+export { default as DefaultBreadcrumb } from './layout/defaults/DefaultBreadcrumb.vue'
+export { default as DefaultToaster } from './layout/defaults/DefaultToaster.vue'
 
 // Forms
+export { default as FormPage } from './forms/FormPage.vue'
 export { default as FormField } from './forms/FormField.vue'
 export { default as FormActions } from './forms/FormActions.vue'
 export { default as FormTabs } from './forms/FormTabs.vue'

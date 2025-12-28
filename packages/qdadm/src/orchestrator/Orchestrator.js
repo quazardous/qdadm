@@ -35,16 +35,75 @@ export class Orchestrator {
     const {
       entityFactory = null,
       // Optional: pre-registered managers (for special cases)
-      managers = {}
+      managers = {},
+      // SignalBus instance for event-driven communication
+      signals = null,
+      // HookRegistry instance for lifecycle hooks
+      hooks = null,
+      // Optional: AuthAdapter for entity permission checks (scope/silo)
+      entityAuthAdapter = null
     } = options
 
     this._entityFactory = entityFactory
     this._managers = new Map()
+    this._signals = signals
+    this._hooks = hooks
+    this._entityAuthAdapter = entityAuthAdapter
 
     // Register pre-provided managers
     for (const [name, manager] of Object.entries(managers)) {
       this.register(name, manager)
     }
+  }
+
+  /**
+   * Set the SignalBus instance
+   * @param {SignalBus} signals
+   */
+  setSignals(signals) {
+    this._signals = signals
+  }
+
+  /**
+   * Get the SignalBus instance
+   * @returns {SignalBus|null}
+   */
+  get signals() {
+    return this._signals
+  }
+
+  /**
+   * Set the entity AuthAdapter for permission checks
+   * This adapter will be injected into all newly registered managers
+   * (unless they already have their own adapter)
+   * @param {AuthAdapter} adapter
+   */
+  setEntityAuthAdapter(adapter) {
+    this._entityAuthAdapter = adapter
+  }
+
+  /**
+   * Get the entity AuthAdapter
+   * @returns {AuthAdapter|null}
+   */
+  get entityAuthAdapter() {
+    return this._entityAuthAdapter
+  }
+
+  /**
+   * Set the HookRegistry instance
+   * @param {HookRegistry} hooks
+   */
+  setHooks(hooks) {
+    this._hooks = hooks
+  }
+
+  /**
+   * Get the HookRegistry instance
+   * @returns {HookRegistry|null}
+   */
+  get hooks() {
+    return this._hooks
   }
 
   /**
@@ -64,6 +123,19 @@ export class Orchestrator {
    */
   register(name, manager) {
     this._managers.set(name, manager)
+    // Pass signals reference to manager for event emission
+    if (this._signals && manager.setSignals) {
+      manager.setSignals(this._signals)
+    }
+    // Pass hooks reference to manager for lifecycle hooks
+    if (this._hooks && manager.setHooks) {
+      manager.setHooks(this._hooks)
+    }
+    // Inject entityAuthAdapter if provided and manager doesn't have one
+    // Manager's own adapter takes precedence (allows per-entity customization)
+    if (this._entityAuthAdapter && !manager._authAdapter) {
+      manager.authAdapter = this._entityAuthAdapter
+    }
     if (manager.onRegister) {
       manager.onRegister(this)
     }

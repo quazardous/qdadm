@@ -36,6 +36,13 @@ const entityConfigs = new Map()  // Entity declarations from modules
 // Configurable section order (set via setSectionOrder or bootstrap)
 let sectionOrder = []
 
+// Altered nav sections after menu:alter hook
+// null means not yet altered, use raw navSections
+let alteredNavSections = null
+
+// Promise for in-flight alteration (prevents concurrent calls)
+let alterationPromise = null
+
 /**
  * Registry API passed to module init functions
  */
@@ -52,9 +59,10 @@ const registry = {
    * @param {string} options.parent.foreignKey - Foreign key field (e.g., 'book_id')
    * @param {string} [options.parent.itemRoute] - Override parent item route (auto: parentEntity.routePrefix + '-edit')
    * @param {string} [options.label] - Label for navlinks (defaults to entity labelPlural)
+   * @param {string} [options.layout] - Default layout type for routes ('list', 'form', 'dashboard', 'base')
    */
   addRoutes(prefix, moduleRoutes, options = {}) {
-    const { entity, parent, label } = options
+    const { entity, parent, label, layout } = options
     const prefixedRoutes = moduleRoutes.map(route => ({
       ...route,
       path: route.path ? `${prefix}/${route.path}` : prefix,
@@ -62,7 +70,9 @@ const registry = {
         ...route.meta,
         ...(entity && { entity }),
         ...(parent && { parent }),
-        ...(label && { navLabel: label })
+        ...(label && { navLabel: label }),
+        // Layout can be set per-route or inherited from options
+        ...((route.meta?.layout || layout) && { layout: route.meta?.layout || layout })
       }
     }))
     routes.push(...prefixedRoutes)
@@ -154,9 +164,10 @@ export function getRoutes() {
 }
 
 /**
- * Get navigation sections in order
+ * Build raw navigation sections from registered nav items (before alteration)
+ * @returns {Array<{title: string, items: Array}>}
  */
-export function getNavSections() {
+function buildRawNavSections() {
   const sections = []
 
   // First add sections in the configured order
@@ -164,7 +175,7 @@ export function getNavSections() {
     if (navSections.has(title)) {
       sections.push({
         title,
-        items: navSections.get(title)
+        items: [...navSections.get(title)]  // Clone items array
       })
     }
   }
@@ -172,11 +183,116 @@ export function getNavSections() {
   // Add any sections not in the predefined order
   for (const [title, items] of navSections) {
     if (!sectionOrder.includes(title)) {
-      sections.push({ title, items })
+      sections.push({ title, items: [...items] })  // Clone items array
     }
   }
 
   return sections
+}
+
+/**
+ * Get navigation sections in order
+ *
+ * Returns altered sections if menu:alter hook has been invoked,
+ * otherwise returns raw sections from module registrations.
+ *
+ * @returns {Array<{title: string, items: Array}>}
+ */
+export function getNavSections() {
+  // Return altered sections if available, otherwise build from raw
+  if (alteredNavSections !== null) {
+    return alteredNavSections
+  }
+  return buildRawNavSections()
+}
+
+/**
+ * Invoke menu:alter hook to allow modules to modify navigation structure
+ *
+ * Called lazily by useNavigation on first access. Modules can register
+ * handlers for 'menu:alter' hook to add, remove, reorder, or modify
+ * navigation sections and items.
+ *
+ * @param {HookRegistry} hooks - The hook registry instance
+ * @returns {Promise<void>}
+ *
+ * @typedef {Object} MenuAlterContext
+ * @property {Array<MenuSection>} sections - Navigation sections (mutable)
+ *
+ * @typedef {Object} MenuSection
+ * @property {string} title - Section title
+ * @property {Array<NavItem>} items - Navigation items in this section
+ *
+ * @typedef {Object} NavItem
+ * @property {string} route - Route name
+ * @property {string} label - Display label
+ * @property {string} [icon] - Icon class (e.g., 'pi pi-users')
+ * @property {string} [entity] - Entity name for permission checks
+ * @property {boolean} [exact] - Use exact route matching
+ *
+ * @example
+ * // In module init or extension
+ * hooks.register('menu:alter', (context) => {
+ *   // Add a new section
+ *   context.sections.push({
+ *     title: 'Tools',
+ *     items: [{ route: 'tools', label: 'Tools', icon: 'pi pi-wrench' }]
+ *   })
+ *
+ *   // Add item to existing section
+ *   const adminSection = context.sections.find(s => s.title === 'Admin')
+ *   if (adminSection) {
+ *     adminSection.items.push({ route: 'settings', label: 'Settings' })
+ *   }
+ *
+ *   // Remove a section
+ *   const idx = context.sections.findIndex(s => s.title === 'Legacy')
+ *   if (idx !== -1) context.sections.splice(idx, 1)
+ *
+ *   return context
+ * })
+ */
+export async function alterMenuSections(hooks) {
+  // Already altered? Return immediately
+  if (alteredNavSections !== null) {
+    return
+  }
+
+  // In-flight alteration? Wait for it
+  if (alterationPromise !== null) {
+    await alterationPromise
+    return
+  }
+
+  // No hooks registry? Mark as altered with raw sections
+  if (!hooks) {
+    alteredNavSections = buildRawNavSections()
+    return
+  }
+
+  // Perform alteration
+  alterationPromise = (async () => {
+    const rawSections = buildRawNavSections()
+
+    // Invoke menu:alter hook with mutable context
+    const alteredContext = await hooks.alter('menu:alter', {
+      sections: rawSections
+    })
+
+    // Store altered sections for getNavSections()
+    alteredNavSections = alteredContext.sections
+    alterationPromise = null
+  })()
+
+  await alterationPromise
+}
+
+/**
+ * Check if menu:alter hook has been invoked
+ * @returns {boolean}
+ */
+export function isMenuAltered() {
+  return alteredNavSections !== null
 }
 
 /**
@@ -239,6 +355,8 @@ export function resetRegistry() {
   navSections.clear()
   entityConfigs.clear()
   sectionOrder = []
+  alteredNavSections = null
+  alterationPromise = null
 }
 
 // Export registry for direct access if needed

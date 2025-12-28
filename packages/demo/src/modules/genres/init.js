@@ -13,7 +13,13 @@ export function init(registry) {
     {
       path: '',
       name: 'genre',
-      component: () => import('./pages/GenreList.vue')
+      component: () => import('./pages/GenreList.vue'),
+      meta: { layout: 'list' }
+    },
+    {
+      path: 'create',
+      name: 'genre-create',
+      component: () => import('./pages/GenreForm.vue')
     },
     {
       path: ':id/edit',

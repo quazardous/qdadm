@@ -5,6 +5,24 @@ All notable changes to qdadm will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.17.0] - 2025-12-28
+
+### Removed
+- **Legacy composables cleanup** (T233):
+  - `usePageBuilder`: Replaced by `useListPageBuilder`
+  - `useManager`: Redundant with `useOrchestrator().getManager()`
+  - `useEntityTitle`: Unused, functionality covered by EntityManager
+  - `useSubEditor`: Unused
+  - `useTabSync`: Unused
+  - `useStatus`: Unused
+
+### Changed
+- Exports updated to remove deleted composables from public API
+- `useJsonSyntax` and `useSignals` retained (have internal usage)
+
+### Demo (0.7.0)
+- Removed `BookForm.vue` (duplicate of `BookCreate.vue` + `BookEdit.vue`)
+
 ## [0.16.0] - 2025-12-21
 
 ### Added
