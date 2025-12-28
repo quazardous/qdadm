@@ -1,11 +1,12 @@
 <script setup>
 /**
- * MainLayout - Authenticated app layout with RoleSwitcher
+ * MainLayout - Authenticated app layout with UserImpersonator
  *
- * Custom layout that extends qdadm's AppLayout with a RoleSwitcher
+ * Custom layout that extends qdadm's AppLayout with a UserImpersonator
  * component for demonstrating permission-based UI changes.
  *
- * The RoleSwitcher is placed above the user info section in the sidebar.
+ * The UserImpersonator allows admins to switch to another user's view
+ * to test how the UI adapts based on their permissions.
  */
 
 import { ref, watch, onMounted, computed, inject, provide, useSlots } from 'vue'
@@ -17,21 +18,15 @@ import {
   useGuardDialog,
   useNavContext,
   UnsavedChangesDialog,
-  qdadmLogo
+  qdadmLogo,
+  version as qdadmVersion
 } from 'qdadm'
 import Button from 'primevue/button'
 import Breadcrumb from 'primevue/breadcrumb'
-import RoleSwitcher from '../components/RoleSwitcher.vue'
-
-// Zone setup components for cross-module extension demo
-// These renderless components register zone blocks when the app mounts
-import BooksZoneSetup from '../modules/books/components/BooksZoneSetup.vue'
-import LoansZoneSetup from '../modules/loans/components/LoansZoneSetup.vue'
-
-// Get qdadm version from injected app config or fallback
-const qdadmVersion = '0.16.0'  // Hardcoded for demo - matches current package version
+import UserImpersonator from '../components/UserImpersonator.vue'
 
 const features = inject('qdadmFeatures', { poweredBy: true, breadcrumb: true })
+const orchestrator = inject('qdadmOrchestrator')
 
 // Guard dialog from shared store (registered by useBareForm/useForm when a form is active)
 const guardDialog = useGuardDialog()
@@ -41,6 +36,22 @@ const route = useRoute()
 const app = useApp()
 const { navSections, isNavActive, sectionHasActiveItem, handleNavClick } = useNavigation()
 const { isAuthenticated, user, logout, authEnabled } = useAuth()
+
+// Impersonation state detection
+const AUTH_STORAGE_KEY = 'qdadm_demo_auth'
+const isImpersonating = ref(false)
+const originalUsername = ref(null)
+
+function checkImpersonationState() {
+  try {
+    const auth = JSON.parse(localStorage.getItem(AUTH_STORAGE_KEY) || '{}')
+    isImpersonating.value = !!auth.originalUser
+    originalUsername.value = auth.originalUser?.username || null
+  } catch {
+    isImpersonating.value = false
+    originalUsername.value = null
+  }
+}
 
 // LocalStorage key for collapsed sections state (namespaced by app)
 const STORAGE_KEY = computed(() => `${app.shortName.toLowerCase()}_nav_collapsed`)
@@ -96,6 +107,7 @@ function isSectionExpanded(section) {
 // Load state on mount
 onMounted(() => {
   loadCollapsedState()
+  checkImpersonationState()
 })
 
 // Auto-expand section when navigating to an item in it
@@ -123,7 +135,10 @@ const userSubtitle = computed(() => {
 })
 
 function handleLogout() {
+  const currentUser = user.value // capture before logout
   logout()
+  // Business signal: auth:logout
+  orchestrator?.signals?.emit('auth:logout', { user: currentUser })
   router.push({ name: 'login' })
 }
 
@@ -155,11 +170,6 @@ const showBreadcrumb = computed(() => {
 
 <template>
   <div class="app-layout">
-    <!-- Zone setup components (renderless) - register zone blocks on mount -->
-    <!-- Order matters: Books first (defines zones), then Loans (extends them) -->
-    <BooksZoneSetup />
-    <LoansZoneSetup />
-
     <!-- Sidebar -->
     <aside class="sidebar">
       <div class="sidebar-header">
@@ -199,15 +209,25 @@ const showBreadcrumb = computed(() => {
         </div>
       </nav>
 
-      <!-- Role Switcher for demo -->
-      <RoleSwitcher v-if="authEnabled" />
+      <!-- User Impersonator for demo (admin can switch to another user's view) -->
+      <UserImpersonator />
 
       <div v-if="authEnabled" class="sidebar-footer">
-        <div class="user-info">
-          <div class="user-avatar">{{ userInitials }}</div>
+        <div class="user-info" :class="{ 'user-info--impersonating': isImpersonating }">
+          <div class="user-avatar" :class="{ 'user-avatar--impersonating': isImpersonating }">
+            {{ userInitials }}
+          </div>
           <div class="user-details">
             <div class="user-name">{{ userDisplayName }}</div>
-            <div class="user-role">{{ userSubtitle }}</div>
+            <div class="user-role">
+              <template v-if="isImpersonating">
+                <i class="pi pi-user-edit" style="font-size: 0.7rem"></i>
+                as {{ originalUsername }}
+              </template>
+              <template v-else>
+                {{ userSubtitle }}
+              </template>
+            </div>
           </div>
           <Button
             icon="pi pi-sign-out"
@@ -449,6 +469,26 @@ const showBreadcrumb = computed(() => {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* Impersonation styles */
+.user-info--impersonating {
+  background: var(--p-orange-900, #7c2d12);
+  border-radius: 0.5rem;
+  padding: 0.5rem;
+  margin: -0.5rem;
+}
+
+.user-info--impersonating .user-name {
+  color: var(--p-orange-200, #fed7aa);
+}
+
+.user-info--impersonating .user-role {
+  color: var(--p-orange-300, #fdba74);
+}
+
+.user-avatar--impersonating {
+  background: var(--p-orange-500, #f97316);
 }
 
 .main-content {

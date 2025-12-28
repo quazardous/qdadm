@@ -5,6 +5,28 @@ All notable changes to qdadm will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.18.0] - 2025-12-28
+
+### Added
+- **Module init pattern for zones**: Zones/signals/hooks passed to `init({ registry, zones, signals, hooks })`
+  - Registration happens during Kernel bootstrap, not Vue lifecycle
+  - `defineAsyncComponent()` required for lazy-loading Vue components in init.js
+  - Prevents silent failures from composables called before Vue app exists
+- **Extension documentation**: Separate docs for zones, signals, hooks
+  - `docs/zones.md`: Zone/block operations (add, replace, extend, wrap)
+  - `docs/signals.md`: Event-driven communication patterns
+  - `docs/hooks.md`: Drupal-inspired lifecycle hooks
+  - `docs/extension.md`: Index of extension mechanisms
+
+### Changed
+- **Kernel initialization order**: Services (signals, hooks, zones) created before `initModules()`
+- **moduleRegistry.initModules()**: Now passes context object `{ registry, zones, signals, hooks }` to modules
+- **ZoneRegistry**: Warns on duplicate block ID in debug mode (instead of silent replace)
+
+### Demo (0.8.0)
+- Module init files updated to use destructured context: `init({ registry, zones })`
+- Zone blocks use `defineAsyncComponent()` for lazy loading
+
 ## [0.17.0] - 2025-12-28
 
 ### Removed

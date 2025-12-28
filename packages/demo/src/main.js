@@ -42,6 +42,24 @@ import loansFixture from './fixtures/loans.json'
 import genresFixture from './fixtures/genres.json'
 
 // ============================================================================
+// FIXTURES VERSIONING
+// ============================================================================
+// Bump this version when fixtures change to force localStorage refresh.
+// Old data will be cleared and fixtures will be reloaded on next page load.
+const FIXTURES_VERSION = 1
+const FIXTURES_VERSION_KEY = 'qdadm_demo_fixtures_version'
+
+const storedVersion = localStorage.getItem(FIXTURES_VERSION_KEY)
+if (storedVersion !== String(FIXTURES_VERSION)) {
+  // Clear all mockapi data and auth
+  Object.keys(localStorage)
+    .filter(k => k.startsWith('mockapi_') || k === 'qdadm_demo_auth')
+    .forEach(k => localStorage.removeItem(k))
+  localStorage.setItem(FIXTURES_VERSION_KEY, String(FIXTURES_VERSION))
+  console.log(`[demo] Fixtures upgraded to v${FIXTURES_VERSION}, localStorage cleared`)
+}
+
+// ============================================================================
 // FIELD OPTIONS
 // ============================================================================
 // Reusable options for select fields. These are passed to EntityManager
@@ -56,8 +74,8 @@ const genreOptions = [
 ]
 
 const roleOptions = [
-  { label: 'Admin', value: 'admin' },
-  { label: 'User', value: 'user' }
+  { label: 'Admin', value: 'ROLE_ADMIN' },
+  { label: 'User', value: 'ROLE_USER' }
 ]
 
 // ============================================================================
@@ -109,7 +127,7 @@ export { usersStorage }
  */
 class UsersManager extends EntityManager {
   _isAdmin() {
-    return authAdapter.getUser()?.role === 'admin'
+    return authAdapter.getUser()?.role === 'ROLE_ADMIN'
   }
 
   canRead() {
@@ -138,7 +156,7 @@ class UsersManager extends EntityManager {
  */
 class BooksManager extends EntityManager {
   canDelete() {
-    return authAdapter.getUser()?.role === 'admin'
+    return authAdapter.getUser()?.role === 'ROLE_ADMIN'
   }
 }
 
@@ -177,7 +195,7 @@ class LoansManager extends EntityManager {
    * Check if current user is admin
    */
   _isAdmin() {
-    return authAdapter.getUser()?.role === 'admin'
+    return authAdapter.getUser()?.role === 'ROLE_ADMIN'
   }
 
   /**
@@ -411,6 +429,17 @@ const kernel = new Kernel({
   managers,
   authAdapter,
   entityAuthAdapter: demoEntityAuthAdapter,
+  // Security config: role hierarchy and permissions
+  security: {
+    role_hierarchy: {
+      ROLE_ADMIN: ['ROLE_USER']  // Admin inherits User permissions
+    },
+    role_permissions: {
+      ROLE_USER: ['entity:read', 'entity:list'],
+      ROLE_ADMIN: ['entity:create', 'entity:update', 'entity:delete',
+                   'user:manage', 'role:assign', 'user:impersonate']
+    }
+  },
   pages: {
     login: () => import('./pages/LoginPage.vue'),
     layout: () => import('./pages/MainLayout.vue')

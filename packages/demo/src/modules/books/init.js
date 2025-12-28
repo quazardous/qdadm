@@ -4,11 +4,37 @@
  * Demonstrates qdadm module pattern:
  * - Route registration
  * - Navigation registration
+ * - Zone registration
  *
  * Note: Entity (books) is defined in main.js with EntityManager
  */
 
-export function init(registry) {
+import { defineAsyncComponent } from 'vue'
+
+// Lazy-load components to avoid useOrchestrator() being called before Vue app exists
+const BooksListHeader = defineAsyncComponent(() => import('./components/BooksListHeader.vue'))
+const BooksDetailPanel = defineAsyncComponent(() => import('./components/BooksDetailPanel.vue'))
+
+export function init({ registry, zones }) {
+
+  // ============ ZONES ============
+  // Define zones owned by Books module
+  // Other modules can use replace/extend/wrap operations on these zones
+  zones.defineZone('books-list-header')
+  zones.defineZone('books-detail-content')
+
+  // Register default blocks (with IDs so other modules can target them)
+  zones.registerBlock('books-list-header', {
+    id: 'books-header',
+    component: BooksListHeader,
+    weight: 50
+  })
+
+  zones.registerBlock('books-detail-content', {
+    id: 'books-detail',
+    component: BooksDetailPanel,
+    weight: 50
+  })
 
   // ============ ROUTES ============
   // Layout is auto-detected from route names (-create, -edit suffixes)

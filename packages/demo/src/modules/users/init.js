@@ -5,7 +5,7 @@
  * Entity (users) is defined in main.js with EntityManager.
  */
 
-export function init(registry) {
+export function init({ registry }) {
 
   // ============ ROUTES ============
   registry.addRoutes('users', [

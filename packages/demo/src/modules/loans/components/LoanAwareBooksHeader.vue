@@ -21,7 +21,7 @@ const { getManager } = useOrchestrator()
 const booksManager = getManager('books')
 const loansManager = getManager('loans')
 
-const label = computed(() => booksManager.config.labelPlural || 'Books')
+const label = computed(() => booksManager?.config?.labelPlural || 'Books')
 
 // Loan statistics
 const activeLoansCount = ref(0)

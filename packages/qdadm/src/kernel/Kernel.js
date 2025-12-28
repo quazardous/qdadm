@@ -51,6 +51,7 @@ import { createSignalBus } from './SignalBus.js'
 import { createZoneRegistry } from '../zones/ZoneRegistry.js'
 import { registerStandardZones } from '../zones/zones.js'
 import { createHookRegistry } from '../hooks/HookRegistry.js'
+import { createSecurityChecker } from '../entity/auth/SecurityChecker.js'
 
 export class Kernel {
   /**
@@ -71,6 +72,7 @@ export class Kernel {
    * @param {object} options.features - Feature toggles { auth, poweredBy }
    * @param {object} options.primevue - PrimeVue config { plugin, theme, options }
    * @param {object} options.layouts - Layout components { list, form, dashboard, base }
+   * @param {object} options.security - Security config { role_hierarchy, role_permissions, entity_permissions }
    */
   constructor(options) {
     this.options = options
@@ -81,6 +83,7 @@ export class Kernel {
     this.zoneRegistry = null
     this.hookRegistry = null
     this.layoutComponents = null
+    this.securityChecker = null
   }
 
   /**
@@ -88,12 +91,17 @@ export class Kernel {
    * @returns {App} Vue app instance ready to mount
    */
   createApp() {
-    this._initModules()
-    this._createRouter()
+    // 1. Create services first (modules need them)
     this._createSignalBus()
     this._createHookRegistry()
-    this._createOrchestrator()
     this._createZoneRegistry()
+    // 2. Initialize modules (can use all services, registers routes)
+    this._initModules()
+    // 3. Create router (needs routes from modules)
+    this._createRouter()
+    // 4. Create orchestrator and remaining components
+    this._createOrchestrator()
+    this._setupSecurity()
     this._createLayoutComponents()
     this._createVueApp()
     this._installPlugins()
@@ -102,13 +110,19 @@ export class Kernel {
 
   /**
    * Initialize modules from glob import
+   * Passes services to modules for zone/signal/hook registration
    */
   _initModules() {
     if (this.options.sectionOrder) {
       setSectionOrder(this.options.sectionOrder)
     }
     if (this.options.modules) {
-      initModules(this.options.modules, this.options.modulesOptions || {})
+      initModules(this.options.modules, {
+        ...this.options.modulesOptions,
+        zones: this.zoneRegistry,
+        signals: this.signals,
+        hooks: this.hookRegistry
+      })
     }
   }
 
@@ -209,6 +223,44 @@ export class Kernel {
       hooks: this.hookRegistry,
       entityAuthAdapter: this.options.entityAuthAdapter || null
     })
+  }
+
+  /**
+   * Setup security layer (role hierarchy, permissions)
+   *
+   * If security config is provided, creates a SecurityChecker and wires it
+   * into the entityAuthAdapter for isGranted() support.
+   *
+   * Security config:
+   * ```js
+   * security: {
+   *   role_hierarchy: { ROLE_ADMIN: ['ROLE_USER'] },
+   *   role_permissions: {
+   *     ROLE_USER: ['entity:read', 'entity:list'],
+   *     ROLE_ADMIN: ['entity:create', 'entity:update', 'entity:delete'],
+   *   },
+   *   entity_permissions: false  // false | true | ['books', 'loans']
+   * }
+   * ```
+   */
+  _setupSecurity() {
+    const { security, entityAuthAdapter } = this.options
+    if (!security) return
+
+    // Create SecurityChecker with role hierarchy and permissions
+    this.securityChecker = createSecurityChecker({
+      role_hierarchy: security.role_hierarchy || {},
+      role_permissions: security.role_permissions || {},
+      getCurrentUser: () => entityAuthAdapter?.getCurrentUser?.() || null
+    })
+
+    // Store entity_permissions config for EntityManager to use
+    this.securityChecker.entityPermissions = security.entity_permissions ?? false
+
+    // Wire SecurityChecker into entityAuthAdapter
+    if (entityAuthAdapter?.setSecurityChecker) {
+      entityAuthAdapter.setSecurityChecker(this.securityChecker)
+    }
   }
 
   /**
@@ -385,5 +437,22 @@ export class Kernel {
    */
   get layouts() {
     return this.layoutComponents
+  }
+
+  /**
+   * Get the SecurityChecker instance
+   * @returns {import('../entity/auth/SecurityChecker.js').SecurityChecker|null}
+   */
+  getSecurityChecker() {
+    return this.securityChecker
+  }
+
+  /**
+   * Shorthand accessor for security checker
+   * Allows `kernel.security.isGranted(...)` syntax
+   * @returns {import('../entity/auth/SecurityChecker.js').SecurityChecker|null}
+   */
+  get security() {
+    return this.securityChecker
   }
 }

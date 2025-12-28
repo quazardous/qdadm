@@ -294,11 +294,18 @@ export class ZoneRegistry {
       this._wrapGraph.get(zoneName).set(block.id, block.wraps)
     }
 
-    // Check for duplicate ID (for 'add' operations only)
-    if (block.id && operation === 'add') {
+    // Check for duplicate ID
+    if (block.id) {
       const existingIndex = zone.blocks.findIndex(b => b.id === block.id)
       if (existingIndex !== -1) {
-        // Replace existing block with same ID
+        // Warn in debug mode - duplicates shouldn't happen with proper module init
+        if (this._debug) {
+          console.warn(
+            `[qdadm:zones] Duplicate block ID "${block.id}" in zone "${zoneName}". ` +
+            `This may indicate a module is being initialized multiple times.`
+          )
+        }
+        // Replace existing block (backward compatibility)
         zone.blocks[existingIndex] = block
       } else {
         zone.blocks.push(block)

@@ -6,7 +6,7 @@
  * - /genres/:genreId/books - Books of a specific genre
  */
 
-export function init(registry) {
+export function init({ registry }) {
 
   // ============ ROUTES ============
   registry.addRoutes('genres', [

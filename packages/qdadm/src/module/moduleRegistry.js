@@ -1,28 +1,28 @@
 /**
  * Module Registry - Auto-discovery and registration system
  *
- * Each module can provide an init.js that registers:
- * - Routes
- * - Navigation items
- * - Route families (for active state detection)
+ * Each module provides an init.js that registers:
+ * - Routes & Navigation (via registry)
+ * - Zone blocks (via zones)
+ * - Signal handlers (via signals)
+ * - Hooks (via hooks)
  *
  * Usage in module (modules/agents/init.js):
  *
- *   export function init(registry) {
- *     registry.addRoutes('agents', [
- *       { path: '', name: 'agents', component: () => import('./pages/AgentList.vue') },
- *       { path: 'create', name: 'agent-create', component: () => import('./pages/AgentForm.vue') },
- *       { path: ':id/edit', name: 'agent-edit', component: () => import('./pages/AgentForm.vue') }
- *     ])
- *
- *     registry.addNavItem({
- *       section: 'Simulation',
- *       route: 'agents',
- *       icon: 'pi pi-user',
- *       label: 'Agents'
- *     })
- *
+ *   export function init({ registry, zones, signals, hooks }) {
+ *     // Routes & Navigation
+ *     registry.addRoutes('agents', [...])
+ *     registry.addNavItem({ section: 'Simulation', route: 'agents', ... })
  *     registry.addRouteFamily('agents', ['agent-'])
+ *
+ *     // Zone blocks
+ *     zones.registerBlock('agents-list-header', { id: 'agents-header', component: Header })
+ *
+ *     // Signal handlers
+ *     signals.on('agents:created', handleCreated)
+ *
+ *     // Hooks
+ *     hooks.register('agents:presave', validateAgent)
  *   }
  */
 
@@ -134,24 +134,33 @@ export function setSectionOrder(order) {
  *
  * Usage in app:
  *   const moduleInits = import.meta.glob('./modules/* /init.js', { eager: true })
- *   initModules(moduleInits)
+ *   initModules(moduleInits, { zones, signals, hooks })
  *
  * @param {object} moduleInits - Result of import.meta.glob
- * @param {object} options - { coreNavItems: [] } - Core items not in modules
+ * @param {object} options - { coreNavItems, zones, signals, hooks }
+ * @param {Array} options.coreNavItems - Core nav items not in modules
+ * @param {ZoneRegistry} options.zones - Zone registry for block registration
+ * @param {SignalBus} options.signals - Signal bus for event handlers
+ * @param {HookRegistry} options.hooks - Hook registry for lifecycle hooks
  */
 export function initModules(moduleInits, options = {}) {
+  const { coreNavItems, zones, signals, hooks } = options
+
   // Add core nav items (pages that aren't in modules)
-  if (options.coreNavItems) {
-    for (const item of options.coreNavItems) {
+  if (coreNavItems) {
+    for (const item of coreNavItems) {
       registry.addNavItem(item)
     }
   }
+
+  // Context passed to module init functions
+  const context = { registry, zones, signals, hooks }
 
   // Initialize all discovered modules
   for (const path in moduleInits) {
     const module = moduleInits[path]
     if (typeof module.init === 'function') {
-      module.init(registry)
+      module.init(context)
     }
   }
 }

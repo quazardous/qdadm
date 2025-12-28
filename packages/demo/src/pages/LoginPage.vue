@@ -7,7 +7,7 @@
  *   - bob, june (role: user) - Limited access, own loans only
  */
 
-import { ref } from 'vue'
+import { ref, inject } from 'vue'
 import { useRouter } from 'vue-router'
 import { useToast } from 'primevue/usetoast'
 import { authAdapter } from '../adapters/authAdapter'
@@ -15,6 +15,8 @@ import Card from 'primevue/card'
 import InputText from 'primevue/inputtext'
 import Password from 'primevue/password'
 import Button from 'primevue/button'
+
+const orchestrator = inject('qdadmOrchestrator')
 
 const router = useRouter()
 const toast = useToast()
@@ -26,10 +28,12 @@ const loading = ref(false)
 async function handleLogin() {
   loading.value = true
   try {
-    await authAdapter.login({
+    const { user } = await authAdapter.login({
       username: username.value,
       password: password.value
     })
+    // Business signal: auth:login
+    orchestrator?.signals?.emit('auth:login', { user })
     router.push('/')
   } catch (error) {
     toast.add({

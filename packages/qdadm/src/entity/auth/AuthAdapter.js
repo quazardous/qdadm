@@ -34,6 +34,65 @@
  */
 export class AuthAdapter {
   /**
+   * SecurityChecker instance for isGranted() delegation
+   * @type {import('./SecurityChecker.js').SecurityChecker|null}
+   * @private
+   */
+  _securityChecker = null
+
+  /**
+   * Set the SecurityChecker instance for isGranted() delegation
+   *
+   * @param {import('./SecurityChecker.js').SecurityChecker} checker
+   */
+  setSecurityChecker(checker) {
+    this._securityChecker = checker
+  }
+
+  /**
+   * Check if current user is granted an attribute (Symfony-like contract)
+   *
+   * This is the unified permission check method. It delegates to SecurityChecker
+   * if one is configured, otherwise returns true (permissive fallback).
+   *
+   * @param {string} attribute - Role (ROLE_*) or permission (entity:action)
+   * @param {object} [subject] - Optional subject for context-aware checks
+   * @returns {boolean} True if user is granted the attribute
+   *
+   * @example
+   * adapter.isGranted('ROLE_ADMIN')           // Check role
+   * adapter.isGranted('entity:delete')        // Check permission
+   * adapter.isGranted('books:delete', book)   // Check with subject
+   */
+  isGranted(attribute, subject = null) {
+    if (!this._securityChecker) return true // Permissive if not configured
+    return this._securityChecker.isGranted(attribute, subject)
+  }
+
+  /**
+   * Check if current user can assign a specific role
+   *
+   * Uses SecurityChecker's canAssignRole if available.
+   *
+   * @param {string} targetRole - Role to assign
+   * @returns {boolean} True if user can assign this role
+   */
+  canAssignRole(targetRole) {
+    if (!this._securityChecker) return true
+    return this._securityChecker.canAssignRole(targetRole)
+  }
+
+  /**
+   * Get all roles that current user can assign
+   *
+   * @returns {string[]} Array of assignable role names
+   */
+  getAssignableRoles() {
+    if (!this._securityChecker) return []
+    return this._securityChecker.getAssignableRoles()
+  }
+
+  /**
    * Check if the current user can perform an action on an entity type (scope check)
    *
    * This is the coarse-grained permission check. It determines if the user has

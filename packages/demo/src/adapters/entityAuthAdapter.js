@@ -26,15 +26,15 @@ const entityPermissions = {
     list: true,
     create: true,
     update: true,
-    delete: (user) => user?.role === 'admin'
+    delete: (user) => user?.role === 'ROLE_ADMIN'
   },
   // Users: admin-only for all actions
   users: {
-    read: (user) => user?.role === 'admin',
-    list: (user) => user?.role === 'admin',
-    create: (user) => user?.role === 'admin',
-    update: (user) => user?.role === 'admin',
-    delete: (user) => user?.role === 'admin'
+    read: (user) => user?.role === 'ROLE_ADMIN',
+    list: (user) => user?.role === 'ROLE_ADMIN',
+    create: (user) => user?.role === 'ROLE_ADMIN',
+    update: (user) => user?.role === 'ROLE_ADMIN',
+    delete: (user) => user?.role === 'ROLE_ADMIN'
   },
   // Loans: everyone can access (silo check handles ownership)
   loans: {
@@ -48,9 +48,9 @@ const entityPermissions = {
   genres: {
     read: true,
     list: true,
-    create: (user) => user?.role === 'admin',
-    update: (user) => user?.role === 'admin',
-    delete: (user) => user?.role === 'admin'
+    create: (user) => user?.role === 'ROLE_ADMIN',
+    update: (user) => user?.role === 'ROLE_ADMIN',
+    delete: (user) => user?.role === 'ROLE_ADMIN'
   }
 }
 
@@ -61,13 +61,45 @@ const entityPermissions = {
 const siloRules = {
   // Loans: users can only access their own loans (admin sees all)
   loans: (user, record) => {
-    if (user?.role === 'admin') return true
+    if (user?.role === 'ROLE_ADMIN') return true
     return record?.user_id === user?.id
   }
   // Other entities: no silo restrictions (scope check is sufficient)
 }
 
+/**
+ * General permission rules (not entity-specific)
+ * These are for app-level permissions like impersonation
+ */
+const generalPermissions = {
+  'user:impersonate': (user) => user?.role === 'ROLE_ADMIN'
+}
+
 export class DemoEntityAuthAdapter extends AuthAdapter {
+  /**
+   * Check if user has a general permission (not entity-specific)
+   *
+   * @param {string} permission - Permission string (e.g., 'user:impersonate')
+   * @returns {boolean}
+   */
+  isGranted(permission) {
+    const user = this.getCurrentUser()
+
+    // Admin bypass: admins have all permissions
+    if (user?.role === 'ROLE_ADMIN') {
+      return true
+    }
+
+    // Check specific permission rule
+    const rule = generalPermissions[permission]
+    if (typeof rule === 'function') {
+      return rule(user)
+    }
+
+    // Unknown permission: deny by default
+    return false
+  }
+
   /**
    * Check if user can perform an action on an entity type (scope check)
    *
@@ -79,7 +111,7 @@ export class DemoEntityAuthAdapter extends AuthAdapter {
     const user = this.getCurrentUser()
 
     // Admin bypass: admins can do everything
-    if (user?.role === 'admin') {
+    if (user?.role === 'ROLE_ADMIN') {
       return true
     }
 
@@ -108,7 +140,7 @@ export class DemoEntityAuthAdapter extends AuthAdapter {
     const user = this.getCurrentUser()
 
     // Admin bypass: admins can access all records
-    if (user?.role === 'admin') {
+    if (user?.role === 'ROLE_ADMIN') {
       return true
     }
 

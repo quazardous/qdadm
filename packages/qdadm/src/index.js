@@ -4,6 +4,10 @@
  * A framework for building admin dashboards with Vue 3, PrimeVue, and Vue Router.
  */
 
+// Version (from package.json)
+import pkg from '../package.json'
+export const version = pkg.version
+
 // Kernel (simplified bootstrap)
 export * from './kernel/index.js'
 

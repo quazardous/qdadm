@@ -329,6 +329,51 @@ export class EntityManager {
   }
 
   /**
+   * Build permission string for an action based on entity_permissions config
+   *
+   * The permission format depends on the security config:
+   * - entity_permissions: false → 'entity:read'
+   * - entity_permissions: true → 'books:read'
+   * - entity_permissions: ['books'] → 'books:read' for books, 'entity:read' for others
+   *
+   * @param {string} action - Action name (read, create, update, delete, list)
+   * @returns {string} - Permission string
+   * @private
+   */
+  _getPermissionString(action) {
+    const checker = this.authAdapter._securityChecker
+    if (!checker) return `entity:${action}`
+
+    const config = checker.entityPermissions
+    if (config === false) return `entity:${action}`
+    if (config === true) return `${this.name}:${action}`
+    if (Array.isArray(config) && config.includes(this.name)) {
+      return `${this.name}:${action}`
+    }
+    return `entity:${action}`
+  }
+
+  /**
+   * Check permission using isGranted() if security is configured
+   *
+   * Falls back to traditional canPerform()/canAccessRecord() if no SecurityChecker.
+   * This method respects the entity_permissions config for granular permissions.
+   *
+   * @param {string} action - Action to check (read, create, update, delete, list)
+   * @param {object} [subject] - Optional subject for context-aware checks
+   * @returns {boolean}
+   */
+  checkPermission(action, subject = null) {
+    // If isGranted is available, use it
+    if (this.authAdapter.isGranted && this.authAdapter._securityChecker) {
+      const perm = this._getPermissionString(action)
+      return this.authAdapter.isGranted(perm, subject)
+    }
+    // Fallback to traditional method
+    return this.canAccess(action, subject)
+  }
+
+  /**
    * Set the auth adapter
    * @param {AuthAdapter|null} adapter
    */
