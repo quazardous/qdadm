@@ -18,6 +18,34 @@
  * ```
  */
 export class MemoryStorage {
+  /**
+   * Storage capabilities declaration.
+   * Describes what features this storage adapter supports.
+   *
+   * MemoryStorage operates entirely in-memory:
+   * - supportsTotal: true - Returns accurate total from in-memory data
+   * - supportsFilters: true - Filters in-memory via list() params
+   * - supportsPagination: true - Paginates in-memory
+   * - supportsCaching: false - Already in-memory, no cache benefit
+   *
+   * @type {import('./index.js').StorageCapabilities}
+   */
+  static capabilities = {
+    supportsTotal: true,
+    supportsFilters: true,
+    supportsPagination: true,
+    supportsCaching: false
+  }
+
+  /**
+   * Backward-compatible instance getter for supportsCaching.
+   * @deprecated Use static MemoryStorage.capabilities.supportsCaching instead
+   * @returns {boolean}
+   */
+  get supportsCaching() {
+    return MemoryStorage.capabilities.supportsCaching
+  }
+
   constructor(options = {}) {
     const {
       idField = 'id',

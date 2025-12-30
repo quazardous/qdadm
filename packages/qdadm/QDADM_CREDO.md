@@ -12,6 +12,7 @@ import { useListPageBuilder, ListPage, Column } from 'qdadm'
 
 const list = useListPageBuilder({ entity: 'books' })
 list.setSearch({ fields: ['title', 'author'] })
+list.addFilter('genre', { optionsEntity: 'genres' })
 list.addCreateAction()
 list.addEditAction()
 list.addDeleteAction()
@@ -56,6 +57,34 @@ const list = useListPageBuilder({ entity: 'books' })
 ```
 
 The value: switching from `MockApiStorage` to `SdkStorage` requires **zero changes to any page**.
+
+## Filters are Declarative
+
+Filter options come from the data, not hardcoded arrays:
+
+```javascript
+// WRONG - manual option maintenance
+list.addFilter('genre', {
+  options: [
+    { label: 'Fiction', value: 1 },
+    { label: 'Non-Fiction', value: 2 },
+    // ... update every time genres change
+  ]
+})
+
+// RIGHT - declare the source
+list.addFilter('genre', {
+  placeholder: 'All Genres',
+  optionsEntity: 'genres'  // Options auto-loaded from EntityManager
+})
+```
+
+**Three smart filter modes:**
+- `optionsEntity` → fetch from related EntityManager
+- `optionsEndpoint` → fetch from API distinct values
+- `optionsFromCache` → extract unique values from loaded items
+
+Pages declare WHERE options come from. The framework handles loading, caching, and "All X" labels.
 
 ## The Demo App
 
@@ -115,6 +144,7 @@ Even these should use EntityManager for data access.
 |-----------|-------------|
 | DRY | Declare once, use everywhere |
 | Invisible storage | Pages don't know storage exists |
+| Smart filters | Declare source, not values |
 | Representative demo | Real app, not technical showcases |
 | EntityManager first | All data through managers |
 | ListPage default | Custom DataTable only when justified |
@@ -124,7 +154,10 @@ Even these should use EntityManager for data access.
 | Doc | Topic |
 |-----|-------|
 | [Architecture](./docs/architecture.md) | PAC pattern, layer separation, no-template-ish |
-| [Extension](./docs/extension.md) | Hooks, zones/blocks, signal bus |
+| [Extension](./docs/extension.md) | Overview of all extension mechanisms |
+| [Zones](./docs/zones.md) | UI composition via named slots |
+| [Signals](./docs/signals.md) | Event-driven cross-module communication |
+| [Hooks](./docs/hooks.md) | Drupal-inspired lifecycle hooks |
 | [Security](./docs/security.md) | Scope vs silo, AuthAdapter |
 
 ## References

@@ -20,9 +20,32 @@
  */
 export class MockApiStorage {
   /**
-   * In-memory storage with persistence doesn't benefit from EntityManager cache
+   * Storage capabilities declaration.
+   * Describes what features this storage adapter supports.
+   *
+   * MockApiStorage operates with in-memory Map + localStorage persistence:
+   * - supportsTotal: true - Returns accurate total from in-memory data
+   * - supportsFilters: true - Filters in-memory via list() params
+   * - supportsPagination: true - Paginates in-memory
+   * - supportsCaching: false - Already in-memory, no cache benefit
+   *
+   * @type {import('./index.js').StorageCapabilities}
    */
-  supportsCaching = false
+  static capabilities = {
+    supportsTotal: true,
+    supportsFilters: true,
+    supportsPagination: true,
+    supportsCaching: false
+  }
+
+  /**
+   * Backward-compatible instance getter for supportsCaching.
+   * @deprecated Use static MockApiStorage.capabilities.supportsCaching instead
+   * @returns {boolean}
+   */
+  get supportsCaching() {
+    return MockApiStorage.capabilities.supportsCaching
+  }
 
   constructor(options = {}) {
     const {

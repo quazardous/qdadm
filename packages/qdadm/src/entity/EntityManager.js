@@ -1,5 +1,6 @@
 import { PermissiveAuthAdapter } from './auth/PermissiveAdapter.js'
 import { AuthActions } from './auth/AuthAdapter.js'
+import { QueryExecutor } from '../query/QueryExecutor.js'
 
 /**
  * EntityManager - Base class for entity CRUD operations
@@ -62,6 +63,7 @@ export class EntityManager {
       // Relations
       children = {},      // { roles: { entity: 'roles', endpoint?: ':id/roles' } }
       parent = null,      // { entity: 'users', foreignKey: 'user_id' }
+      parents = {},       // { book: { entity: 'books', foreignKey: 'book_id' } } - multi-parent support
       relations = {},     // { groups: { entity: 'groups', through: 'user_groups' } }
       // Auth adapter (for permission checks)
       authAdapter = null  // AuthAdapter instance or null (uses PermissiveAuthAdapter)
@@ -88,6 +90,7 @@ export class EntityManager {
     // Relations
     this._children = children
     this._parent = parent
+    this._parents = parents
     this._relations = relations
     this._orchestrator = null  // Set when registered
 
@@ -111,6 +114,9 @@ export class EntityManager {
 
     // SignalBus reference for event emission (set by Orchestrator)
     this._signals = null
+
+    // Cleanup function for signal listeners
+    this._signalCleanup = null
   }
 
   // ============ SIGNALS ============
@@ -121,6 +127,7 @@ export class EntityManager {
    */
   setSignals(signals) {
     this._signals = signals
+    this._setupCacheListeners()
   }
 
   /**
@@ -687,6 +694,7 @@ export class EntityManager {
 
     // 1. Cache valid + cacheable → use cache with local filtering
     if (this._cache.valid && canUseCache) {
+      console.log('[cache] Using local cache for entity:', this.name)
       const filtered = this._filterLocally(this._cache.items, queryParams)
       return { ...filtered, fromCache: true }
     }
@@ -696,12 +704,17 @@ export class EntityManager {
     const items = response.items || []
     const total = response.total ?? items.length
 
-    // 3. Fill cache opportunistically if cacheable and cache enabled
-    if (canUseCache && this.isCacheEnabled) {
-      this._cache.items = items.slice(0, this.effectiveThreshold)
-      this._cache.total = total  // Always keep real total from API
+    // 3. Fill cache opportunistically if:
+    //    - canUseCache (no filters or cacheSafe filters)
+    //    - isCacheEnabled (threshold > 0 and storage supports total)
+    //    - total <= threshold (all items fit in cache for complete local filtering)
+    if (canUseCache && this.isCacheEnabled && total <= this.effectiveThreshold) {
+      this._cache.items = items  // Store all items (no slicing - total fits threshold)
+      this._cache.total = total
       this._cache.valid = true
       this._cache.loadedAt = Date.now()
+      // Resolve parent fields for search (book.title, user.username, etc.)
+      await this._resolveSearchFields(items)
     }
 
     return { items, total, fromCache: false }
@@ -897,15 +910,195 @@ export class EntityManager {
   }
 
   /**
+   * Check if storage adapter supports returning total count
+   *
+   * Auto-caching only makes sense when storage can report total items
+   * (to compare against threshold). Reads from storage.constructor.capabilities.supportsTotal.
+   *
+   * @returns {boolean} - true if storage supports total, false otherwise
+   */
+  get storageSupportsTotal() {
+    const caps = this.storage?.constructor?.capabilities || {}
+    return caps.supportsTotal ?? false
+  }
+
+  /**
+   * Get searchable fields declared by storage adapter
+   *
+   * Returns the list of fields that should be searched in _filterLocally().
+   * Supports both own fields ('title') and parent entity fields ('book.title').
+   * When undefined (not declared), all string fields are searched.
+   *
+   * @returns {string[]|undefined} - Array of field names or undefined
+   */
+  get storageSearchFields() {
+    const caps = this.storage?.constructor?.capabilities || {}
+    return caps.searchFields
+  }
+
+  /**
+   * Parse searchFields into own fields and parent fields
+   *
+   * Separates fields without dots (own fields like 'title') from fields with
+   * dots (parent fields like 'book.title'). Groups parent fields by parentKey.
+   *
+   * @returns {{ ownFields: string[], parentFields: Object<string, string[]> }}
+   */
+  _parseSearchFields(overrideSearchFields = null) {
+    const searchFields = overrideSearchFields ?? this.storageSearchFields ?? []
+    const ownFields = []
+    const parentFields = {}
+
+    for (const field of searchFields) {
+      if (!field.includes('.')) {
+        ownFields.push(field)
+        continue
+      }
+
+      // Split on first dot only
+      const [parentKey, fieldName] = field.split('.', 2)
+
+      // Validate parentKey exists in parents config
+      if (!this._parents[parentKey]) {
+        console.warn(`[EntityManager:${this.name}] Unknown parent '${parentKey}' in searchFields '${field}', skipping`)
+        continue
+      }
+
+      // Group by parentKey
+      if (!parentFields[parentKey]) {
+        parentFields[parentKey] = []
+      }
+      parentFields[parentKey].push(fieldName)
+    }
+
+    return { ownFields, parentFields }
+  }
+
+  /**
+   * Resolve parent entity fields for searchable caching
+   *
+   * Batch-fetches parent entities and caches their field values on each item
+   * in a non-enumerable `_search` property to avoid JSON serialization issues.
+   *
+   * @param {Array} items - Items to resolve parent fields for
+   * @returns {Promise<void>}
+   */
+  async _resolveSearchFields(items) {
+    const { parentFields } = this._parseSearchFields()
+
+    // No parent fields to resolve
+    if (Object.keys(parentFields).length === 0) return
+
+    // Need orchestrator to access other managers
+    if (!this._orchestrator) {
+      console.warn(`[EntityManager:${this.name}] No orchestrator, cannot resolve parent fields`)
+      return
+    }
+
+    // Process each parent type
+    for (const [parentKey, fields] of Object.entries(parentFields)) {
+      const config = this._parents[parentKey]
+
+      if (!config) {
+        console.warn(`[EntityManager:${this.name}] Missing parent config for '${parentKey}'`)
+        continue
+      }
+
+      // Extract unique parent IDs (deduplicated)
+      const ids = [...new Set(items.map(i => i[config.foreignKey]).filter(Boolean))]
+      if (ids.length === 0) continue
+
+      // Batch fetch parent entities
+      const manager = this._orchestrator.get(config.entity)
+      if (!manager) {
+        console.warn(`[EntityManager:${this.name}] Manager not found for '${config.entity}'`)
+        continue
+      }
+
+      const parents = await manager.getMany(ids)
+      const parentMap = new Map(parents.map(p => [p[manager.idField], p]))
+
+      // Cache resolved values in _search (non-enumerable)
+      for (const item of items) {
+        // Initialize _search as non-enumerable if needed
+        if (!item._search) {
+          Object.defineProperty(item, '_search', {
+            value: {},
+            enumerable: false,
+            writable: true,
+            configurable: true
+          })
+        }
+
+        const parent = parentMap.get(item[config.foreignKey])
+        for (const field of fields) {
+          item._search[`${parentKey}.${field}`] = parent?.[field] ?? ''
+        }
+      }
+    }
+  }
+
+  /**
+   * Set up signal listeners for parent entity cache invalidation
+   *
+   * When a parent entity is modified, clears the _search cache on cached items
+   * so that next list() will re-resolve with fresh parent data.
+   */
+  _setupCacheListeners() {
+    // Nothing to do if no parents or no signals
+    if (!this._parents || Object.keys(this._parents).length === 0) return
+    if (!this._signals) return
+
+    // Clean up existing listener if any
+    if (this._signalCleanup) {
+      this._signalCleanup()
+      this._signalCleanup = null
+    }
+
+    // Get parent entity names
+    const parentEntities = Object.values(this._parents).map(p => p.entity)
+
+    // Listen for parent cache invalidation
+    this._signalCleanup = this._signals.on('cache:entity:invalidated', ({ entity }) => {
+      if (parentEntities.includes(entity)) {
+        this._clearSearchCache()
+      }
+    })
+  }
+
+  /**
+   * Clear the _search cache from all cached items
+   *
+   * Called when a parent entity is invalidated. Forces refetch and
+   * re-resolution of parent fields on next list() call.
+   */
+  _clearSearchCache() {
+    if (!this._cache.valid) return
+
+    for (const item of this._cache.items) {
+      if (item._search) {
+        item._search = {}
+      }
+    }
+
+    // Invalidate cache so next list() refetches
+    this.invalidateCache()
+  }
+
+  /**
    * Check if caching is enabled for this entity
+   *
    * Caching is disabled if:
    * - threshold is 0 (explicit disable)
    * - storage declares supportsCaching = false (e.g., LocalStorage)
+   * - storage does not support total count (cannot determine if items fit threshold)
+   *
    * @returns {boolean}
    */
   get isCacheEnabled() {
     if (this.effectiveThreshold <= 0) return false
     if (this.storage?.supportsCaching === false) return false
+    if (!this.storageSupportsTotal) return false
     return true
   }
 
@@ -920,13 +1113,24 @@ export class EntityManager {
 
   /**
    * Invalidate the cache (call after create/update/delete)
+   *
+   * Emits cache:entity:invalidated signal only when cache was previously valid
+   * to avoid duplicate signals on repeated invalidation calls.
    */
   invalidateCache() {
+    const wasValid = this._cache.valid
+
     this._cache.valid = false
     this._cache.items = []
     this._cache.total = 0
     this._cache.loadedAt = null
     this._cacheLoading = null
+
+    // Emit cache invalidation signal only when cache was actually valid
+    // This prevents noise on repeated invalidation calls
+    if (wasValid && this._signals) {
+      this._signals.emit('cache:entity:invalidated', { entity: this.name })
+    }
   }
 
   /**
@@ -969,6 +1173,8 @@ export class EntityManager {
     this._cache.total = result.total
     this._cache.loadedAt = Date.now()
     this._cache.valid = true
+    // Resolve parent fields for search (book.title, user.username, etc.)
+    await this._resolveSearchFields(this._cache.items)
     return true
   }
 
@@ -996,9 +1202,11 @@ export class EntityManager {
 
     // If overflow or cache disabled, use API for accurate filtered results
     if (this.overflow || !this.isCacheEnabled) {
+      console.log('[cache] API call for entity:', this.name, '(total > threshold)', 'isCacheEnabled:', this.isCacheEnabled, 'overflow:', this.overflow)
       result = await this.list(params)
     } else {
       // Full cache available - filter locally
+      console.log('[cache] Using local cache for entity:', this.name)
       const filtered = this._filterLocally(this._cache.items, params)
       result = { ...filtered, fromCache: true }
     }
@@ -1012,7 +1220,34 @@ export class EntityManager {
   }
 
   /**
+   * Build MongoDB-like query from filters object
+   *
+   * Converts EntityManager filter params to QueryExecutor format:
+   * - Skips null/undefined/empty string values
+   * - Arrays become implicit $in (handled by QueryExecutor)
+   * - Single values stay as implicit $eq
+   *
+   * @param {object} filters - Field filters { field: value }
+   * @returns {object} - Query object for QueryExecutor
+   * @private
+   */
+  _buildQuery(filters) {
+    const query = {}
+    for (const [field, value] of Object.entries(filters)) {
+      if (value === null || value === undefined || value === '') continue
+      // Arrays and single values are passed through as-is
+      // QueryExecutor handles implicit $in for arrays and $eq for primitives
+      query[field] = value
+    }
+    return query
+  }
+
+  /**
    * Apply filters, search, sort and pagination locally
+   *
+   * Uses QueryExecutor for filtering (MongoDB-like operators supported).
+   * Sort and pagination are applied after filtering.
+   *
    * @param {Array} items - All items
    * @param {object} params - Query params
    * @returns {{ items: Array, total: number }}
@@ -1020,6 +1255,7 @@ export class EntityManager {
   _filterLocally(items, params = {}) {
     const {
       search = '',
+      searchFields: overrideSearchFields = null,  // Override storage's searchFields
       filters = {},
       sort_by = null,
       sort_order = 'asc',
@@ -1029,40 +1265,72 @@ export class EntityManager {
 
     let result = [...items]
 
-    // Apply search (searches in all string fields by default)
+    // Apply search
+    // If searchFields is declared, search in own fields + parent fields (from _search cache)
+    // If not declared, search all string/number fields (backward compatible)
+    // Override searchFields takes priority over storage's searchFields
     if (search) {
       const searchLower = search.toLowerCase()
+      const searchFields = overrideSearchFields ?? this.storageSearchFields
+
       result = result.filter(item => {
-        return Object.values(item).some(value => {
-          if (typeof value === 'string') {
-            return value.toLowerCase().includes(searchLower)
+        if (searchFields) {
+          const { ownFields, parentFields } = this._parseSearchFields(searchFields)
+
+          // Search own fields
+          for (const field of ownFields) {
+            const value = item[field]
+            if (typeof value === 'string' && value.toLowerCase().includes(searchLower)) {
+              return true
+            }
+            if (typeof value === 'number' && value.toString().includes(search)) {
+              return true
+            }
           }
-          if (typeof value === 'number') {
-            return value.toString().includes(search)
+
+          // Search cached parent fields (in item._search)
+          if (item._search) {
+            for (const [parentKey, fields] of Object.entries(parentFields)) {
+              for (const field of fields) {
+                const key = `${parentKey}.${field}`
+                const value = item._search[key]
+                if (typeof value === 'string' && value.toLowerCase().includes(searchLower)) {
+                  return true
+                }
+                if (typeof value === 'number' && value.toString().includes(search)) {
+                  return true
+                }
+              }
+            }
           }
+
           return false
-        })
+        } else {
+          // No searchFields declared: search all string/number fields
+          return Object.values(item).some(value => {
+            if (typeof value === 'string') {
+              return value.toLowerCase().includes(searchLower)
+            }
+            if (typeof value === 'number') {
+              return value.toString().includes(search)
+            }
+            return false
+          })
+        }
       })
     }
 
-    // Apply filters
-    for (const [field, value] of Object.entries(filters)) {
-      if (value === null || value === undefined || value === '') continue
-      result = result.filter(item => {
-        const itemValue = item[field]
-        // Array filter (e.g., status in ['active', 'pending'])
-        if (Array.isArray(value)) {
-          return value.includes(itemValue)
-        }
-        // Exact match
-        return itemValue === value
-      })
+    // Build query and apply filters using QueryExecutor
+    const query = this._buildQuery(filters)
+    if (Object.keys(query).length > 0) {
+      const { items: filtered } = QueryExecutor.execute(result, query)
+      result = filtered
     }
 
     // Total after filtering (before pagination)
     const total = result.length
 
-    // Apply sort
+    // Apply sort (QueryExecutor does not sort)
     if (sort_by) {
       result.sort((a, b) => {
         const aVal = a[sort_by]
@@ -1097,6 +1365,7 @@ export class EntityManager {
   getCacheInfo() {
     return {
       enabled: this.isCacheEnabled,
+      storageSupportsTotal: this.storageSupportsTotal,
       threshold: this.effectiveThreshold,
       valid: this._cache.valid,
       overflow: this.overflow,

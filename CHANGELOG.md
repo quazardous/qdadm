@@ -5,6 +5,122 @@ All notable changes to qdadm will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.25.0] - 2025-12-30
+
+### Added
+- **searchFields override**: Restrict search scope via `setSearch({ fields: [...] })`
+  - Storage declares all searchable fields in `capabilities.searchFields`
+  - Page can override to search only a subset of fields
+  - Parent entity fields resolved via `_resolveSearchFields()` on cache fill
+  - Example: Storage has `['book.title', 'user.username']`, page uses `fields: ['book.title']`
+
+### Fixed
+- **Parent field resolution**: `_resolveSearchFields()` now called when cache is populated
+  - Added calls in `list()` opportunistic cache fill and `_loadCache()`
+  - Uses `orchestrator.get()` instead of non-existent `getManager()`
+  - Parent field values cached in non-enumerable `item._search` property
+
+### Demo (0.11.0)
+- `LoanList.vue`: Demonstrates searchFields override (`fields: ['book.title']`)
+- Search "dune" → 1 result, search "bob" → 0 results (username excluded)
+
+## [0.24.0] - 2025-12-30
+
+### Added
+- **FilterQuery class**: Unified abstraction for smart filter options resolution
+  - `source` types: `'entity'`, `'endpoint'`, `'field'`, `'static'`
+  - Label/value resolution with `optionLabel` and `optionValue`
+  - Transform support via `processor` callback
+  - `toQuery()` method for API-compatible query generation
+- **Tagged console logging**: Debug-friendly log tags for validation
+  - `[filterquery]` - options loading events
+  - `[cache]` - cache hit/miss events
+  - `[signal]` - SignalBus events
+
+### Changed
+- `useListPageBuilder`: FilterQuery integration for all smart filter modes
+  - `optionsEntity` uses FilterQuery with source='entity'
+  - `optionsFromCache` uses FilterQuery with source='field'
+  - `optionsEndpoint` uses FilterQuery with source='endpoint'
+
+### Demo (0.10.0)
+- All filter scenarios validated via Claude in Chrome (S1-S7)
+- `LoanList.vue`: Demonstrates optionsFromCache + autocomplete patterns
+
+## [0.23.0] - 2025-12-30
+
+### Added
+- **EntityManager auto-cache**: Automatic caching for small datasets
+  - `storageSupportsTotal` getter checks storage capabilities
+  - Auto-cache when `total < CACHE_THRESHOLD` (default: 100)
+  - Local filtering via QueryExecutor on cached items
+- **SignalBus cache invalidation**: Event-driven cache coordination
+  - `cache:entity:invalidated` signal on CRUD operations
+  - Filters can listen and refresh options automatically
+
+### Changed
+- `EntityManager.list()`: Stores items in cache when total within threshold
+- `EntityManager._filterLocally()`: Uses QueryExecutor for MongoDB-like queries
+
+## [0.22.0] - 2025-12-30
+
+### Added
+- **Storage capabilities contract**: Declarative storage feature detection
+  - `Storage.capabilities` object: `{ supportsTotal, supportsFilters, supportsSort }`
+  - All storage classes updated: ApiStorage, SdkStorage, MemoryStorage, MockApiStorage, LocalStorage
+  - Backward-compatible `instance` getter for legacy code
+
+## [0.21.0] - 2025-12-30
+
+### Added
+- **QueryExecutor class**: MongoDB-like query execution for local filtering
+  - Comparison operators: `$eq`, `$ne`, `$gt`, `$gte`, `$lt`, `$lte`
+  - Set operators: `$in`, `$nin`, `$like`, `$between`
+  - Logical operators: `$or`, `$and`
+  - Nested field paths: `author.name`, `tags.0`
+  - `execute(items, query)` - filter array of items
+  - `match(item, query)` - test single item
+
+## [0.20.0] - 2025-12-29
+
+### Added
+- **Smart Filters v2**: Enhanced filter configuration options
+  - `cacheOptions: true | false | 'auto'` - control option caching behavior
+  - `component: 'dropdown' | 'autocomplete'` - explicit component type selection
+  - Auto-discovery threshold: >50 options → autocomplete (configurable via `SMART_FILTER_THRESHOLD`)
+  - Default component based on cache mode: cached → dropdown, uncached → autocomplete
+
+### Fixed
+- **optionsFromCache bug**: Options no longer disappear when filtering
+  - Added `_optionsLoaded` flag to prevent re-extraction from filtered data
+  - Options extracted only when filter is inactive (captures full dataset)
+
+### Changed
+- `loadFilterOptions()`: Now supports cacheOptions and component type logic
+- `updateCacheBasedFilters()`: Same caching/component logic as loadFilterOptions
+
+### Demo (0.9.0)
+- `LoanList.vue`: Demonstrates `component: 'autocomplete'` explicit override
+
+## [0.19.0] - 2025-12-29
+
+### Added
+- **Smart Filter Options**: `addFilter()` now supports automatic option loading
+  - `optionsEntity: 'entityName'` - fetch options from related EntityManager
+  - `optionsEndpoint: '/path'` or `optionsEndpoint: true` - fetch from API endpoint
+  - `optionsFromCache: true` - extract unique values from loaded items
+  - `processor: (options) => options` - transform options before display
+- Options auto-prepend "All" with `null` value
+- `optionLabel` and `optionValue` config for field mapping
+
+### Changed
+- `loadFilterOptions()` now processes smart filter modes directly from `addFilter()` config
+- `updateCacheBasedFilters()` watcher: auto-updates options when items change
+
+### Demo (0.9.0)
+- `BookList.vue`: Uses `optionsEntity: 'genres'` instead of manual `onMounted` loading
+- `LoanList.vue`: Demonstrates `optionsEntity: 'books'` and `optionsFromCache` with processor
+
 ## [0.18.0] - 2025-12-28
 
 ### Added

@@ -22,9 +22,26 @@
  */
 export class ApiStorage {
   /**
-   * API calls benefit from EntityManager cache layer to reduce network requests
+   * Storage capabilities declaration.
+   * Describes what features this storage adapter supports.
+   *
+   * @type {import('./index.js').StorageCapabilities}
    */
-  supportsCaching = true
+  static capabilities = {
+    supportsTotal: true,
+    supportsFilters: true,
+    supportsPagination: true,
+    supportsCaching: true
+  }
+
+  /**
+   * Backward-compatible instance getter for supportsCaching.
+   * @deprecated Use static ApiStorage.capabilities.supportsCaching instead
+   * @returns {boolean}
+   */
+  get supportsCaching() {
+    return ApiStorage.capabilities.supportsCaching
+  }
 
   constructor(options = {}) {
     const {

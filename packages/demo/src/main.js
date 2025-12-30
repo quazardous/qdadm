@@ -84,6 +84,21 @@ const roleOptions = [
 // MockApiStorage provides in-memory storage with localStorage persistence.
 // Uses initialData to seed fixtures on first load (when localStorage is empty).
 // localStorage key pattern: mockapi_${entityName}_data
+//
+// SEARCHFIELDS CAPABILITY (PRD-009):
+// Storage can declare `searchFields` in capabilities to control which fields
+// are searched locally. Loans searches by related book title and username:
+class LoansStorage extends MockApiStorage {
+  static capabilities = {
+    ...MockApiStorage.capabilities,
+    supportsCaching: true,  // Enable for EntityManager caching (needed for searchFields)
+    searchFields: ['book.title', 'user.username']  // parentKey.field syntax
+  }
+
+  get supportsCaching() {
+    return LoansStorage.capabilities.supportsCaching
+  }
+}
 
 const usersStorage = new MockApiStorage({
   entityName: 'users',
@@ -93,7 +108,7 @@ const booksStorage = new MockApiStorage({
   entityName: 'books',
   initialData: booksFixture
 })
-const loansStorage = new MockApiStorage({
+const loansStorage = new LoansStorage({
   entityName: 'loans',
   initialData: loansFixture
 })
@@ -357,6 +372,11 @@ const managers = {
     label: 'Loan',
     labelPlural: 'Loans',
     routePrefix: 'loan',
+    // PRD-009: Multi-parent config for searchFields parent field resolution
+    parents: {
+      book: { entity: 'books', foreignKey: 'book_id' },
+      user: { entity: 'users', foreignKey: 'user_id' }
+    },
     // ENRICHMENT PATTERN: labelField uses enriched fields (book_title, username)
     // added by _enrichLoan() in get()/create()/update() - see LoansManager above.
     // This keeps labelField sync while displaying related entity data.

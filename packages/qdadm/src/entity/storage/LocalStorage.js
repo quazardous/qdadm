@@ -19,9 +19,32 @@
  */
 export class LocalStorage {
   /**
-   * LocalStorage is already in-memory, no need for EntityManager cache layer
+   * Storage capabilities declaration.
+   * Describes what features this storage adapter supports.
+   *
+   * LocalStorage operates with browser localStorage:
+   * - supportsTotal: true - Returns accurate total from stored data
+   * - supportsFilters: true - Filters in-memory via list() params
+   * - supportsPagination: true - Paginates in-memory
+   * - supportsCaching: false - Already local, no cache benefit
+   *
+   * @type {import('./index.js').StorageCapabilities}
    */
-  supportsCaching = false
+  static capabilities = {
+    supportsTotal: true,
+    supportsFilters: true,
+    supportsPagination: true,
+    supportsCaching: false
+  }
+
+  /**
+   * Backward-compatible instance getter for supportsCaching.
+   * @deprecated Use static LocalStorage.capabilities.supportsCaching instead
+   * @returns {boolean}
+   */
+  get supportsCaching() {
+    return LocalStorage.capabilities.supportsCaching
+  }
 
   constructor(options = {}) {
     const {

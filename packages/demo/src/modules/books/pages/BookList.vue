@@ -3,7 +3,7 @@
  * BookList - Book listing page
  *
  * Uses useListPageBuilder with simplified v-bind/v-on pattern
- * Genre filter options are loaded dynamically from genres entity
+ * Genre filter uses SMART FILTER mode: optionsEntity
  *
  * ZONE EXTENSIBILITY DEMO
  * =======================
@@ -14,13 +14,9 @@
  * See: modules/loans/components/LoansZoneSetup.vue for extension code
  */
 
-import { onMounted } from 'vue'
-import { useListPageBuilder, ListPage, useOrchestrator, Zone } from 'qdadm'
+import { useListPageBuilder, ListPage, Zone } from 'qdadm'
 import Tag from 'primevue/tag'
 import Column from 'primevue/column'
-
-const { getManager } = useOrchestrator()
-const genresManager = getManager('genres')
 
 // ============ LIST BUILDER ============
 const list = useListPageBuilder({ entity: 'books' })
@@ -32,25 +28,12 @@ list.setSearch({
 })
 
 // ============ FILTERS ============
-// Start with placeholder, options loaded on mount
+// Smart filter: options loaded automatically from 'genres' entity
 list.addFilter('genre', {
   placeholder: 'All Genres',
-  options: [{ label: 'All', value: null }]
-})
-
-// Load genre options from entity manager
-onMounted(async () => {
-  const { items } = await genresManager.list({ page_size: 100 })
-  const options = [
-    { label: 'All', value: null },
-    ...items.map(g => ({ label: g.name, value: g.id }))
-  ]
-  // Update filter options
-  list.removeFilter('genre')
-  list.addFilter('genre', {
-    placeholder: 'All Genres',
-    options
-  })
+  optionsEntity: 'genres',      // Fetch from genres EntityManager
+  optionLabel: 'name',          // Use 'name' field as label
+  optionValue: 'id'             // Use 'id' field as value
 })
 
 

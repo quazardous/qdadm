@@ -38,6 +38,9 @@ export * from './hooks/index.js'
 // Core (extension helpers)
 export * from './core/index.js'
 
+// Query (MongoDB-like filtering)
+export * from './query/index.js'
+
 // Utils
 export * from './utils/index.js'
 

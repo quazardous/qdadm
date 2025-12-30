@@ -3,6 +3,7 @@ import { useRouter, useRoute } from 'vue-router'
 import { useToast } from 'primevue/usetoast'
 import { useConfirm } from 'primevue/useconfirm'
 import { useHooks } from './useHooks.js'
+import { FilterQuery } from '../query/FilterQuery.js'
 
 // Cookie utilities for pagination persistence
 const COOKIE_NAME = 'qdadm_pageSize'
@@ -78,33 +79,25 @@ function setSessionFilters(key, filters) {
  *
  * Threshold priority: config `autoFilterThreshold` > `manager.localFilterThreshold` > 100
  *
- * ## Behavior Matrix
+ * ## toQuery - Virtual Filter to Query Mapping
  *
- * | Type                        | Mode `manager`  | Mode `local`              |
- * |-----------------------------|-----------------|---------------------------|
- * | Filter standard             | Manager handles | item[field] === value     |
- * | Filter + local_filter       | Manager handles | local_filter(item, value) |
- * | Filter + local_filter:false | Manager handles | (skipped)                 |
- * | Search standard             | Manager handles | field.includes(query)     |
- * | Search + local_search       | Manager handles | local_search(item, query) |
- * | Search + local_search:false | Manager handles | (skipped)                 |
- *
- * - `local_filter`/`local_search`: callback = HOW to filter locally
- * - `local_filter: false` / `local_search: false`: manager only, skip in local mode
+ * Use `toQuery` for virtual filters that map to real entity fields:
  *
  * ```js
- * // Virtual filter (use callback in local mode)
  * list.addFilter('status', {
- *   options: [{ label: 'Active', value: 'active' }],
- *   local_filter: (item, value) => value === 'active' ? !item.returned_at : true
- * })
- *
- * // Search on related/computed fields (in local mode)
- * list.setSearch({
- *   placeholder: 'Search by book...',
- *   local_search: (item, query) => booksMap[item.book_id]?.title.toLowerCase().includes(query)
+ *   options: [
+ *     { label: 'Active', value: 'active' },
+ *     { label: 'Returned', value: 'returned' }
+ *   ],
+ *   toQuery: (value) => {
+ *     if (value === 'active') return { returned_at: null }
+ *     if (value === 'returned') return { returned_at: { $ne: null } }
+ *     return {}
+ *   }
  * })
  * ```
+ *
+ * The query is processed by QueryExecutor (local cache) or sent to API.
  *
  * ## Basic Usage
  *
@@ -597,20 +590,135 @@ export function useListPageBuilder(config = {}) {
     }
   }
 
+  // Smart filter auto-discovery threshold
+  const SMART_FILTER_THRESHOLD = 50
+
   /**
-   * Load filter options from API endpoints (for filters with optionsEndpoint)
+   * Load filter options from various sources (smart filter modes)
+   *
+   * Smart filter modes (in priority order):
+   * 1. `optionsEntity` - fetch from related EntityManager
+   * 2. `optionsEndpoint` - fetch from API endpoint (true = auto, string = custom URL)
+   * 3. `optionsFromCache` - extract from items cache (handled separately via watcher)
+   *
+   * Cache options behavior (`cacheOptions`):
+   * - `true`: Cache options, use dropdown (default for small datasets)
+   * - `false`: No cache, use autocomplete (default for large datasets)
+   * - `'auto'` (default): First load decides based on count (≤50 → cache, >50 → no cache)
+   *
+   * Component selection (`component`):
+   * - `'dropdown'`: PrimeVue Select (default when cached)
+   * - `'autocomplete'`: PrimeVue AutoComplete (default when not cached)
+   * - Explicit `component` prop overrides auto-selection
+   *
    * After loading, invokes filter:alter and {entity}:filter:alter hooks.
    */
   async function loadFilterOptions() {
-    const entityConfig = entityFilters[entityName]
+    // Process filters configured directly via addFilter() (smart filter modes)
+    for (const [filterName, filterDef] of filtersMap.value) {
+      // Skip if explicit options already provided (not smart filter)
+      if (filterDef.options?.length > 1) continue
+      // Skip optionsFromCache - handled by watcher
+      if (filterDef.optionsFromCache) continue
 
-    // Load options from API endpoints if configured
+      try {
+        let rawOptions = null
+
+        // Mode 1: optionsEntity - fetch from related EntityManager via FilterQuery
+        if (filterDef.optionsEntity) {
+          // Create FilterQuery from legacy optionsEntity config (T279)
+          // This centralizes option resolution through FilterQuery while maintaining
+          // backward compatibility with existing optionsEntity/optionLabel/optionValue syntax
+          //
+          // Note: processor is NOT passed to FilterQuery.transform because the existing
+          // behavior applies processor AFTER adding "All X" option. FilterQuery.transform
+          // would apply it before. For backward compatibility, we handle processor manually.
+          const filterQuery = new FilterQuery({
+            source: 'entity',
+            entity: filterDef.optionsEntity,
+            label: filterDef.optionLabel || 'name',
+            value: filterDef.optionValue || 'id'
+            // transform: intentionally not set - processor applied after "All X" is added
+          })
+
+          // Get options via FilterQuery.getOptions()
+          rawOptions = await filterQuery.getOptions(orchestrator)
+
+          // Store the FilterQuery instance on filterDef for potential cache invalidation
+          filterDef._filterQuery = filterQuery
+        }
+        // Mode 2: optionsEndpoint - fetch from API endpoint
+        else if (filterDef.optionsEndpoint) {
+          const endpoint = filterDef.optionsEndpoint === true
+            ? `distinct/${filterName}`
+            : filterDef.optionsEndpoint
+          const response = await manager.request('GET', endpoint)
+          const data = Array.isArray(response) ? response : response?.items || []
+          rawOptions = data.map(opt => {
+            // Handle both primitive values and objects
+            if (typeof opt === 'object' && opt !== null) {
+              return {
+                label: opt.label || opt.name || String(opt.value ?? opt.id),
+                value: opt.value ?? opt.id
+              }
+            }
+            // Primitive value
+            return { label: snakeToTitle(String(opt)), value: opt }
+          })
+        }
+
+        // Apply options if loaded
+        if (rawOptions !== null) {
+          // Log filter options for validation
+          console.log('[filterquery] Options loaded for:', filterName, '(count:', rawOptions.length, ')')
+
+          // Determine cache behavior
+          const cacheOptions = filterDef.cacheOptions ?? 'auto'
+          let shouldCache = cacheOptions === true
+
+          // Auto-discovery: >50 items → no cache + autocomplete
+          if (cacheOptions === 'auto') {
+            shouldCache = rawOptions.length <= SMART_FILTER_THRESHOLD
+          }
+
+          // Determine component type (explicit override or based on cache)
+          // Use 'type' for ListPage.vue compatibility
+          const componentType = filterDef.component || (shouldCache ? 'dropdown' : 'autocomplete')
+
+          // Generate "All X" label from placeholder or filterName
+          const allLabel = filterDef.allLabel || filterDef.placeholder || `All ${snakeToTitle(filterName)}`
+          let finalOptions = [{ label: allLabel, value: null }, ...rawOptions]
+
+          // Apply processor callback if configured
+          if (typeof filterDef.processor === 'function') {
+            finalOptions = filterDef.processor(finalOptions)
+          }
+
+          // Options are normalized to { label, value } - remove source-specific field mappings
+          // so ListPage.vue uses defaults (optionLabel='label', optionValue='value')
+          const updatedFilter = {
+            ...filterDef,
+            options: finalOptions,
+            type: componentType,
+            _cacheOptions: shouldCache,
+            _optionsLoaded: shouldCache  // Only mark as loaded if caching
+          }
+          delete updatedFilter.optionLabel
+          delete updatedFilter.optionValue
+          filtersMap.value.set(filterName, updatedFilter)
+        }
+      } catch (error) {
+        console.warn(`[qdadm] Failed to load options for filter "${filterName}":`, error)
+      }
+    }
+
+    // Legacy: Load options from registry (entityFilters)
+    const entityConfig = entityFilters[entityName]
     if (entityConfig?.filters) {
       for (const filterDef of entityConfig.filters) {
         if (!filterDef.optionsEndpoint) continue
 
         try {
-          // Use manager.request for custom endpoints, or get another manager
           const optionsManager = filterDef.optionsEntity
             ? orchestrator.get(filterDef.optionsEntity)
             : manager
@@ -624,18 +732,14 @@ export function useListPageBuilder(config = {}) {
             rawOptions = Array.isArray(rawOptions) ? rawOptions : rawOptions?.items || []
           }
 
-          // Build options array with "All" option first
-          let finalOptions = [{ label: 'All', value: null }]
-
-          // Add null option if configured
+          // Generate "All X" label from placeholder or filterName
+          const filterName = filterDef.field || filterDef.name || 'Items'
+          const allLabel = filterDef.allLabel || filterDef.placeholder || `All ${snakeToTitle(filterName)}`
+          let finalOptions = [{ label: allLabel, value: null }]
           if (filterDef.includeNull) {
             finalOptions.push(filterDef.includeNull)
           }
 
-          // Map fetched options to standard { label, value } format
-          // optionLabelField/optionValueField specify which API fields to use
-          // labelMap: { value: 'Label' } for custom value-to-label mapping
-          // labelFallback: function(value) for unknown values (default: snakeToTitle)
           const labelField = filterDef.optionLabelField || 'label'
           const valueField = filterDef.optionValueField || 'value'
           const labelMap = filterDef.labelMap || {}
@@ -643,7 +747,6 @@ export function useListPageBuilder(config = {}) {
 
           const mappedOptions = rawOptions.map(opt => {
             const value = opt[valueField] ?? opt.id ?? opt
-            // Priority: labelMap > API label field > fallback function
             let label = labelMap[value]
             if (!label) {
               label = opt[labelField] || opt.name
@@ -656,7 +759,6 @@ export function useListPageBuilder(config = {}) {
 
           finalOptions = [...finalOptions, ...mappedOptions]
 
-          // Update filter options in map
           const existing = filtersMap.value.get(filterDef.name)
           if (existing) {
             filtersMap.value.set(filterDef.name, { ...existing, options: finalOptions })
@@ -672,6 +774,121 @@ export function useListPageBuilder(config = {}) {
 
     // Trigger Vue reactivity by replacing the Map reference
     filtersMap.value = new Map(filtersMap.value)
+  }
+
+  /**
+   * Update filter options from cache (optionsFromCache mode)
+   * Called when items.value changes
+   *
+   * IMPORTANT: Options are only extracted once (on first load with unfiltered data).
+   * This prevents options from disappearing when filtering reduces the visible items.
+   *
+   * Cache behavior for optionsFromCache:
+   * - Always cached by nature (extracted from loaded items)
+   * - Component type follows same rules: ≤50 → dropdown, >50 → autocomplete
+   * - Explicit `component` prop overrides auto-selection
+   *
+   * Implementation uses FilterQuery with source='field' internally (T281).
+   * This centralizes option resolution logic while maintaining backward compatibility.
+   */
+  async function updateCacheBasedFilters() {
+    if (items.value.length === 0) return
+
+    let hasChanges = false
+
+    for (const [filterName, filterDef] of filtersMap.value) {
+      // Skip if no optionsFromCache config
+      if (!filterDef.optionsFromCache) continue
+
+      // Skip if filter already has explicit query property (advanced usage)
+      if (filterDef.query) continue
+
+      // Skip if options already loaded (prevents options disappearing when filtering)
+      if (filterDef._optionsLoaded) continue
+
+      // Skip if this filter is currently active - wait for unfiltered data to extract all options
+      // This ensures we capture all possible values, not just those visible with current filter
+      const currentValue = filterValues.value[filterName]
+      if (currentValue !== null && currentValue !== undefined && currentValue !== '') {
+        continue
+      }
+
+      // Determine field name: explicit string or use filter name
+      const fieldName = typeof filterDef.optionsFromCache === 'string'
+        ? filterDef.optionsFromCache
+        : filterName
+
+      // Create FilterQuery with source='field' from optionsFromCache config (T281)
+      // This centralizes unique value extraction through FilterQuery
+      // Note: processor is NOT passed to FilterQuery.transform because the old API
+      // called processor AFTER adding "All X" and applying snakeToTitle to labels.
+      // We preserve this behavior by applying processor after our own post-processing.
+      const filterQuery = new FilterQuery({
+        source: 'field',
+        field: fieldName
+      })
+
+      // Set parentManager reference - FilterQuery expects object with _cache array
+      // We wrap items.value to match the expected interface
+      filterQuery.setParentManager({ _cache: items.value })
+
+      // Get options via FilterQuery.getOptions()
+      const rawOptions = await filterQuery.getOptions()
+
+      // Determine cache behavior (optionsFromCache is always cached)
+      const cacheOptions = filterDef.cacheOptions ?? 'auto'
+      let shouldCache = true  // optionsFromCache is inherently cached
+
+      // Auto-discovery for component type: >50 items → autocomplete
+      if (cacheOptions === 'auto') {
+        shouldCache = rawOptions.length <= SMART_FILTER_THRESHOLD
+      } else if (cacheOptions === false) {
+        shouldCache = false
+      }
+
+      // Determine component type (explicit override or based on count)
+      const componentType = filterDef.component || (rawOptions.length <= SMART_FILTER_THRESHOLD ? 'dropdown' : 'autocomplete')
+
+      // Log filter options for validation (optionsFromCache mode)
+      console.log('[filterquery] Options loaded for:', filterName, '(count:', rawOptions.length, ')')
+
+      // Build options with "All X" label
+      // Note: FilterQuery with source='field' returns { label: fieldValue, value: fieldValue }
+      // We just need to add the "All X" option at the beginning
+      const allLabel = filterDef.allLabel || filterDef.placeholder || `All ${snakeToTitle(filterName)}`
+      let finalOptions = [
+        { label: allLabel, value: null },
+        ...rawOptions.map(opt => ({
+          label: snakeToTitle(String(opt.label)),
+          value: opt.value
+        }))
+      ]
+
+      // Apply processor callback if configured (backward compatibility)
+      // This matches the original behavior where processor runs AFTER snakeToTitle and "All X" option
+      if (typeof filterDef.processor === 'function') {
+        finalOptions = filterDef.processor(finalOptions)
+      }
+
+      // Store the FilterQuery instance on filterDef for potential cache invalidation
+      const updatedFilter = {
+        ...filterDef,
+        options: finalOptions,
+        type: componentType,
+        _cacheOptions: shouldCache,
+        _optionsLoaded: true,
+        _filterQuery: filterQuery
+      }
+
+      // Mark as loaded to prevent re-extraction on filter changes
+      filtersMap.value.set(filterName, updatedFilter)
+      hasChanges = true
+    }
+
+    // Trigger Vue reactivity only if there were changes
+    if (hasChanges) {
+      filtersMap.value = new Map(filtersMap.value)
+    }
   }
 
   /**
@@ -751,25 +968,24 @@ export function useListPageBuilder(config = {}) {
   }
 
   // ============ CACHE MODE ============
-  // EntityManager handles caching and filtering automatically via query()
-  // This computed applies any custom local_filter callbacks on top
   const fromCache = ref(false)
 
+  // HACK: local_filter / local_search are escape hatches for edge cases.
+  // They filter items AFTER the manager returns data (post-filter in Vue computed).
+  // Prefer toQuery() for virtual filters - it works with QueryExecutor properly.
+  // Only use local_filter/local_search for truly computed values or external lookups.
   const filteredItems = computed(() => {
     let result = [...items.value]
 
-    // Apply custom local_filter callbacks (UI-specific post-filters)
+    // local_filter: post-filter hack for edge cases
     for (const [name, value] of Object.entries(filterValues.value)) {
       if (value === null || value === undefined || value === '') continue
       const filterDef = filtersMap.value.get(name)
-
-      // Only apply if there's a custom local_filter callback
       if (typeof filterDef?.local_filter !== 'function') continue
-
       result = result.filter(item => filterDef.local_filter(item, value))
     }
 
-    // Apply custom local_search callback
+    // local_search: post-filter hack for external lookups
     if (searchQuery.value && typeof searchConfig.value.local_search === 'function') {
       const query = searchQuery.value.toLowerCase()
       result = result.filter(item => searchConfig.value.local_search(item, query))
@@ -805,19 +1021,33 @@ export function useListPageBuilder(config = {}) {
         params.sort_order = sortOrder.value === 1 ? 'asc' : 'desc'
       }
 
-      // Add search param (skip if custom local_search callback)
+      // Add search param (skip if local_search hack is used)
       if (searchQuery.value && typeof searchConfig.value.local_search !== 'function') {
         params.search = searchQuery.value
+        // Pass searchFields override if configured via setSearch({ fields: [...] })
+        if (searchConfig.value.fields?.length > 0) {
+          params.searchFields = searchConfig.value.fields
+        }
       }
 
-      // Add filter values (skip filters with custom local_filter callback)
+      // Build filters object for manager
       const filters = {}
       for (const [name, value] of Object.entries(filterValues.value)) {
         if (value === null || value === undefined || value === '') continue
         const filterDef = filtersMap.value.get(name)
-        // Skip filters with custom local_filter - they're applied in filteredItems
+        // Skip local_filter hacks - applied in filteredItems computed
         if (typeof filterDef?.local_filter === 'function') continue
-        filters[name] = value
+
+        // Support toQuery for virtual filters with query abstraction
+        // toQuery(value) returns MongoDB-like query object, e.g., { returned_at: { $ne: null } }
+        if (typeof filterDef?.toQuery === 'function') {
+          const query = filterDef.toQuery(value)
+          if (query && typeof query === 'object') {
+            Object.assign(filters, query)
+          }
+        } else {
+          filters[name] = value
+        }
       }
 
       // Auto-add parent filter from route config
@@ -1000,6 +1230,15 @@ export function useListPageBuilder(config = {}) {
 
   // Note: filterValues changes are handled directly in updateFilters() and clearFilters()
   // to avoid relying on watch reactivity which can be unreliable with object mutations
+
+  // Watch items for optionsFromCache filters
+  watch(items, async () => {
+    try {
+      await updateCacheBasedFilters()
+    } catch (error) {
+      console.warn('[qdadm] Failed to update cache-based filters:', error)
+    }
+  })
 
   // ============ LIST:ALTER HOOK ============
 

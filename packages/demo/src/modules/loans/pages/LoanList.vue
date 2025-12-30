@@ -39,40 +39,51 @@ function getUserName(userId) {
 }
 
 // ============ SEARCH ============
-// Custom local search on book title (lookup from booksMap)
-// local_search specifies HOW to search in local mode (items < threshold)
+// PRD-009: Search uses searchFields capability - no local_search callback needed
+// Storage declares searchFields: ['book.title', 'user.username']
+// Override to only search by book title (not username)
 list.setSearch({
-  placeholder: 'Search by book title...',
-  local_search: (item, query) => {
-    const bookTitle = booksMap.value[item.book_id]?.title || ''
-    return bookTitle.toLowerCase().includes(query)
-  }
+  placeholder: 'Search by book title only...',
+  fields: ['book.title']  // ← Override: only search book titles
 })
 
 // ============ FILTERS ============
-// Virtual filter - status doesn't exist on entity,
-// local_filter specifies HOW to filter in local mode
+// Smart filter: optionsEntity - options from books EntityManager
+// Using explicit autocomplete component for testing
+list.addFilter('book_id', {
+  placeholder: 'All Books',
+  optionsEntity: 'books',
+  optionLabel: 'title',
+  optionValue: 'id',
+  component: 'autocomplete'  // Force autocomplete for testing
+})
+
+// Virtual filter - status maps to returned_at field
+// toQuery transforms the value to MongoDB-like query for QueryExecutor
 list.addFilter('status', {
   placeholder: 'All Status',
   options: [
-    { label: 'All', value: null },
+    { label: 'All Status', value: null },
     { label: 'Active', value: 'active' },
     { label: 'Returned', value: 'returned' }
   ],
-  local_filter: (item, value) => {
-    if (value === 'active') return !item.returned_at
-    if (value === 'returned') return !!item.returned_at
-    return true
+  toQuery: (value) => {
+    if (value === 'active') return { returned_at: null }
+    if (value === 'returned') return { returned_at: { $ne: null } }
+    return {}
   }
 })
 
+// Smart filter: optionsFromCache - extract unique 'read' values from loaded items
 list.addFilter('read', {
   placeholder: 'Read Status',
-  options: [
-    { label: 'All', value: null },
-    { label: 'Read', value: true },
-    { label: 'Unread', value: false }
-  ]
+  optionsFromCache: true,
+  // Processor transforms boolean values to human-readable labels
+  // Preserves original "All X" label for null value (from placeholder)
+  processor: (options) => options.map(opt => ({
+    ...opt,
+    label: opt.value === null ? opt.label : (opt.value ? 'Read' : 'Unread')
+  }))
 })
 
 // ============ HEADER ACTIONS ============

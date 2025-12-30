@@ -1,15 +1,16 @@
 /**
- * Unit tests for EntityManager canAccess method
+ * Unit tests for EntityManager canAccess method and auto-cache behavior
  *
  * Run: npm test
  */
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { EntityManager, createEntityManager } from '../../src/entity/EntityManager.js'
 import {
   AuthAdapter,
   AuthActions,
   PermissiveAuthAdapter
 } from '../../src/entity/auth/index.js'
+import { MemoryStorage } from '../../src/entity/storage/MemoryStorage.js'
 
 /**
  * Test AuthAdapter that denies specific actions/records
@@ -982,6 +983,1399 @@ describe('EntityManager', () => {
         expect(emitted.length).toBe(2)
         expect(emitted[0].entityName).toBe('books')
         expect(emitted[1].entityName).toBe('users')
+      })
+    })
+
+    describe('cache:entity:invalidated signal', () => {
+      /**
+       * Mock SignalBus that tracks both emitEntity and emit calls
+       */
+      class CacheAwareSignalBus {
+        constructor() {
+          this.emittedSignals = []
+          this.emittedCacheSignals = []
+        }
+
+        async emitEntity(entityName, action, data) {
+          this.emittedSignals.push({ entityName, action, data })
+        }
+
+        async emit(signal, payload) {
+          this.emittedCacheSignals.push({ signal, payload })
+        }
+
+        getCacheSignals() {
+          return this.emittedCacheSignals
+        }
+
+        reset() {
+          this.emittedSignals = []
+          this.emittedCacheSignals = []
+        }
+      }
+
+      it('emits cache:entity:invalidated when cache was valid', async () => {
+        const signals = new CacheAwareSignalBus()
+        const storage = new MockStorage()
+        const manager = new EntityManager({
+          name: 'books',
+          storage
+        })
+        manager.setSignals(signals)
+
+        // Manually make cache valid
+        manager._cache.valid = true
+        manager._cache.items = [{ id: 1, title: 'Book' }]
+        manager._cache.total = 1
+
+        // Invalidate cache (should emit signal)
+        manager.invalidateCache()
+
+        const cacheSignals = signals.getCacheSignals()
+        expect(cacheSignals.length).toBe(1)
+        expect(cacheSignals[0].signal).toBe('cache:entity:invalidated')
+        expect(cacheSignals[0].payload.entity).toBe('books')
+      })
+
+      it('does not emit signal when cache was already invalid', () => {
+        const signals = new CacheAwareSignalBus()
+        const manager = new EntityManager({
+          name: 'books',
+          storage: new MockStorage()
+        })
+        manager.setSignals(signals)
+
+        // Cache starts invalid (default state)
+        expect(manager._cache.valid).toBe(false)
+
+        // Invalidate again (should not emit)
+        manager.invalidateCache()
+
+        const cacheSignals = signals.getCacheSignals()
+        expect(cacheSignals.length).toBe(0)
+      })
+
+      it('does not emit signal when signals not set', () => {
+        const manager = new EntityManager({
+          name: 'books',
+          storage: new MockStorage()
+        })
+
+        // Make cache valid
+        manager._cache.valid = true
+
+        // Should not throw when signals not set
+        expect(() => manager.invalidateCache()).not.toThrow()
+      })
+
+      it('only emits once per valid cache cycle', async () => {
+        const signals = new CacheAwareSignalBus()
+        const storage = new MockStorage()
+        const manager = new EntityManager({
+          name: 'books',
+          storage
+        })
+        manager.setSignals(signals)
+
+        // First cycle: make valid, then invalidate
+        manager._cache.valid = true
+        manager.invalidateCache()
+
+        // Second invalidation (cache already invalid)
+        manager.invalidateCache()
+
+        // Third invalidation (still invalid)
+        manager.invalidateCache()
+
+        const cacheSignals = signals.getCacheSignals()
+        expect(cacheSignals.length).toBe(1) // Only one signal emitted
+      })
+
+      it('emits signal on create when cache was valid', async () => {
+        const signals = new CacheAwareSignalBus()
+        const storage = new MockStorage()
+        const manager = new EntityManager({
+          name: 'books',
+          storage
+        })
+        manager.setSignals(signals)
+
+        // Make cache valid
+        manager._cache.valid = true
+
+        // Create triggers invalidateCache
+        await manager.create({ title: 'New Book' })
+
+        const cacheSignals = signals.getCacheSignals()
+        expect(cacheSignals.length).toBe(1)
+        expect(cacheSignals[0].signal).toBe('cache:entity:invalidated')
+      })
+    })
+  })
+
+  describe('auto-cache behavior', () => {
+    /**
+     * CacheableStorage - MemoryStorage that supports caching
+     *
+     * MemoryStorage has supportsCaching=false by design (already in-memory).
+     * For testing EntityManager's auto-cache, we need a storage that:
+     * 1. Has supportsTotal=true (so threshold comparison works)
+     * 2. Has supportsCaching=true (so EntityManager enables caching)
+     */
+    class CacheableStorage extends MemoryStorage {
+      static capabilities = {
+        supportsTotal: true,
+        supportsFilters: true,
+        supportsPagination: true,
+        supportsCaching: true  // Enable caching for tests
+      }
+
+      get supportsCaching() {
+        return CacheableStorage.capabilities.supportsCaching
+      }
+    }
+
+    /**
+     * Helper: create CacheableStorage with N items
+     */
+    function createStorageWithItems(count, options = {}) {
+      const items = []
+      for (let i = 1; i <= count; i++) {
+        items.push({
+          id: i,
+          name: `Item ${i}`,
+          status: i % 2 === 0 ? 'active' : 'inactive',
+          price: i * 10
+        })
+      }
+      return new CacheableStorage({ initialData: items, ...options })
+    }
+
+    /**
+     * Storage without supportsTotal capability
+     */
+    class NoTotalStorage extends MemoryStorage {
+      static capabilities = {
+        supportsTotal: false,
+        supportsFilters: true,
+        supportsPagination: true,
+        supportsCaching: true
+      }
+
+      get supportsCaching() {
+        return NoTotalStorage.capabilities.supportsCaching
+      }
+    }
+
+    /**
+     * Mock SignalBus for cache invalidation signals
+     */
+    class MockSignalBus {
+      constructor() {
+        this.signals = []
+      }
+
+      async emit(signal, payload) {
+        this.signals.push({ signal, payload })
+      }
+
+      async emitEntity(entityName, action, data) {
+        this.signals.push({ entityName, action, data })
+      }
+
+      getSignals() {
+        return this.signals
+      }
+
+      reset() {
+        this.signals = []
+      }
+    }
+
+    describe('auto-cache trigger (within threshold)', () => {
+      it('caches items from first list() response when total <= threshold', async () => {
+        const storage = createStorageWithItems(50)
+        const manager = new EntityManager({
+          name: 'products',
+          storage,
+          localFilterThreshold: 100
+        })
+
+        // First list with default page_size=20 stores 20 items in cache
+        const result = await manager.list()
+
+        expect(result.items.length).toBe(20) // Default page size
+        expect(result.total).toBe(50)
+        expect(result.fromCache).toBe(false) // First call is from storage
+
+        // Verify cache is populated with what was fetched
+        const cacheInfo = manager.getCacheInfo()
+        expect(cacheInfo.valid).toBe(true)
+        expect(cacheInfo.itemCount).toBe(20) // Stores what was fetched
+        expect(cacheInfo.total).toBe(50)
+      })
+
+      it('caches ALL items when requesting with page_size >= total', async () => {
+        const storage = createStorageWithItems(50)
+        const manager = new EntityManager({
+          name: 'products',
+          storage,
+          localFilterThreshold: 100
+        })
+
+        // Request all items explicitly
+        const result = await manager.list({ page_size: 100 })
+
+        expect(result.items.length).toBe(50)
+        expect(result.total).toBe(50)
+
+        // Cache should have all 50 items
+        const cacheInfo = manager.getCacheInfo()
+        expect(cacheInfo.valid).toBe(true)
+        expect(cacheInfo.itemCount).toBe(50)
+        expect(cacheInfo.total).toBe(50)
+      })
+
+      it('second list() returns fromCache=true', async () => {
+        const storage = createStorageWithItems(50)
+        const manager = new EntityManager({
+          name: 'products',
+          storage,
+          localFilterThreshold: 100
+        })
+
+        // First list populates cache
+        await manager.list()
+
+        // Second list should use cache
+        const result = await manager.list()
+
+        expect(result.fromCache).toBe(true)
+        // Total reflects cached total, items are filtered from cache
+        expect(result.total).toBe(20) // Filters from 20 cached items
+      })
+
+      it('uses default threshold of 100 when not specified', async () => {
+        const storage = createStorageWithItems(80)
+        const manager = new EntityManager({
+          name: 'products',
+          storage
+          // No localFilterThreshold specified
+        })
+
+        await manager.list()
+
+        expect(manager.effectiveThreshold).toBe(100)
+        expect(manager.getCacheInfo().valid).toBe(true)
+      })
+    })
+
+    describe('no-cache trigger (exceeds threshold)', () => {
+      it('does NOT cache when total > threshold', async () => {
+        const storage = createStorageWithItems(150)
+        const manager = new EntityManager({
+          name: 'products',
+          storage,
+          localFilterThreshold: 100
+        })
+
+        await manager.list()
+
+        const cacheInfo = manager.getCacheInfo()
+        expect(cacheInfo.valid).toBe(false)
+        expect(cacheInfo.itemCount).toBe(0)
+      })
+
+      it('subsequent list() calls still return fromCache=false', async () => {
+        const storage = createStorageWithItems(150)
+        const manager = new EntityManager({
+          name: 'products',
+          storage,
+          localFilterThreshold: 100
+        })
+
+        await manager.list()
+        const result = await manager.list()
+
+        expect(result.fromCache).toBe(false)
+      })
+
+      it('threshold=0 disables caching', async () => {
+        const storage = createStorageWithItems(10)
+        const manager = new EntityManager({
+          name: 'products',
+          storage,
+          localFilterThreshold: 0
+        })
+
+        expect(manager.isCacheEnabled).toBe(false)
+
+        await manager.list()
+
+        expect(manager.getCacheInfo().valid).toBe(false)
+      })
+    })
+
+    describe('storage without supportsTotal', () => {
+      it('isCacheEnabled returns false when storage lacks supportsTotal', async () => {
+        const storage = new NoTotalStorage({ initialData: [{ id: 1, name: 'Test' }] })
+        const manager = new EntityManager({
+          name: 'products',
+          storage,
+          localFilterThreshold: 100
+        })
+
+        expect(manager.storageSupportsTotal).toBe(false)
+        expect(manager.isCacheEnabled).toBe(false)
+      })
+
+      it('list() does not attempt caching', async () => {
+        const storage = new NoTotalStorage({
+          initialData: [{ id: 1, name: 'Test' }, { id: 2, name: 'Test2' }]
+        })
+        const manager = new EntityManager({
+          name: 'products',
+          storage,
+          localFilterThreshold: 100
+        })
+
+        await manager.list()
+
+        expect(manager.getCacheInfo().valid).toBe(false)
+        expect(manager.getCacheInfo().enabled).toBe(false)
+      })
+    })
+
+    describe('cache invalidation on mutations', () => {
+      it('invalidates cache on create()', async () => {
+        const storage = createStorageWithItems(10)
+        const manager = new EntityManager({
+          name: 'products',
+          storage,
+          localFilterThreshold: 100
+        })
+
+        // Populate cache
+        await manager.list()
+        expect(manager.getCacheInfo().valid).toBe(true)
+
+        // Create invalidates cache
+        await manager.create({ name: 'New Product' })
+
+        expect(manager.getCacheInfo().valid).toBe(false)
+      })
+
+      it('invalidates cache on update()', async () => {
+        const storage = createStorageWithItems(10)
+        const manager = new EntityManager({
+          name: 'products',
+          storage,
+          localFilterThreshold: 100
+        })
+
+        await manager.list()
+        expect(manager.getCacheInfo().valid).toBe(true)
+
+        await manager.update(1, { name: 'Updated Product' })
+
+        expect(manager.getCacheInfo().valid).toBe(false)
+      })
+
+      it('invalidates cache on patch()', async () => {
+        const storage = createStorageWithItems(10)
+        const manager = new EntityManager({
+          name: 'products',
+          storage,
+          localFilterThreshold: 100
+        })
+
+        await manager.list()
+        expect(manager.getCacheInfo().valid).toBe(true)
+
+        await manager.patch(1, { status: 'updated' })
+
+        expect(manager.getCacheInfo().valid).toBe(false)
+      })
+
+      it('invalidates cache on delete()', async () => {
+        const storage = createStorageWithItems(10)
+        const manager = new EntityManager({
+          name: 'products',
+          storage,
+          localFilterThreshold: 100
+        })
+
+        await manager.list()
+        expect(manager.getCacheInfo().valid).toBe(true)
+
+        await manager.delete(1)
+
+        expect(manager.getCacheInfo().valid).toBe(false)
+      })
+    })
+
+    describe('signal emission on invalidation', () => {
+      it('emits cache:entity:invalidated signal when cache was valid', async () => {
+        const storage = createStorageWithItems(10)
+        const signals = new MockSignalBus()
+        const manager = new EntityManager({
+          name: 'products',
+          storage,
+          localFilterThreshold: 100
+        })
+        manager.setSignals(signals)
+
+        // Populate cache
+        await manager.list()
+        expect(manager.getCacheInfo().valid).toBe(true)
+
+        // Invalidate via create
+        await manager.create({ name: 'New Product' })
+
+        const cacheSignals = signals.getSignals().filter(s => s.signal === 'cache:entity:invalidated')
+        expect(cacheSignals.length).toBe(1)
+        expect(cacheSignals[0].payload.entity).toBe('products')
+      })
+
+      it('does NOT emit signal when cache was already invalid', async () => {
+        const storage = createStorageWithItems(150) // Exceeds threshold
+        const signals = new MockSignalBus()
+        const manager = new EntityManager({
+          name: 'products',
+          storage,
+          localFilterThreshold: 100
+        })
+        manager.setSignals(signals)
+
+        // list() won't cache because total > threshold
+        await manager.list()
+        expect(manager.getCacheInfo().valid).toBe(false)
+
+        // Create should not emit cache invalidation signal
+        await manager.create({ name: 'New Product' })
+
+        const cacheSignals = signals.getSignals().filter(s => s.signal === 'cache:entity:invalidated')
+        expect(cacheSignals.length).toBe(0)
+      })
+    })
+
+    describe('filtered query on cached data', () => {
+      it('list() with filters does NOT use cache by default', async () => {
+        const storage = createStorageWithItems(50)
+        const manager = new EntityManager({
+          name: 'products',
+          storage,
+          localFilterThreshold: 100
+        })
+
+        // Populate cache with ALL items
+        await manager.list({ page_size: 100 })
+        expect(manager.getCacheInfo().valid).toBe(true)
+
+        // list() with filters goes to API (not cache) for fresh results
+        const result = await manager.list({ filters: { status: 'active' } })
+
+        // Design: list() with filters fetches from storage, not cache
+        expect(result.fromCache).toBe(false)
+      })
+
+      it('list() with filters and cacheSafe=true uses cache', async () => {
+        const storage = createStorageWithItems(50)
+        const manager = new EntityManager({
+          name: 'products',
+          storage,
+          localFilterThreshold: 100
+        })
+
+        // Populate cache with ALL items
+        await manager.list({ page_size: 100 })
+
+        // With cacheSafe=true, list() uses cache for filtering
+        const result = await manager.list({ filters: { status: 'active' }, cacheSafe: true })
+
+        expect(result.fromCache).toBe(true)
+        // 25 out of 50 items have status='active' (even IDs)
+        expect(result.total).toBe(25)
+        expect(result.items.every(item => item.status === 'active')).toBe(true)
+      })
+
+      it('query() applies filters locally when cache is loaded', async () => {
+        // Suppress console.log during test
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        const storage = createStorageWithItems(50)
+        const manager = new EntityManager({
+          name: 'products',
+          storage,
+          localFilterThreshold: 100
+        })
+
+        // Populate cache with ALL items
+        await manager.list({ page_size: 100 })
+
+        // query() uses cache for filtered queries
+        const result = await manager.query({ filters: { status: 'active' } })
+
+        expect(result.fromCache).toBe(true)
+        // 25 out of 50 items have status='active' (even IDs)
+        expect(result.total).toBe(25)
+        expect(result.items.every(item => item.status === 'active')).toBe(true)
+
+        consoleSpy.mockRestore()
+      })
+
+      it('query() applies search filter locally', async () => {
+        // Suppress console.log during test
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        const storage = createStorageWithItems(50)
+        const manager = new EntityManager({
+          name: 'products',
+          storage,
+          localFilterThreshold: 100
+        })
+
+        // Load all items into cache
+        await manager.list({ page_size: 100 })
+
+        const result = await manager.query({ search: 'Item 1' })
+
+        expect(result.fromCache).toBe(true)
+        // "Item 1", "Item 10", "Item 11", ... "Item 19" = 11 items
+        expect(result.total).toBe(11)
+
+        consoleSpy.mockRestore()
+      })
+
+      it('applies pagination locally', async () => {
+        const storage = createStorageWithItems(50)
+        const manager = new EntityManager({
+          name: 'products',
+          storage,
+          localFilterThreshold: 100
+        })
+
+        // Load all items into cache first
+        await manager.list({ page_size: 100 })
+
+        const result = await manager.list({ page: 2, page_size: 10 })
+
+        expect(result.fromCache).toBe(true)
+        expect(result.items.length).toBe(10)
+        expect(result.items[0].id).toBe(11) // Second page starts at item 11
+      })
+
+      it('applies sorting locally', async () => {
+        const storage = createStorageWithItems(20)
+        const manager = new EntityManager({
+          name: 'products',
+          storage,
+          localFilterThreshold: 100
+        })
+
+        // Load all items
+        await manager.list({ page_size: 100 })
+
+        const result = await manager.list({ sort_by: 'id', sort_order: 'desc', page_size: 5 })
+
+        expect(result.fromCache).toBe(true)
+        expect(result.items[0].id).toBe(20)
+        expect(result.items[4].id).toBe(16)
+      })
+    })
+
+    describe('QueryExecutor integration', () => {
+      // Note: QueryExecutor filters are used via query() method which uses cache
+      // list() with filters fetches from API unless cacheSafe=true
+
+      it('filters with $gt operator via query()', async () => {
+        // Suppress console.log during test
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        const storage = createStorageWithItems(20)
+        const manager = new EntityManager({
+          name: 'products',
+          storage,
+          localFilterThreshold: 100
+        })
+
+        // Load all items into cache
+        await manager.list({ page_size: 100 })
+
+        // Price > 100 means items with price 110, 120, ..., 200 (10 items)
+        const result = await manager.query({ filters: { price: { $gt: 100 } } })
+
+        expect(result.fromCache).toBe(true)
+        expect(result.total).toBe(10)
+        expect(result.items.every(item => item.price > 100)).toBe(true)
+
+        consoleSpy.mockRestore()
+      })
+
+      it('filters with $in operator via query()', async () => {
+        // Suppress console.log during test
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        const storage = createStorageWithItems(20)
+        const manager = new EntityManager({
+          name: 'products',
+          storage,
+          localFilterThreshold: 100
+        })
+
+        // Load all items into cache
+        await manager.list({ page_size: 100 })
+
+        const result = await manager.query({ filters: { id: { $in: [1, 5, 10] } } })
+
+        expect(result.fromCache).toBe(true)
+        expect(result.total).toBe(3)
+        expect(result.items.map(i => i.id).sort((a, b) => a - b)).toEqual([1, 5, 10])
+
+        consoleSpy.mockRestore()
+      })
+
+      it('filters with $lte operator via query()', async () => {
+        // Suppress console.log during test
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        const storage = createStorageWithItems(20)
+        const manager = new EntityManager({
+          name: 'products',
+          storage,
+          localFilterThreshold: 100
+        })
+
+        // Load all items into cache
+        await manager.list({ page_size: 100 })
+
+        // Price <= 50 means items with price 10, 20, 30, 40, 50 (5 items)
+        const result = await manager.query({ filters: { price: { $lte: 50 } } })
+
+        expect(result.fromCache).toBe(true)
+        expect(result.total).toBe(5)
+        expect(result.items.every(item => item.price <= 50)).toBe(true)
+
+        consoleSpy.mockRestore()
+      })
+
+      it('combines multiple filter operators via query()', async () => {
+        // Suppress console.log during test
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        const storage = createStorageWithItems(50)
+        const manager = new EntityManager({
+          name: 'products',
+          storage,
+          localFilterThreshold: 100
+        })
+
+        // Load all items into cache
+        await manager.list({ page_size: 100 })
+
+        // Active items with price > 100
+        const result = await manager.query({
+          filters: {
+            status: 'active',
+            price: { $gt: 100 }
+          }
+        })
+
+        expect(result.fromCache).toBe(true)
+        // Active items (even IDs) with price > 100 (IDs 12, 14, ..., 50)
+        expect(result.items.every(item =>
+          item.status === 'active' && item.price > 100
+        )).toBe(true)
+
+        consoleSpy.mockRestore()
+      })
+
+      it('uses implicit $eq for simple values via list() with cacheSafe', async () => {
+        const storage = createStorageWithItems(20)
+        const manager = new EntityManager({
+          name: 'products',
+          storage,
+          localFilterThreshold: 100
+        })
+
+        // Load all items into cache
+        await manager.list({ page_size: 100 })
+
+        const result = await manager.list({ filters: { id: 5 }, cacheSafe: true })
+
+        expect(result.fromCache).toBe(true)
+        expect(result.total).toBe(1)
+        expect(result.items[0].id).toBe(5)
+      })
+
+      it('uses implicit $in for array values via list() with cacheSafe', async () => {
+        const storage = createStorageWithItems(20)
+        const manager = new EntityManager({
+          name: 'products',
+          storage,
+          localFilterThreshold: 100
+        })
+
+        // Load all items into cache
+        await manager.list({ page_size: 100 })
+
+        // Array values are treated as implicit $in
+        const result = await manager.list({ filters: { status: ['active', 'inactive'] }, cacheSafe: true })
+
+        expect(result.fromCache).toBe(true)
+        expect(result.total).toBe(20) // All items match
+      })
+    })
+
+    describe('getCacheInfo() method', () => {
+      it('returns correct structure', async () => {
+        const storage = createStorageWithItems(30)
+        const manager = new EntityManager({
+          name: 'products',
+          storage,
+          localFilterThreshold: 50
+        })
+
+        await manager.list()
+
+        const info = manager.getCacheInfo()
+
+        expect(info).toHaveProperty('enabled')
+        expect(info).toHaveProperty('storageSupportsTotal')
+        expect(info).toHaveProperty('threshold')
+        expect(info).toHaveProperty('valid')
+        expect(info).toHaveProperty('overflow')
+        expect(info).toHaveProperty('itemCount')
+        expect(info).toHaveProperty('total')
+        expect(info).toHaveProperty('loadedAt')
+      })
+
+      it('shows enabled=true when caching conditions are met', async () => {
+        const storage = createStorageWithItems(10)
+        const manager = new EntityManager({
+          name: 'products',
+          storage,
+          localFilterThreshold: 100
+        })
+
+        const info = manager.getCacheInfo()
+
+        expect(info.enabled).toBe(true)
+        expect(info.storageSupportsTotal).toBe(true)
+        expect(info.threshold).toBe(100)
+      })
+
+      it('shows valid=true and correct counts after caching', async () => {
+        const storage = createStorageWithItems(25)
+        const manager = new EntityManager({
+          name: 'products',
+          storage,
+          localFilterThreshold: 100
+        })
+
+        // Load all items to fully populate cache
+        await manager.list({ page_size: 100 })
+
+        const info = manager.getCacheInfo()
+
+        expect(info.valid).toBe(true)
+        expect(info.itemCount).toBe(25)
+        expect(info.total).toBe(25)
+        expect(info.overflow).toBe(false)
+        expect(info.loadedAt).not.toBeNull()
+      })
+
+      it('shows overflow=true when cached items < total', async () => {
+        const storage = createStorageWithItems(10)
+        const manager = new EntityManager({
+          name: 'products',
+          storage,
+          localFilterThreshold: 100
+        })
+
+        // Manually simulate overflow state (cache has fewer items than total)
+        manager._cache.valid = true
+        manager._cache.items = [{ id: 1 }]
+        manager._cache.total = 10
+
+        const info = manager.getCacheInfo()
+
+        expect(info.overflow).toBe(true)
+      })
+    })
+
+    describe('query() method', () => {
+      it('uses cache for filtered queries when cache is fully loaded', async () => {
+        const storage = createStorageWithItems(30)
+        const manager = new EntityManager({
+          name: 'products',
+          storage,
+          localFilterThreshold: 100
+        })
+
+        // Fill cache with all items
+        await manager.list({ page_size: 100 })
+
+        const result = await manager.query({ filters: { status: 'active' } })
+
+        expect(result.fromCache).toBe(true)
+        expect(result.total).toBe(15) // Half of 30 are active
+      })
+
+      it('query() auto-fills cache before filtering', async () => {
+        // Suppress console.log during test
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        const storage = createStorageWithItems(50)
+        const manager = new EntityManager({
+          name: 'products',
+          storage,
+          localFilterThreshold: 100
+        })
+
+        // Call query directly without filling cache first
+        // query() should auto-fill cache with page_size: threshold
+        const result = await manager.query({ filters: { status: 'active' } })
+
+        expect(result.fromCache).toBe(true)
+        expect(result.total).toBe(25) // Half of 50 are active
+
+        consoleSpy.mockRestore()
+      })
+
+      it('handles total > threshold case', async () => {
+        // Suppress console.log during test
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+        const storage = createStorageWithItems(150)
+        const manager = new EntityManager({
+          name: 'products',
+          storage,
+          localFilterThreshold: 100
+        })
+
+        const result = await manager.query({ filters: { status: 'active' } })
+
+        // Note: When total > threshold, query() first calls list({ page_size: threshold })
+        // which doesn't populate cache (because total > threshold check in list()).
+        // Then query() filters locally on empty cache (current behavior).
+        // This results in fromCache: true but with filtered results from the attempted
+        // first list() call, then falling through to local filtering.
+
+        // Verify the cache wasn't populated because total > threshold
+        expect(manager.getCacheInfo().valid).toBe(false)
+        expect(manager.getCacheInfo().itemCount).toBe(0)
+
+        consoleSpy.mockRestore()
+      })
+    })
+
+    describe('cacheSafe filter option', () => {
+      it('allows caching even with filters when cacheSafe=true', async () => {
+        const storage = createStorageWithItems(30)
+        const manager = new EntityManager({
+          name: 'products',
+          storage,
+          localFilterThreshold: 100
+        })
+
+        // First call with cacheSafe filter
+        await manager.list({ filters: { user_id: 1 }, cacheSafe: true })
+
+        // Cache should be populated
+        expect(manager.getCacheInfo().valid).toBe(true)
+
+        // Second call should use cache
+        const result = await manager.list({ cacheSafe: true })
+        expect(result.fromCache).toBe(true)
+      })
+    })
+
+    describe('edge cases', () => {
+      it('handles empty storage', async () => {
+        const storage = new CacheableStorage({ initialData: [] })
+        const manager = new EntityManager({
+          name: 'products',
+          storage,
+          localFilterThreshold: 100
+        })
+
+        const result = await manager.list()
+
+        expect(result.items).toEqual([])
+        expect(result.total).toBe(0)
+        expect(manager.getCacheInfo().valid).toBe(true)
+        expect(manager.getCacheInfo().itemCount).toBe(0)
+      })
+
+      it('handles exactly threshold items', async () => {
+        const storage = createStorageWithItems(100)
+        const manager = new EntityManager({
+          name: 'products',
+          storage,
+          localFilterThreshold: 100
+        })
+
+        // Load all 100 items (exactly at threshold)
+        await manager.list({ page_size: 100 })
+
+        expect(manager.getCacheInfo().valid).toBe(true)
+        expect(manager.getCacheInfo().itemCount).toBe(100)
+      })
+
+      it('null/empty filter values are skipped', async () => {
+        const storage = createStorageWithItems(20)
+        const manager = new EntityManager({
+          name: 'products',
+          storage,
+          localFilterThreshold: 100
+        })
+
+        // Load all items
+        await manager.list({ page_size: 100 })
+
+        // Filters with null/empty values should be ignored
+        // Use cacheSafe to test cache filtering
+        const result = await manager.list({
+          filters: {
+            status: null,
+            name: '',
+            id: undefined
+          },
+          cacheSafe: true
+        })
+
+        expect(result.fromCache).toBe(true)
+        expect(result.total).toBe(20) // All items returned
+      })
+    })
+  })
+
+  describe('searchFields capability (PRD-009)', () => {
+    /**
+     * Storage with searchFields capability
+     * Note: Fully define capabilities to avoid spread issues with static properties
+     */
+    class SearchableStorage extends MemoryStorage {
+      static capabilities = {
+        supportsTotal: true,
+        supportsFilters: true,
+        supportsPagination: true,
+        supportsCaching: true,
+        searchFields: ['title', 'author']
+      }
+
+      get supportsCaching() {
+        return SearchableStorage.capabilities.supportsCaching
+      }
+    }
+
+    /**
+     * Storage without searchFields (backward compat)
+     */
+    class NoSearchFieldsStorage extends MemoryStorage {
+      static capabilities = {
+        supportsTotal: true,
+        supportsFilters: true,
+        supportsPagination: true,
+        supportsCaching: true
+        // no searchFields declared
+      }
+
+      get supportsCaching() {
+        return NoSearchFieldsStorage.capabilities.supportsCaching
+      }
+    }
+
+    /**
+     * Storage with parent field in searchFields (for M1 test)
+     */
+    class ParentFieldStorage extends MemoryStorage {
+      static capabilities = {
+        supportsTotal: true,
+        supportsFilters: true,
+        supportsPagination: true,
+        supportsCaching: true,
+        searchFields: ['title', 'book.author']
+      }
+
+      get supportsCaching() {
+        return ParentFieldStorage.capabilities.supportsCaching
+      }
+    }
+
+    /**
+     * Storage with numeric field in searchFields
+     */
+    class NumericSearchStorage extends MemoryStorage {
+      static capabilities = {
+        supportsTotal: true,
+        supportsFilters: true,
+        supportsPagination: true,
+        supportsCaching: true,
+        searchFields: ['title', 'year']
+      }
+
+      get supportsCaching() {
+        return NumericSearchStorage.capabilities.supportsCaching
+      }
+    }
+
+    const testItems = [
+      { id: 1, title: 'The Great Gatsby', author: 'Fitzgerald', genre: 'fiction', year: 1925 },
+      { id: 2, title: 'To Kill a Mockingbird', author: 'Harper Lee', genre: 'fiction', year: 1960 },
+      { id: 3, title: '1984', author: 'George Orwell', genre: 'dystopia', year: 1949 },
+      { id: 4, title: 'Pride and Prejudice', author: 'Jane Austen', genre: 'romance', year: 1813 }
+    ]
+
+    describe('storageSearchFields getter', () => {
+      it('returns searchFields from storage capabilities', () => {
+        const storage = new SearchableStorage()
+        const manager = new EntityManager({ name: 'books', storage })
+
+        expect(manager.storageSearchFields).toEqual(['title', 'author'])
+      })
+
+      it('returns undefined when storage has no searchFields', () => {
+        const storage = new NoSearchFieldsStorage()
+        const manager = new EntityManager({ name: 'books', storage })
+
+        expect(manager.storageSearchFields).toBeUndefined()
+      })
+
+      it('returns undefined when storage has no capabilities', () => {
+        const storage = new MemoryStorage()
+        delete storage.constructor.capabilities
+        const manager = new EntityManager({ name: 'books', storage })
+
+        expect(manager.storageSearchFields).toBeUndefined()
+      })
+    })
+
+    describe('_filterLocally with searchFields', () => {
+      it('searches only in declared fields when searchFields is defined', async () => {
+        const storage = new SearchableStorage()
+        for (const item of testItems) {
+          await storage.create(item)
+        }
+
+        const manager = new EntityManager({
+          name: 'books',
+          storage,
+          localFilterThreshold: 100
+        })
+
+        // Load into cache
+        await manager.list({ page_size: 100 })
+
+        // Search for 'fiction' - should NOT match because genre is not in searchFields
+        const result = await manager.list({ search: 'fiction', cacheSafe: true })
+        expect(result.total).toBe(0)
+      })
+
+      it('finds matches in declared searchFields', async () => {
+        const storage = new SearchableStorage()
+        for (const item of testItems) {
+          await storage.create(item)
+        }
+
+        const manager = new EntityManager({
+          name: 'books',
+          storage,
+          localFilterThreshold: 100
+        })
+
+        // Load into cache
+        await manager.list({ page_size: 100 })
+
+        // Search for 'gatsby' - should match title
+        const result = await manager.list({ search: 'gatsby', cacheSafe: true })
+        expect(result.total).toBe(1)
+        expect(result.items[0].title).toBe('The Great Gatsby')
+      })
+
+      it('searches in author field (declared in searchFields)', async () => {
+        const storage = new SearchableStorage()
+        for (const item of testItems) {
+          await storage.create(item)
+        }
+
+        const manager = new EntityManager({
+          name: 'books',
+          storage,
+          localFilterThreshold: 100
+        })
+
+        // Load into cache
+        await manager.list({ page_size: 100 })
+
+        // Search for 'orwell' - should match author
+        const result = await manager.list({ search: 'orwell', cacheSafe: true })
+        expect(result.total).toBe(1)
+        expect(result.items[0].author).toBe('George Orwell')
+      })
+
+      it('searches all string fields when searchFields not declared', async () => {
+        const storage = new NoSearchFieldsStorage()
+        for (const item of testItems) {
+          await storage.create(item)
+        }
+
+        const manager = new EntityManager({
+          name: 'books',
+          storage,
+          localFilterThreshold: 100
+        })
+
+        // Load into cache
+        await manager.list({ page_size: 100 })
+
+        // Search for 'fiction' - should match genre (all fields searched)
+        const result = await manager.list({ search: 'fiction', cacheSafe: true })
+        expect(result.total).toBe(2) // Gatsby and Mockingbird
+      })
+
+      it('ignores parent fields (dot notation) in M1', async () => {
+        const storage = new ParentFieldStorage()
+        await storage.create({ id: 1, title: 'Test', book_id: 'b1' })
+
+        const manager = new EntityManager({
+          name: 'loans',
+          storage,
+          localFilterThreshold: 100
+        })
+
+        // Load into cache
+        await manager.list({ page_size: 100 })
+
+        // Search should only check 'title', skip 'book.author' (M2 feature)
+        const result = await manager.list({ search: 'test', cacheSafe: true })
+        expect(result.total).toBe(1)
+      })
+
+      it('handles numeric fields in searchFields', async () => {
+        const storage = new NumericSearchStorage()
+        for (const item of testItems) {
+          await storage.create(item)
+        }
+
+        const manager = new EntityManager({
+          name: 'books',
+          storage,
+          localFilterThreshold: 100
+        })
+
+        // Load into cache
+        await manager.list({ page_size: 100 })
+
+        // Search for year
+        const result = await manager.list({ search: '1925', cacheSafe: true })
+        expect(result.total).toBe(1)
+        expect(result.items[0].year).toBe(1925)
+      })
+    })
+  })
+
+  describe('parents config and field resolution (PRD-009 M2)', () => {
+    describe('parents config', () => {
+      it('stores parents config in _parents property', () => {
+        const manager = new EntityManager({
+          name: 'loans',
+          parents: {
+            book: { entity: 'books', foreignKey: 'book_id' },
+            user: { entity: 'users', foreignKey: 'user_id' }
+          }
+        })
+
+        expect(manager._parents).toEqual({
+          book: { entity: 'books', foreignKey: 'book_id' },
+          user: { entity: 'users', foreignKey: 'user_id' }
+        })
+      })
+
+      it('has empty _parents when not configured', () => {
+        const manager = new EntityManager({ name: 'books' })
+        expect(manager._parents).toEqual({})
+      })
+    })
+
+    describe('_parseSearchFields', () => {
+      class ParentSearchStorage extends MemoryStorage {
+        static capabilities = {
+          supportsTotal: true,
+          supportsFilters: true,
+          supportsPagination: true,
+          supportsCaching: true,
+          searchFields: ['title', 'book.title', 'user.username']
+        }
+
+        get supportsCaching() {
+          return ParentSearchStorage.capabilities.supportsCaching
+        }
+      }
+
+      it('separates own fields from parent fields', () => {
+        const storage = new ParentSearchStorage()
+        const manager = new EntityManager({
+          name: 'loans',
+          storage,
+          parents: {
+            book: { entity: 'books', foreignKey: 'book_id' },
+            user: { entity: 'users', foreignKey: 'user_id' }
+          }
+        })
+
+        const { ownFields, parentFields } = manager._parseSearchFields()
+
+        expect(ownFields).toEqual(['title'])
+        expect(parentFields).toEqual({
+          book: ['title'],
+          user: ['username']
+        })
+      })
+
+      it('groups multiple fields per parent', () => {
+        class MultiFieldStorage extends MemoryStorage {
+          static capabilities = {
+            supportsTotal: true,
+            supportsFilters: true,
+            supportsPagination: true,
+            supportsCaching: true,
+            searchFields: ['book.title', 'book.author', 'book.isbn']
+          }
+
+          get supportsCaching() {
+            return MultiFieldStorage.capabilities.supportsCaching
+          }
+        }
+
+        const storage = new MultiFieldStorage()
+        const manager = new EntityManager({
+          name: 'loans',
+          storage,
+          parents: {
+            book: { entity: 'books', foreignKey: 'book_id' }
+          }
+        })
+
+        const { ownFields, parentFields } = manager._parseSearchFields()
+
+        expect(ownFields).toEqual([])
+        expect(parentFields).toEqual({
+          book: ['title', 'author', 'isbn']
+        })
+      })
+
+      it('skips unknown parent keys with warning', () => {
+        class UnknownParentStorage extends MemoryStorage {
+          static capabilities = {
+            supportsTotal: true,
+            supportsFilters: true,
+            supportsPagination: true,
+            supportsCaching: true,
+            searchFields: ['unknown.field']
+          }
+
+          get supportsCaching() {
+            return UnknownParentStorage.capabilities.supportsCaching
+          }
+        }
+
+        const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+
+        const storage = new UnknownParentStorage()
+        const manager = new EntityManager({
+          name: 'loans',
+          storage,
+          parents: {
+            book: { entity: 'books', foreignKey: 'book_id' }
+          }
+        })
+
+        const { ownFields, parentFields } = manager._parseSearchFields()
+
+        expect(ownFields).toEqual([])
+        expect(parentFields).toEqual({})
+        expect(warnSpy).toHaveBeenCalledWith(
+          expect.stringContaining("Unknown parent 'unknown'")
+        )
+
+        warnSpy.mockRestore()
+      })
+
+      it('returns empty arrays when no searchFields', () => {
+        const storage = new MemoryStorage()
+        const manager = new EntityManager({
+          name: 'books',
+          storage
+        })
+
+        const { ownFields, parentFields } = manager._parseSearchFields()
+
+        expect(ownFields).toEqual([])
+        expect(parentFields).toEqual({})
+      })
+    })
+
+    describe('non-enumerable _search property', () => {
+      it('_search is not included in JSON.stringify', () => {
+        const item = { id: 1, title: 'Test' }
+
+        Object.defineProperty(item, '_search', {
+          value: { 'book.title': 'Gatsby' },
+          enumerable: false,
+          writable: true,
+          configurable: true
+        })
+
+        const json = JSON.stringify(item)
+        expect(json).toBe('{"id":1,"title":"Test"}')
+        expect(json).not.toContain('_search')
+      })
+
+      it('_search is not included in Object.keys', () => {
+        const item = { id: 1, title: 'Test' }
+
+        Object.defineProperty(item, '_search', {
+          value: { 'book.title': 'Gatsby' },
+          enumerable: false,
+          writable: true,
+          configurable: true
+        })
+
+        expect(Object.keys(item)).toEqual(['id', 'title'])
+      })
+
+      it('_search is not included in for...in loop', () => {
+        const item = { id: 1, title: 'Test' }
+
+        Object.defineProperty(item, '_search', {
+          value: { 'book.title': 'Gatsby' },
+          enumerable: false,
+          writable: true,
+          configurable: true
+        })
+
+        const keys = []
+        for (const key in item) {
+          keys.push(key)
+        }
+
+        expect(keys).toEqual(['id', 'title'])
+      })
+
+      it('_search is accessible for reading/writing', () => {
+        const item = { id: 1, title: 'Test' }
+
+        Object.defineProperty(item, '_search', {
+          value: {},
+          enumerable: false,
+          writable: true,
+          configurable: true
+        })
+
+        item._search['book.title'] = 'Gatsby'
+        expect(item._search['book.title']).toBe('Gatsby')
       })
     })
   })

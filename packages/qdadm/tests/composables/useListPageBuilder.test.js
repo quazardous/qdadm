@@ -1007,3 +1007,457 @@ describe('useListPageBuilder - filter:alter hook', () => {
     expect(result.filterValues.value.status).toBe('active')
   })
 })
+
+describe('useListPageBuilder - FilterQuery integration (T279)', () => {
+  let genreManager
+
+  // Create a genre manager that returns mock genre data
+  function createGenreManager() {
+    return {
+      name: 'genres',
+      label: 'Genre',
+      labelPlural: 'Genres',
+      routePrefix: 'genre',
+      idField: 'id',
+      list: vi.fn().mockResolvedValue({
+        items: [
+          { id: 1, name: 'Rock', code: 'ROCK' },
+          { id: 2, name: 'Jazz', code: 'JAZZ' },
+          { id: 3, name: 'Classical', code: 'CLAS' }
+        ],
+        total: 3
+      }),
+      query: vi.fn().mockResolvedValue({
+        items: [],
+        total: 0,
+        fromCache: false
+      })
+    }
+  }
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mockRouteState = { name: 'book', params: {}, query: {}, meta: {} }
+    mockManager = createMockManager()
+    genreManager = createGenreManager()
+
+    // Orchestrator returns different managers based on entity name
+    mockOrchestrator.get.mockImplementation((name) => {
+      if (name === 'genres') return genreManager
+      return mockManager
+    })
+  })
+
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
+  it('creates FilterQuery from optionsEntity config', async () => {
+    const { result } = createWrapper(() => {
+      const builder = useListPageBuilder({ entity: 'books', loadOnMount: false })
+      builder.addFilter('genre_id', {
+        optionsEntity: 'genres',
+        placeholder: 'All Genres'
+      })
+      return builder
+    })
+
+    await flushPromises()
+
+    // Filter should have options loaded from genres entity
+    const genreFilter = result.filters.value.find(f => f.name === 'genre_id')
+    expect(genreFilter).toBeDefined()
+    expect(genreFilter.options).toBeDefined()
+    // Should have "All Genres" + 3 genre options
+    expect(genreFilter.options.length).toBe(4)
+    expect(genreFilter.options[0]).toEqual({ label: 'All Genres', value: null })
+    expect(genreFilter.options[1]).toEqual({ label: 'Rock', value: 1 })
+    expect(genreFilter.options[2]).toEqual({ label: 'Jazz', value: 2 })
+    expect(genreFilter.options[3]).toEqual({ label: 'Classical', value: 3 })
+  })
+
+  it('maps optionLabel to FilterQuery label', async () => {
+    const { result } = createWrapper(() => {
+      const builder = useListPageBuilder({ entity: 'books', loadOnMount: false })
+      builder.addFilter('genre_id', {
+        optionsEntity: 'genres',
+        optionLabel: 'code',  // Use 'code' instead of 'name'
+        placeholder: 'All Genres'
+      })
+      return builder
+    })
+
+    await flushPromises()
+
+    const genreFilter = result.filters.value.find(f => f.name === 'genre_id')
+    expect(genreFilter.options[1]).toEqual({ label: 'ROCK', value: 1 })
+    expect(genreFilter.options[2]).toEqual({ label: 'JAZZ', value: 2 })
+    expect(genreFilter.options[3]).toEqual({ label: 'CLAS', value: 3 })
+  })
+
+  it('maps optionValue to FilterQuery value', async () => {
+    const { result } = createWrapper(() => {
+      const builder = useListPageBuilder({ entity: 'books', loadOnMount: false })
+      builder.addFilter('genre_code', {
+        optionsEntity: 'genres',
+        optionLabel: 'name',
+        optionValue: 'code',  // Use 'code' instead of 'id'
+        placeholder: 'All Genres'
+      })
+      return builder
+    })
+
+    await flushPromises()
+
+    const genreFilter = result.filters.value.find(f => f.name === 'genre_code')
+    expect(genreFilter.options[1]).toEqual({ label: 'Rock', value: 'ROCK' })
+    expect(genreFilter.options[2]).toEqual({ label: 'Jazz', value: 'JAZZ' })
+    expect(genreFilter.options[3]).toEqual({ label: 'Classical', value: 'CLAS' })
+  })
+
+  it('applies processor callback after adding "All X" option', async () => {
+    const processor = vi.fn((options) => {
+      // Add a custom option at the end
+      return [...options, { label: 'Custom', value: 'custom' }]
+    })
+
+    const { result } = createWrapper(() => {
+      const builder = useListPageBuilder({ entity: 'books', loadOnMount: false })
+      builder.addFilter('genre_id', {
+        optionsEntity: 'genres',
+        processor,
+        placeholder: 'All Genres'
+      })
+      return builder
+    })
+
+    await flushPromises()
+
+    // Processor should be called
+    expect(processor).toHaveBeenCalled()
+
+    // The first argument should include "All Genres" option
+    const processedOptions = processor.mock.calls[0][0]
+    expect(processedOptions[0]).toEqual({ label: 'All Genres', value: null })
+
+    // Final options should include the custom option
+    const genreFilter = result.filters.value.find(f => f.name === 'genre_id')
+    expect(genreFilter.options[genreFilter.options.length - 1]).toEqual({ label: 'Custom', value: 'custom' })
+  })
+
+  it('stores FilterQuery instance on filterDef for cache invalidation', async () => {
+    const { result } = createWrapper(() => {
+      const builder = useListPageBuilder({ entity: 'books', loadOnMount: false })
+      builder.addFilter('genre_id', {
+        optionsEntity: 'genres',
+        placeholder: 'All Genres'
+      })
+      return builder
+    })
+
+    await flushPromises()
+
+    const genreFilter = result.filters.value.find(f => f.name === 'genre_id')
+    expect(genreFilter._filterQuery).toBeDefined()
+    expect(genreFilter._filterQuery.source).toBe('entity')
+    expect(genreFilter._filterQuery.entity).toBe('genres')
+  })
+
+  it('calls genre manager list() via FilterQuery', async () => {
+    const { result } = createWrapper(() => {
+      const builder = useListPageBuilder({ entity: 'books', loadOnMount: false })
+      builder.addFilter('genre_id', {
+        optionsEntity: 'genres',
+        placeholder: 'All Genres'
+      })
+      return builder
+    })
+
+    await flushPromises()
+
+    // Genre manager's list should have been called
+    expect(genreManager.list).toHaveBeenCalled()
+    expect(genreManager.list).toHaveBeenCalledWith({ page_size: 1000 })
+  })
+
+  it('skips FilterQuery for filters with explicit options', async () => {
+    const { result } = createWrapper(() => {
+      const builder = useListPageBuilder({ entity: 'books', loadOnMount: false })
+      builder.addFilter('status', {
+        options: [
+          { label: 'All', value: null },
+          { label: 'Active', value: 'active' },
+          { label: 'Inactive', value: 'inactive' }
+        ]
+      })
+      return builder
+    })
+
+    await flushPromises()
+
+    // Genre manager should not be called (no optionsEntity)
+    expect(genreManager.list).not.toHaveBeenCalled()
+
+    // Filter should keep its explicit options
+    const statusFilter = result.filters.value.find(f => f.name === 'status')
+    expect(statusFilter.options).toHaveLength(3)
+    // No _filterQuery should be attached
+    expect(statusFilter._filterQuery).toBeUndefined()
+  })
+
+  it('backward compatibility: existing optionsEntity filters produce same results', async () => {
+    // This test ensures the FilterQuery integration doesn't change behavior
+    const { result } = createWrapper(() => {
+      const builder = useListPageBuilder({ entity: 'books', loadOnMount: false })
+      builder.addFilter('genre_id', {
+        optionsEntity: 'genres',
+        optionLabel: 'name',
+        optionValue: 'id',
+        placeholder: 'All Genres'
+      })
+      return builder
+    })
+
+    await flushPromises()
+
+    const genreFilter = result.filters.value.find(f => f.name === 'genre_id')
+
+    // Should produce correctly formatted options
+    expect(genreFilter.options).toEqual([
+      { label: 'All Genres', value: null },
+      { label: 'Rock', value: 1 },
+      { label: 'Jazz', value: 2 },
+      { label: 'Classical', value: 3 }
+    ])
+
+    // Should have normalized format (optionLabel/optionValue removed)
+    expect(genreFilter.optionLabel).toBeUndefined()
+    expect(genreFilter.optionValue).toBeUndefined()
+  })
+})
+
+// ============ T281: FilterQuery + optionsFromCache Integration ============
+
+describe('useListPageBuilder - optionsFromCache with FilterQuery (T281)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mockRouteState = { name: 'book', params: {}, query: {}, meta: {} }
+    // Manager returns items with status field for optionsFromCache testing
+    mockManager = createMockManager({
+      query: vi.fn().mockResolvedValue({
+        items: [
+          { id: 1, title: 'Book 1', status: 'published' },
+          { id: 2, title: 'Book 2', status: 'draft' },
+          { id: 3, title: 'Book 3', status: 'published' },
+          { id: 4, title: 'Book 4', status: 'archived' }
+        ],
+        total: 4,
+        fromCache: false
+      })
+    })
+    mockOrchestrator.get.mockImplementation(() => mockManager)
+  })
+
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
+  it('extracts unique values from items using FilterQuery internally', async () => {
+    const { result, wrapper } = createWrapper(() => {
+      const list = useListPageBuilder({ entity: 'books' })
+      // Add optionsFromCache filter
+      list.addFilter('status', {
+        placeholder: 'All Status',
+        optionsFromCache: true
+      })
+      return list
+    })
+
+    // Trigger loadItems to populate items.value
+    await result.loadItems()
+    await flushPromises()
+    await nextTick()
+
+    const statusFilter = result.filters.value.find(f => f.name === 'status')
+
+    // Should have extracted unique status values
+    expect(statusFilter.options).toBeDefined()
+    expect(statusFilter.options.length).toBe(4) // All + 3 unique statuses
+    expect(statusFilter.options[0]).toEqual({ label: 'All Status', value: null })
+
+    // Check unique values are extracted (order may vary)
+    const values = statusFilter.options.map(o => o.value)
+    expect(values).toContain('published')
+    expect(values).toContain('draft')
+    expect(values).toContain('archived')
+  })
+
+  it('uses filter name as field when optionsFromCache is true', async () => {
+    const { result } = createWrapper(() => {
+      const list = useListPageBuilder({ entity: 'books' })
+      list.addFilter('status', {
+        optionsFromCache: true
+      })
+      return list
+    })
+
+    await result.loadItems()
+    await flushPromises()
+    await nextTick()
+
+    const statusFilter = result.filters.value.find(f => f.name === 'status')
+    expect(statusFilter.options).toBeDefined()
+    expect(statusFilter.options.length).toBeGreaterThan(1)
+  })
+
+  it('uses explicit field name when optionsFromCache is a string', async () => {
+    // Create manager with different field name
+    mockManager = createMockManager({
+      query: vi.fn().mockResolvedValue({
+        items: [
+          { id: 1, title: 'Book 1', book_status: 'active' },
+          { id: 2, title: 'Book 2', book_status: 'inactive' }
+        ],
+        total: 2,
+        fromCache: false
+      })
+    })
+
+    const { result } = createWrapper(() => {
+      const list = useListPageBuilder({ entity: 'books' })
+      // Filter name is 'status' but field is 'book_status'
+      list.addFilter('status', {
+        optionsFromCache: 'book_status'
+      })
+      return list
+    })
+
+    await result.loadItems()
+    await flushPromises()
+    await nextTick()
+
+    const statusFilter = result.filters.value.find(f => f.name === 'status')
+    expect(statusFilter.options).toBeDefined()
+
+    const values = statusFilter.options.map(o => o.value)
+    expect(values).toContain('active')
+    expect(values).toContain('inactive')
+  })
+
+  it('applies processor callback after building options', async () => {
+    const { result } = createWrapper(() => {
+      const list = useListPageBuilder({ entity: 'books' })
+      list.addFilter('status', {
+        optionsFromCache: true,
+        // Processor should receive options with snakeToTitle labels and "All X" option
+        processor: (options) => {
+          // Filter out archived status
+          return options.filter(o => o.value !== 'archived')
+        }
+      })
+      return list
+    })
+
+    await result.loadItems()
+    await flushPromises()
+    await nextTick()
+
+    const statusFilter = result.filters.value.find(f => f.name === 'status')
+    const values = statusFilter.options.map(o => o.value)
+
+    // archived should be filtered out by processor
+    expect(values).not.toContain('archived')
+    expect(values).toContain('published')
+    expect(values).toContain('draft')
+    expect(values).toContain(null) // "All X" option preserved
+  })
+
+  it('stores FilterQuery instance on filterDef for cache invalidation', async () => {
+    const { result } = createWrapper(() => {
+      const list = useListPageBuilder({ entity: 'books' })
+      list.addFilter('status', {
+        optionsFromCache: true
+      })
+      return list
+    })
+
+    await result.loadItems()
+    await flushPromises()
+    await nextTick()
+
+    const statusFilter = result.filters.value.find(f => f.name === 'status')
+
+    // Should have _filterQuery instance stored
+    expect(statusFilter._filterQuery).toBeDefined()
+    expect(statusFilter._filterQuery.source).toBe('field')
+    expect(statusFilter._filterQuery.field).toBe('status')
+  })
+
+  it('skips filters with explicit query property (advanced usage)', async () => {
+    const { result } = createWrapper(() => {
+      const list = useListPageBuilder({ entity: 'books' })
+      // This filter has both optionsFromCache AND a query property
+      // The query property should take precedence
+      const mockQuery = { source: 'entity', entity: 'statuses' }
+      list.addFilter('status', {
+        optionsFromCache: true,
+        query: mockQuery
+      })
+      return list
+    })
+
+    await result.loadItems()
+    await flushPromises()
+    await nextTick()
+
+    const statusFilter = result.filters.value.find(f => f.name === 'status')
+
+    // Should NOT have created a new FilterQuery (has explicit query)
+    expect(statusFilter._filterQuery).toBeUndefined()
+    // Original query should be preserved
+    expect(statusFilter.query).toBeDefined()
+  })
+
+  it('produces same results as original inline extraction', async () => {
+    // This test verifies backward compatibility
+    mockManager = createMockManager({
+      query: vi.fn().mockResolvedValue({
+        items: [
+          { id: 1, status: 'active' },
+          { id: 2, status: 'pending' },
+          { id: 3, status: 'active' },
+          { id: 4, status: 'completed' }
+        ],
+        total: 4,
+        fromCache: false
+      })
+    })
+
+    const { result } = createWrapper(() => {
+      const list = useListPageBuilder({ entity: 'books' })
+      list.addFilter('status', {
+        placeholder: 'All Status',
+        optionsFromCache: true
+      })
+      return list
+    })
+
+    await result.loadItems()
+    await flushPromises()
+    await nextTick()
+
+    const statusFilter = result.filters.value.find(f => f.name === 'status')
+
+    // Should have "All X" + 3 unique values
+    expect(statusFilter.options.length).toBe(4)
+    expect(statusFilter.options[0].value).toBeNull()
+    expect(statusFilter.options[0].label).toBe('All Status')
+
+    // Unique values should be extracted
+    const uniqueValues = statusFilter.options.slice(1).map(o => o.value)
+    expect(new Set(uniqueValues).size).toBe(3) // 3 unique values
+    expect(uniqueValues).toContain('active')
+    expect(uniqueValues).toContain('pending')
+    expect(uniqueValues).toContain('completed')
+  })
+})

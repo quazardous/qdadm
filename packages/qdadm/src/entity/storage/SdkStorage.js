@@ -95,9 +95,24 @@
  */
 export class SdkStorage {
   /**
-   * SDK calls benefit from EntityManager cache layer to reduce network requests
+   * Storage capabilities declaration
+   * @type {import('./index.js').StorageCapabilities}
    */
-  supportsCaching = true
+  static capabilities = {
+    supportsTotal: true,      // list() returns { items, total }
+    supportsFilters: true,    // list() accepts filters param
+    supportsPagination: true, // list() accepts page/page_size
+    supportsCaching: true     // Benefits from EntityManager cache layer
+  }
+
+  /**
+   * Backward-compat instance getter for supportsCaching
+   * @deprecated Use SdkStorage.capabilities.supportsCaching instead
+   * @returns {boolean}
+   */
+  get supportsCaching() {
+    return SdkStorage.capabilities.supportsCaching
+  }
 
   /**
    * @param {object} options
