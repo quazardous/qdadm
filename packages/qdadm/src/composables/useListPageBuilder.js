@@ -1,4 +1,4 @@
-import { ref, computed, watch, onMounted, inject, provide } from 'vue'
+import { ref, computed, watch, onMounted, inject, provide, nextTick } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useToast } from 'primevue/usetoast'
 import { useConfirm } from 'primevue/useconfirm'
@@ -170,6 +170,7 @@ export function useListPageBuilder(config = {}) {
   const loading = ref(false)
   const selected = ref([])
   const deleting = ref(false)
+  let isRestoringFilters = false  // Flag to skip watch during restore
 
   // Pagination (load from cookie if available)
   const page = ref(1)
@@ -899,6 +900,8 @@ export function useListPageBuilder(config = {}) {
    * Restore filter values from URL query params (priority) or session storage
    */
   function restoreFilters() {
+    isRestoringFilters = true  // Prevent watch from triggering during restore
+
     // Priority 1: URL query params
     const urlFilters = {}
     for (const key of filtersMap.value.keys()) {
@@ -938,6 +941,11 @@ export function useListPageBuilder(config = {}) {
         filterValues.value[name] = value
       }
     }
+
+    // Reset flag after Vue processes updates
+    nextTick(() => {
+      isRestoringFilters = false
+    })
   }
 
   // ============ ACTIONS ============
@@ -1234,6 +1242,8 @@ export function useListPageBuilder(config = {}) {
   // ============ WATCHERS ============
   let searchTimeout = null
   watch(searchQuery, () => {
+    // Skip watch during restore (loadItems will be called after restore)
+    if (isRestoringFilters) return
     clearTimeout(searchTimeout)
     searchTimeout = setTimeout(() => {
       // Use onFiltersChanged to also sync URL params

@@ -5,6 +5,14 @@ All notable changes to qdadm will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.26.1] - 2025-12-30
+
+### Fixed
+- **Search restore on navigation**: Search query now properly applied when returning to page
+  - Added `isRestoringFilters` flag to prevent watch conflict during restore
+  - Uses `nextTick` to reset flag after Vue processes updates
+  - Ensures `loadItems()` uses restored search value correctly
+
 ## [0.26.0] - 2025-12-30
 
 ### Added
