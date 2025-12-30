@@ -1,0 +1,65 @@
+/**
+ * qdadm - Responsive Breakpoints
+ *
+ * Strategy: Desktop-first (PC > tablet > mobile)
+ *
+ * Usage in components:
+ *   @use 'qdadm/styles/breakpoints' as *;
+ *   .sidebar { @include tablet { width: 60px; } }
+ */
+
+// Breakpoint values
+$bp-desktop-lg: 1400px;  // Large desktop
+$bp-desktop: 1200px;     // Standard desktop
+$bp-tablet-lg: 1024px;   // Large tablet / small laptop
+$bp-tablet: 768px;       // Tablet portrait
+$bp-mobile-lg: 576px;    // Large mobile
+$bp-mobile: 480px;       // Standard mobile
+
+// Sidebar behavior threshold
+$bp-sidebar-collapse: $bp-tablet-lg;  // Sidebar collapses below this
+$bp-sidebar-hidden: $bp-tablet;       // Sidebar becomes drawer below this
+
+// Mixins - Desktop-first (max-width)
+@mixin desktop-lg {
+  @media (max-width: #{$bp-desktop-lg - 1px}) { @content; }
+}
+
+@mixin desktop {
+  @media (max-width: #{$bp-desktop - 1px}) { @content; }
+}
+
+@mixin tablet-lg {
+  @media (max-width: #{$bp-tablet-lg - 1px}) { @content; }
+}
+
+@mixin tablet {
+  @media (max-width: #{$bp-tablet - 1px}) { @content; }
+}
+
+@mixin mobile-lg {
+  @media (max-width: #{$bp-mobile-lg - 1px}) { @content; }
+}
+
+@mixin mobile {
+  @media (max-width: #{$bp-mobile - 1px}) { @content; }
+}
+
+// Utility: hide/show at breakpoints
+@mixin hide-below($bp) {
+  @media (max-width: #{$bp - 1px}) { display: none !important; }
+}
+
+@mixin show-below($bp) {
+  display: none !important;
+  @media (max-width: #{$bp - 1px}) { display: block !important; }
+}
+
+// Sidebar-specific mixins
+@mixin sidebar-collapsed {
+  @media (max-width: #{$bp-sidebar-collapse - 1px}) { @content; }
+}
+
+@mixin sidebar-hidden {
+  @media (max-width: #{$bp-sidebar-hidden - 1px}) { @content; }
+}

@@ -5,6 +5,24 @@ All notable changes to qdadm will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.26.3] - 2025-12-31
+
+### Added
+- **Responsive layout**: Mobile-first responsive design for admin dashboards
+  - SCSS breakpoints system (`_breakpoints.scss`) with desktop-first mixins
+  - Global responsive styles (`_responsive.scss`) for layout, DataTable, filters, forms
+  - Mobile sidebar drawer with hamburger menu toggle
+  - Overlay backdrop when sidebar open on mobile
+  - Tablet breakpoint (768-1023px) with narrower sidebar
+  - Mobile breakpoint (<768px) with hidden sidebar and drawer pattern
+
+### Fixed
+- **Mobile menu clickable**: Fixed z-index issue where overlay (999) was blocking sidebar (100)
+  - Changed overlay z-index to 99 so menu items are clickable
+
+### Changed
+- **Styles entry point**: Renamed `index.css` → `index.scss`, using modern `@use` syntax
+
 ## [0.26.2] - 2025-12-30
 
 ### Fixed

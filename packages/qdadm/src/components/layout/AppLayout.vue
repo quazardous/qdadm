@@ -12,7 +12,7 @@
  *   </AppLayout>
  */
 
-import { ref, watch, onMounted, computed, inject, provide, useSlots } from 'vue'
+import { ref, watch, onMounted, onUnmounted, computed, inject, provide, useSlots } from 'vue'
 import { RouterLink, RouterView, useRouter, useRoute } from 'vue-router'
 import { useNavigation } from '../../composables/useNavigation'
 import { useApp } from '../../composables/useApp'
@@ -41,6 +41,30 @@ const STORAGE_KEY = computed(() => `${app.shortName.toLowerCase()}_nav_collapsed
 
 // Collapsed sections state (section title -> boolean)
 const collapsedSections = ref({})
+
+// Mobile sidebar state
+const sidebarOpen = ref(false)
+const MOBILE_BREAKPOINT = 768
+
+function toggleSidebar() {
+  sidebarOpen.value = !sidebarOpen.value
+}
+
+function closeSidebar() {
+  sidebarOpen.value = false
+}
+
+// Check if we're on mobile
+function isMobile() {
+  return window.innerWidth < MOBILE_BREAKPOINT
+}
+
+// Close sidebar on resize to desktop
+function handleResize() {
+  if (!isMobile() && sidebarOpen.value) {
+    sidebarOpen.value = false
+  }
+}
 
 /**
  * Load collapsed state from localStorage
@@ -87,13 +111,21 @@ function isSectionExpanded(section) {
   return !collapsedSections.value[section.title]
 }
 
-// Load state on mount
+// Load state on mount + setup resize listener
 onMounted(() => {
   loadCollapsedState()
+  window.addEventListener('resize', handleResize)
 })
 
-// Auto-expand section when navigating to an item in it
+onUnmounted(() => {
+  window.removeEventListener('resize', handleResize)
+})
+
+// Auto-expand section when navigating to an item in it + close mobile sidebar
 watch(() => route.path, () => {
+  // Close mobile sidebar on navigation
+  closeSidebar()
+
   for (const section of navSections.value) {
     if (sectionHasActiveItem(section) && collapsedSections.value[section.title]) {
       // Auto-expand but don't save (user can collapse again if they want)
@@ -149,8 +181,15 @@ const showBreadcrumb = computed(() => {
 
 <template>
   <div class="app-layout">
+    <!-- Mobile overlay -->
+    <div
+      class="sidebar-overlay"
+      :class="{ 'sidebar-overlay--visible': sidebarOpen }"
+      @click="closeSidebar"
+    ></div>
+
     <!-- Sidebar -->
-    <aside class="sidebar">
+    <aside class="sidebar" :class="{ 'sidebar--open': sidebarOpen }">
       <div class="sidebar-header">
         <div class="sidebar-header-top">
           <img v-if="app.logo" :src="app.logo" :alt="app.name" class="sidebar-logo" />
@@ -216,6 +255,19 @@ const showBreadcrumb = computed(() => {
 
     <!-- Main content -->
     <main class="main-content">
+      <!-- Mobile header bar -->
+      <div class="mobile-header">
+        <Button
+          icon="pi pi-bars"
+          severity="secondary"
+          text
+          class="hamburger-btn"
+          @click="toggleSidebar"
+          aria-label="Toggle menu"
+        />
+        <span class="mobile-header-title">{{ app.name }}</span>
+      </div>
+
       <!-- Breadcrumb + Navlinks bar -->
       <div v-if="showBreadcrumb" class="layout-nav-bar">
         <Breadcrumb :model="breadcrumbItems" class="layout-breadcrumb">
@@ -561,5 +613,99 @@ const showBreadcrumb = computed(() => {
 
 .layout-nav-bar :deep(.p-breadcrumb-separator) {
   color: var(--p-surface-400, #94a3b8);
+}
+
+/* ============================================
+   Mobile / Responsive Styles
+   ============================================ */
+
+.mobile-header {
+  display: none;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  background: var(--p-surface-0, white);
+  border-bottom: 1px solid var(--p-surface-200, #e2e8f0);
+  position: sticky;
+  top: 0;
+  z-index: 50;
+}
+
+.mobile-header-title {
+  font-weight: 600;
+  font-size: 1.125rem;
+  color: var(--p-surface-800, #1e293b);
+}
+
+.hamburger-btn {
+  display: none !important;
+}
+
+/* Sidebar overlay for mobile */
+.sidebar-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 99;
+  opacity: 0;
+  transition: opacity 0.25s ease;
+  pointer-events: none;
+}
+
+/* Tablet breakpoint (< 768px) */
+@media (max-width: 767px) {
+  .mobile-header {
+    display: flex;
+  }
+
+  .hamburger-btn {
+    display: flex !important;
+  }
+
+  .sidebar {
+    transform: translateX(-100%);
+    transition: transform 0.25s ease;
+    box-shadow: none;
+    width: min(80vw, 280px);
+  }
+
+  .sidebar.sidebar--open {
+    transform: translateX(0);
+    box-shadow: 4px 0 20px rgba(0, 0, 0, 0.15);
+  }
+
+  .sidebar-overlay {
+    display: block;
+  }
+
+  .sidebar-overlay.sidebar-overlay--visible {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  .main-content {
+    margin-left: 0;
+  }
+
+  .page-content {
+    padding: 1rem;
+  }
+
+  .layout-nav-bar {
+    padding: 1rem;
+    padding-bottom: 0;
+  }
+}
+
+/* Large tablet breakpoint (768px - 1023px) */
+@media (min-width: 768px) and (max-width: 1023px) {
+  .sidebar {
+    width: 12rem;
+  }
+
+  .main-content {
+    margin-left: 12rem;
+  }
 }
 </style>
