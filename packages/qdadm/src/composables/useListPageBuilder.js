@@ -1,4 +1,4 @@
-import { ref, computed, watch, onMounted, inject, provide, nextTick } from 'vue'
+import { ref, computed, watch, onMounted, inject, provide } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useToast } from 'primevue/usetoast'
 import { useConfirm } from 'primevue/useconfirm'
@@ -165,12 +165,19 @@ export function useListPageBuilder(config = {}) {
   // Get HookRegistry for list:alter hook (optional, may not exist in tests)
   const hooks = useHooks()
 
+  // ============ SESSION RESTORE ============
+  // Load saved filters + search from session storage (used by filterValues and searchQuery)
+  const savedSession = persistFilters ? getSessionFilters(filterSessionKey) : null
+  const savedSearch = savedSession?._search || ''
+  // Clone and remove _search from filters
+  const savedFilters = savedSession ? { ...savedSession } : null
+  if (savedFilters) delete savedFilters._search
+
   // ============ STATE ============
   const items = ref([])
   const loading = ref(false)
   const selected = ref([])
   const deleting = ref(false)
-  let isRestoringFilters = false  // Flag to skip watch during restore
 
   // Pagination (load from cookie if available)
   const page = ref(1)
@@ -182,8 +189,8 @@ export function useListPageBuilder(config = {}) {
   const sortField = ref(defaultSort)
   const sortOrder = ref(defaultSortOrder)
 
-  // Search
-  const searchQuery = ref('')
+  // Search (initialized from session storage)
+  const searchQuery = ref(savedSearch)
   const searchConfig = ref({
     placeholder: 'Search...',
     fields: [],
@@ -473,8 +480,7 @@ export function useListPageBuilder(config = {}) {
 
   // ============ FILTERS ============
   const filtersMap = ref(new Map())
-  // Load saved filters from session storage
-  const savedFilters = persistFilters ? getSessionFilters(filterSessionKey) : null
+  // filterValues initialized from savedFilters (loaded in SESSION RESTORE section)
   const filterValues = ref(savedFilters || {})
 
   function addFilter(name, filterConfig) {
@@ -897,55 +903,24 @@ export function useListPageBuilder(config = {}) {
   }
 
   /**
-   * Restore filter values from URL query params (priority) or session storage
+   * Apply URL query params as overrides (session already loaded at init)
    */
   function restoreFilters() {
-    isRestoringFilters = true  // Prevent watch from triggering during restore
-
-    // Priority 1: URL query params
-    const urlFilters = {}
+    // URL params override session values
     for (const key of filtersMap.value.keys()) {
       if (route.query[key] !== undefined) {
-        // Parse value (handle booleans, numbers, etc.)
         let value = route.query[key]
         if (value === 'true') value = true
         else if (value === 'false') value = false
         else if (value === 'null') value = null
         else if (!isNaN(Number(value)) && value !== '') value = Number(value)
-        urlFilters[key] = value
+        filterValues.value[key] = value
       }
     }
-    // Restore search from URL
+    // URL search overrides session search
     if (route.query.search) {
       searchQuery.value = route.query.search
     }
-
-    // Priority 2: Session storage (only for filters/search not in URL)
-    const sessionData = persistFilters ? getSessionFilters(filterSessionKey) : null
-
-    // Extract search from session (stored as _search)
-    if (sessionData?._search && !route.query.search) {
-      searchQuery.value = sessionData._search
-    }
-
-    // Remove _search from session data before merging with filters
-    const sessionFilters = sessionData ? { ...sessionData } : null
-    if (sessionFilters) delete sessionFilters._search
-
-    // Merge: URL takes priority over session
-    const restoredFilters = { ...sessionFilters, ...urlFilters }
-
-    // Apply restored values
-    for (const [name, value] of Object.entries(restoredFilters)) {
-      if (filtersMap.value.has(name)) {
-        filterValues.value[name] = value
-      }
-    }
-
-    // Reset flag after Vue processes updates
-    nextTick(() => {
-      isRestoringFilters = false
-    })
   }
 
   // ============ ACTIONS ============
@@ -1242,8 +1217,6 @@ export function useListPageBuilder(config = {}) {
   // ============ WATCHERS ============
   let searchTimeout = null
   watch(searchQuery, () => {
-    // Skip watch during restore (loadItems will be called after restore)
-    if (isRestoringFilters) return
     clearTimeout(searchTimeout)
     searchTimeout = setTimeout(() => {
       // Use onFiltersChanged to also sync URL params

@@ -5,13 +5,18 @@ All notable changes to qdadm will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
-## [0.26.1] - 2025-12-30
+## [0.26.2] - 2025-12-30
 
 ### Fixed
-- **Search restore on navigation**: Search query now properly applied when returning to page
-  - Added `isRestoringFilters` flag to prevent watch conflict during restore
-  - Uses `nextTick` to reset flag after Vue processes updates
-  - Ensures `loadItems()` uses restored search value correctly
+- **Search restore on navigation**: Search now initialized from session at declaration time
+  - Unified with filter restore: both use `savedSession` at component init
+  - Removed complex flag/nextTick workaround
+  - `restoreFilters()` simplified to only apply URL overrides
+
+## [0.26.1] - 2025-12-30 (superseded by 0.26.2)
+
+### Fixed
+- Search restore attempt with flag (incomplete fix)
 
 ## [0.26.0] - 2025-12-30
 
