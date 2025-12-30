@@ -1,6 +1,6 @@
 {
   "name": "qdadm",
-  "version": "0.26.2",
+  "version": "0.26.3",
   "description": "Vue 3 framework for admin dashboards with PrimeVue",
   "author": "quazardous",
   "license": "MIT",
@@ -24,7 +24,8 @@
     "./components": "./src/components/index.js",
     "./module": "./src/module/index.js",
     "./utils": "./src/utils/index.js",
-    "./styles": "./src/styles/index.css"
+    "./styles": "./src/styles/index.scss",
+    "./styles/breakpoints": "./src/styles/_breakpoints.scss"
   },
   "files": [
     "src",
@@ -35,11 +36,11 @@
     "@quazardous/quarkernel": "^2.1.0"
   },
   "peerDependencies": {
-    "vue": "^3.3.0",
-    "vue-router": "^4.0.0",
-    "primevue": "^4.0.0",
     "pinia": "^2.0.0",
-    "vanilla-jsoneditor": "^0.23.0"
+    "primevue": "^4.0.0",
+    "vanilla-jsoneditor": "^0.23.0",
+    "vue": "^3.3.0",
+    "vue-router": "^4.0.0"
   },
   "keywords": [
     "vue",
@@ -55,6 +56,7 @@
     "@vitejs/plugin-vue": "^5.2.1",
     "@vue/test-utils": "^2.4.6",
     "jsdom": "^25.0.1",
+    "sass": "^1.97.1",
     "vitest": "^2.1.8"
   }
 }

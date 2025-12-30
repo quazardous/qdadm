@@ -1,0 +1,244 @@
+/**
+ * qdadm - Responsive Layout Styles
+ *
+ * Global responsive rules for layout components.
+ * These complement the scoped styles in Vue components.
+ */
+
+@use 'breakpoints' as *;
+
+// ============================================
+// CSS Variables for responsive behavior
+// ============================================
+
+:root {
+  // Sidebar
+  --qdadm-sidebar-width: 15rem;
+  --qdadm-sidebar-collapsed-width: 4rem;
+  --qdadm-sidebar-transition: 0.25s ease;
+
+  // Content padding
+  --qdadm-content-padding: 1.5rem;
+  --qdadm-content-padding-mobile: 1rem;
+}
+
+// ============================================
+// App Layout Responsive
+// ============================================
+
+.app-layout {
+  // Tablet: reduce sidebar width
+  @include tablet-lg {
+    --qdadm-sidebar-width: 12rem;
+  }
+
+  // Mobile: sidebar becomes overlay
+  @include tablet {
+    --qdadm-sidebar-width: 80vw;
+    max-width: 280px;
+  }
+}
+
+// Sidebar responsive behavior
+.sidebar {
+  transition: transform var(--qdadm-sidebar-transition),
+              width var(--qdadm-sidebar-transition);
+
+  @include tablet {
+    transform: translateX(-100%);
+    position: fixed;
+    z-index: 1000;
+    box-shadow: none;
+
+    &.sidebar--open {
+      transform: translateX(0);
+      box-shadow: 0 0 20px rgba(0, 0, 0, 0.3);
+    }
+  }
+}
+
+// Main content responsive
+.main-content {
+  transition: margin-left var(--qdadm-sidebar-transition);
+
+  @include tablet {
+    margin-left: 0 !important;
+  }
+}
+
+// Mobile overlay when sidebar open
+.sidebar-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 99;
+  opacity: 0;
+  transition: opacity 0.25s;
+
+  @include tablet {
+    display: block;
+    pointer-events: none;
+
+    &.sidebar-overlay--visible {
+      opacity: 1;
+      pointer-events: auto;
+    }
+  }
+}
+
+// Hamburger menu button (hidden on desktop)
+.hamburger-btn {
+  display: none !important;
+
+  @include tablet {
+    display: flex !important;
+  }
+}
+
+// ============================================
+// Page Content Responsive
+// ============================================
+
+.page-content {
+  @include tablet {
+    padding: var(--qdadm-content-padding-mobile);
+  }
+}
+
+// Page header responsive
+.page-header {
+  @include tablet {
+    flex-direction: column;
+    gap: 1rem;
+    align-items: flex-start !important;
+  }
+
+  .page-header-actions {
+    @include tablet {
+      width: 100%;
+      justify-content: flex-start;
+    }
+  }
+}
+
+// ============================================
+// DataTable Responsive
+// ============================================
+
+.p-datatable {
+  @include tablet {
+    // Horizontal scroll for table
+    .p-datatable-wrapper {
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    // Minimum width to prevent squishing
+    .p-datatable-table {
+      min-width: 600px;
+    }
+  }
+
+  @include mobile {
+    .p-datatable-table {
+      min-width: 500px;
+    }
+  }
+}
+
+// ============================================
+// Filter Bar Responsive
+// ============================================
+
+.filter-bar {
+  @include tablet {
+    flex-wrap: wrap;
+    gap: 0.75rem;
+
+    .filter-bar-search {
+      width: 100%;
+      order: -1;
+    }
+
+    .filter-bar-filters {
+      flex-wrap: wrap;
+      gap: 0.5rem;
+    }
+
+    .filter-bar-item {
+      min-width: calc(50% - 0.25rem);
+      flex: 1 1 auto;
+    }
+  }
+
+  @include mobile {
+    .filter-bar-item {
+      min-width: 100%;
+    }
+  }
+}
+
+// ============================================
+// Form Layout Responsive
+// ============================================
+
+.form-grid {
+  @include tablet {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+.form-actions {
+  @include mobile {
+    flex-direction: column;
+
+    .p-button {
+      width: 100%;
+    }
+  }
+}
+
+// ============================================
+// Cards Grid Responsive
+// ============================================
+
+.cards-grid {
+  @include tablet {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  @include mobile {
+    grid-template-columns: 1fr;
+  }
+}
+
+// ============================================
+// Utility Classes
+// ============================================
+
+.hide-mobile {
+  @include tablet {
+    display: none !important;
+  }
+}
+
+.hide-desktop {
+  display: none !important;
+  @include tablet {
+    display: block !important;
+  }
+}
+
+.hide-mobile-inline {
+  @include tablet {
+    display: none !important;
+  }
+}
+
+.show-mobile-inline {
+  display: none !important;
+  @include tablet {
+    display: inline !important;
+  }
+}

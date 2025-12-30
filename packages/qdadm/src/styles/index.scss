@@ -1,0 +1,19 @@
+/**
+ * qdadm - Styles entry point
+ *
+ * Import this file in your main.js:
+ *   import 'qdadm/styles'
+ */
+
+/* Main styles */
+@use './main.css';
+
+/* Component-specific styles */
+@use './_alerts.css';
+@use './_code.css';
+@use './_dialogs.css';
+@use './_markdown.css';
+@use './_show-pages.css';
+
+/* Responsive styles (must be last for specificity) */
+@use './responsive';
