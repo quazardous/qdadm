@@ -5,6 +5,14 @@ All notable changes to qdadm will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.26.0] - 2025-12-30
+
+### Added
+- **Search persistence**: Search query now persisted to sessionStorage with filters
+  - Stored as `_search` key alongside filter values
+  - Restored on page reload (URL params take priority)
+  - Cleared with `clearFilters()`
+
 ## [0.25.0] - 2025-12-30
 
 ### Added

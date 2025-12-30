@@ -508,7 +508,7 @@ export function useListPageBuilder(config = {}) {
   function onFiltersChanged() {
     page.value = 1
     loadItems()
-    // Persist filters to session storage
+    // Persist filters + search to session storage
     if (persistFilters) {
       const toPersist = {}
       for (const [name, value] of Object.entries(filterValues.value)) {
@@ -516,6 +516,10 @@ export function useListPageBuilder(config = {}) {
         if (filterDef?.persist !== false && value !== null && value !== undefined && value !== '') {
           toPersist[name] = value
         }
+      }
+      // Also persist search query
+      if (searchQuery.value) {
+        toPersist._search = searchQuery.value
       }
       setSessionFilters(filterSessionKey, toPersist)
     }
@@ -913,8 +917,17 @@ export function useListPageBuilder(config = {}) {
       searchQuery.value = route.query.search
     }
 
-    // Priority 2: Session storage (only for filters not in URL)
-    const sessionFilters = persistFilters ? getSessionFilters(filterSessionKey) : null
+    // Priority 2: Session storage (only for filters/search not in URL)
+    const sessionData = persistFilters ? getSessionFilters(filterSessionKey) : null
+
+    // Extract search from session (stored as _search)
+    if (sessionData?._search && !route.query.search) {
+      searchQuery.value = sessionData._search
+    }
+
+    // Remove _search from session data before merging with filters
+    const sessionFilters = sessionData ? { ...sessionData } : null
+    if (sessionFilters) delete sessionFilters._search
 
     // Merge: URL takes priority over session
     const restoredFilters = { ...sessionFilters, ...urlFilters }
