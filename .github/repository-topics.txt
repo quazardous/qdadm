@@ -1,0 +1,10 @@
+vue3
+admin-framework
+primevue
+crud
+dashboard
+vue-admin
+entity-management
+typescript
+vue-router
+pinia
