@@ -1,9 +1,11 @@
 <script setup>
-import { AppLayout } from 'qdadm'
+import Toast from 'primevue/toast'
 </script>
 
 <template>
-  <AppLayout appName="Hello qdadm">
+  <Toast />
+  <div class="p-4">
+    <h1 class="text-2xl font-bold mb-4">Hello qdadm</h1>
     <RouterView />
-  </AppLayout>
+  </div>
 </template>
