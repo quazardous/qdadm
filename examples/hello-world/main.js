@@ -10,7 +10,8 @@ import Aura from '@primevue/themes/aura'
 import ToastService from 'primevue/toastservice'
 
 import { createQdadm, MockApiStorage } from 'qdadm'
-import 'qdadm/style'
+import 'qdadm/styles'
+import 'primeicons/primeicons.css'
 
 import App from './App.vue'
 import TaskList from './TaskList.vue'
