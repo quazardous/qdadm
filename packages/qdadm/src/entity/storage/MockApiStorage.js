@@ -1,3 +1,5 @@
+import { IStorage } from './IStorage.js'
+
 /**
  * MockApiStorage - In-memory storage with localStorage persistence
  *
@@ -18,7 +20,7 @@
  *
  * localStorage key pattern: mockapi_${entityName}_data
  */
-export class MockApiStorage {
+export class MockApiStorage extends IStorage {
   /**
    * Storage capabilities declaration.
    * Describes what features this storage adapter supports.
@@ -48,6 +50,7 @@ export class MockApiStorage {
   }
 
   constructor(options = {}) {
+    super()
     const {
       entityName,
       idField = 'id',

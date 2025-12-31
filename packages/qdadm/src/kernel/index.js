@@ -12,3 +12,7 @@ export {
   SIGNAL_ACTIONS,
   buildSignal,
 } from './SignalBus.js'
+export {
+  EventRouter,
+  createEventRouter,
+} from './EventRouter.js'

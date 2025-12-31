@@ -227,6 +227,104 @@ signals.offAll(signal?)                    // Remove all listeners
 { ...contextual data }
 ```
 
+## EventRouter
+
+High-level signal routing for cross-cutting concerns. Configured in Kernel, transforms one signal into multiple target signals.
+
+### Problem
+
+Without routing, components must know global logic:
+
+```js
+// WRONG - EntityManager knows about auth
+signals.on('auth:impersonate', () => {
+  loansManager.invalidateCache()
+  tasksManager.invalidateCache()
+})
+```
+
+Components become coupled to global events they shouldn't know about.
+
+### Solution
+
+EventRouter transforms signals at the Kernel level:
+
+```js
+new Kernel({
+  eventRouter: {
+    // String = forward payload as-is
+    'auth:impersonate': [
+      'cache:entity:invalidate:loans',
+      'cache:entity:invalidate:tasks'
+    ],
+
+    // Object = transform payload if needed
+    'payment:completed': [
+      { signal: 'notify:admin', transform: (ctx) => ({ amount: ctx.total }) },
+      'audit:log'  // forward as-is
+    ],
+
+    // Function = custom callback
+    'user:registered': [
+      'welcome:email',
+      (payload, { signals, orchestrator }) => {
+        // Custom logic with full context access
+        console.log('New user:', payload.user.name)
+        orchestrator.get('audit').create({
+          action: 'user_registered',
+          user_id: payload.user.id
+        })
+      }
+    ]
+  }
+})
+```
+
+Then EntityManager listens only to its own signal:
+
+```js
+// In EntityManager._setupCacheListeners() - built-in
+signals.on(`cache:entity:invalidate:${this.name}`, () => {
+  this.invalidateCache()
+})
+```
+
+### Rules
+
+| Input | Behavior |
+|-------|----------|
+| `'signal:name'` | `signals.emit(signal, sourcePayload)` |
+| `{ signal, transform }` | `signals.emit(signal, transform(sourcePayload))` |
+| `function` | `fn(sourcePayload, { signals, orchestrator })` |
+
+### Callback Context
+
+Callbacks receive the source payload and a context object:
+
+```js
+(payload, context) => {
+  // payload: the original event payload
+  // context.signals: SignalBus instance
+  // context.orchestrator: Orchestrator instance
+}
+```
+
+### Topo Check
+
+At boot, EventRouter validates no cycles exist:
+
+```js
+// INVALID - detected at boot
+{
+  'A': ['B'],
+  'B': ['A']  // Error: cycle detected A → B → A
+}
+```
+
+### Principle
+
+Components stay simple. They listen to their own signals, not global events. High-level routing handles the orchestration.
+
 ## Best Practices
 
 1. **Use signal categories**: `domain:action` format (`books:created`, `auth:login`)
@@ -234,3 +332,4 @@ signals.offAll(signal?)                    // Remove all listeners
 3. **Use wildcards for cross-cutting**: Audit logs, analytics, caching
 4. **Emit before side effects complete**: Fire-and-forget pattern
 5. **Business in SignalBus, UI in Vue**: Don't mix channels
+6. **Use EventRouter for cross-cutting**: Auth → cache invalidation routing

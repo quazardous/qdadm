@@ -319,15 +319,26 @@ class LoansManager extends EntityManager {
 // ============================================================================
 // ENTITY DEFINITIONS
 // ============================================================================
-// Each entity is defined with:
-//   - name: Internal identifier (used in modules)
-//   - label/labelPlural: Display names
-//   - routePrefix: Used for route names (e.g., 'book' -> 'book-create', 'book-edit')
-//   - labelField: Field to use as entity label (string or callback)
-//   - fields: Field definitions for forms (type, label, default, options, required)
-//   - storage: Storage adapter (LocalStorage, ApiAdapter, etc.)
+// Kernel uses managerFactory to resolve managers from various config formats:
+//
+// PATTERN 1: Direct Instance (for custom managers with logic)
+//   books: new BooksManager({ storage, fields, ... })
+//   → Instance passed through directly
+//
+// PATTERN 2: Config Object (for basic managers with customization)
+//   genres: { storage: genresStorage, label: 'Genre', fields: {...} }
+//   → Factory creates EntityManager from config
+//
+// PATTERN 3: String Pattern (for qdadm-gen / declarative configs)
+//   tasks: 'api:/api/tasks'
+//   → Factory creates storage + manager from pattern
+//
+// This demo showcases Pattern 1 (books, users, loans) and Pattern 2 (genres).
 
 const managers = {
+  // PATTERN 1: Direct Instance - Custom manager with permission logic
+  // Use this when you need canRead/canCreate/canUpdate/canDelete overrides.
+  // The factory passes instances through unchanged.
   books: new BooksManager({
     name: 'books',
     label: 'Book',
@@ -393,8 +404,11 @@ const managers = {
     storage: loansStorage
   }),
 
-  genres: new EntityManager({
-    name: 'genres',
+  // PATTERN 2: Config Object - Factory creates EntityManager from config
+  // Use this for basic entities without custom permission/business logic.
+  // The factory resolves storage (can be string pattern or instance) and
+  // creates an EntityManager with the provided config.
+  genres: {
     label: 'Genre',
     labelPlural: 'Genres',
     routePrefix: 'genre',
@@ -407,8 +421,8 @@ const managers = {
     children: {
       books: { entity: 'books', foreignKey: 'genre', label: 'Books' }
     },
-    storage: genresStorage
-  })
+    storage: genresStorage  // Can also be: 'mock:genres' (string pattern)
+  }
 }
 
 // ============================================================================
@@ -459,6 +473,21 @@ const kernel = new Kernel({
       ROLE_ADMIN: ['entity:create', 'entity:update', 'entity:delete',
                    'user:manage', 'role:assign', 'user:impersonate']
     }
+  },
+  // EventRouter: declarative signal routing for cross-cutting concerns
+  // Transforms high-level events into targeted signals that EntityManagers listen to.
+  // Components stay simple - they only know their own signals, not global auth logic.
+  eventRouter: {
+    // When user impersonates another, invalidate user-scoped caches
+    'auth:impersonate': [
+      'cache:entity:invalidate:loans'  // Loans are user-scoped
+    ],
+    // Example with callback (commented - for demonstration)
+    // 'auth:login': [
+    //   (payload, { orchestrator }) => {
+    //     console.log('[demo] User logged in:', payload.user.username)
+    //   }
+    // ]
   },
   pages: {
     login: () => import('./pages/LoginPage.vue'),

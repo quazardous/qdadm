@@ -40,6 +40,8 @@ export class Orchestrator {
       signals = null,
       // HookRegistry instance for lifecycle hooks
       hooks = null,
+      // DeferredRegistry instance for async warmup
+      deferred = null,
       // Optional: AuthAdapter for entity permission checks (scope/silo)
       entityAuthAdapter = null
     } = options
@@ -48,6 +50,7 @@ export class Orchestrator {
     this._managers = new Map()
     this._signals = signals
     this._hooks = hooks
+    this._deferred = deferred
     this._entityAuthAdapter = entityAuthAdapter
 
     // Register pre-provided managers
@@ -104,6 +107,22 @@ export class Orchestrator {
    */
   get hooks() {
     return this._hooks
+  }
+
+  /**
+   * Set the DeferredRegistry instance
+   * @param {DeferredRegistry} deferred
+   */
+  setDeferred(deferred) {
+    this._deferred = deferred
+  }
+
+  /**
+   * Get the DeferredRegistry instance
+   * @returns {DeferredRegistry|null}
+   */
+  get deferred() {
+    return this._deferred
   }
 
   /**
@@ -190,6 +209,47 @@ export class Orchestrator {
    */
   getRegisteredNames() {
     return Array.from(this._managers.keys())
+  }
+
+  /**
+   * Fire warmup for all managers (fire-and-forget)
+   *
+   * Triggers cache preloading for all managers with warmupEnabled.
+   * Each manager registers its warmup in the DeferredRegistry, allowing
+   * pages to await specific entities before rendering.
+   *
+   * IMPORTANT: This is fire-and-forget by design. Don't await this method.
+   * Components await what they need via DeferredRegistry:
+   *   `await deferred.await('entity:books:cache')`
+   *
+   * @returns {Promise<Map<string, any>>} For debugging/logging only
+   *
+   * @example
+   * ```js
+   * // At boot (fire-and-forget)
+   * orchestrator.fireWarmups()
+   *
+   * // In component - await specific entity cache
+   * await deferred.await('entity:books:cache')
+   * const { items } = await booksManager.list()  // Uses local cache
+   * ```
+   */
+  fireWarmups() {
+    const results = new Map()
+
+    for (const [name, manager] of this._managers) {
+      if (manager.warmup && manager.warmupEnabled) {
+        // Fire each warmup - they register themselves in DeferredRegistry
+        manager.warmup().then(result => {
+          results.set(name, result)
+        }).catch(error => {
+          console.warn(`[Orchestrator] Warmup failed for ${name}:`, error.message)
+          results.set(name, error)
+        })
+      }
+    }
+
+    return results
   }
 
   /**

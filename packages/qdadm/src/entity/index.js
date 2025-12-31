@@ -7,6 +7,14 @@
 // EntityManager
 export { EntityManager, createEntityManager } from './EntityManager.js'
 
+// Manager Factory
+export {
+  managerFactory,
+  defaultManagerResolver,
+  createManagerFactory,
+  createManagers
+} from './factory.js'
+
 // Storage adapters
 export * from './storage/index.js'
 

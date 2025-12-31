@@ -130,6 +130,51 @@ Use EntityManager. If a pattern doesn't fit EntityManager, extend the framework.
 
 Use `ListPage` component. It handles everything.
 
+## Deferred & Warmup
+
+Loose async coupling for service initialization:
+
+```javascript
+// At boot (automatic, controlled by Kernel.warmup option)
+// EntityManagers with warmup: true register their cache loading
+
+// In component - await cache ready before rendering
+const deferred = useDeferred()
+await deferred.await('entity:books:cache')
+const { items } = await booksManager.list()  // Uses preloaded cache
+```
+
+**DeferredRegistry**: Named promise registry. `await()` can be called BEFORE `queue()` - the promise is created on first access. Pages await what they need, services register when ready.
+
+**Warmup**: At boot, Kernel triggers `orchestrator.fireWarmups()` (fire-and-forget). Each EntityManager with `warmup: true` (default) registers its cache loading. Other services can hook into this pattern.
+
+## EventRouter
+
+High-level signal routing for cross-cutting concerns. Transforms event A into events B, C.
+
+```javascript
+new Kernel({
+  eventRouter: {
+    // String = forward payload as-is
+    'auth:impersonate': [
+      'cache:entity:invalidate:loans',
+      'cache:entity:invalidate:tasks'
+    ],
+    // Object = transform payload if needed
+    'payment:completed': [
+      { signal: 'notify:admin', transform: (ctx) => ({ amount: ctx.total }) },
+      'audit:log'  // forward as-is
+    ]
+  }
+})
+```
+
+**Principle**: Components stay simple. They don't listen to global events like `auth:impersonate` and know what to invalidate. Instead:
+1. High-level EventRouter transforms `auth:impersonate` → `cache:entity:invalidate:loans`
+2. EntityManager listens only to its own signal `cache:entity:invalidate:{name}`
+
+**Topo check at boot**: Detects cycles (`A→B, B→A`) to prevent infinite loops.
+
 ## When Custom Code is OK
 
 1. **Dashboards** - Stats/metrics displays (consider a stats builder)
@@ -156,8 +201,9 @@ Even these should use EntityManager for data access.
 | [Architecture](./docs/architecture.md) | PAC pattern, layer separation, no-template-ish |
 | [Extension](./docs/extension.md) | Overview of all extension mechanisms |
 | [Zones](./docs/zones.md) | UI composition via named slots |
-| [Signals](./docs/signals.md) | Event-driven cross-module communication |
+| [Signals](./docs/signals.md) | Event-driven cross-module communication, EventRouter |
 | [Hooks](./docs/hooks.md) | Drupal-inspired lifecycle hooks |
+| [Deferred](./docs/deferred.md) | Async coordination, warmup |
 | [Security](./docs/security.md) | Scope vs silo, AuthAdapter |
 
 ## References

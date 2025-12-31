@@ -1,3 +1,5 @@
+import { IStorage } from './IStorage.js'
+
 /**
  * SdkStorage - hey-api SDK storage adapter
  *
@@ -93,7 +95,7 @@
  * })
  * ```
  */
-export class SdkStorage {
+export class SdkStorage extends IStorage {
   /**
    * Storage capabilities declaration
    * @type {import('./index.js').StorageCapabilities}
@@ -141,6 +143,7 @@ export class SdkStorage {
    * @param {boolean} [options.clientSidePagination=false] - Enable client-side pagination for list()
    */
   constructor(options = {}) {
+    super()
     const {
       sdk = null,
       getSdk = null,

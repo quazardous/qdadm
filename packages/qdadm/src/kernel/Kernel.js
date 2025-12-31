@@ -52,6 +52,10 @@ import { createZoneRegistry } from '../zones/ZoneRegistry.js'
 import { registerStandardZones } from '../zones/zones.js'
 import { createHookRegistry } from '../hooks/HookRegistry.js'
 import { createSecurityChecker } from '../entity/auth/SecurityChecker.js'
+import { createManagers } from '../entity/factory.js'
+import { defaultStorageResolver } from '../entity/storage/factory.js'
+import { createDeferredRegistry } from '../deferred/DeferredRegistry.js'
+import { createEventRouter } from './EventRouter.js'
 
 export class Kernel {
   /**
@@ -60,7 +64,10 @@ export class Kernel {
    * @param {object} options.modules - Result of import.meta.glob for module init files
    * @param {object} options.modulesOptions - Options for initModules (e.g., { coreNavItems })
    * @param {string[]} options.sectionOrder - Navigation section order
-   * @param {object} options.managers - Entity managers { name: EntityManager }
+   * @param {object} options.managers - Entity managers { name: config } - can be instances, strings, or config objects
+   * @param {object} options.managerRegistry - Registry of manager classes from qdadm-gen { name: ManagerClass }
+   * @param {function} options.storageResolver - Custom storage resolver (config, entityName) => Storage
+   * @param {function} options.managerResolver - Custom manager resolver (config, entityName, context) => Manager
    * @param {object} options.authAdapter - Auth adapter for login/logout (app-level authentication)
    * @param {object} options.entityAuthAdapter - Auth adapter for entity permissions (scope/silo checks)
    * @param {object} options.pages - Page components { login, layout }
@@ -73,6 +80,8 @@ export class Kernel {
    * @param {object} options.primevue - PrimeVue config { plugin, theme, options }
    * @param {object} options.layouts - Layout components { list, form, dashboard, base }
    * @param {object} options.security - Security config { role_hierarchy, role_permissions, entity_permissions }
+   * @param {boolean} options.warmup - Enable warmup at boot (default: true)
+   * @param {object} options.eventRouter - EventRouter config { 'source:signal': ['target:signal', ...] }
    */
   constructor(options) {
     this.options = options
@@ -82,6 +91,8 @@ export class Kernel {
     this.orchestrator = null
     this.zoneRegistry = null
     this.hookRegistry = null
+    this.deferred = null
+    this.eventRouter = null
     this.layoutComponents = null
     this.securityChecker = null
   }
@@ -95,17 +106,55 @@ export class Kernel {
     this._createSignalBus()
     this._createHookRegistry()
     this._createZoneRegistry()
-    // 2. Initialize modules (can use all services, registers routes)
+    this._createDeferredRegistry()
+    // 2. Register auth:ready deferred (if auth configured)
+    this._registerAuthDeferred()
+    // 3. Initialize modules (can use all services, registers routes)
     this._initModules()
-    // 3. Create router (needs routes from modules)
+    // 4. Create router (needs routes from modules)
     this._createRouter()
-    // 4. Create orchestrator and remaining components
+    // 5. Create orchestrator and remaining components
     this._createOrchestrator()
+    // 6. Create EventRouter (needs signals + orchestrator)
+    this._createEventRouter()
     this._setupSecurity()
     this._createLayoutComponents()
     this._createVueApp()
     this._installPlugins()
+    // 6. Fire warmups (fire-and-forget, pages await via DeferredRegistry)
+    this._fireWarmups()
     return this.vueApp
+  }
+
+  /**
+   * Register auth:ready deferred if auth is configured
+   * This allows warmup and other services to await authentication.
+   */
+  _registerAuthDeferred() {
+    const { authAdapter } = this.options
+    if (!authAdapter) return
+
+    // Create a promise that resolves on first auth:login
+    this.deferred.queue('auth:ready', () => {
+      return new Promise(resolve => {
+        this.signals.once('auth:login', ({ user }) => {
+          resolve(user)
+        })
+      })
+    })
+  }
+
+  /**
+   * Fire entity cache warmups
+   * Fire-and-forget: pages that need cache will await via DeferredRegistry.
+   * Controlled by options.warmup (default: true).
+   */
+  _fireWarmups() {
+    const warmup = this.options.warmup ?? true
+    if (!warmup) return
+
+    // Fire-and-forget: each manager awaits its dependencies (auth:ready, etc.)
+    this.orchestrator.fireWarmups()
   }
 
   /**
@@ -121,7 +170,8 @@ export class Kernel {
         ...this.options.modulesOptions,
         zones: this.zoneRegistry,
         signals: this.signals,
-        hooks: this.hookRegistry
+        hooks: this.hookRegistry,
+        deferred: this.deferred
       })
     }
   }
@@ -215,12 +265,28 @@ export class Kernel {
    * Create orchestrator with managers and signal bus
    * Injects entityAuthAdapter and hookRegistry into all managers for permission checks
    * and lifecycle hook support.
+   *
+   * Uses createManagers() to resolve manager configs through the factory pattern:
+   * - String patterns ('api:/api/bots') → creates storage + manager
+   * - Config objects ({ storage: '...', label: '...' }) → resolved
+   * - Manager instances → passed through directly
    */
   _createOrchestrator() {
+    // Build factory context with resolvers and registry
+    const factoryContext = {
+      storageResolver: this.options.storageResolver || defaultStorageResolver,
+      managerResolver: this.options.managerResolver,
+      managerRegistry: this.options.managerRegistry || {}
+    }
+
+    // Resolve all managers through factory
+    const managers = createManagers(this.options.managers || {}, factoryContext)
+
     this.orchestrator = new Orchestrator({
-      managers: this.options.managers || {},
+      managers,
       signals: this.signals,
       hooks: this.hookRegistry,
+      deferred: this.deferred,
       entityAuthAdapter: this.options.entityAuthAdapter || null
     })
   }
@@ -274,6 +340,35 @@ export class Kernel {
   }
 
   /**
+   * Create deferred registry for async service loading
+   * Enables loose coupling between services and components via named promises.
+   */
+  _createDeferredRegistry() {
+    const debug = this.options.debug ?? false
+    this.deferred = createDeferredRegistry({
+      kernel: this.signals?.getKernel(),
+      debug
+    })
+  }
+
+  /**
+   * Create EventRouter for declarative signal routing
+   * Transforms high-level events into targeted signals.
+   */
+  _createEventRouter() {
+    const { eventRouter: routes } = this.options
+    if (!routes || Object.keys(routes).length === 0) return
+
+    const debug = this.options.debug ?? false
+    this.eventRouter = createEventRouter({
+      signals: this.signals,
+      orchestrator: this.orchestrator,
+      routes,
+      debug
+    })
+  }
+
+  /**
    * Create layout components map for useLayoutResolver
    * Maps layout types to their Vue components.
    */
@@ -302,7 +397,7 @@ export class Kernel {
    */
   _installPlugins() {
     const app = this.vueApp
-    const { managers, authAdapter, features, primevue } = this.options
+    const { authAdapter, features, primevue } = this.options
 
     // Pinia
     app.use(createPinia())
@@ -346,13 +441,17 @@ export class Kernel {
     // Hook registry injection
     app.provide('qdadmHooks', this.hookRegistry)
 
+    // Deferred registry injection
+    app.provide('qdadmDeferred', this.deferred)
+
     // Layout components injection for useLayoutResolver
     app.provide('qdadmLayoutComponents', this.layoutComponents)
 
     // qdadm plugin
+    // Note: Don't pass managers here - orchestrator already has resolved managers
+    // from createManagers(). Passing raw configs would overwrite them.
     app.use(createQdadm({
       orchestrator: this.orchestrator,
-      managers,
       authAdapter,
       router: this.router,
       toast: app.config.globalProperties.$toast,
@@ -421,6 +520,22 @@ export class Kernel {
    */
   get hooks() {
     return this.hookRegistry
+  }
+
+  /**
+   * Get the DeferredRegistry instance
+   * @returns {import('../deferred/DeferredRegistry.js').DeferredRegistry}
+   */
+  getDeferredRegistry() {
+    return this.deferred
+  }
+
+  /**
+   * Get the EventRouter instance
+   * @returns {import('./EventRouter.js').EventRouter|null}
+   */
+  getEventRouter() {
+    return this.eventRouter
   }
 
   /**

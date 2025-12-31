@@ -4,13 +4,15 @@ How to extend qdadm without modifying core code.
 
 ## Overview
 
-qdadm provides four extension mechanisms:
+qdadm provides six extension mechanisms:
 
 | Mechanism | Purpose | Coupling | Scope |
 |-----------|---------|----------|-------|
 | [Zones](./zones.md) | UI composition | None | Layout slots |
 | [Signals](./signals.md) | Event communication | None | Cross-module |
+| [EventRouter](./signals.md#eventrouter) | Signal transformation | None | Global routing |
 | [Hooks](./hooks.md) | Intercept & modify | Low | Global behavior |
+| [Deferred](./deferred.md) | Async coordination | None | Service loading |
 | [Decorators](#decorators) | Wrap operations | Medium | Per-manager |
 
 ## Quick Comparison
@@ -21,7 +23,9 @@ qdadm provides four extension mechanisms:
 |------|-----|
 | Add UI to another module's page | Zones |
 | React to events without coupling | Signals |
+| Route one event to multiple targets | EventRouter |
 | Validate/transform all entities | Hooks |
+| Await service/cache readiness | Deferred |
 | Add behavior to one manager | Decorators |
 
 ### Example: Adding audit logging
@@ -48,6 +52,7 @@ const auditedBooks = createDecoratedManager(booksManager, [
 - **[Zones & Blocks](./zones.md)** - UI extensibility via named slots
 - **[Signals](./signals.md)** - Event-driven communication (SignalBus)
 - **[Hooks](./hooks.md)** - Drupal-inspired hook system
+- **[Deferred](./deferred.md)** - Async service coordination & warmup
 
 ---
 

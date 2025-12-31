@@ -110,6 +110,19 @@ export function getStorageCapabilities(storage) {
   }
 }
 
+// Base class
+export { IStorage } from './IStorage.js'
+
+// Factory/Resolver
+export {
+  storageFactory,
+  defaultStorageResolver,
+  createStorageFactory,
+  parseStoragePattern,
+  storageTypes
+} from './factory.js'
+
+// Storage adapters
 export { ApiStorage, createApiStorage } from './ApiStorage.js'
 export { LocalStorage, createLocalStorage } from './LocalStorage.js'
 export { MemoryStorage, createMemoryStorage } from './MemoryStorage.js'

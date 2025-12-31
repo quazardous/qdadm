@@ -35,6 +35,9 @@ export * from './zones/index.js'
 // Hooks
 export * from './hooks/index.js'
 
+// Deferred (async service loading)
+export * from './deferred/index.js'
+
 // Core (extension helpers)
 export * from './core/index.js'
 

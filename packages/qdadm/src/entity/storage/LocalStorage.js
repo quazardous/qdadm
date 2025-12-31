@@ -1,3 +1,5 @@
+import { IStorage } from './IStorage.js'
+
 /**
  * LocalStorage - Browser localStorage storage adapter
  *
@@ -17,7 +19,7 @@
  * })
  * ```
  */
-export class LocalStorage {
+export class LocalStorage extends IStorage {
   /**
    * Storage capabilities declaration.
    * Describes what features this storage adapter supports.
@@ -47,6 +49,7 @@ export class LocalStorage {
   }
 
   constructor(options = {}) {
+    super()
     const {
       key,
       idField = 'id',

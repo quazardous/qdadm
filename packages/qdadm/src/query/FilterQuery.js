@@ -115,9 +115,12 @@ export class FilterQuery {
   /**
    * Set the SignalBus for cache invalidation
    *
-   * For entity sources, subscribes to CRUD signals ({entity}:created, {entity}:updated,
-   * {entity}:deleted) to automatically invalidate cached options when the source
-   * entity changes.
+   * Subscribes to entity CRUD signals ({entity}:created, {entity}:updated, {entity}:deleted)
+   * to invalidate cached options when the source entity changes.
+   *
+   * Note: Auth changes are handled by Vue component lifecycle - when user logs out,
+   * router guard redirects to login, component unmounts, FilterQuery is disposed.
+   * On re-login, new FilterQuery is created with empty cache.
    *
    * @param {SignalBus} signals
    * @returns {FilterQuery} this for chaining
@@ -128,8 +131,10 @@ export class FilterQuery {
 
     this._signals = signals
 
+    if (!signals) return this
+
     // Subscribe to entity CRUD signals for cache invalidation
-    if (this.source === 'entity' && this.entity && signals) {
+    if (this.source === 'entity' && this.entity) {
       const actions = ['created', 'updated', 'deleted']
       for (const action of actions) {
         const signalName = `${this.entity}:${action}`

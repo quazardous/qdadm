@@ -5,6 +5,34 @@ All notable changes to qdadm will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.28.0] - 2025-12-31
+
+### Added
+- **EventRouter**: Declarative signal routing for cross-cutting concerns
+  - Transforms high-level events into targeted signals
+  - Supports string (forward payload), object (transform), function (callback)
+  - Cycle detection at boot (topological sort)
+  - Config via `Kernel({ eventRouter: { 'source': ['target', ...] } })`
+  - EntityManager listens to `cache:entity:invalidate:{name}` signal
+- **DeferredRegistry**: Async service coordination with named promises
+  - `await()` can be called before `queue()` - true loose coupling
+  - Kernel registers `auth:ready` deferred when authAdapter configured
+  - EntityManager warmup awaits `auth:ready` before populating cache
+  - `useDeferred()` and `useDeferredValue()` composables
+- **Storage factory**: String pattern resolution for manager configs
+  - `'api:/api/books'` → creates ApiStorage + EntityManager
+  - `'mock:books'` → creates MockApiStorage
+  - Custom `storageResolver` and `managerResolver` options
+
+### Changed
+- **Warmup renamed**: `warmupAll()` → `fireWarmups()` (fire-and-forget semantic)
+- **Cache invalidation**: EntityManager no longer listens to auth signals directly
+  - Use EventRouter for `auth:impersonate` → `cache:entity:invalidate:*` routing
+  - Components stay simple, high-level routing handles orchestration
+
+### Demo (0.12.1)
+- Added `eventRouter` config example for `auth:impersonate` → loans cache invalidation
+
 ## [0.27.0] - 2025-12-31
 
 ### Added

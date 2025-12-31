@@ -1,3 +1,5 @@
+import { IStorage } from './IStorage.js'
+
 /**
  * ApiStorage - REST API storage adapter
  *
@@ -20,7 +22,7 @@
  * })
  * ```
  */
-export class ApiStorage {
+export class ApiStorage extends IStorage {
   /**
    * Storage capabilities declaration.
    * Describes what features this storage adapter supports.
@@ -44,6 +46,7 @@ export class ApiStorage {
   }
 
   constructor(options = {}) {
+    super()
     const {
       endpoint,
       client = null,

@@ -58,6 +58,7 @@ export class EntityManager {
       // List behavior
       localFilterThreshold = null,  // Items threshold to switch to local filtering (null = use default)
       readOnly = false,             // If true, canCreate/canUpdate/canDelete return false
+      warmup = true,                // If true, cache is preloaded at boot via DeferredRegistry
       // Scope control
       scopeWhitelist = null,        // Array of scopes/modules that can bypass restrictions
       // Relations
@@ -83,6 +84,7 @@ export class EntityManager {
     // List behavior
     this.localFilterThreshold = localFilterThreshold
     this._readOnly = readOnly
+    this._warmup = warmup
 
     // Scope control
     this._scopeWhitelist = scopeWhitelist
@@ -1039,31 +1041,48 @@ export class EntityManager {
   }
 
   /**
-   * Set up signal listeners for parent entity cache invalidation
+   * Set up signal listeners for cache invalidation
    *
-   * When a parent entity is modified, clears the _search cache on cached items
-   * so that next list() will re-resolve with fresh parent data.
+   * Listens for:
+   * - Parent entity invalidation: clears _search cache and invalidates
+   * - Auth changes: invalidates cache on login/logout (user context changed)
    */
   _setupCacheListeners() {
-    // Nothing to do if no parents or no signals
-    if (!this._parents || Object.keys(this._parents).length === 0) return
     if (!this._signals) return
 
-    // Clean up existing listener if any
+    // Clean up existing listeners if any
     if (this._signalCleanup) {
       this._signalCleanup()
       this._signalCleanup = null
     }
 
-    // Get parent entity names
-    const parentEntities = Object.values(this._parents).map(p => p.entity)
+    const cleanups = []
 
-    // Listen for parent cache invalidation
-    this._signalCleanup = this._signals.on('cache:entity:invalidated', ({ entity }) => {
-      if (parentEntities.includes(entity)) {
-        this._clearSearchCache()
-      }
-    })
+    // Listen for parent cache invalidation (if parents defined)
+    if (this._parents && Object.keys(this._parents).length > 0) {
+      const parentEntities = Object.values(this._parents).map(p => p.entity)
+      cleanups.push(
+        this._signals.on('cache:entity:invalidated', ({ entity }) => {
+          if (parentEntities.includes(entity)) {
+            this._clearSearchCache()
+          }
+        })
+      )
+    }
+
+    // Listen for targeted cache invalidation (routed by EventRouter)
+    // EntityManager only listens to its own signal, staying simple.
+    // EventRouter transforms high-level events (auth:impersonate) into targeted signals.
+    cleanups.push(
+      this._signals.on(`cache:entity:invalidate:${this.name}`, () => {
+        this.invalidateCache()
+      })
+    )
+
+    // Combined cleanup function
+    this._signalCleanup = () => {
+      cleanups.forEach(cleanup => cleanup())
+    }
   }
 
   /**
@@ -1176,6 +1195,55 @@ export class EntityManager {
     // Resolve parent fields for search (book.title, user.username, etc.)
     await this._resolveSearchFields(this._cache.items)
     return true
+  }
+
+  /**
+   * Warmup: preload cache via DeferredRegistry for loose async coupling
+   *
+   * Called by Orchestrator.fireWarmups() at boot. Registers the cache loading
+   * in DeferredRegistry so pages can await it before rendering.
+   *
+   * @returns {Promise<boolean>|null} Promise if warmup started, null if disabled/not applicable
+   *
+   * @example
+   * ```js
+   * // At boot (automatic via Kernel)
+   * orchestrator.warmupAll()
+   *
+   * // In component - await cache ready
+   * await deferred.await('entity:books:cache')
+   * const { items } = await booksManager.list()  // Uses local cache
+   * ```
+   */
+  async warmup() {
+    // Skip if warmup disabled or caching not applicable
+    if (!this._warmup) return null
+    if (!this.isCacheEnabled) return null
+
+    const deferred = this._orchestrator?.deferred
+
+    // Wait for auth if app uses authentication (user context affects cache)
+    if (deferred?.has('auth:ready')) {
+      await deferred.await('auth:ready')
+    }
+
+    const key = `entity:${this.name}:cache`
+
+    if (!deferred) {
+      // Fallback: direct cache load without DeferredRegistry
+      return this.ensureCache()
+    }
+
+    // Register in DeferredRegistry for loose coupling
+    return deferred.queue(key, () => this.ensureCache())
+  }
+
+  /**
+   * Check if warmup is enabled for this manager
+   * @returns {boolean}
+   */
+  get warmupEnabled() {
+    return this._warmup && this.isCacheEnabled
   }
 
   /**

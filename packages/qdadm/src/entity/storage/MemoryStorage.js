@@ -1,3 +1,5 @@
+import { IStorage } from './IStorage.js'
+
 /**
  * MemoryStorage - In-memory storage adapter
  *
@@ -17,7 +19,7 @@
  * })
  * ```
  */
-export class MemoryStorage {
+export class MemoryStorage extends IStorage {
   /**
    * Storage capabilities declaration.
    * Describes what features this storage adapter supports.
@@ -47,6 +49,7 @@ export class MemoryStorage {
   }
 
   constructor(options = {}) {
+    super()
     const {
       idField = 'id',
       generateId = () => Date.now().toString(36) + Math.random().toString(36).substr(2),

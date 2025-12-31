@@ -994,6 +994,9 @@ export function useListPageBuilder(config = {}) {
   const displayItems = computed(() => filteredItems.value)
 
   // ============ LOADING ============
+  // Note: Auth changes are handled by Vue component lifecycle - when user logs out,
+  // router guard redirects to login, component unmounts. On re-login, new component
+  // instance is created with fresh state (filterOptionsLoaded = false).
   let filterOptionsLoaded = false
 
   async function loadItems(extraParams = {}, { force = false } = {}) {
