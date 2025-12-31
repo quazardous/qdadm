@@ -1,4 +1,4 @@
-name: Deploy Demo to GitHub Pages
+name: Deploy Examples to GitHub Pages
 
 on:
   push:
@@ -30,9 +30,61 @@ jobs:
         run: npm ci
 
       - name: Build demo
-        run: npm run build
+        run: npm run build -w packages/demo -- --base=/qdadm/demo/
         env:
           GITHUB_PAGES: true
+
+      - name: Build hello-world
+        run: npm run build -w examples/hello-world -- --base=/qdadm/hello-world/
+
+      - name: Assemble dist
+        run: |
+          mkdir -p dist
+          cp -r packages/demo/dist dist/demo
+          cp -r examples/hello-world/dist dist/hello-world
+          cp EXAMPLES.md dist/
+
+      - name: Generate index.html
+        run: |
+          cat > dist/index.html << 'EOF'
+          <!DOCTYPE html>
+          <html lang="en">
+          <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>qdadm Examples</title>
+            <style>
+              body { font-family: system-ui, sans-serif; max-width: 800px; margin: 2rem auto; padding: 0 1rem; }
+              h1 { color: #10b981; }
+              .examples { display: grid; gap: 1rem; margin-top: 2rem; }
+              .card { border: 1px solid #e5e7eb; border-radius: 8px; padding: 1.5rem; }
+              .card h2 { margin: 0 0 0.5rem; }
+              .card p { color: #6b7280; margin: 0 0 1rem; }
+              .card a { color: #10b981; font-weight: 500; }
+            </style>
+          </head>
+          <body>
+            <h1>qdadm Examples</h1>
+            <p>Live examples demonstrating qdadm features.</p>
+            <div class="examples">
+              <div class="card">
+                <h2>Hello World</h2>
+                <p>Minimal list page in ~50 lines of code</p>
+                <a href="./hello-world/">View Demo &rarr;</a>
+              </div>
+              <div class="card">
+                <h2>Full Demo</h2>
+                <p>Complete admin with multiple entities, forms, auth</p>
+                <a href="./demo/">View Demo &rarr;</a>
+              </div>
+            </div>
+            <p style="margin-top: 2rem; color: #9ca3af; font-size: 0.875rem;">
+              <a href="https://github.com/quazardous/qdadm" style="color: inherit;">GitHub</a> &bull;
+              <a href="./EXAMPLES.md" style="color: inherit;">EXAMPLES.md</a>
+            </p>
+          </body>
+          </html>
+          EOF
 
       - name: Setup Pages
         uses: actions/configure-pages@v4
@@ -40,7 +92,7 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: packages/demo/dist
+          path: dist
 
   deploy:
     environment:
