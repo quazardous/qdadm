@@ -10,6 +10,7 @@ import { createRouter, createWebHashHistory } from 'vue-router'
 import PrimeVue from 'primevue/config'
 import Aura from '@primevue/themes/aura'
 import ToastService from 'primevue/toastservice'
+import ConfirmationService from 'primevue/confirmationservice'
 
 import { createQdadm, MockApiStorage, EntityManager } from 'qdadm'
 import 'qdadm/styles'
@@ -65,6 +66,8 @@ try {
   app.use(PrimeVue, { theme: { preset: Aura } })
   console.log('[hello-world] Using ToastService...')
   app.use(ToastService)
+  console.log('[hello-world] Using ConfirmationService...')
+  app.use(ConfirmationService)
   console.log('[hello-world] Using qdadm...')
   app.use(qdadm)
   console.log('[hello-world] Mounting...')

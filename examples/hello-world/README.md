@@ -47,36 +47,30 @@ const qdadm = createQdadm({
 })
 ```
 
-### 2. List page (minimal)
+### 2. List page (canonical)
 
 ```vue
 <script setup>
-import { ref, onMounted } from 'vue'
-import { useOrchestrator } from 'qdadm'
-import DataTable from 'primevue/datatable'
+import { useListPageBuilder, ListPage } from 'qdadm'
 import Column from 'primevue/column'
 
-const { getManager } = useOrchestrator()
-const tasks = ref([])
-
-onMounted(async () => {
-  const result = await getManager('tasks').list()
-  tasks.value = result.items
-})
+const list = useListPageBuilder({ entity: 'tasks' })
 </script>
 
 <template>
-  <DataTable :value="tasks" stripedRows>
-    <Column field="title" header="Title" />
-    <Column field="done" header="Done" />
-  </DataTable>
+  <ListPage v-bind="list.props.value" v-on="list.events">
+    <template #columns>
+      <Column field="title" header="Title" sortable />
+      <Column field="done" header="Done" />
+    </template>
+  </ListPage>
 </template>
 ```
 
-This shows the core pattern:
-- `useOrchestrator()` to get the manager
-- `manager.list()` to fetch data
-- PrimeVue DataTable for display
+This shows the canonical pattern:
+- `useListPageBuilder({ entity })` handles all data fetching
+- `ListPage` provides table, pagination, loading states
+- Just define your columns in the `#columns` slot
 
 ## Next steps
 

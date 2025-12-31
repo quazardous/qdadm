@@ -1,25 +1,19 @@
 <script setup>
-import { ref, onMounted } from 'vue'
-import { useOrchestrator } from 'qdadm'
-import DataTable from 'primevue/datatable'
+import { useListPageBuilder, ListPage } from 'qdadm'
 import Column from 'primevue/column'
 
-const { getManager } = useOrchestrator()
-const tasks = ref([])
-
-onMounted(async () => {
-  const result = await getManager('tasks').list()
-  tasks.value = result.items
-})
+const list = useListPageBuilder({ entity: 'tasks' })
 </script>
 
 <template>
-  <DataTable :value="tasks" stripedRows>
-    <Column field="title" header="Title" />
-    <Column field="done" header="Done">
-      <template #body="{ data }">
-        {{ data.done ? '✓' : '○' }}
-      </template>
-    </Column>
-  </DataTable>
+  <ListPage v-bind="list.props.value" v-on="list.events">
+    <template #columns>
+      <Column field="title" header="Title" sortable />
+      <Column field="done" header="Done" style="width: 100px">
+        <template #body="{ data }">
+          {{ data.done ? '✓' : '○' }}
+        </template>
+      </Column>
+    </template>
+  </ListPage>
 </template>
