@@ -55,3 +55,6 @@ export { default as EmptyState } from './display/EmptyState.vue'
 export { default as IntensityBar } from './display/IntensityBar.vue'
 export { default as BoolCell } from './BoolCell.vue'
 export { default as SeverityTag } from './SeverityTag.vue'
+
+// Pages
+export { default as LoginPage } from './pages/LoginPage.vue'

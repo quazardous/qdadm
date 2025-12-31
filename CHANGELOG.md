@@ -5,6 +5,25 @@ All notable changes to qdadm will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.27.0] - 2025-12-31
+
+### Added
+- **LoginPage component**: Generic login page for admin dashboards
+  - Customizable via props: `title`, `icon`, `logo`, `usernameLabel`, `passwordLabel`, `submitLabel`, `redirectTo`
+  - Pre-fill support: `defaultUsername`, `defaultPassword`
+  - Business signals: `emitSignal` prop emits `auth:login` event on success
+  - Slots: `#logo` (custom logo component), `#footer` (custom help text)
+  - Uses injected `authAdapter` from qdadm context
+  - Emits `login` and `error` events
+- **useSSE composable**: Server-Sent Events with auto-reconnect
+  - Options: `eventHandlers`, `reconnectDelay`, `autoConnect`, `withCredentials`, `tokenParam`, `getToken`
+  - Returns: `connected`, `error`, `reconnecting`, `connect`, `close`, `reconnect`
+  - Auto-connects on mount, auto-disconnects on unmount
+  - Uses `authAdapter.getToken()` for authentication
+
+### Demo (0.12.0)
+- `LoginPage.vue`: Now uses qdadm LoginPage component with footer slot for demo accounts hint
+
 ## [0.26.3] - 2025-12-31
 
 ### Added
