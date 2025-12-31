@@ -3,7 +3,7 @@
 > Navigation index for AI agents. Read code directly for details.
 > Philosophy: see [QDADM_CREDO.md](../packages/qdadm/QDADM_CREDO.md)
 >
-> **Versions:** qdadm 0.20.0 | demo 0.9.0
+> **Versions:** qdadm 0.29.0 | demo 0.13.0
 
 ## Dev Commands
 

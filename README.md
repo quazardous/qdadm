@@ -157,6 +157,16 @@ npm install
 npm run dev
 ```
 
+## Documentation
+
+| Doc | Purpose |
+|-----|---------|
+| [QDADM_CREDO](packages/qdadm/QDADM_CREDO.md) | Philosophy, patterns, anti-patterns |
+| [AGENT_GUIDE](docs/AGENT_GUIDE.md) | Quick index for AI agents |
+| [Architecture](packages/qdadm/docs/architecture.md) | PAC pattern, layer separation |
+| [Extension](packages/qdadm/docs/extension.md) | Hooks, signals, zones overview |
+| [Examples](EXAMPLES.md) | Live examples index |
+
 ## License
 
 MIT
