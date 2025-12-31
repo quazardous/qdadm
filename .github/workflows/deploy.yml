@@ -42,7 +42,6 @@ jobs:
           mkdir -p dist
           cp -r packages/demo/dist dist/demo
           cp -r examples/hello-world/dist dist/hello-world
-          cp EXAMPLES.md dist/
 
       - name: Generate index.html
         run: |
@@ -79,8 +78,7 @@ jobs:
               </div>
             </div>
             <p style="margin-top: 2rem; color: #9ca3af; font-size: 0.875rem;">
-              <a href="https://github.com/quazardous/qdadm" style="color: inherit;">GitHub</a> &bull;
-              <a href="./EXAMPLES.md" style="color: inherit;">EXAMPLES.md</a>
+              <a href="https://github.com/quazardous/qdadm" style="color: inherit;">GitHub</a>
             </p>
           </body>
           </html>
