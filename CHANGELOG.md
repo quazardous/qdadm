@@ -5,6 +5,25 @@ All notable changes to qdadm will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.29.0] - 2025-12-31
+
+### Added
+- **qdadm-gen**: Integrated code generation system for EntityManagers
+  - `generateManagers()` creates managers from OpenAPI/JSON schemas
+  - `createManagers()` factory with storage profile resolution
+  - `FieldMapper` for schema-to-field type conversion
+  - `StorageProfileFactory` for connector configuration
+  - Decorators: `withPagination`, `withSearch`, `withFilters`
+  - Connectors: `ApiConnector`, `MockConnector` for different backends
+  - Vite plugin for build-time manager generation
+
+### Demo (0.13.0)
+- **New modules**: Countries (REST Countries API), Products (DummyJSON), Posts, Todos, Favorites, Settings, JP-Users
+- **useFavoriteAction composable**: DRY favorite toggle action for list pages
+- **Fixed**: RestCountriesStorage now uses proper storage pattern (list override vs custom _fetchAll)
+- **Fixed**: useFavoriteAction uses `useOrchestrator()` instead of invalid `inject('qdadm')`
+- **Added**: Vite `@` alias for src imports
+
 ## [0.28.0] - 2025-12-31
 
 ### Added

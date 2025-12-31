@@ -24,16 +24,97 @@
  *    - Data survives page refresh
  */
 
-import { Kernel, EntityManager, MockApiStorage } from 'qdadm'
+import { Kernel, EntityManager, MockApiStorage, ApiStorage, MemoryStorage, LocalStorage } from 'qdadm'
 import PrimeVue from 'primevue/config'
 import Aura from '@primeuix/themes/aura'
 import 'qdadm/styles'
 import 'primeicons/primeicons.css'
+import axios from 'axios'
 
 import App from './App.vue'
 import { version } from '../package.json'
 import { authAdapter } from './adapters/authAdapter'
 import { demoEntityAuthAdapter } from './adapters/entityAuthAdapter'
+
+// ============================================================================
+// DUMMYJSON STORAGE
+// ============================================================================
+// DummyJSON uses limit/skip pagination instead of page/page_size.
+// Custom storage class converts qdadm pagination params to DummyJSON format.
+
+class DummyJsonStorage extends ApiStorage {
+  /**
+   * List entities with DummyJSON pagination (limit/skip)
+   */
+  async list(params = {}) {
+    const { page = 1, page_size = 20, sort_by, sort_order, filters = {} } = params
+    // Convert page/page_size to limit/skip
+    const limit = page_size
+    const skip = (page - 1) * page_size
+
+    const response = await this.client.get(this.endpoint, {
+      params: { limit, skip, ...filters }
+    })
+
+    const data = response.data
+    return {
+      items: data[this.responseItemsKey] || data.items || data,
+      total: data[this.responseTotalKey] || data.total || (Array.isArray(data) ? data.length : 0)
+    }
+  }
+}
+
+// ============================================================================
+// REST COUNTRIES STORAGE
+// ============================================================================
+// REST Countries API returns all 250 countries in one call (no server pagination).
+// Uses cca3 (3-letter country code) as unique identifier.
+// Override list() to add required 'fields' param and do client-side pagination.
+
+class RestCountriesStorage extends ApiStorage {
+  constructor(options = {}) {
+    super({
+      ...options,
+      idField: 'cca3'
+    })
+  }
+
+  /**
+   * List countries - API returns full dataset, we paginate client-side
+   */
+  async list(params = {}) {
+    const { page = 1, page_size = 20, search } = params
+    const fields = 'name,cca3,capital,region,population,flag,flags'
+
+    const response = await this.client.get(this.endpoint, { params: { fields } })
+    let items = response.data
+
+    // Client-side search
+    if (search) {
+      const term = search.toLowerCase()
+      items = items.filter(c =>
+        c.name?.common?.toLowerCase().includes(term) ||
+        c.cca3?.toLowerCase().includes(term) ||
+        c.region?.toLowerCase().includes(term) ||
+        c.capital?.some(cap => cap.toLowerCase().includes(term))
+      )
+    }
+
+    // Client-side pagination
+    const total = items.length
+    const start = (page - 1) * page_size
+    return { items: items.slice(start, start + page_size), total }
+  }
+
+  /**
+   * Get single country by cca3 code
+   */
+  async get(id) {
+    const fields = 'name,cca3,capital,region,population,flag,flags'
+    const response = await this.client.get(`/v3.1/alpha/${id}`, { params: { fields } })
+    return Array.isArray(response.data) ? response.data[0] : response.data
+  }
+}
 
 // Fixtures for initial data (seeded to localStorage on first load)
 import usersFixture from './fixtures/users.json'
@@ -115,6 +196,30 @@ const loansStorage = new LoansStorage({
 const genresStorage = new MockApiStorage({
   entityName: 'genres',
   initialData: genresFixture
+})
+
+// ============================================================================
+// MEMORY STORAGE - Volatile (no persistence)
+// ============================================================================
+// MemoryStorage keeps data in-memory only. Data is lost on page refresh.
+// Useful for session-scoped data like user preferences or temporary state.
+
+const settingsStorage = new MemoryStorage({
+  initialData: [
+    { id: 'theme', key: 'theme', value: 'light', type: 'string' },
+    { id: 'language', key: 'language', value: 'en', type: 'string' },
+    { id: 'pageSize', key: 'pageSize', value: '20', type: 'number' }
+  ]
+})
+
+// ============================================================================
+// LOCAL STORAGE - Persistent (survives browser sessions)
+// ============================================================================
+// LocalStorage uses browser localStorage. Data persists across page refreshes
+// and browser restarts. Useful for user favorites, bookmarks, or local cache.
+
+const favoritesStorage = new LocalStorage({
+  key: 'qdadm-demo-favorites'
 })
 
 // Export for authAdapter (validates login against stored users)
@@ -426,6 +531,209 @@ const managers = {
 }
 
 // ============================================================================
+// JSONPLACEHOLDER MANAGERS
+// ============================================================================
+// External API integration demonstrating real REST API usage.
+// Managers are prefixed with 'jp_' to avoid collision with local entities
+// (e.g., jp_users vs users for local demo users).
+//
+// Note: JSONPlaceholder is read-only (changes are simulated but not persisted).
+
+const jpClient = axios.create({
+  baseURL: 'https://jsonplaceholder.typicode.com'
+})
+
+// Storage factory for JSONPlaceholder API
+const jpStorage = (endpoint) => new ApiStorage({
+  endpoint,
+  client: jpClient
+})
+
+// Merge local managers with JSONPlaceholder managers
+const allManagers = {
+  ...managers,
+
+  // JSONPlaceholder Users (prefixed to avoid collision with local users)
+  jp_users: new EntityManager({
+    name: 'jp_users',
+    label: 'JP User',
+    labelPlural: 'JP Users',
+    routePrefix: 'jp_user',
+    labelField: 'name',
+    readOnly: true,
+    localFilterThreshold: 0,  // Disable qdadm caching for external API
+    fields: {
+      id: { type: 'number', label: 'ID', readOnly: true },
+      name: { type: 'text', label: 'Full Name', required: true },
+      username: { type: 'text', label: 'Username', required: true },
+      email: { type: 'email', label: 'Email', required: true },
+      phone: { type: 'text', label: 'Phone' },
+      website: { type: 'url', label: 'Website' }
+    },
+    storage: jpStorage('/users')
+  }),
+
+  // JSONPlaceholder Posts
+  posts: new EntityManager({
+    name: 'posts',
+    label: 'Post',
+    labelPlural: 'Posts',
+    routePrefix: 'post',
+    labelField: 'title',
+    readOnly: true,
+    localFilterThreshold: 0,  // Disable qdadm caching for external API
+    fields: {
+      id: { type: 'number', label: 'ID', readOnly: true },
+      title: { type: 'text', label: 'Title', required: true },
+      body: { type: 'text', label: 'Body', required: true },
+      userId: { type: 'number', label: 'Author', required: true }
+    },
+    storage: jpStorage('/posts')
+  }),
+
+  // JSONPlaceholder Todos
+  todos: new EntityManager({
+    name: 'todos',
+    label: 'Todo',
+    labelPlural: 'Todos',
+    routePrefix: 'todo',
+    labelField: 'title',
+    readOnly: true,
+    localFilterThreshold: 0,  // Disable qdadm caching for external API
+    fields: {
+      id: { type: 'number', label: 'ID', readOnly: true },
+      title: { type: 'text', label: 'Title', required: true },
+      completed: { type: 'boolean', label: 'Completed' },
+      userId: { type: 'number', label: 'Assigned To', required: true }
+    },
+    storage: jpStorage('/todos')
+  }),
+
+  // ============================================================================
+  // DUMMYJSON MANAGERS
+  // ============================================================================
+  // DummyJSON API integration demonstrating different pagination style (limit/skip).
+  // Note: DummyJSON is read-only (changes are simulated but not persisted).
+
+  // DummyJSON Products
+  products: new EntityManager({
+    name: 'products',
+    label: 'Product',
+    labelPlural: 'Products',
+    routePrefix: 'product',
+    labelField: 'title',
+    readOnly: true,
+    localFilterThreshold: 0,  // Disable qdadm caching for external API
+    fields: {
+      id: { type: 'number', label: 'ID', readOnly: true },
+      title: { type: 'text', label: 'Title', required: true },
+      price: { type: 'number', label: 'Price' },
+      category: { type: 'text', label: 'Category' },
+      thumbnail: { type: 'url', label: 'Thumbnail' }
+    },
+    storage: new DummyJsonStorage({
+      endpoint: '/products',
+      client: axios.create({ baseURL: 'https://dummyjson.com' }),
+      responseItemsKey: 'products'
+    })
+  }),
+
+  // ============================================================================
+  // REST COUNTRIES MANAGERS
+  // ============================================================================
+  // REST Countries API integration - returns all 250 countries.
+  // Uses cca3 (3-letter ISO code) as unique identifier.
+  // Read-only entity with client-side pagination and search.
+
+  countries: new EntityManager({
+    name: 'countries',
+    label: 'Country',
+    labelPlural: 'Countries',
+    routePrefix: 'country',
+    labelField: (country) => country.name?.common || country.cca3,
+    idField: 'cca3',
+    readOnly: true,
+    localFilterThreshold: 0,  // Disable qdadm caching for external API
+    fields: {
+      cca3: { type: 'text', label: 'Code', readOnly: true },
+      name: { type: 'object', label: 'Name', readOnly: true },
+      capital: { type: 'array', label: 'Capital', readOnly: true },
+      region: { type: 'text', label: 'Region', readOnly: true },
+      population: { type: 'number', label: 'Population', readOnly: true },
+      flag: { type: 'text', label: 'Flag', readOnly: true }
+    },
+    storage: new RestCountriesStorage({
+      endpoint: '/v3.1/all',
+      client: axios.create({ baseURL: 'https://restcountries.com' })
+    })
+  }),
+
+  // ============================================================================
+  // LOCAL STORAGE MANAGERS
+  // ============================================================================
+  // LocalStorage adapter for browser-local persistence.
+  // Data survives page refresh and browser sessions.
+
+  // Favorites - User bookmarks stored in localStorage
+  favorites: new EntityManager({
+    name: 'favorites',
+    label: 'Favorite',
+    labelPlural: 'Favorites',
+    routePrefix: 'favorite',
+    labelField: 'name',
+    fields: {
+      id: { type: 'text', label: 'ID', readOnly: true },
+      name: { type: 'text', label: 'Name', required: true, default: '' },
+      entityType: {
+        type: 'select',
+        label: 'Type',
+        required: true,
+        default: 'book',
+        options: [
+          { label: 'Book', value: 'book' },
+          { label: 'User', value: 'user' },
+          { label: 'Genre', value: 'genre' },
+          { label: 'Loan', value: 'loan' }
+        ]
+      },
+      entityId: { type: 'text', label: 'Entity ID', required: true, default: '' },
+      createdAt: { type: 'datetime', label: 'Created At', readOnly: true }
+    },
+    storage: favoritesStorage
+  }),
+
+  // ============================================================================
+  // MEMORY STORAGE MANAGERS
+  // ============================================================================
+  // Volatile storage - data lost on page refresh. Demonstrates MemoryStorage.
+
+  // Settings - key/value pairs for app configuration (volatile)
+  settings: new EntityManager({
+    name: 'settings',
+    label: 'Setting',
+    labelPlural: 'Settings',
+    routePrefix: 'setting',
+    labelField: 'key',
+    fields: {
+      id: { type: 'text', label: 'ID', readOnly: true },
+      key: { type: 'text', label: 'Key', required: true },
+      value: { type: 'text', label: 'Value', required: true },
+      type: {
+        type: 'select',
+        label: 'Type',
+        options: [
+          { label: 'String', value: 'string' },
+          { label: 'Number', value: 'number' },
+          { label: 'Boolean', value: 'boolean' }
+        ],
+        default: 'string'
+      }
+    },
+    storage: settingsStorage
+  })
+}
+
+// ============================================================================
 // KERNEL CONFIGURATION
 // ============================================================================
 // Kernel is the all-in-one bootstrap class. It:
@@ -459,8 +767,8 @@ const kernel = new Kernel({
     ]
   },
   // Navigation sections order
-  sectionOrder: ['Library', 'Administration'],
-  managers,
+  sectionOrder: ['Library', 'Memory Storage', 'Local Storage', 'JSONPlaceholder', 'DummyJSON', 'REST Countries', 'Administration'],
+  managers: allManagers,
   authAdapter,
   entityAuthAdapter: demoEntityAuthAdapter,
   // Security config: role hierarchy and permissions

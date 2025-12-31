@@ -17,9 +17,13 @@
 import { useListPageBuilder, ListPage, Zone } from 'qdadm'
 import Tag from 'primevue/tag'
 import Column from 'primevue/column'
+import { useFavoriteAction } from '@/composables/useFavoriteAction'
 
 // ============ LIST BUILDER ============
 const list = useListPageBuilder({ entity: 'books' })
+
+// ============ FAVORITE ACTION ============
+useFavoriteAction(list, 'book', { labelField: 'title' })
 
 // ============ SEARCH ============
 list.setSearch({

@@ -7,6 +7,7 @@ export default defineConfig({
   plugins: [vue()],
   resolve: {
     alias: [
+      { find: '@', replacement: resolve(__dirname, 'src') },
       { find: 'qdadm/styles', replacement: resolve(__dirname, '../qdadm/src/styles/index.scss') },
       { find: 'qdadm', replacement: resolve(__dirname, '../qdadm/src') }
     ],
