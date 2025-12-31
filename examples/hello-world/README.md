@@ -18,18 +18,33 @@ npm run dev
 
 ## Key concepts
 
-### 1. EntityManager config
+### 1. EntityManager setup
 
 ```javascript
-managers: {
-  tasks: {
-    storage: new MockApiStorage({ initialData: [...] }),
-    fields: {
-      title: { type: 'text', label: 'Title' },
-      done: { type: 'boolean', label: 'Done' }
-    }
+import { createQdadm, MockApiStorage, EntityManager } from 'qdadm'
+
+// Create EntityManager instance
+const tasksManager = new EntityManager({
+  name: 'tasks',
+  label: 'Task',
+  labelField: 'title',
+  storage: new MockApiStorage({
+    entityName: 'tasks',
+    initialData: [...]
+  }),
+  fields: {
+    title: { type: 'text', label: 'Title' },
+    done: { type: 'boolean', label: 'Done' }
   }
-}
+})
+
+// Pass to createQdadm
+const qdadm = createQdadm({
+  router,
+  toast: { add: () => {}, remove: () => {} },
+  features: { auth: false },
+  managers: { tasks: tasksManager }
+})
 ```
 
 ### 2. List page (minimal)
