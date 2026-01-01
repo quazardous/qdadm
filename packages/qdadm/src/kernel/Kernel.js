@@ -56,6 +56,7 @@ import { createManagers } from '../entity/factory.js'
 import { defaultStorageResolver } from '../entity/storage/factory.js'
 import { createDeferredRegistry } from '../deferred/DeferredRegistry.js'
 import { createEventRouter } from './EventRouter.js'
+import { createSSEBridge } from './SSEBridge.js'
 
 export class Kernel {
   /**
@@ -82,6 +83,7 @@ export class Kernel {
    * @param {object} options.security - Security config { role_hierarchy, role_permissions, entity_permissions }
    * @param {boolean} options.warmup - Enable warmup at boot (default: true)
    * @param {object} options.eventRouter - EventRouter config { 'source:signal': ['target:signal', ...] }
+   * @param {object} options.sse - SSEBridge config { url, reconnectDelay, signalPrefix, autoConnect, events }
    */
   constructor(options) {
     this.options = options
@@ -93,6 +95,7 @@ export class Kernel {
     this.hookRegistry = null
     this.deferred = null
     this.eventRouter = null
+    this.sseBridge = null
     this.layoutComponents = null
     this.securityChecker = null
   }
@@ -113,15 +116,19 @@ export class Kernel {
     this._initModules()
     // 4. Create router (needs routes from modules)
     this._createRouter()
-    // 5. Create orchestrator and remaining components
+    // 5. Setup auth:expired handler (needs router + authAdapter)
+    this._setupAuthExpiredHandler()
+    // 6. Create orchestrator and remaining components
     this._createOrchestrator()
-    // 6. Create EventRouter (needs signals + orchestrator)
+    // 7. Create EventRouter (needs signals + orchestrator)
     this._createEventRouter()
+    // 8. Create SSEBridge (needs signals + authAdapter for token)
+    this._createSSEBridge()
     this._setupSecurity()
     this._createLayoutComponents()
     this._createVueApp()
     this._installPlugins()
-    // 6. Fire warmups (fire-and-forget, pages await via DeferredRegistry)
+    // 9. Fire warmups (fire-and-forget, pages await via DeferredRegistry)
     this._fireWarmups()
     return this.vueApp
   }
@@ -141,6 +148,58 @@ export class Kernel {
           resolve(user)
         })
       })
+    })
+  }
+
+  /**
+   * Setup handler for auth:expired signal
+   *
+   * When auth:expired is emitted (e.g., from API 401/403 response),
+   * this handler:
+   * 1. Calls authAdapter.logout() to clear tokens
+   * 2. Redirects to login page
+   * 3. Optionally calls onAuthExpired callback
+   *
+   * To emit auth:expired from your API client:
+   * ```js
+   * axios.interceptors.response.use(
+   *   response => response,
+   *   error => {
+   *     if (error.response?.status === 401 || error.response?.status === 403) {
+   *       signals.emit('auth:expired', { status: error.response.status })
+   *     }
+   *     return Promise.reject(error)
+   *   }
+   * )
+   * ```
+   */
+  _setupAuthExpiredHandler() {
+    const { authAdapter, onAuthExpired } = this.options
+    if (!authAdapter) return
+
+    this.signals.on('auth:expired', async (payload) => {
+      const debug = this.options.debug ?? false
+      if (debug) {
+        console.warn('[Kernel] auth:expired received:', payload)
+      }
+
+      // 1. Logout (clear tokens)
+      if (authAdapter.logout) {
+        authAdapter.logout()
+      }
+
+      // 2. Emit auth:logout signal
+      await this.signals.emit('auth:logout', { reason: 'expired', ...payload })
+
+      // 3. Redirect to login (if not already there)
+      if (this.router.currentRoute.value.name !== 'login') {
+        this.router.push({ name: 'login', query: { expired: '1' } })
+      }
+
+      // 4. Optional callback
+      if (onAuthExpired) {
+        onAuthExpired(payload)
+      }
     })
   }
 
@@ -369,6 +428,52 @@ export class Kernel {
   }
 
   /**
+   * Create SSEBridge for Server-Sent Events to SignalBus integration
+   *
+   * SSE config:
+   * ```js
+   * sse: {
+   *   url: '/api/events',       // SSE endpoint
+   *   reconnectDelay: 5000,     // Reconnect delay (ms), 0 to disable
+   *   signalPrefix: 'sse',      // Signal prefix (default: 'sse')
+   *   autoConnect: false,       // Connect immediately vs wait for auth:login
+   *   events: ['task:completed', 'bot:status']  // Event names to register
+   * }
+   * ```
+   */
+  _createSSEBridge() {
+    const { sse, authAdapter } = this.options
+    if (!sse?.url) return
+
+    const debug = this.options.debug ?? false
+
+    // Build getToken from authAdapter
+    const getToken = authAdapter?.getToken
+      ? () => authAdapter.getToken()
+      : () => localStorage.getItem('auth_token')
+
+    this.sseBridge = createSSEBridge({
+      signals: this.signals,
+      url: sse.url,
+      reconnectDelay: sse.reconnectDelay ?? 5000,
+      signalPrefix: sse.signalPrefix ?? 'sse',
+      autoConnect: sse.autoConnect ?? false,
+      withCredentials: sse.withCredentials ?? false,
+      tokenParam: sse.tokenParam ?? 'token',
+      getToken,
+      debug
+    })
+
+    // Register known event names if provided
+    if (sse.events?.length) {
+      // Wait for connection before registering
+      this.signals.once('sse:connected').then(() => {
+        this.sseBridge.registerEvents(sse.events)
+      })
+    }
+  }
+
+  /**
    * Create layout components map for useLayoutResolver
    * Maps layout types to their Vue components.
    */
@@ -437,6 +542,11 @@ export class Kernel {
 
     // Signal bus injection
     app.provide('qdadmSignals', this.signals)
+
+    // SSEBridge injection (if configured)
+    if (this.sseBridge) {
+      app.provide('qdadmSSEBridge', this.sseBridge)
+    }
 
     // Hook registry injection
     app.provide('qdadmHooks', this.hookRegistry)
@@ -539,6 +649,22 @@ export class Kernel {
   }
 
   /**
+   * Get the SSEBridge instance
+   * @returns {import('./SSEBridge.js').SSEBridge|null}
+   */
+  getSSEBridge() {
+    return this.sseBridge
+  }
+
+  /**
+   * Shorthand accessor for SSE bridge
+   * @returns {import('./SSEBridge.js').SSEBridge|null}
+   */
+  get sse() {
+    return this.sseBridge
+  }
+
+  /**
    * Get the layout components map
    * @returns {object} Layout components by type
    */
@@ -569,5 +695,104 @@ export class Kernel {
    */
   get security() {
     return this.securityChecker
+  }
+
+  /**
+   * Setup an axios client with automatic auth and error handling
+   *
+   * Adds interceptors that:
+   * - Add Authorization header with token from authAdapter
+   * - Emit auth:expired on 401/403 responses (triggers auto-logout)
+   * - Emit api:error on all errors for centralized handling
+   *
+   * Usage:
+   * ```js
+   * import axios from 'axios'
+   *
+   * const apiClient = axios.create({ baseURL: '/api' })
+   * kernel.setupApiClient(apiClient)
+   *
+   * // Now 401/403 errors automatically trigger logout
+   * const storage = new ApiStorage({ endpoint: '/users', client: apiClient })
+   * ```
+   *
+   * Or let Kernel create the client:
+   * ```js
+   * const kernel = new Kernel({
+   *   ...options,
+   *   apiClient: { baseURL: '/api' }  // axios.create() options
+   * })
+   * const apiClient = kernel.getApiClient()
+   * ```
+   *
+   * @param {object} client - Axios instance to configure
+   * @returns {object} The configured axios instance
+   */
+  setupApiClient(client) {
+    const { authAdapter } = this.options
+    const signals = this.signals
+    const debug = this.options.debug ?? false
+
+    // Request interceptor: add Authorization header
+    client.interceptors.request.use(
+      (config) => {
+        if (authAdapter?.getToken) {
+          const token = authAdapter.getToken()
+          if (token) {
+            config.headers = config.headers || {}
+            config.headers.Authorization = `Bearer ${token}`
+          }
+        }
+        return config
+      },
+      (error) => Promise.reject(error)
+    )
+
+    // Response interceptor: handle auth errors
+    client.interceptors.response.use(
+      (response) => response,
+      async (error) => {
+        const status = error.response?.status
+        const url = error.config?.url
+
+        // Emit api:error for all errors
+        await signals.emit('api:error', {
+          status,
+          message: error.message,
+          url,
+          error
+        })
+
+        // Emit auth:expired for 401/403
+        if (status === 401 || status === 403) {
+          if (debug) {
+            console.warn(`[Kernel] API ${status} error on ${url}, emitting auth:expired`)
+          }
+          await signals.emit('auth:expired', { status, url })
+        }
+
+        return Promise.reject(error)
+      }
+    )
+
+    // Store reference
+    this._apiClient = client
+    return client
+  }
+
+  /**
+   * Get the configured API client
+   * @returns {object|null} Axios instance or null if not configured
+   */
+  getApiClient() {
+    return this._apiClient
+  }
+
+  /**
+   * Shorthand accessor for API client
+   * @returns {object|null}
+   */
+  get api() {
+    return this._apiClient
   }
 }

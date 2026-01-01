@@ -31,6 +31,9 @@ export { BaseConnector } from './connectors/index.js'
 // T00313: ManualConnector - Inline entity/field definitions
 export { ManualConnector } from './connectors/index.js'
 
+// OpenAPIConnector - Parse OpenAPI 3.x specifications
+export { OpenAPIConnector } from './connectors/index.js'
+
 // T00316: StorageProfileFactory - Type definitions for storage profile pattern
 // JSDoc types available when importing this module (no runtime exports)
 import './StorageProfileFactory.js'

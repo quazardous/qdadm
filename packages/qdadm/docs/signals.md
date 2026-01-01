@@ -169,18 +169,53 @@ Example: Creating a book emits `books:created` then `entity:created`.
 
 ## Auth Signals
 
-Emit auth signals for session lifecycle:
+Auth signals handle session lifecycle and security events:
+
+| Signal | When | Payload | Default Handler |
+|--------|------|---------|-----------------|
+| `auth:login` | User logs in | `{ user }` | Resolves `auth:ready` deferred |
+| `auth:logout` | User logs out | `{ user?, reason? }` | - |
+| `auth:expired` | Token expired or 401/403 | `{ status?, url? }` | Logout + redirect to `/login` |
+| `auth:impersonate:start` | Admin impersonates user | `{ target, original }` | - |
+| `auth:impersonate:end` | Impersonation ends | `{ original }` | - |
+
+### Token Expiration Flow
+
+Kernel automatically handles `auth:expired`:
+
+```
+API 401/403 → emit('auth:expired') → authAdapter.logout() → router.push('/login?expired=1')
+```
+
+To emit `auth:expired` from your API client:
 
 ```js
-// On login
-orchestrator.signals.emit('auth:login', { user })
+// Option 1: Use kernel.setupApiClient()
+const client = axios.create({ baseURL: '/api' })
+kernel.setupApiClient(client)  // Auto-emits auth:expired on 401/403
 
-// On logout
-orchestrator.signals.emit('auth:logout', { user })
+// Option 2: Manual interceptor
+client.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401 || error.response?.status === 403) {
+      signals.emit('auth:expired', { status: error.response.status, url: error.config?.url })
+    }
+    return Promise.reject(error)
+  }
+)
+```
 
-// On impersonation
-orchestrator.signals.emit('auth:impersonate:start', { target, original })
-orchestrator.signals.emit('auth:impersonate:end', { original })
+### API Error Signal
+
+For centralized error handling:
+
+```js
+// Emitted on any API error
+signals.on('api:error', ({ status, message, url, error }) => {
+  // Log to error tracking service
+  errorTracker.capture(error)
+})
 ```
 
 Consumers can react (e.g., clear caches, update UI state, log audit).
@@ -325,6 +360,132 @@ At boot, EventRouter validates no cycles exist:
 
 Components stay simple. They listen to their own signals, not global events. High-level routing handles the orchestration.
 
+## SSEBridge (Server-Sent Events)
+
+SSEBridge connects Server-Sent Events to SignalBus, enabling components to subscribe to real-time events without managing their own EventSource connections.
+
+### Problem
+
+Without SSEBridge, each component manages its own EventSource:
+
+```js
+// TaskList.vue - connection #1
+const es = new EventSource('/api/events')
+es.addEventListener('task:completed', (e) => updateList(JSON.parse(e.data)))
+onUnmounted(() => es.close())
+
+// AlertList.vue - connection #2 (wasteful!)
+const es2 = new EventSource('/api/events')
+es2.addEventListener('alert:triggered', (e) => updateAlerts(JSON.parse(e.data)))
+onUnmounted(() => es2.close())
+```
+
+Multiple EventSource connections to the same endpoint waste resources.
+
+### Solution
+
+SSEBridge maintains a single SSE connection and emits events to SignalBus:
+
+```js
+// main.js - single connection
+const kernel = new Kernel({
+  sse: {
+    url: '/api/events',
+    events: ['task:completed', 'alert:triggered', 'queue:stats']
+  }
+})
+
+// TaskList.vue - subscribes via signals
+const { onEvent } = useSSEBridge()
+onEvent('task:completed', ({ data }) => updateList(data))
+
+// AlertList.vue - same signal bus, no extra connection
+const { onEvent } = useSSEBridge()
+onEvent('alert:triggered', ({ data }) => updateAlerts(data))
+```
+
+### Configuration
+
+Configure SSE in Kernel options:
+
+```js
+new Kernel({
+  sse: {
+    url: '/api/events',           // SSE endpoint (required)
+    reconnectDelay: 5000,         // Reconnect delay in ms (default: 5000)
+    signalPrefix: 'sse',          // Signal prefix (default: 'sse')
+    autoConnect: false,           // true = connect immediately
+                                  // false = wait for auth:login (default)
+    tokenParam: 'token',          // Query param for auth token
+    events: [                     // Event names to register
+      'task:completed',
+      'task:failed',
+      'alert:triggered'
+    ]
+  }
+})
+```
+
+### Signal Naming
+
+SSE events are prefixed with `sse:` (configurable):
+
+| SSE Event | SignalBus Signal |
+|-----------|------------------|
+| `task:completed` | `sse:task:completed` |
+| `alert:triggered` | `sse:alert:triggered` |
+| Connection open | `sse:connected` |
+| Connection lost | `sse:disconnected` |
+| Connection error | `sse:error` |
+
+### useSSEBridge Composable
+
+```js
+import { useSSEBridge } from 'qdadm'
+
+const {
+  connected,      // Ref<boolean> - connection status
+  reconnecting,   // Ref<boolean> - reconnection in progress
+  error,          // Ref<string|null> - last error
+  onEvent,        // Subscribe to specific event (auto-cleanup)
+  onAnyEvent      // Subscribe to all SSE events (wildcard)
+} = useSSEBridge()
+
+// Subscribe to specific event
+onEvent('task:completed', ({ data, event, timestamp }) => {
+  console.log('Task completed:', data)
+})
+
+// Subscribe to all SSE events
+onAnyEvent(({ event, data }) => {
+  console.log(`SSE ${event}:`, data)
+})
+```
+
+### Lifecycle
+
+1. **With auth (default)**: SSEBridge waits for `auth:login` signal before connecting
+2. **Without auth**: Set `autoConnect: true` to connect immediately
+3. **On logout**: SSEBridge disconnects on `auth:logout` signal
+4. **Reconnection**: Automatic reconnection with configurable delay
+
+### Direct SignalBus Access
+
+You can also use SignalBus directly for more control:
+
+```js
+const signals = inject('qdadmSignals')
+
+// Subscribe with wildcards
+signals.on('sse:task:*', ({ data }) => {
+  console.log('Any task event:', data)
+})
+
+// One-time subscription
+await signals.once('sse:connected')
+console.log('SSE is ready!')
+```
+
 ## Best Practices
 
 1. **Use signal categories**: `domain:action` format (`books:created`, `auth:login`)
@@ -333,3 +494,4 @@ Components stay simple. They listen to their own signals, not global events. Hig
 4. **Emit before side effects complete**: Fire-and-forget pattern
 5. **Business in SignalBus, UI in Vue**: Don't mix channels
 6. **Use EventRouter for cross-cutting**: Auth → cache invalidation routing
+7. **Use SSEBridge for real-time**: Single connection, multiple subscribers

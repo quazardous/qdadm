@@ -16,3 +16,8 @@ export {
   EventRouter,
   createEventRouter,
 } from './EventRouter.js'
+export {
+  SSEBridge,
+  createSSEBridge,
+  SSE_SIGNALS,
+} from './SSEBridge.js'

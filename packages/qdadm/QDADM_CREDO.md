@@ -183,6 +183,41 @@ new Kernel({
 
 Even these should use EntityManager for data access.
 
+## Security by Default
+
+qdadm handles token expiration and auth errors automatically:
+
+```js
+// Kernel auto-handles auth:expired signal
+new Kernel({
+  authAdapter,  // Your auth adapter
+  // ... rest of config
+})
+
+// Wire your API client to emit auth:expired on 401/403
+kernel.setupApiClient(axios.create({ baseURL: '/api' }))
+```
+
+**What happens on 401/403:**
+1. `auth:expired` signal emitted
+2. `authAdapter.logout()` called
+3. User redirected to `/login?expired=1`
+
+**Token expiration check:**
+```js
+// In authAdapter.isAuthenticated() - check expiration
+isAuthenticated() {
+  const token = this.getToken()
+  if (!token || this.isTokenExpired(token)) {
+    this.logout()
+    return false
+  }
+  return true
+}
+```
+
+See [Security docs](./docs/security.md) for full auth flow.
+
 ## Summary
 
 | Principle | Description |
@@ -193,6 +228,7 @@ Even these should use EntityManager for data access.
 | Representative demo | Real app, not technical showcases |
 | EntityManager first | All data through managers |
 | ListPage default | Custom DataTable only when justified |
+| Security by default | Auto-logout on token expiration |
 
 ## Deep Dives
 

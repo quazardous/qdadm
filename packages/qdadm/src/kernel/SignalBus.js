@@ -25,6 +25,14 @@ export const SIGNALS = {
   ENTITY_UPDATED: 'entity:updated',
   ENTITY_DELETED: 'entity:deleted',
 
+  // Auth lifecycle signals
+  AUTH_LOGIN: 'auth:login',
+  AUTH_LOGOUT: 'auth:logout',
+  AUTH_EXPIRED: 'auth:expired',  // Emitted on 401/403 API responses
+
+  // API error signals
+  API_ERROR: 'api:error',  // Emitted on any API error { status, message, url }
+
   // Pattern for entity-specific signals
   // Use buildSignal(entityName, action) for these
 }

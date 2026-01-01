@@ -5,6 +5,34 @@ All notable changes to qdadm will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.30.0] - 2026-01-01
+
+### Added
+- **Security: Token expiration handling**
+  - `auth:expired` signal emitted on 401/403 API responses
+  - `auth:logout` signal with `reason` payload
+  - `api:error` signal for centralized error handling
+  - Kernel auto-handles `auth:expired`: logout + redirect to `/login?expired=1`
+- **`Kernel.setupApiClient()`**: Wire axios clients with auth interceptors
+  - Adds Authorization header from authAdapter.getToken()
+  - Emits `auth:expired` on 401/403 responses
+  - Emits `api:error` on any API error
+- **`qdadm/editors` subpath export**: Optional editors requiring vanilla-jsoneditor
+  - `VanillaJsonEditor` and `JsonStructuredField` moved from `qdadm/components`
+  - Reduces bundle size for apps not using JSON editor (~690KB saved)
+  - `vanilla-jsoneditor` now optional peer dependency
+
+### Changed
+- **BREAKING**: `VanillaJsonEditor` and `JsonStructuredField` now imported from `qdadm/editors`
+  - Before: `import { VanillaJsonEditor } from 'qdadm/components'`
+  - After: `import { VanillaJsonEditor } from 'qdadm/editors'`
+- `vanilla-jsoneditor` moved from peerDependencies to optionalDependencies
+
+### Documentation
+- Updated `docs/security.md` with Token Expiration & Auto-Logout section
+- Updated `docs/signals.md` with Auth Signals table and setupApiClient examples
+- Added "Security by Default" section to `QDADM_CREDO.md`
+
 ## [0.29.0] - 2025-12-31
 
 ### Added

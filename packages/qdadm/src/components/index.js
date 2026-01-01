@@ -32,14 +32,16 @@ export { default as ActionButtons } from './lists/ActionButtons.vue'
 export { default as ActionColumn } from './lists/ActionColumn.vue'
 export { default as FilterBar } from './lists/FilterBar.vue'
 
-// Editors
+// Editors (vanilla-jsoneditor free)
 export { default as KeyValueEditor } from './editors/KeyValueEditor.vue'
 export { default as LanguageEditor } from './editors/LanguageEditor.vue'
 export { default as ScopeEditor } from './editors/ScopeEditor.vue'
-export { default as VanillaJsonEditor } from './editors/VanillaJsonEditor.vue'
 export { default as JsonEditorFoldable } from './editors/JsonEditorFoldable.vue'
-export { default as JsonStructuredField } from './editors/JsonStructuredField.vue'
 export { default as JsonViewer } from './editors/JsonViewer.vue'
+
+// NOTE: VanillaJsonEditor and JsonStructuredField require vanilla-jsoneditor
+// Import from 'qdadm/editors' instead:
+// import { VanillaJsonEditor, JsonStructuredField } from 'qdadm/editors'
 
 // Dialogs
 export { default as SimpleDialog } from './dialogs/SimpleDialog.vue'
