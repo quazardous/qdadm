@@ -216,7 +216,7 @@ function getCapabilityLabel(cap) {
             :disabled="isTesting(entity.name)"
             @click.stop="testFetch(entity.name)"
           >
-            <i :class="['pi', isTesting(entity.name) ? 'pi-spin pi-spinner' : 'pi-play']" />
+            <i :class="['pi', isTesting(entity.name) ? 'pi-spin pi-spinner' : 'pi-download']" />
             {{ isTesting(entity.name) ? 'Testing...' : 'Fetch' }}
           </button>
           <span v-if="getTestResult(entity.name)" class="entity-test-result" :class="getTestResult(entity.name).success ? 'test-success' : 'test-error'">
