@@ -219,10 +219,11 @@ export class EntitiesCollector extends Collector {
       idField: manager.idField,
 
       // Storage info
+      // Prefer instance capabilities (may include requiresAuth) over static ones
       storage: {
         type: storage?.constructor?.name || 'None',
         endpoint: storage?.endpoint || storage?._endpoint || null,
-        capabilities: storage?.constructor?.capabilities || {}
+        capabilities: storage?.capabilities || storage?.constructor?.capabilities || {}
       },
 
       // Cache info
@@ -372,5 +373,31 @@ export class EntitiesCollector extends Collector {
    */
   markEntitySeen(entityName) {
     this._activeEntities.delete(entityName)
+  }
+
+  /**
+   * Test fetch data from a specific entity
+   * Used to test auth protection - will throw 401 if not authenticated
+   * @param {string} entityName - Entity name
+   * @returns {Promise<{success: boolean, count?: number, error?: string, status?: number}>}
+   */
+  async testFetch(entityName) {
+    if (!this._orchestrator) {
+      return { success: false, error: 'No orchestrator' }
+    }
+    try {
+      const manager = this._orchestrator.get(entityName)
+      const result = await manager.storage.list({ page: 1, page_size: 1 })
+      return {
+        success: true,
+        count: result.total ?? result.items?.length ?? 0
+      }
+    } catch (e) {
+      return {
+        success: false,
+        error: e.message,
+        status: e.status
+      }
+    }
   }
 }

@@ -19,6 +19,8 @@ onMounted(() => {
 
 const expandedEntities = ref(new Set())
 const loadingCache = ref(new Set())
+const testingFetch = ref(new Set())
+const testResults = ref(new Map()) // entityName -> { success, count, error, status }
 
 function toggleExpand(name) {
   if (expandedEntities.value.has(name)) {
@@ -56,12 +58,37 @@ function isLoading(name) {
   return loadingCache.value.has(name)
 }
 
+function isTesting(name) {
+  return testingFetch.value.has(name)
+}
+
+function getTestResult(name) {
+  return testResults.value.get(name)
+}
+
+async function testFetch(entityName) {
+  if (testingFetch.value.has(entityName)) return
+  testingFetch.value.add(entityName)
+  testingFetch.value = new Set(testingFetch.value)
+  testResults.value.delete(entityName)
+  testResults.value = new Map(testResults.value)
+  try {
+    const result = await props.collector.testFetch(entityName)
+    testResults.value.set(entityName, result)
+    testResults.value = new Map(testResults.value)
+  } finally {
+    testingFetch.value.delete(entityName)
+    testingFetch.value = new Set(testingFetch.value)
+  }
+}
+
 function getCapabilityIcon(cap) {
   const icons = {
     supportsTotal: 'pi-hashtag',
     supportsFilters: 'pi-filter',
     supportsPagination: 'pi-ellipsis-h',
-    supportsCaching: 'pi-database'
+    supportsCaching: 'pi-database',
+    requiresAuth: 'pi-lock'
   }
   return icons[cap] || 'pi-question-circle'
 }
@@ -71,7 +98,8 @@ function getCapabilityLabel(cap) {
     supportsTotal: 'Total count',
     supportsFilters: 'Filters',
     supportsPagination: 'Pagination',
-    supportsCaching: 'Caching'
+    supportsCaching: 'Caching',
+    requiresAuth: 'Requires authentication'
   }
   return labels[cap] || cap
 }
@@ -143,7 +171,7 @@ function getCapabilityLabel(cap) {
               v-for="(enabled, cap) in entity.storage.capabilities"
               :key="cap"
               class="entity-cap"
-              :class="[enabled ? 'entity-cap-enabled' : 'entity-cap-disabled']"
+              :class="[cap === 'requiresAuth' && enabled ? 'entity-cap-auth' : (enabled ? 'entity-cap-enabled' : 'entity-cap-disabled')]"
               :title="getCapabilityLabel(cap) + (enabled ? ' ✓' : ' ✗')"
             >
               <i :class="['pi', getCapabilityIcon(cap)]" />
@@ -179,6 +207,28 @@ function getCapabilityLabel(cap) {
         <div v-else class="entity-row">
           <span class="entity-key">Cache:</span>
           <span class="entity-value entity-cache-na">Disabled</span>
+        </div>
+        <!-- Test Fetch row - always visible for testing auth protection -->
+        <div class="entity-row">
+          <span class="entity-key">Test:</span>
+          <button
+            class="entity-test-btn"
+            :disabled="isTesting(entity.name)"
+            @click.stop="testFetch(entity.name)"
+          >
+            <i :class="['pi', isTesting(entity.name) ? 'pi-spin pi-spinner' : 'pi-play']" />
+            {{ isTesting(entity.name) ? 'Testing...' : 'Fetch' }}
+          </button>
+          <span v-if="getTestResult(entity.name)" class="entity-test-result" :class="getTestResult(entity.name).success ? 'test-success' : 'test-error'">
+            <template v-if="getTestResult(entity.name).success">
+              <i class="pi pi-check-circle" />
+              {{ getTestResult(entity.name).count }} items
+            </template>
+            <template v-else>
+              <i class="pi pi-times-circle" />
+              {{ getTestResult(entity.name).status || 'ERR' }}: {{ getTestResult(entity.name).error }}
+            </template>
+          </span>
         </div>
         <div class="entity-row">
           <span class="entity-key">Fields:</span>
@@ -413,6 +463,42 @@ function getCapabilityLabel(cap) {
   background: rgba(239, 68, 68, 0.2);
   color: #ef4444;
 }
+.entity-test-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  background: #3b82f6;
+  border: none;
+  border-radius: 3px;
+  color: #fff;
+  cursor: pointer;
+  font-size: 10px;
+}
+.entity-test-btn:hover {
+  background: #2563eb;
+}
+.entity-test-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.entity-test-result {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-size: 10px;
+  margin-left: 8px;
+}
+.test-success {
+  background: rgba(34, 197, 94, 0.2);
+  color: #22c55e;
+}
+.test-error {
+  background: rgba(239, 68, 68, 0.2);
+  color: #ef4444;
+}
 
 /* Collapsed summary */
 .entity-summary {
@@ -484,6 +570,10 @@ function getCapabilityLabel(cap) {
 .entity-cap-disabled {
   background: rgba(239, 68, 68, 0.15);
   color: #71717a;
+}
+.entity-cap-auth {
+  background: rgba(245, 158, 11, 0.2);
+  color: #f59e0b;
 }
 .entity-required {
   color: #f59e0b;

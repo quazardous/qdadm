@@ -65,6 +65,18 @@ export class MockApiStorage extends IStorage {
     return MockApiStorage.capabilities.supportsCaching
   }
 
+  /**
+   * Instance capabilities getter.
+   * Merges static capabilities with instance-specific ones like requiresAuth.
+   * @returns {object}
+   */
+  get capabilities() {
+    return {
+      ...MockApiStorage.capabilities,
+      requiresAuth: !!this._authCheck
+    }
+  }
+
   constructor(options = {}) {
     super()
     const {
