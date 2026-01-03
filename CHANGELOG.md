@@ -5,7 +5,7 @@ All notable changes to qdadm will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
-## [0.31.0] - 2026-01-03
+## [0.31.1] - 2026-01-03
 
 ### Added
 - **MockApiStorage `authCheck` option**: Simulates API auth protection
@@ -49,6 +49,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   - `registerBlock()` auto-creates zone if not exists
 - **Internal zones**: `DEBUG_ZONE` → `'_app:debug'`, `TOAST_ZONE` → `'_app:toasts'`
 - `ZonesPanel` always renders (toolbar accessible even with no zones)
+
+### Demo (0.14.1)
+- MockApiStorage with `authCheck` for books, loans, genres, users (401 when not authenticated)
 
 ### Demo (0.14.0)
 - All modules refactored to use Module System v2 pattern
