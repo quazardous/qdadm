@@ -73,8 +73,11 @@ export class AuthCollector extends Collector {
     }
 
     // Listen to auth events and track activity
-    const loginCleanup = signals.on('auth:login', () => {
-      this._addEvent('login')
+    const loginCleanup = signals.on('auth:login', (event) => {
+      // QuarKernel wraps payload in KernelEvent - extract data from event.data
+      const data = event?.data || event
+      const user = data?.user || this._authAdapter?.getUser?.()
+      this._addEvent('login', { user })
     })
     this._signalCleanups.push(loginCleanup)
 

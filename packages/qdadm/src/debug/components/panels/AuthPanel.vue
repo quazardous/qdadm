@@ -43,6 +43,13 @@ function getEventIcon(type) {
 }
 
 function getEventLabel(event) {
+  if (event.type === 'login' && event.data) {
+    const user = event.data.user
+    const username = user?.username || user?.name || user?.email
+    if (username) {
+      return `User ${username} logged in`
+    }
+  }
   if (event.type === 'impersonate' && event.data) {
     // Payload structure: { target: { username }, original: { username } }
     // Or signal object: { data: { target: { username } } }
