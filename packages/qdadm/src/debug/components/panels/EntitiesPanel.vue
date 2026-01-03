@@ -135,7 +135,7 @@ function getCapabilityLabel(cap) {
           />
           <i
             v-if="entity.permissions.readOnly"
-            class="pi pi-lock perm-icon-readonly"
+            class="pi pi-eye perm-icon-readonly"
             title="Read-only entity"
           />
         </div>
