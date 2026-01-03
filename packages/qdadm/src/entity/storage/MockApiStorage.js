@@ -71,7 +71,8 @@ export class MockApiStorage extends IStorage {
       entityName,
       idField = 'id',
       generateId = () => Date.now().toString(36) + Math.random().toString(36).substr(2),
-      initialData = null
+      initialData = null,
+      authCheck = null // Optional: () => boolean - throws 401 if returns false
     } = options
 
     if (!entityName) {
@@ -83,9 +84,22 @@ export class MockApiStorage extends IStorage {
     this.generateId = generateId
     this._storageKey = `mockapi_${entityName}_data`
     this._data = new Map()
+    this._authCheck = authCheck
 
     // Load from localStorage or seed with initialData
     this._loadFromStorage(initialData)
+  }
+
+  /**
+   * Check authentication if authCheck is configured
+   * @throws {Error} 401 error if not authenticated
+   */
+  _checkAuth() {
+    if (this._authCheck && !this._authCheck()) {
+      const error = new Error(`Unauthorized: Authentication required to access ${this.entityName}`)
+      error.status = 401
+      throw error
+    }
   }
 
   /**
@@ -158,6 +172,7 @@ export class MockApiStorage extends IStorage {
    * @returns {Promise<{ items: Array, total: number }>}
    */
   async list(params = {}) {
+    this._checkAuth()
     const { page = 1, page_size = 20, sort_by, sort_order = 'asc', filters = {}, search } = params
 
     let items = this._getAll()
@@ -213,6 +228,7 @@ export class MockApiStorage extends IStorage {
    * @returns {Promise<object>}
    */
   async get(id) {
+    this._checkAuth()
     const item = this._data.get(String(id))
     if (!item) {
       const error = new Error(`Entity not found: ${id}`)
@@ -228,6 +244,7 @@ export class MockApiStorage extends IStorage {
    * @returns {Promise<Array<object>>}
    */
   async getMany(ids) {
+    this._checkAuth()
     if (!ids || ids.length === 0) return []
     const results = []
     for (const id of ids) {
@@ -282,6 +299,7 @@ export class MockApiStorage extends IStorage {
    * @returns {Promise<object>}
    */
   async create(data) {
+    this._checkAuth()
     const id = data[this.idField] || this.generateId()
     const newItem = {
       ...data,
@@ -300,6 +318,7 @@ export class MockApiStorage extends IStorage {
    * @returns {Promise<object>}
    */
   async update(id, data) {
+    this._checkAuth()
     if (!this._data.has(String(id))) {
       const error = new Error(`Entity not found: ${id}`)
       error.status = 404
@@ -322,6 +341,7 @@ export class MockApiStorage extends IStorage {
    * @returns {Promise<object>}
    */
   async patch(id, data) {
+    this._checkAuth()
     const existing = this._data.get(String(id))
     if (!existing) {
       const error = new Error(`Entity not found: ${id}`)
@@ -344,6 +364,7 @@ export class MockApiStorage extends IStorage {
    * @returns {Promise<void>}
    */
   async delete(id) {
+    this._checkAuth()
     if (!this._data.has(String(id))) {
       const error = new Error(`Entity not found: ${id}`)
       error.status = 404

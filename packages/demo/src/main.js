@@ -35,7 +35,6 @@ import App from './App.vue'
 import { version } from '../package.json'
 import { authAdapter } from './adapters/authAdapter'
 import { demoEntityAuthAdapter } from './adapters/entityAuthAdapter'
-import { createProtectedStorage } from './storage/ProtectedStorage'
 
 // Module System v2 - Class-based modules
 import { BooksModule } from './modules/books/BooksModule'
@@ -193,32 +192,42 @@ class LoansStorage extends MockApiStorage {
   }
 }
 
-// Auth check for protected storages
-const isAuthenticated = () => !!authAdapter.getUser()
+// Auth check for protected storages - throws 401 when not authenticated
+const authCheck = () => !!authAdapter.getUser()
 
-// Base storages (unprotected - used internally for validation, etc.)
-const usersStorageBase = new MockApiStorage({
+// Unprotected storages for internal use:
+// - usersStorageInternal: authAdapter needs to query users before auth (login validation)
+// - booksStorageInternal: enrichment in LoansManager._enrichLoan() (loan access already validated)
+const usersStorageInternal = new MockApiStorage({
   entityName: 'users',
   initialData: usersFixture
 })
-const booksStorageBase = new MockApiStorage({
+const booksStorageInternal = new MockApiStorage({
   entityName: 'books',
   initialData: booksFixture
 })
-const loansStorageBase = new LoansStorage({
-  entityName: 'loans',
-  initialData: loansFixture
-})
-const genresStorageBase = new MockApiStorage({
-  entityName: 'genres',
-  initialData: genresFixture
-})
 
 // Protected storages - simulate API 401 when not authenticated
-const usersStorage = createProtectedStorage(usersStorageBase, { isAuthenticated, entityName: 'users' })
-const booksStorage = createProtectedStorage(booksStorageBase, { isAuthenticated, entityName: 'books' })
-const loansStorage = createProtectedStorage(loansStorageBase, { isAuthenticated, entityName: 'loans' })
-const genresStorage = createProtectedStorage(genresStorageBase, { isAuthenticated, entityName: 'genres' })
+const usersStorage = new MockApiStorage({
+  entityName: 'users',
+  initialData: usersFixture,
+  authCheck
+})
+const booksStorage = new MockApiStorage({
+  entityName: 'books',
+  initialData: booksFixture,
+  authCheck
+})
+const loansStorage = new LoansStorage({
+  entityName: 'loans',
+  initialData: loansFixture,
+  authCheck
+})
+const genresStorage = new MockApiStorage({
+  entityName: 'genres',
+  initialData: genresFixture,
+  authCheck
+})
 
 // ============================================================================
 // MEMORY STORAGE - Volatile (no persistence)
@@ -246,7 +255,7 @@ const favoritesStorage = new LocalStorage({
 
 // Export for authAdapter (validates login against stored users)
 // Use unprotected storage for login validation (before user is authenticated)
-export { usersStorageBase as usersStorage }
+export { usersStorageInternal as usersStorage }
 
 // ============================================================================
 // CUSTOM ENTITY MANAGERS
@@ -378,14 +387,14 @@ class LoansManager extends EntityManager {
    * These fields are used by labelField callback (defined in entity config below)
    */
   async _enrichLoan(data) {
-    // Use base (unprotected) storages for internal enrichment
-    // The loan access was already auth-checked by the protected storage
+    // Use internal (unprotected) storages for enrichment
+    // The loan access was already auth-checked by the protected loansStorage
     if (data.book_id) {
-      const book = await booksStorageBase.get(data.book_id)
+      const book = await booksStorageInternal.get(data.book_id)
       data.book_title = book?.title || '?'
     }
     if (data.user_id) {
-      const user = await usersStorageBase.get(data.user_id)
+      const user = await usersStorageInternal.get(data.user_id)
       data.username = user?.username || '?'
     }
   }
