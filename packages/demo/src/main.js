@@ -811,6 +811,9 @@ const kernel = new Kernel({
     'auth:impersonate': [
       'cache:entity:invalidate:loans'  // Loans are user-scoped
     ],
+    'auth:impersonate:stop': [
+      'cache:entity:invalidate:loans'  // Restore original user's view
+    ],
     // Example with callback (commented - for demonstration)
     // 'auth:login': [
     //   (payload, { orchestrator }) => {

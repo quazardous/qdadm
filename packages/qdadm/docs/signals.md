@@ -70,7 +70,7 @@ async function handleLogin() {
 | Category | Purpose | Examples |
 |----------|---------|----------|
 | `entity:*` | Data lifecycle | `books:created`, `entity:updated`, `users:deleted` |
-| `auth:*` | Session events | `auth:login`, `auth:logout`, `auth:impersonate:start` |
+| `auth:*` | Session events | `auth:login`, `auth:logout`, `auth:impersonate` |
 | `cache:*` | Infrastructure | `cache:invalidate`, `cache:clear` |
 
 ## Basic Usage
@@ -176,8 +176,8 @@ Auth signals handle session lifecycle and security events:
 | `auth:login` | User logs in | `{ user }` | Resolves `auth:ready` deferred |
 | `auth:logout` | User logs out | `{ user?, reason? }` | - |
 | `auth:expired` | Token expired or 401/403 | `{ status?, url? }` | Logout + redirect to `/login` |
-| `auth:impersonate:start` | Admin impersonates user | `{ target, original }` | - |
-| `auth:impersonate:end` | Impersonation ends | `{ original }` | - |
+| `auth:impersonate` | Admin impersonates user | `{ target, original }` | - |
+| `auth:impersonate:stop` | Impersonation ends | `{ original }` | - |
 
 ### Token Expiration Flow
 

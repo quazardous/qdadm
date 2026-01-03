@@ -82,19 +82,31 @@ export class AuthCollector extends Collector {
       this._addEvent('logout')
     })
     this._signalCleanups.push(logoutCleanup)
+
+    const impersonateCleanup = signals.on('auth:impersonate', (payload) => {
+      this._addEvent('impersonate', payload)
+    })
+    this._signalCleanups.push(impersonateCleanup)
+
+    const impersonateStopCleanup = signals.on('auth:impersonate:stop', (payload) => {
+      this._addEvent('impersonate-stop', payload)
+    })
+    this._signalCleanups.push(impersonateStopCleanup)
   }
 
   /**
    * Add an auth event to the recent events list
-   * @param {string} type - 'login' | 'logout'
+   * @param {string} type - 'login' | 'logout' | 'impersonate' | 'impersonate-stop'
+   * @param {object} [data] - Optional event data (e.g., { user } for impersonate)
    * @private
    */
-  _addEvent(type) {
+  _addEvent(type, data = null) {
     this._recentEvents.unshift({
       type,
       timestamp: new Date(),
       id: Date.now(), // Unique ID for Vue key
-      seen: false
+      seen: false,
+      data
     })
     // Keep only last N events
     if (this._recentEvents.length > this._maxEvents) {

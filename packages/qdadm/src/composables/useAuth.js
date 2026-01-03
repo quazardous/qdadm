@@ -8,7 +8,7 @@
  * For route guards or services, use authAdapter directly.
  *
  * Reactivity:
- * - Listens to auth:login, auth:logout, auth:impersonate signals
+ * - Listens to auth:login, auth:logout, auth:impersonate, auth:impersonate:stop signals
  * - User computed re-evaluates when these signals fire
  * - No polling or manual refresh needed
  *
@@ -54,6 +54,7 @@ export function useAuth() {
     cleanups.push(signals.on('auth:login', () => { authTick.value++ }))
     cleanups.push(signals.on('auth:logout', () => { authTick.value++ }))
     cleanups.push(signals.on('auth:impersonate', () => { authTick.value++ }))
+    cleanups.push(signals.on('auth:impersonate:stop', () => { authTick.value++ }))
   }
 
   // Cleanup signal subscriptions on unmount

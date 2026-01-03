@@ -184,11 +184,9 @@ async function exitImpersonation() {
 
   setStoredAuth(auth)
 
-  // Emit auth:impersonate signal (triggers cache invalidation via EventRouter)
-  await orchestrator?.signals?.emit('auth:impersonate', {
-    target: original,
-    original: null,
-    exit: true
+  // Emit auth:impersonate:stop signal
+  await orchestrator?.signals?.emit('auth:impersonate:stop', {
+    original
   })
 
   // Reload state and navigate to home to apply original permissions

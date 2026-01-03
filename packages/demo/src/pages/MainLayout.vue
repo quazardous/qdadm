@@ -129,8 +129,9 @@ function isSectionExpanded(section) {
   return !collapsedSections.value[section.title]
 }
 
-// Subscribe to auth:impersonate signal for reactive impersonation state
+// Subscribe to auth:impersonate signals for reactive impersonation state
 let unsubscribeImpersonate = null
+let unsubscribeImpersonateStop = null
 
 // Load state on mount + setup resize listener + signal subscription
 onMounted(() => {
@@ -142,11 +143,15 @@ onMounted(() => {
   unsubscribeImpersonate = orchestrator?.signals?.on('auth:impersonate', () => {
     checkImpersonationState()
   })
+  unsubscribeImpersonateStop = orchestrator?.signals?.on('auth:impersonate:stop', () => {
+    checkImpersonationState()
+  })
 })
 
 onUnmounted(() => {
   window.removeEventListener('resize', handleResize)
   unsubscribeImpersonate?.()
+  unsubscribeImpersonateStop?.()
 })
 
 // Auto-expand section when navigating to an item in it + close mobile sidebar

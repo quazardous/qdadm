@@ -31,6 +31,44 @@ function getIcon(type) {
 function formatTime(date) {
   return date.toLocaleTimeString('en-US', { hour12: false })
 }
+
+function getEventIcon(type) {
+  const icons = {
+    login: 'pi-sign-in',
+    logout: 'pi-sign-out',
+    impersonate: 'pi-user-edit',
+    'impersonate-stop': 'pi-user'
+  }
+  return icons[type] || 'pi-info-circle'
+}
+
+function getEventLabel(event) {
+  if (event.type === 'impersonate' && event.data) {
+    // Payload structure: { target: { username }, original: { username } }
+    // Or signal object: { data: { target: { username } } }
+    const data = event.data.data || event.data
+    const username = data.target?.username
+      || data.username
+      || (typeof data === 'string' ? data : null)
+    if (username) {
+      return `Impersonating user ${username}`
+    }
+  }
+  if (event.type === 'impersonate-stop') {
+    const data = event.data?.data || event.data
+    const username = data?.original?.username
+    if (username) {
+      return `Back to ${username}`
+    }
+  }
+  const labels = {
+    login: 'User logged in',
+    logout: 'User logged out',
+    impersonate: 'Impersonating user',
+    'impersonate-stop': 'Stopped impersonation'
+  }
+  return labels[event.type] || event.type
+}
 </script>
 
 <template>
@@ -52,8 +90,8 @@ function formatTime(date) {
       class="auth-activity"
       :class="event.type"
     >
-      <i :class="['pi', event.type === 'login' ? 'pi-sign-in' : 'pi-sign-out']" />
-      <span>{{ event.type === 'login' ? 'User logged in' : 'User logged out' }}</span>
+      <i :class="['pi', getEventIcon(event.type)]" />
+      <span>{{ getEventLabel(event) }}</span>
       <span class="auth-time">{{ formatTime(event.timestamp) }}</span>
     </div>
   </div>
@@ -86,6 +124,16 @@ function formatTime(date) {
   background: linear-gradient(90deg, rgba(239, 68, 68, 0.2) 0%, rgba(239, 68, 68, 0.05) 100%);
   border-left: 3px solid #ef4444;
   color: #ef4444;
+}
+.auth-activity.impersonate {
+  background: linear-gradient(90deg, rgba(249, 115, 22, 0.2) 0%, rgba(249, 115, 22, 0.05) 100%);
+  border-left: 3px solid #f97316;
+  color: #f97316;
+}
+.auth-activity.impersonate-stop {
+  background: linear-gradient(90deg, rgba(161, 161, 170, 0.2) 0%, rgba(161, 161, 170, 0.05) 100%);
+  border-left: 3px solid #a1a1aa;
+  color: #a1a1aa;
 }
 .auth-time {
   margin-left: auto;
