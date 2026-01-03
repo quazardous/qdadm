@@ -148,6 +148,63 @@ const { items } = await booksManager.list()  // Uses preloaded cache
 
 **Warmup**: At boot, Kernel triggers `orchestrator.fireWarmups()` (fire-and-forget). Each EntityManager with `warmup: true` (default) registers its cache loading. Other services can hook into this pattern.
 
+## Module System v2
+
+Organize features as class-based modules with lifecycle hooks:
+
+```javascript
+import { Module } from 'qdadm'
+
+export class BooksModule extends Module {
+  static name = 'books'
+  static requires = ['auth']  // Dependencies
+  static priority = 50        // Load order (lower = earlier)
+
+  async connect(ctx) {
+    // Register routes, signals, zones
+    ctx.addRoutes('/books', booksRoutes, { entity: 'books' })
+    ctx.addNavItem({ label: 'Books', icon: 'pi-book', to: '/books' })
+
+    // Listen to signals (auto-cleanup on disconnect)
+    this.onSignal('book:created', (book) => {
+      ctx.emit('toast:success', { summary: `Book "${book.title}" created` })
+    })
+  }
+}
+
+// In main.js
+kernel.use(new BooksModule())
+kernel.use(new DebugModule({ enabled: true }))
+await kernel.boot()
+```
+
+**Why modules?**
+- Clear boundaries between features
+- Dependency resolution at boot
+- Automatic cleanup on disconnect
+- Testable in isolation
+
+## Toast via Signals
+
+Toasts use the signal bus, not direct PrimeVue calls:
+
+```javascript
+// WRONG - tight coupling to PrimeVue
+import { useToast } from 'primevue/usetoast'
+const toast = useToast()
+toast.add({ severity: 'success', summary: 'Saved!' })
+
+// RIGHT - signal-based (decoupled)
+import { useSignalToast } from 'qdadm'
+const toast = useSignalToast()
+toast.success('Saved!')  // Emits toast:success signal
+```
+
+**Benefits:**
+- ToastCollector captures all toasts for debugging
+- Easy to mock in tests
+- Could switch toast library without changing app code
+
 ## EventRouter
 
 High-level signal routing for cross-cutting concerns. Transforms event A into events B, C.
@@ -229,6 +286,8 @@ See [Security docs](./docs/security.md) for full auth flow.
 | EntityManager first | All data through managers |
 | ListPage default | Custom DataTable only when justified |
 | Security by default | Auto-logout on token expiration |
+| Module boundaries | Features as isolated, testable modules |
+| Signals over imports | Decouple via event bus, not direct calls |
 
 ## Deep Dives
 
@@ -236,6 +295,7 @@ See [Security docs](./docs/security.md) for full auth flow.
 |-----|-------|
 | [Architecture](./docs/architecture.md) | PAC pattern, layer separation, no-template-ish |
 | [Extension](./docs/extension.md) | Overview of all extension mechanisms |
+| [Modules](./docs/modules.md) | Class-based modules with lifecycle hooks |
 | [Zones](./docs/zones.md) | UI composition via named slots |
 | [Signals](./docs/signals.md) | Event-driven cross-module communication, EventRouter |
 | [Hooks](./docs/hooks.md) | Drupal-inspired lifecycle hooks |
