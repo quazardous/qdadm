@@ -8,6 +8,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ## [0.31.0] - 2026-01-03
 
 ### Added
+- **MockApiStorage `authCheck` option**: Simulates API auth protection
+  - Constructor option `authCheck: () => boolean` - throws 401 if returns false
+  - Instance `capabilities` getter includes `requiresAuth: true` when authCheck configured
+  - Allows demos to realistically simulate protected API behavior
+- **Debug bar Test Fetch button**: Test storage access directly from entities panel
+  - Shows success (green, item count) or error (red, status code + message)
+  - Useful for debugging auth protection (401 errors when not logged in)
 - **Module System v2**: Class-based modules with lifecycle hooks
   - `Module` base class with `enabled()`, `connect()`, `disconnect()` lifecycle
   - `ModuleLoader` with dependency resolution via `static requires = []`
@@ -31,6 +38,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   - Prevents double GET calls on detail pages
   - Page fetches entity, nav context reuses it for breadcrumb label
   - `provideCurrentEntity(manager, id)` in page, `useNavContext()` consumes it
+
+### Fixed
+- **Debug bar icons**: Changed `readOnly` icon from lock to eye (`pi-eye`) to avoid conflict with `requiresAuth` lock
+- **Debug bar alignment**: Buttons (Load, Fetch, Invalidate) consistently aligned to right with `margin-left: auto`
 
 ### Changed
 - **Dynamic zones**: Zones now created on-demand when used
