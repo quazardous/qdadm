@@ -18,9 +18,11 @@ import { authAdapter } from './authAdapter.js'
 /**
  * Entity-specific permission rules
  * For each entity, define which actions are allowed for non-admin users
+ *
+ * Note: Entities listed in `requiresAuth` will deny access to unauthenticated users
  */
 const entityPermissions = {
-  // Books: everyone can read/list/create/update, only admin can delete
+  // Books: authenticated users can read/list/create/update, only admin can delete
   books: {
     read: true,
     list: true,
@@ -36,7 +38,7 @@ const entityPermissions = {
     update: (user) => user?.role === 'ROLE_ADMIN',
     delete: (user) => user?.role === 'ROLE_ADMIN'
   },
-  // Loans: everyone can access (silo check handles ownership)
+  // Loans: authenticated users can access (silo check handles ownership)
   loans: {
     read: true,
     list: true,
@@ -44,7 +46,7 @@ const entityPermissions = {
     update: true,
     delete: true
   },
-  // Genres: read-only for all, admin can modify
+  // Genres: authenticated users can read/list, admin can modify
   genres: {
     read: true,
     list: true,
@@ -53,6 +55,12 @@ const entityPermissions = {
     delete: (user) => user?.role === 'ROLE_ADMIN'
   }
 }
+
+/**
+ * Entities that require authentication
+ * Unauthenticated users will be denied access to these entities
+ */
+const requiresAuth = ['books', 'loans', 'genres', 'users']
 
 /**
  * Entity-specific silo rules (record-level access)
@@ -109,6 +117,11 @@ export class DemoEntityAuthAdapter extends AuthAdapter {
    */
   canPerform(entity, action) {
     const user = this.getCurrentUser()
+
+    // Check if entity requires authentication
+    if (requiresAuth.includes(entity) && !user) {
+      return false
+    }
 
     // Admin bypass: admins can do everything
     if (user?.role === 'ROLE_ADMIN') {
