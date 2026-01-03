@@ -21,7 +21,7 @@ form.addSaveAction({ andClose: true })
 form.addDeleteAction()
 </script>
 <template>
-  <FormPage v-bind="form.props" v-on="form.events">
+  <FormPage v-bind="form.props.value" v-on="form.events">
     <template #fields>
       <!-- Zone-based extensible content wrapper -->
       <Zone name="books-detail-content">

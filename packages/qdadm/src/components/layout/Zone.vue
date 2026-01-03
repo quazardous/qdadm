@@ -87,16 +87,22 @@ const defaultComp = computed(() => {
  * This creates a functional component that builds the nested structure
  * once per block, avoiding the infinite re-render issue.
  *
+ * Slot content from the Zone is passed to the innermost block component,
+ * allowing the block to render Zone's children (e.g., form fields).
+ *
  * @param {object} block - Block config with wrappers array
  * @param {object} mergedProps - Props to pass to the innermost component
+ * @param {Function} slotFn - Slot function to pass to innermost component
  * @returns {object} - Vue component definition
  */
-function createWrappedComponent(block, mergedProps) {
+function createWrappedComponent(block, mergedProps, slotFn) {
   return defineComponent({
     name: 'WrappedBlock',
     render() {
       // Start with the innermost component (the original block)
-      let current = h(block.component, mergedProps)
+      // Pass Zone's slot content to allow block to render it
+      const innerSlots = slotFn ? { default: slotFn } : {}
+      let current = h(block.component, mergedProps, innerSlots)
 
       // Build from inside out: last wrapper in array wraps the innermost
       // Wrappers are already sorted by weight (lower = outer)
@@ -118,14 +124,19 @@ function createWrappedComponent(block, mergedProps) {
 /**
  * Computed map of wrapped block components
  * Memoizes the wrapped components to avoid re-creating them on every render
+ *
+ * Note: Slot function is passed to allow Zone's children to be rendered
+ * inside the innermost block component.
  */
 const wrappedComponents = computed(() => {
   const map = new Map()
+  // Get slot function to pass to innermost block
+  const slotFn = slots.default
   for (const block of blocks.value) {
     if (block.wrappers && block.wrappers.length > 0) {
       const key = block.id || block.weight
       const mergedProps = { ...props.blockProps, ...block.props }
-      map.set(key, createWrappedComponent(block, mergedProps))
+      map.set(key, createWrappedComponent(block, mergedProps, slotFn))
     }
   }
   return map
@@ -141,25 +152,31 @@ function getWrappedComponent(block) {
 </script>
 
 <template>
-  <template v-if="hasBlocks">
-    <template v-for="block in blocks" :key="block.id || block.weight">
-      <!-- Render wrapped blocks using memoized component -->
-      <component
-        v-if="block.wrappers"
-        :is="getWrappedComponent(block)"
-      />
-      <!-- Render simple blocks directly -->
-      <component
-        v-else
-        :is="block.component"
-        v-bind="{ ...blockProps, ...block.props }"
-      />
+  <div :data-zone="name" class="qdadm-zone">
+    <template v-if="hasBlocks">
+      <template v-for="block in blocks" :key="block.id || block.weight">
+        <!-- Render wrapped blocks using memoized component -->
+        <component
+          v-if="block.wrappers"
+          :is="getWrappedComponent(block)"
+        />
+        <!-- Render simple blocks directly, passing Zone's slot content -->
+        <component
+          v-else
+          :is="block.component"
+          v-bind="{ ...blockProps, ...block.props }"
+        >
+          <slot />
+        </component>
+      </template>
     </template>
-  </template>
-  <component
-    v-else-if="showDefault"
-    :is="defaultComp"
-    v-bind="blockProps"
-  />
-  <slot v-else-if="showSlot" />
+    <component
+      v-else-if="showDefault"
+      :is="defaultComp"
+      v-bind="blockProps"
+    >
+      <slot />
+    </component>
+    <slot v-else-if="showSlot" />
+  </div>
 </template>

@@ -204,33 +204,34 @@ describe('SignalBus', () => {
       bus = createSignalBus()
     })
 
-    it('emits both specific and generic signals', async () => {
+    it('emits generic signal with entity name in payload', async () => {
+      const handler = vi.fn()
+
+      bus.on('entity:created', handler)
+
+      await bus.emitEntity('books', 'created', { id: 1, title: 'Test' })
+
+      expect(handler).toHaveBeenCalled()
+      const event = handler.mock.calls[0][0]
+      expect(event.data.entity).toBe('books')
+    })
+
+    it('does not emit entity-specific signal', async () => {
       const specificHandler = vi.fn()
       const genericHandler = vi.fn()
 
       bus.on('books:created', specificHandler)
       bus.on('entity:created', genericHandler)
 
-      await bus.emitEntity('books', 'created', { id: 1, title: 'Test' })
-
-      expect(specificHandler).toHaveBeenCalled()
-      expect(genericHandler).toHaveBeenCalled()
-    })
-
-    it('specific signal fires before generic', async () => {
-      const order = []
-
-      bus.on('books:created', () => order.push('specific'))
-      bus.on('entity:created', () => order.push('generic'))
-
       await bus.emitEntity('books', 'created', { id: 1 })
 
-      expect(order).toEqual(['specific', 'generic'])
+      expect(specificHandler).not.toHaveBeenCalled()
+      expect(genericHandler).toHaveBeenCalled()
     })
 
     it('payload contains entity name and data', async () => {
       const handler = vi.fn()
-      bus.on('users:updated', handler)
+      bus.on('entity:updated', handler)
 
       await bus.emitEntity('users', 'updated', { id: 1, name: 'Test' })
 
@@ -245,9 +246,9 @@ describe('SignalBus', () => {
       const updatedHandler = vi.fn()
       const deletedHandler = vi.fn()
 
-      bus.on('products:created', createdHandler)
-      bus.on('products:updated', updatedHandler)
-      bus.on('products:deleted', deletedHandler)
+      bus.on('entity:created', createdHandler)
+      bus.on('entity:updated', updatedHandler)
+      bus.on('entity:deleted', deletedHandler)
 
       await bus.emitEntity('products', SIGNAL_ACTIONS.CREATED, { id: 1 })
       await bus.emitEntity('products', SIGNAL_ACTIONS.UPDATED, { id: 1 })

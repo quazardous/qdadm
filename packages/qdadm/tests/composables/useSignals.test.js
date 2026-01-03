@@ -172,7 +172,7 @@ describe('useSignals', () => {
     expect(handler).toHaveBeenCalledTimes(1)
   })
 
-  it('allows subscribing to entity-specific signals', async () => {
+  it('allows subscribing to entity signals with entity name in payload', async () => {
     const signalBus = createSignalBus()
     const handler = vi.fn()
     let capturedSignals = null
@@ -180,7 +180,8 @@ describe('useSignals', () => {
     const TestComponent = defineComponent({
       setup() {
         capturedSignals = useSignals()
-        capturedSignals.on('books:created', handler)
+        // Subscribe to generic entity signal
+        capturedSignals.on('entity:created', handler)
         return () => h('div', 'test')
       }
     })

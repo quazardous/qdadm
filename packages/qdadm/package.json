@@ -1,6 +1,6 @@
 {
   "name": "qdadm",
-  "version": "0.30.0",
+  "version": "0.31.0",
   "description": "Vue 3 framework for admin dashboards with PrimeVue",
   "author": "quazardous",
   "license": "MIT",
@@ -25,6 +25,7 @@
     "./editors": "./src/editors/index.js",
     "./module": "./src/module/index.js",
     "./utils": "./src/utils/index.js",
+    "./debug": "./src/debug/index.js",
     "./styles": "./src/styles/index.scss",
     "./styles/breakpoints": "./src/styles/_breakpoints.scss",
     "./gen": "./src/gen/index.js",

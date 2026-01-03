@@ -6,13 +6,12 @@
  */
 
 import { ref, onMounted } from 'vue'
-import { useListPageBuilder, ListPage, useOrchestrator, BoolCell } from 'qdadm'
-import { useToast } from 'primevue/usetoast'
+import { useListPageBuilder, ListPage, useOrchestrator, BoolCell, useSignalToast } from 'qdadm'
 import Tag from 'primevue/tag'
 import Column from 'primevue/column'
 
 const { getManager } = useOrchestrator()
-const toast = useToast()
+const toast = useSignalToast('LoanList')
 
 // ============ LIST BUILDER ============
 const list = useListPageBuilder({ entity: 'loans' })

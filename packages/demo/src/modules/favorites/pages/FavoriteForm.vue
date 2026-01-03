@@ -21,7 +21,7 @@ if (form.isEdit.value) {
 </script>
 
 <template>
-  <FormPage v-bind="form.props" v-on="form.events">
+  <FormPage v-bind="form.props.value" v-on="form.events">
     <template #fields>
       <div class="form-grid">
         <FormField v-for="f in form.fields.value" :key="f.name" :name="f.name" :label="f.label">

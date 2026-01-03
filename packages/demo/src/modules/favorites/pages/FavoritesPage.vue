@@ -11,14 +11,13 @@
  * Storage key: qdadm-demo-favorites
  */
 
-import { useListPageBuilder, ListPage, useOrchestrator } from 'qdadm'
+import { useListPageBuilder, ListPage, useOrchestrator, useSignalToast } from 'qdadm'
 import Column from 'primevue/column'
 import Tag from 'primevue/tag'
 import Button from 'primevue/button'
-import { useToast } from 'primevue/usetoast'
 
 const { getManager } = useOrchestrator()
-const toast = useToast()
+const toast = useSignalToast('FavoritesPage')
 
 // ============ LIST BUILDER ============
 const list = useListPageBuilder({ entity: 'favorites' })

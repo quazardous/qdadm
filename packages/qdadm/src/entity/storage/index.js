@@ -19,7 +19,14 @@
  * @property {boolean} [supportsTotal=false] - Storage `list()` returns `{ items, total }` with accurate total count
  * @property {boolean} [supportsFilters=false] - Storage `list()` accepts `filters` param and handles filtering
  * @property {boolean} [supportsPagination=false] - Storage `list()` accepts `page`/`page_size` params
- * @property {boolean} [supportsCaching=false] - Storage benefits from EntityManager cache layer (network-based storages)
+ * @property {boolean} [supportsCaching=false] - Hint to EntityManager: should it cache this storage's results?
+ *   This is a RECOMMENDATION, not a capability. The storage suggests whether EntityManager caching is useful:
+ *   - `true`: Cache is beneficial (remote APIs, slow storages) - enables local filtering, parent field
+ *     resolution, warmup at boot
+ *   - `false`: Cache adds no value (already in-memory storages like MockApiStorage) - but still technically
+ *     possible if overridden. Set to `false` when storage is already fast and in-memory.
+ *   Use `false` for: in-memory storages, real-time data sources, storages with their own cache layer.
+ *   Use `true` for: REST APIs, database backends, any storage where avoiding repeat fetches helps.
  * @property {string[]} [searchFields] - Fields to search when filtering locally. Supports own fields ('title')
  *   and parent entity fields ('book.title') via EntityManager.parents config. When undefined, all string
  *   fields are searched (default behavior). When defined, only listed fields are searched.
@@ -40,7 +47,7 @@
  *     supportsTotal: true,
  *     supportsFilters: true,
  *     supportsPagination: true,
- *     supportsCaching: true // set to false for in-memory storages
+ *     supportsCaching: true // false = "not useful" (in-memory), true = "beneficial" (remote API)
  *   }
  *
  *   // Backward-compat instance getter (optional, for smooth migration)

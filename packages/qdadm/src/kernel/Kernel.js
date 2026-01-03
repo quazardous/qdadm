@@ -37,7 +37,7 @@
  * ```
  */
 
-import { createApp } from 'vue'
+import { createApp, h } from 'vue'
 import { createPinia } from 'pinia'
 import { createRouter, createWebHistory, createWebHashHistory } from 'vue-router'
 import ToastService from 'primevue/toastservice'
@@ -45,7 +45,9 @@ import ConfirmationService from 'primevue/confirmationservice'
 import Tooltip from 'primevue/tooltip'
 
 import { createQdadm } from '../plugin.js'
-import { initModules, getRoutes, setSectionOrder, alterMenuSections } from '../module/moduleRegistry.js'
+import { initModules, getRoutes, setSectionOrder, alterMenuSections, registry } from '../module/moduleRegistry.js'
+import { createModuleLoader } from './ModuleLoader.js'
+import { createKernelContext } from './KernelContext.js'
 import { Orchestrator } from '../orchestrator/Orchestrator.js'
 import { createSignalBus } from './SignalBus.js'
 import { createZoneRegistry } from '../zones/ZoneRegistry.js'
@@ -58,12 +60,18 @@ import { createDeferredRegistry } from '../deferred/DeferredRegistry.js'
 import { createEventRouter } from './EventRouter.js'
 import { createSSEBridge } from './SSEBridge.js'
 
+// Debug imports are dynamic to enable tree-shaking in production
+// When debugBar: false/undefined, no debug code is bundled
+let DebugModule = null
+let QdadmDebugBar = null
+
 export class Kernel {
   /**
    * @param {object} options
    * @param {object} options.root - Root Vue component
-   * @param {object} options.modules - Result of import.meta.glob for module init files
+   * @param {object} options.modules - Result of import.meta.glob for module init files (legacy)
    * @param {object} options.modulesOptions - Options for initModules (e.g., { coreNavItems })
+   * @param {Array} options.moduleDefs - New-style module definitions (Module classes/objects/functions)
    * @param {string[]} options.sectionOrder - Navigation section order
    * @param {object} options.managers - Entity managers { name: config } - can be instances, strings, or config objects
    * @param {object} options.managerRegistry - Registry of manager classes from qdadm-gen { name: ManagerClass }
@@ -71,7 +79,9 @@ export class Kernel {
    * @param {function} options.managerResolver - Custom manager resolver (config, entityName, context) => Manager
    * @param {object} options.authAdapter - Auth adapter for login/logout (app-level authentication)
    * @param {object} options.entityAuthAdapter - Auth adapter for entity permissions (scope/silo checks)
-   * @param {object} options.pages - Page components { login, layout }
+   * @param {object} options.pages - Page components { layout, shell? }
+   * @param {object} options.pages.layout - Main layout component (required)
+   * @param {object} options.pages.shell - Optional app shell (enables unified routing with zones everywhere)
    * @param {string} options.homeRoute - Route name for home redirect (or object { name, component })
    * @param {Array} options.coreRoutes - Additional routes as layout children (before module routes)
    * @param {string} options.basePath - Base path for router (e.g., '/dashboard/')
@@ -84,8 +94,31 @@ export class Kernel {
    * @param {boolean} options.warmup - Enable warmup at boot (default: true)
    * @param {object} options.eventRouter - EventRouter config { 'source:signal': ['target:signal', ...] }
    * @param {object} options.sse - SSEBridge config { url, reconnectDelay, signalPrefix, autoConnect, events }
+   * @param {object} options.debugBar - Debug bar config { module: DebugModule, component: QdadmDebugBar, ...options }
    */
   constructor(options) {
+    // Auto-inject DebugModule if debugBar.module is provided
+    // User must import DebugModule separately for tree-shaking
+    if (options.debugBar?.module) {
+      const DebugModuleClass = options.debugBar.module
+      const { module: _, component: __, ...debugModuleOptions } = options.debugBar
+      // Enable by default when using debugBar shorthand
+      if (debugModuleOptions.enabled === undefined) {
+        debugModuleOptions.enabled = true
+      }
+      // Mark as kernel-managed to prevent zone block registration
+      // (Kernel handles rendering via root wrapper)
+      debugModuleOptions._kernelManaged = true
+      const debugModule = new DebugModuleClass(debugModuleOptions)
+      options.moduleDefs = options.moduleDefs || []
+      options.moduleDefs.push(debugModule)
+      // Store component for root wrapper
+      QdadmDebugBar = options.debugBar.component
+      // Enable debug mode
+      if (!options.debug) {
+        options.debug = true
+      }
+    }
     this.options = options
     this.vueApp = null
     this.router = null
@@ -98,10 +131,21 @@ export class Kernel {
     this.sseBridge = null
     this.layoutComponents = null
     this.securityChecker = null
+    /** @type {import('./ModuleLoader.js').ModuleLoader|null} */
+    this.moduleLoader = null
+    /** @type {Map<string|symbol, any>} Pending provides from modules (applied after vueApp creation) */
+    this._pendingProvides = new Map()
+    /** @type {Map<string, import('vue').Component>} Pending components from modules */
+    this._pendingComponents = new Map()
   }
 
   /**
    * Create and configure the Vue app
+   *
+   * Note: This method is synchronous for backward compatibility.
+   * New-style modules (moduleDefs) are loaded synchronously via _loadModules().
+   * For async module loading, use createAppAsync() instead.
+   *
    * @returns {App} Vue app instance ready to mount
    */
   createApp() {
@@ -112,23 +156,72 @@ export class Kernel {
     this._createDeferredRegistry()
     // 2. Register auth:ready deferred (if auth configured)
     this._registerAuthDeferred()
-    // 3. Initialize modules (can use all services, registers routes)
+    // 3. Initialize legacy modules (can use all services, registers routes)
     this._initModules()
+    // 3.5. Load new-style modules (moduleDefs) - synchronous for backward compat
+    this._loadModulesSync()
     // 4. Create router (needs routes from modules)
     this._createRouter()
+    // 4.5. Setup auth guard (if authAdapter provided)
+    this._setupAuthGuard()
     // 5. Setup auth:expired handler (needs router + authAdapter)
     this._setupAuthExpiredHandler()
     // 6. Create orchestrator and remaining components
     this._createOrchestrator()
-    // 7. Create EventRouter (needs signals + orchestrator)
+    // 7. Wire modules that need orchestrator (phase 2)
+    this._wireModules()
+    // 8. Create EventRouter (needs signals + orchestrator)
     this._createEventRouter()
-    // 8. Create SSEBridge (needs signals + authAdapter for token)
+    // 9. Create SSEBridge (needs signals + authAdapter for token)
     this._createSSEBridge()
     this._setupSecurity()
     this._createLayoutComponents()
     this._createVueApp()
     this._installPlugins()
-    // 9. Fire warmups (fire-and-forget, pages await via DeferredRegistry)
+    // 10. Fire warmups (fire-and-forget, pages await via DeferredRegistry)
+    this._fireWarmups()
+    return this.vueApp
+  }
+
+  /**
+   * Create and configure the Vue app asynchronously
+   *
+   * Use this method when modules have async connect() methods.
+   * Supports the full async module loading flow.
+   *
+   * @returns {Promise<App>} Vue app instance ready to mount
+   */
+  async createAppAsync() {
+    // 1. Create services first (modules need them)
+    this._createSignalBus()
+    this._createHookRegistry()
+    this._createZoneRegistry()
+    this._createDeferredRegistry()
+    // 2. Register auth:ready deferred (if auth configured)
+    this._registerAuthDeferred()
+    // 3. Initialize legacy modules (can use all services, registers routes)
+    this._initModules()
+    // 3.5. Load new-style modules (moduleDefs) - async version
+    await this._loadModules()
+    // 4. Create router (needs routes from modules)
+    this._createRouter()
+    // 4.5. Setup auth guard (if authAdapter provided)
+    this._setupAuthGuard()
+    // 5. Setup auth:expired handler (needs router + authAdapter)
+    this._setupAuthExpiredHandler()
+    // 6. Create orchestrator and remaining components
+    this._createOrchestrator()
+    // 7. Wire modules that need orchestrator (phase 2)
+    await this._wireModulesAsync()
+    // 8. Create EventRouter (needs signals + orchestrator)
+    this._createEventRouter()
+    // 9. Create SSEBridge (needs signals + authAdapter for token)
+    this._createSSEBridge()
+    this._setupSecurity()
+    this._createLayoutComponents()
+    this._createVueApp()
+    this._installPlugins()
+    // 10. Fire warmups (fire-and-forget, pages await via DeferredRegistry)
     this._fireWarmups()
     return this.vueApp
   }
@@ -217,7 +310,7 @@ export class Kernel {
   }
 
   /**
-   * Initialize modules from glob import
+   * Initialize legacy modules from glob import
    * Passes services to modules for zone/signal/hook registration
    */
   _initModules() {
@@ -236,15 +329,168 @@ export class Kernel {
   }
 
   /**
-   * Create Vue Router with auth guard
+   * Create KernelContext for module connection
+   *
+   * Creates a context object that provides modules access to kernel services
+   * and registration APIs.
+   *
+   * @param {import('./Module.js').Module} module - Module instance
+   * @returns {import('./KernelContext.js').KernelContext}
+   * @private
+   */
+  _createModuleContext(module) {
+    return createKernelContext(this, module)
+  }
+
+  /**
+   * Load new-style modules synchronously
+   *
+   * Used by createApp() for backward compatibility. Modules with async
+   * connect() methods will have their promises ignored (fire-and-forget).
+   * For proper async support, use createAppAsync().
+   *
+   * @private
+   */
+  _loadModulesSync() {
+    const { moduleDefs } = this.options
+    if (!moduleDefs?.length) return
+
+    this.moduleLoader = createModuleLoader()
+
+    // Add all modules
+    for (const mod of moduleDefs) {
+      this.moduleLoader.add(mod)
+    }
+
+    // Get sorted modules and load synchronously
+    const sorted = this.moduleLoader._topologicalSort()
+
+    for (const name of sorted) {
+      const module = this.moduleLoader._registered.get(name)
+      const ctx = this._createModuleContext(module)
+
+      // Check if enabled
+      if (!module.enabled(ctx)) {
+        continue
+      }
+
+      // Connect module (sync - async modules will be fire-and-forget)
+      const result = module.connect(ctx)
+
+      // If it's a promise, we can't await it in sync context
+      // The module should handle its own async initialization
+      if (result instanceof Promise) {
+        result.catch(err => {
+          console.error(`[Kernel] Async module '${name}' failed:`, err)
+        })
+      }
+
+      this.moduleLoader._loaded.set(name, module)
+      this.moduleLoader._loadOrder.push(name)
+    }
+  }
+
+  /**
+   * Load new-style modules asynchronously
+   *
+   * Fully supports async connect() methods in modules.
+   * Used by createAppAsync().
+   *
+   * @returns {Promise<void>}
+   * @private
+   */
+  async _loadModules() {
+    const { moduleDefs } = this.options
+    if (!moduleDefs?.length) return
+
+    this.moduleLoader = createModuleLoader()
+
+    // Add all modules
+    for (const mod of moduleDefs) {
+      this.moduleLoader.add(mod)
+    }
+
+    // Get sorted modules and load
+    const sorted = this.moduleLoader._topologicalSort()
+
+    for (const name of sorted) {
+      const module = this.moduleLoader._registered.get(name)
+      const ctx = this._createModuleContext(module)
+
+      // Check if enabled
+      if (!module.enabled(ctx)) {
+        continue
+      }
+
+      // Connect module (await async)
+      await module.connect(ctx)
+
+      this.moduleLoader._loaded.set(name, module)
+      this.moduleLoader._loadOrder.push(name)
+    }
+  }
+
+  /**
+   * Wire modules that need orchestrator (phase 2)
+   *
+   * Some modules may need access to the orchestrator after it's created.
+   * This method emits 'kernel:ready' signal that modules can listen to.
+   *
+   * @private
+   */
+  _wireModules() {
+    if (!this.moduleLoader) return
+
+    // Emit kernel:ready signal for modules that need orchestrator
+    const result = this.signals.emit('kernel:ready', {
+      orchestrator: this.orchestrator,
+      kernel: this
+    })
+
+    // If emit returns a promise (async handlers), we can't await it
+    if (result instanceof Promise) {
+      result.catch(err => {
+        console.error('[Kernel] kernel:ready handler failed:', err)
+      })
+    }
+  }
+
+  /**
+   * Wire modules that need orchestrator (phase 2) - async version
+   *
+   * @returns {Promise<void>}
+   * @private
+   */
+  async _wireModulesAsync() {
+    if (!this.moduleLoader) return
+
+    // Emit kernel:ready signal for modules that need orchestrator
+    await this.signals.emit('kernel:ready', {
+      orchestrator: this.orchestrator,
+      kernel: this
+    })
+  }
+
+  /**
+   * Create Vue Router
+   *
+   * Routes are built from:
+   * 1. Module routes (via ctx.routes()) - can be public or protected via meta
+   * 2. coreRoutes option - additional routes
+   * 3. homeRoute - redirect or component for /
+   *
+   * Auth is NOT hardcoded here - it's handled via:
+   * - Route meta: { public: true } or { requiresAuth: false }
+   * - Auth guard registered via _setupAuthGuard() if authAdapter provided
+   *
+   * Layout modes:
+   * - **Shell mode** (pages.shell): All routes inside shell, layout wraps protected area
+   * - **Layout-only mode**: Layout at root with all routes as children
    */
   _createRouter() {
-    const { pages, homeRoute, coreRoutes, basePath, hashMode, authAdapter } = this.options
+    const { pages, homeRoute, coreRoutes, basePath, hashMode } = this.options
 
-    // Validate required pages
-    if (!pages?.login) {
-      throw new Error('[Kernel] pages.login is required')
-    }
+    // Layout is required (shell is optional)
     if (!pages?.layout) {
       throw new Error('[Kernel] pages.layout is required')
     }
@@ -252,50 +498,115 @@ export class Kernel {
     // Build home route
     let homeRouteConfig
     if (typeof homeRoute === 'object' && homeRoute.component) {
-      // homeRoute is a route config with component
       homeRouteConfig = { path: '', ...homeRoute }
     } else {
-      // homeRoute is a route name for redirect
       homeRouteConfig = { path: '', redirect: { name: homeRoute || 'home' } }
     }
 
-    // Build layout children: home + coreRoutes + moduleRoutes
+    // Collect all module routes
+    const moduleRoutes = getRoutes()
+
+    // Separate public routes (meta.public or meta.requiresAuth === false)
+    const publicRoutes = moduleRoutes.filter(r => r.meta?.public || r.meta?.requiresAuth === false)
+    const protectedRoutes = moduleRoutes.filter(r => !r.meta?.public && r.meta?.requiresAuth !== false)
+
+    // Auto-create login route if pages.login is provided (backward compatibility)
+    // This creates a public route that modules don't need to define explicitly.
+    if (pages.login) {
+      publicRoutes.unshift({
+        path: '/login',
+        name: 'login',
+        component: pages.login,
+        meta: { public: true }
+      })
+    }
+
+    // Build layout children: home + coreRoutes + protected module routes
     const layoutChildren = [
       homeRouteConfig,
       ...(coreRoutes || []),
-      ...getRoutes()
+      ...protectedRoutes
     ]
 
-    // Build routes
-    const routes = [
-      {
-        path: '/login',
-        name: 'login',
-        component: pages.login
-      },
-      {
-        path: '/',
-        component: pages.layout,
-        meta: { requiresAuth: true },
-        children: layoutChildren
-      }
-    ]
+    let routes
+
+    if (pages.shell) {
+      // Shell mode: shell wraps everything, layout wraps protected area
+      routes = [
+        {
+          path: '/',
+          component: pages.shell,
+          children: [
+            // Public routes at shell level (login, register, etc.)
+            ...publicRoutes,
+            // Protected area with layout
+            {
+              path: '',
+              component: pages.layout,
+              meta: { requiresAuth: true },
+              children: layoutChildren
+            }
+          ]
+        }
+      ]
+    } else {
+      // Layout-only mode: layout at root
+      // Public routes need to be handled differently (no shell)
+      routes = [
+        // Public routes standalone
+        ...publicRoutes,
+        // Protected area with layout
+        {
+          path: '/',
+          component: pages.layout,
+          meta: { requiresAuth: true },
+          children: layoutChildren
+        }
+      ]
+    }
 
     this.router = createRouter({
       history: hashMode ? createWebHashHistory(basePath) : createWebHistory(basePath),
       routes
     })
+  }
 
-    // Auth guard
-    if (authAdapter) {
-      this.router.beforeEach((to, from, next) => {
-        if (to.meta.requiresAuth && !authAdapter.isAuthenticated()) {
-          next({ name: 'login' })
-        } else {
-          next()
-        }
-      })
-    }
+  /**
+   * Setup auth guard on router
+   *
+   * Only installed if authAdapter is provided.
+   * Uses route meta to determine access:
+   * - meta.public: true → always accessible
+   * - meta.requiresAuth: false → always accessible
+   * - meta.requiresAuth: true → requires auth (default for layout children)
+   * - no meta → inherits from parent route
+   */
+  _setupAuthGuard() {
+    const { authAdapter } = this.options
+    if (!authAdapter) return
+
+    this.router.beforeEach((to, from, next) => {
+      // Check if route or any parent is explicitly public
+      const isPublic = to.matched.some(record =>
+        record.meta.public === true || record.meta.requiresAuth === false
+      )
+
+      if (isPublic) {
+        next()
+        return
+      }
+
+      // Check if route or any parent requires auth
+      const requiresAuth = to.matched.some(record => record.meta.requiresAuth === true)
+
+      if (requiresAuth && !authAdapter.isAuthenticated()) {
+        // Redirect to login (if exists) or emit signal
+        const loginRoute = this.router.hasRoute('login') ? { name: 'login' } : '/'
+        next(loginRoute)
+      } else {
+        next()
+      }
+    })
   }
 
   /**
@@ -390,12 +701,11 @@ export class Kernel {
 
   /**
    * Create zone registry for extensible UI composition
-   * Registers standard zones during bootstrap.
+   * Zones are created dynamically when used (no pre-registration).
    */
   _createZoneRegistry() {
     const debug = this.options.debug ?? false
     this.zoneRegistry = createZoneRegistry({ debug })
-    registerStandardZones(this.zoneRegistry)
   }
 
   /**
@@ -489,12 +799,29 @@ export class Kernel {
 
   /**
    * Create Vue app instance
+   *
+   * When debugBar is enabled, wraps the root component to include QdadmDebugBar
+   * at the app level, ensuring it's visible on all pages (including login).
    */
   _createVueApp() {
     if (!this.options.root) {
       throw new Error('[Kernel] root component is required')
     }
-    this.vueApp = createApp(this.options.root)
+
+    // If debugBar is enabled and component provided, wrap root with DebugBar
+    if (this.options.debugBar?.component && QdadmDebugBar) {
+      const OriginalRoot = this.options.root
+      const DebugBarComponent = QdadmDebugBar
+      const WrappedRoot = {
+        name: 'QdadmRootWrapper',
+        render() {
+          return [h(OriginalRoot), h(DebugBarComponent)]
+        }
+      }
+      this.vueApp = createApp(WrappedRoot)
+    } else {
+      this.vueApp = createApp(this.options.root)
+    }
   }
 
   /**
@@ -527,6 +854,18 @@ export class Kernel {
     // Router
     app.use(this.router)
 
+    // Apply pending provides from modules (registered before vueApp existed)
+    for (const [key, value] of this._pendingProvides) {
+      app.provide(key, value)
+    }
+    this._pendingProvides.clear()
+
+    // Apply pending components from modules
+    for (const [name, component] of this._pendingComponents) {
+      app.component(name, component)
+    }
+    this._pendingComponents.clear()
+
     // Extract home route name for breadcrumb
     const { homeRoute } = this.options
     const homeRouteName = typeof homeRoute === 'object' ? homeRoute.name : homeRoute
@@ -534,10 +873,24 @@ export class Kernel {
     // Zone registry injection
     app.provide('qdadmZoneRegistry', this.zoneRegistry)
 
-    // Dev mode: expose zone registry on window for DevTools inspection
+    // Dev mode: expose qdadm services on window for DevTools inspection
     if (this.options.debug && typeof window !== 'undefined') {
+      window.__qdadm = {
+        kernel: this,
+        orchestrator: this.orchestrator,
+        signals: this.signals,
+        hooks: this.hookRegistry,
+        zones: this.zoneRegistry,
+        deferred: this.deferred,
+        router: this.router,
+        // Helper to get a manager quickly
+        get: (name) => this.orchestrator.get(name),
+        // List all managers
+        managers: () => this.orchestrator.getRegisteredNames()
+      }
+      // Legacy alias
       window.__qdadmZones = this.zoneRegistry
-      console.debug('[qdadm] Zone registry exposed on window.__qdadmZones')
+      console.debug('[qdadm] Debug mode: window.__qdadm exposed (orchestrator, signals, hooks, zones, deferred, router)')
     }
 
     // Signal bus injection
@@ -695,6 +1048,41 @@ export class Kernel {
    */
   get security() {
     return this.securityChecker
+  }
+
+  /**
+   * Get the ModuleLoader instance
+   * @returns {import('./ModuleLoader.js').ModuleLoader|null}
+   */
+  getModuleLoader() {
+    return this.moduleLoader
+  }
+
+  /**
+   * Shorthand accessor for module loader
+   * Allows `kernel.modules.getModules()` syntax
+   * @returns {import('./ModuleLoader.js').ModuleLoader|null}
+   */
+  get modules() {
+    return this.moduleLoader
+  }
+
+  /**
+   * Get the DebugModule instance if loaded
+   * @returns {import('../debug/DebugModule.js').DebugModule|null}
+   */
+  getDebugModule() {
+    return this.moduleLoader?._loaded?.get('debug') ?? null
+  }
+
+  /**
+   * Shorthand accessor for debug bridge
+   * Allows `kernel.debugBar.toggle()` syntax
+   * @returns {import('../debug/DebugBridge.js').DebugBridge|null}
+   */
+  get debugBar() {
+    const debugModule = this.getDebugModule()
+    return debugModule?.getBridge?.() ?? null
   }
 
   /**

@@ -21,3 +21,17 @@ export {
   createSSEBridge,
   SSE_SIGNALS,
 } from './SSEBridge.js'
+export {
+  Module,
+} from './Module.js'
+export {
+  KernelContext,
+  createKernelContext,
+} from './KernelContext.js'
+export {
+  ModuleLoader,
+  createModuleLoader,
+  ModuleNotFoundError,
+  CircularDependencyError,
+  ModuleLoadError,
+} from './ModuleLoader.js'

@@ -207,30 +207,46 @@ export function useNavContext(options = {}) {
 
   /**
    * Fetch entity data for all 'item' segments in the chain
+   *
+   * For the LAST item (current entity):
+   * - Uses entityData if provided by the page via setCurrentEntity()
+   * - Does NOT fetch automatically - page is responsible for providing data
+   * - Breadcrumb shows "..." until page provides the data
+   *
+   * For PARENT items: always fetches from manager
    */
-  watch([navChain, () => options.entityData], async ([chain]) => {
-    chainData.value.clear()
-    const externalData = unref(options.entityData)
+  // Watch navChain and entityData ref (deep watch to catch value changes)
+  const entityDataRef = computed(() => options.entityData ? unref(options.entityData) : null)
+  watch([navChain, entityDataRef], async ([chain, externalData]) => {
+    // Build new Map (reassignment triggers Vue reactivity, Map.set() doesn't)
+    const newChainData = new Map()
 
     for (let i = 0; i < chain.length; i++) {
       const segment = chain[i]
       if (segment.type !== 'item') continue
 
-      // For the last item, use external data if provided (from useForm)
       const isLastItem = !chain.slice(i + 1).some(s => s.type === 'item')
-      if (isLastItem && externalData) {
-        chainData.value.set(i, externalData)
+
+      // For the last item, use external data from page (don't fetch)
+      if (isLastItem) {
+        if (externalData) {
+          newChainData.set(i, externalData)
+        }
+        // If no externalData, breadcrumb will show "..." until page provides it
         continue
       }
 
-      // Fetch from manager
+      // For parent items, fetch from manager
       try {
         const data = await segment.manager.get(segment.id)
-        chainData.value.set(i, data)
+        newChainData.set(i, data)
       } catch (e) {
         console.warn(`[useNavContext] Failed to fetch ${segment.entity}:${segment.id}`, e)
       }
     }
+
+    // Assign new Map to trigger reactivity
+    chainData.value = newChainData
   }, { immediate: true, deep: true })
 
   // ============================================================================

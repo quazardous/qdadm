@@ -5,6 +5,45 @@ All notable changes to qdadm will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.31.0] - 2026-01-03
+
+### Added
+- **Module System v2**: Class-based modules with lifecycle hooks
+  - `Module` base class with `enabled()`, `connect()`, `disconnect()` lifecycle
+  - `ModuleLoader` with dependency resolution via `static requires = []`
+  - Priority-based loading via `static priority` (lower = earlier)
+  - `KernelContext` provides clean API for modules (signals, zones, router, etc.)
+  - `kernel.use(new Module(options))` registration pattern
+  - Signal listener auto-cleanup on module disconnect
+- **Debug System**: Comprehensive debugging infrastructure
+  - `DebugModule` integrates debug tools via Module System v2
+  - `DebugBridge` manages collectors and enabled state
+  - `DebugBar` component with collapsible panels
+  - Collectors: `ErrorCollector`, `SignalCollector`, `ToastCollector`, `ZonesCollector`, `AuthCollector`, `EntitiesCollector`
+  - Internal zones convention: `_` prefix hides zones from debug panel
+  - Zones panel toggles: "All Pages" (cyan) and "Internal" (orange)
+  - Zone highlighting with visual overlay on page
+- **Toast System**: Signal-based toast notifications
+  - `ToastBridgeModule` bridges signals to PrimeVue Toast
+  - `useSignalToast()` composable: `toast.success()`, `toast.error()`, `toast.warn()`, `toast.info()`
+  - `ToastCollector` for debugging toast history
+- **`useCurrentEntity` composable**: Share entity data between page and nav context
+  - Prevents double GET calls on detail pages
+  - Page fetches entity, nav context reuses it for breadcrumb label
+  - `provideCurrentEntity(manager, id)` in page, `useNavContext()` consumes it
+
+### Changed
+- **Dynamic zones**: Zones now created on-demand when used
+  - Removed `registerStandardZones()` - no phantom zones
+  - `registerBlock()` auto-creates zone if not exists
+- **Internal zones**: `DEBUG_ZONE` → `'_app:debug'`, `TOAST_ZONE` → `'_app:toasts'`
+- `ZonesPanel` always renders (toolbar accessible even with no zones)
+
+### Demo (0.14.0)
+- All modules refactored to use Module System v2 pattern
+- `BooksModule`, `ProductsModule`, `LoansModule`, etc. as class-based modules
+- `BookList.vue` demonstrates zone usage with `<Zone name="books-list-header">`
+
 ## [0.30.0] - 2026-01-01
 
 ### Added

@@ -16,7 +16,7 @@
  * form.generateFields()
  * form.addSaveAction()
  *
- * <FormPage v-bind="form.props" v-on="form.events">
+ * <FormPage v-bind="form.props.value" v-on="form.events">
  *   <template #fields>
  *     <FormField v-model="form.data.title" name="title" />
  *   </template>

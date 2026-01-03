@@ -21,6 +21,7 @@ import {
   qdadmLogo,
   version as qdadmVersion
 } from 'qdadm'
+import { Zone } from 'qdadm/components'
 import Button from 'primevue/button'
 import Breadcrumb from 'primevue/breadcrumb'
 import UserImpersonator from '../components/UserImpersonator.vue'
@@ -128,15 +129,24 @@ function isSectionExpanded(section) {
   return !collapsedSections.value[section.title]
 }
 
-// Load state on mount + setup resize listener
+// Subscribe to auth:impersonate signal for reactive impersonation state
+let unsubscribeImpersonate = null
+
+// Load state on mount + setup resize listener + signal subscription
 onMounted(() => {
   loadCollapsedState()
   checkImpersonationState()
   window.addEventListener('resize', handleResize)
+
+  // Listen for impersonation changes
+  unsubscribeImpersonate = orchestrator?.signals?.on('auth:impersonate', () => {
+    checkImpersonationState()
+  })
 })
 
 onUnmounted(() => {
   window.removeEventListener('resize', handleResize)
+  unsubscribeImpersonate?.()
 })
 
 // Auto-expand section when navigating to an item in it + close mobile sidebar
@@ -178,8 +188,19 @@ function handleLogout() {
 const slots = useSlots()
 const hasSlotContent = computed(() => !!slots.default)
 
+// Current page entity data - pages can inject and set this to avoid double fetch
+const currentEntityData = ref(null)
+provide('qdadmCurrentEntityData', currentEntityData)
+
+// Clear entity data on route change
+watch(() => route.fullPath, () => {
+  currentEntityData.value = null
+})
+
 // Navigation context (breadcrumb + navlinks from route config)
-const { breadcrumb: defaultBreadcrumb, navlinks: defaultNavlinks } = useNavContext()
+const { breadcrumb: defaultBreadcrumb, navlinks: defaultNavlinks } = useNavContext({
+  entityData: currentEntityData
+})
 
 // Allow child pages to override breadcrumb/navlinks via provide/inject
 const breadcrumbOverride = ref(null)

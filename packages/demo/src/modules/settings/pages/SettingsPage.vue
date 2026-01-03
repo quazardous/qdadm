@@ -10,8 +10,7 @@
  * Uses editMode="cell" for inline editing.
  */
 import { ref } from 'vue'
-import { useOrchestrator } from 'qdadm'
-import { useToast } from 'primevue/usetoast'
+import { useOrchestrator, useSignalToast } from 'qdadm'
 import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
 import InputText from 'primevue/inputtext'
@@ -22,7 +21,7 @@ import Tag from 'primevue/tag'
 
 const { getManager } = useOrchestrator()
 const settingsManager = getManager('settings')
-const toast = useToast()
+const toast = useSignalToast('SettingsPage')
 
 // ============ DATA ============
 const items = ref([])

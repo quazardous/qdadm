@@ -450,10 +450,9 @@ describe('EntityManager', () => {
 
         await manager.create({ title: 'Test Book' })
 
-        const presaveHooks = hooks.getInvokedHooks().filter(h => h.name.endsWith(':presave'))
-        expect(presaveHooks.length).toBe(2)
-        expect(presaveHooks[0].name).toBe('books:presave')
-        expect(presaveHooks[1].name).toBe('entity:presave')
+        const presaveHooks = hooks.getInvokedHooks().filter(h => h.name === 'entity:presave')
+        expect(presaveHooks.length).toBe(1)
+        expect(presaveHooks[0].context.entity).toBe('books')
       })
 
       it('invokes postsave hook after storage.create', async () => {
@@ -467,10 +466,9 @@ describe('EntityManager', () => {
 
         await manager.create({ title: 'Test Book' })
 
-        const postsaveHooks = hooks.getInvokedHooks().filter(h => h.name.endsWith(':postsave'))
-        expect(postsaveHooks.length).toBe(2)
-        expect(postsaveHooks[0].name).toBe('books:postsave')
-        expect(postsaveHooks[1].name).toBe('entity:postsave')
+        const postsaveHooks = hooks.getInvokedHooks().filter(h => h.name === 'entity:postsave')
+        expect(postsaveHooks.length).toBe(1)
+        expect(postsaveHooks[0].context.entity).toBe('books')
       })
 
       it('presave context includes entity, record, isNew=true, manager', async () => {
@@ -484,7 +482,7 @@ describe('EntityManager', () => {
 
         await manager.create({ title: 'Test Book' })
 
-        const presaveHook = hooks.getInvokedHooks().find(h => h.name === 'books:presave')
+        const presaveHook = hooks.getInvokedHooks().find(h => h.name === 'entity:presave')
         expect(presaveHook.context.entity).toBe('books')
         expect(presaveHook.context.record.title).toBe('Test Book')
         expect(presaveHook.context.isNew).toBe(true)
@@ -502,7 +500,7 @@ describe('EntityManager', () => {
 
         await manager.create({ title: 'Test Book' })
 
-        const postsaveHook = hooks.getInvokedHooks().find(h => h.name === 'books:postsave')
+        const postsaveHook = hooks.getInvokedHooks().find(h => h.name === 'entity:postsave')
         expect(postsaveHook.context.result).toBeDefined()
         expect(postsaveHook.context.result.id).toBe(1)
         expect(postsaveHook.context.result.title).toBe('Test Book')
@@ -517,9 +515,11 @@ describe('EntityManager', () => {
         })
         manager.setHooks(hooks)
 
-        // Register handler that modifies record
-        hooks.register('books:presave', (context) => {
-          context.record.updated_at = '2024-01-01'
+        // Register handler that modifies record (filter by entity)
+        hooks.register('entity:presave', (context) => {
+          if (context.entity === 'books') {
+            context.record.updated_at = '2024-01-01'
+          }
         })
 
         const result = await manager.create({ title: 'Test Book' })
@@ -537,8 +537,10 @@ describe('EntityManager', () => {
         manager.setHooks(hooks)
 
         // Register handler that throws
-        hooks.register('books:presave', () => {
-          throw new Error('Validation failed')
+        hooks.register('entity:presave', (context) => {
+          if (context.entity === 'books') {
+            throw new Error('Validation failed')
+          }
         })
 
         await expect(manager.create({ title: 'Test' })).rejects.toThrow('Validation failed')
@@ -558,12 +560,12 @@ describe('EntityManager', () => {
 
         await manager.update(1, { title: 'Updated Book' })
 
-        const presaveHook = hooks.getInvokedHooks().find(h => h.name === 'books:presave')
+        const presaveHook = hooks.getInvokedHooks().find(h => h.name === 'entity:presave')
         expect(presaveHook.context.isNew).toBe(false)
         expect(presaveHook.context.id).toBe(1)
       })
 
-      it('invokes both entity-specific and generic hooks', async () => {
+      it('invokes generic hooks with entity name in context', async () => {
         const hooks = new MockHookRegistry()
         const storage = new MockStorage()
         const manager = new EntityManager({
@@ -575,10 +577,10 @@ describe('EntityManager', () => {
         await manager.update(1, { title: 'Updated Book' })
 
         const hookNames = hooks.getInvokedHooks().map(h => h.name)
-        expect(hookNames).toContain('books:presave')
         expect(hookNames).toContain('entity:presave')
-        expect(hookNames).toContain('books:postsave')
         expect(hookNames).toContain('entity:postsave')
+        expect(hookNames).not.toContain('books:presave')
+        expect(hookNames).not.toContain('books:postsave')
       })
     })
 
@@ -595,9 +597,7 @@ describe('EntityManager', () => {
         await manager.patch(1, { title: 'Patched Book' })
 
         const hookNames = hooks.getInvokedHooks().map(h => h.name)
-        expect(hookNames).toContain('books:presave')
         expect(hookNames).toContain('entity:presave')
-        expect(hookNames).toContain('books:postsave')
         expect(hookNames).toContain('entity:postsave')
       })
 
@@ -612,7 +612,7 @@ describe('EntityManager', () => {
 
         await manager.patch(5, { title: 'Patched' })
 
-        const presaveHook = hooks.getInvokedHooks().find(h => h.name === 'books:presave')
+        const presaveHook = hooks.getInvokedHooks().find(h => h.name === 'entity:presave')
         expect(presaveHook.context.isNew).toBe(false)
         expect(presaveHook.context.id).toBe(5)
       })
@@ -631,10 +631,9 @@ describe('EntityManager', () => {
 
         await manager.delete(1)
 
-        const predeleteHooks = hooks.getInvokedHooks().filter(h => h.name.endsWith(':predelete'))
-        expect(predeleteHooks.length).toBe(2)
-        expect(predeleteHooks[0].name).toBe('books:predelete')
-        expect(predeleteHooks[1].name).toBe('entity:predelete')
+        const predeleteHooks = hooks.getInvokedHooks().filter(h => h.name === 'entity:predelete')
+        expect(predeleteHooks.length).toBe(1)
+        expect(predeleteHooks[0].context.entity).toBe('books')
       })
 
       it('predelete context includes entity, id, manager', async () => {
@@ -649,7 +648,7 @@ describe('EntityManager', () => {
 
         await manager.delete(1)
 
-        const predeleteHook = hooks.getInvokedHooks().find(h => h.name === 'books:predelete')
+        const predeleteHook = hooks.getInvokedHooks().find(h => h.name === 'entity:predelete')
         expect(predeleteHook.context.entity).toBe('books')
         expect(predeleteHook.context.id).toBe(1)
         expect(predeleteHook.context.manager).toBe(manager)
@@ -665,8 +664,10 @@ describe('EntityManager', () => {
         })
         manager.setHooks(hooks)
 
-        hooks.register('books:predelete', () => {
-          throw new Error('Cannot delete: has dependencies')
+        hooks.register('entity:predelete', (context) => {
+          if (context.entity === 'books') {
+            throw new Error('Cannot delete: has dependencies')
+          }
         })
 
         await expect(manager.delete(1)).rejects.toThrow('Cannot delete: has dependencies')
@@ -760,6 +761,11 @@ describe('EntityManager', () => {
 
       async emitEntity(entityName, action, data) {
         this.emittedSignals.push({ entityName, action, data })
+      }
+
+      // Stub for cache listener setup
+      on() {
+        return () => {} // Return cleanup function
       }
 
       getEmittedSignals() {
@@ -938,8 +944,9 @@ describe('EntityManager', () => {
 
         class TrackingSignalBus {
           async emitEntity(entityName, action, data) {
-            order.push(`signal:${entityName}:${action}`)
+            order.push(`signal:entity:${action}`)
           }
+          on() { return () => {} }
         }
 
         const storage = new MockStorage()
@@ -953,8 +960,8 @@ describe('EntityManager', () => {
         await manager.create({ title: 'Test' })
 
         // Hooks should be called before signal emission
-        expect(order.indexOf('hook:books:presave')).toBeLessThan(order.indexOf('signal:books:created'))
-        expect(order.indexOf('hook:books:postsave')).toBeLessThan(order.indexOf('signal:books:created'))
+        expect(order.indexOf('hook:entity:presave')).toBeLessThan(order.indexOf('signal:entity:created'))
+        expect(order.indexOf('hook:entity:postsave')).toBeLessThan(order.indexOf('signal:entity:created'))
       })
     })
 
@@ -1002,6 +1009,11 @@ describe('EntityManager', () => {
 
         async emit(signal, payload) {
           this.emittedCacheSignals.push({ signal, payload })
+        }
+
+        // Stub for cache listener setup
+        on() {
+          return () => {} // Return cleanup function
         }
 
         getCacheSignals() {
@@ -1181,6 +1193,11 @@ describe('EntityManager', () => {
 
       async emitEntity(entityName, action, data) {
         this.signals.push({ entityName, action, data })
+      }
+
+      // Stub for cache listener setup
+      on() {
+        return () => {} // Return cleanup function
       }
 
       getSignals() {

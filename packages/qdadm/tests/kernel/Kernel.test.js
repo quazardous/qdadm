@@ -10,6 +10,8 @@ import { defineComponent, h } from 'vue'
 import { Kernel } from '../../src/kernel/Kernel.js'
 import { SignalBus } from '../../src/kernel/SignalBus.js'
 import { EntityManager } from '../../src/entity/EntityManager.js'
+import { Module } from '../../src/kernel/Module.js'
+import { ModuleLoader } from '../../src/kernel/ModuleLoader.js'
 
 /**
  * Minimal mock components for Kernel bootstrap
@@ -175,8 +177,8 @@ describe('Kernel', () => {
       kernel._createHookRegistry()
       kernel._createOrchestrator()
 
-      // Subscribe to entity-specific signal (books:created)
-      kernel.signals.on('books:created', specificHandler)
+      // Subscribe to generic entity signal
+      kernel.signals.on('entity:created', specificHandler)
 
       // Trigger CRUD operation
       await booksManager.create({ title: 'Test Book' })
@@ -188,8 +190,7 @@ describe('Kernel', () => {
     })
 
     it('multiple managers emit signals through same bus', async () => {
-      const booksHandler = vi.fn()
-      const usersHandler = vi.fn()
+      const handler = vi.fn()
 
       const booksStorage = {
         create: vi.fn().mockResolvedValue({ id: 1, title: 'Book' })
@@ -222,16 +223,16 @@ describe('Kernel', () => {
       kernel._createHookRegistry()
       kernel._createOrchestrator()
 
-      // Subscribe to entity-specific signals
-      kernel.signals.on('books:created', booksHandler)
-      kernel.signals.on('users:created', usersHandler)
+      // Subscribe to generic entity signal
+      kernel.signals.on('entity:created', handler)
 
       await booksManager.create({ title: 'Book' })
       await usersManager.create({ name: 'User' })
 
-      // Both handlers should have been called
-      expect(booksHandler).toHaveBeenCalledTimes(1)
-      expect(usersHandler).toHaveBeenCalledTimes(1)
+      // Handler called twice with different entity names
+      expect(handler).toHaveBeenCalledTimes(2)
+      expect(handler.mock.calls[0][0].data.entity).toBe('books')
+      expect(handler.mock.calls[1][0].data.entity).toBe('users')
     })
 
     it('CRUD operations emit correct signals', async () => {
@@ -263,17 +264,18 @@ describe('Kernel', () => {
       kernel._createHookRegistry()
       kernel._createOrchestrator()
 
-      // Subscribe to specific CRUD signals
-      kernel.signals.on('books:created', createdHandler)
-      kernel.signals.on('books:updated', updatedHandler)
-      kernel.signals.on('books:deleted', deletedHandler)
+      // Subscribe to generic CRUD signals
+      kernel.signals.on('entity:created', createdHandler)
+      kernel.signals.on('entity:updated', updatedHandler)
+      kernel.signals.on('entity:deleted', deletedHandler)
 
       await booksManager.create({ title: 'Test' })
       await booksManager.update(1, { title: 'Updated' })
       await booksManager.delete(1)
 
-      // Each CRUD operation triggers its specific signal
+      // Each CRUD operation triggers its signal with entity in payload
       expect(createdHandler).toHaveBeenCalledTimes(1)
+      expect(createdHandler.mock.calls[0][0].data.entity).toBe('books')
       expect(updatedHandler).toHaveBeenCalledTimes(1)
       expect(deletedHandler).toHaveBeenCalledTimes(1)
     })
@@ -312,6 +314,305 @@ describe('Kernel', () => {
       kernel._createHookRegistry()
 
       expect(kernel.hooks).toBe(kernel.hookRegistry)
+    })
+  })
+
+  describe('ModuleLoader integration', () => {
+    it('moduleLoader is null by default', () => {
+      kernel = new Kernel({
+        root: MockApp,
+        pages: { login: MockLogin, layout: MockLayout },
+        homeRoute: { name: 'home', component: MockHome },
+        authAdapter: mockAuthAdapter
+      })
+
+      expect(kernel.moduleLoader).toBeNull()
+      expect(kernel.getModuleLoader()).toBeNull()
+      expect(kernel.modules).toBeNull()
+    })
+
+    it('_loadModulesSync() creates ModuleLoader when moduleDefs provided', () => {
+      const connectFn = vi.fn()
+
+      class TestModule extends Module {
+        static name = 'test'
+        connect(ctx) {
+          connectFn(ctx)
+        }
+      }
+
+      kernel = new Kernel({
+        root: MockApp,
+        pages: { login: MockLogin, layout: MockLayout },
+        homeRoute: { name: 'home', component: MockHome },
+        authAdapter: mockAuthAdapter,
+        moduleDefs: [TestModule]
+      })
+
+      // Setup required services
+      kernel._createSignalBus()
+      kernel._createHookRegistry()
+      kernel._createZoneRegistry()
+      kernel._createDeferredRegistry()
+
+      // Load modules
+      kernel._loadModulesSync()
+
+      expect(kernel.moduleLoader).toBeInstanceOf(ModuleLoader)
+      expect(kernel.getModuleLoader()).toBe(kernel.moduleLoader)
+      expect(kernel.modules).toBe(kernel.moduleLoader)
+      expect(connectFn).toHaveBeenCalled()
+    })
+
+    it('_loadModulesSync() skips when no moduleDefs', () => {
+      kernel = new Kernel({
+        root: MockApp,
+        pages: { login: MockLogin, layout: MockLayout },
+        homeRoute: { name: 'home', component: MockHome },
+        authAdapter: mockAuthAdapter
+      })
+
+      kernel._createSignalBus()
+      kernel._createHookRegistry()
+      kernel._createZoneRegistry()
+      kernel._createDeferredRegistry()
+
+      kernel._loadModulesSync()
+
+      expect(kernel.moduleLoader).toBeNull()
+    })
+
+    it('module receives KernelContext with services', () => {
+      let receivedCtx = null
+
+      class TestModule extends Module {
+        static name = 'test'
+        connect(ctx) {
+          receivedCtx = ctx
+        }
+      }
+
+      kernel = new Kernel({
+        root: MockApp,
+        pages: { login: MockLogin, layout: MockLayout },
+        homeRoute: { name: 'home', component: MockHome },
+        authAdapter: mockAuthAdapter,
+        moduleDefs: [TestModule]
+      })
+
+      kernel._createSignalBus()
+      kernel._createHookRegistry()
+      kernel._createZoneRegistry()
+      kernel._createDeferredRegistry()
+
+      kernel._loadModulesSync()
+
+      // Context should provide access to kernel services
+      expect(receivedCtx).not.toBeNull()
+      expect(receivedCtx.signals).toBe(kernel.signals)
+      expect(receivedCtx.zones).toBe(kernel.zoneRegistry)
+      expect(receivedCtx.hooks).toBe(kernel.hookRegistry)
+      expect(receivedCtx.deferred).toBe(kernel.deferred)
+    })
+
+    it('modules are loaded in dependency order', () => {
+      const loadOrder = []
+
+      class ModuleA extends Module {
+        static name = 'A'
+        static requires = ['B']
+        connect() {
+          loadOrder.push('A')
+        }
+      }
+
+      class ModuleB extends Module {
+        static name = 'B'
+        connect() {
+          loadOrder.push('B')
+        }
+      }
+
+      kernel = new Kernel({
+        root: MockApp,
+        pages: { login: MockLogin, layout: MockLayout },
+        homeRoute: { name: 'home', component: MockHome },
+        authAdapter: mockAuthAdapter,
+        moduleDefs: [ModuleA, ModuleB]
+      })
+
+      kernel._createSignalBus()
+      kernel._createHookRegistry()
+      kernel._createZoneRegistry()
+      kernel._createDeferredRegistry()
+
+      kernel._loadModulesSync()
+
+      // B should load before A due to dependency
+      expect(loadOrder).toEqual(['B', 'A'])
+    })
+
+    it('disabled modules are skipped', () => {
+      const connectFn = vi.fn()
+
+      class DisabledModule extends Module {
+        static name = 'disabled'
+        enabled() {
+          return false
+        }
+        connect() {
+          connectFn()
+        }
+      }
+
+      kernel = new Kernel({
+        root: MockApp,
+        pages: { login: MockLogin, layout: MockLayout },
+        homeRoute: { name: 'home', component: MockHome },
+        authAdapter: mockAuthAdapter,
+        moduleDefs: [DisabledModule]
+      })
+
+      kernel._createSignalBus()
+      kernel._createHookRegistry()
+      kernel._createZoneRegistry()
+      kernel._createDeferredRegistry()
+
+      kernel._loadModulesSync()
+
+      expect(connectFn).not.toHaveBeenCalled()
+    })
+
+    it('object-based modules are supported', () => {
+      const connectFn = vi.fn()
+
+      const objectModule = {
+        name: 'objectModule',
+        connect(ctx) {
+          connectFn(ctx)
+        }
+      }
+
+      kernel = new Kernel({
+        root: MockApp,
+        pages: { login: MockLogin, layout: MockLayout },
+        homeRoute: { name: 'home', component: MockHome },
+        authAdapter: mockAuthAdapter,
+        moduleDefs: [objectModule]
+      })
+
+      kernel._createSignalBus()
+      kernel._createHookRegistry()
+      kernel._createZoneRegistry()
+      kernel._createDeferredRegistry()
+
+      kernel._loadModulesSync()
+
+      expect(connectFn).toHaveBeenCalled()
+    })
+
+    it('_loadModules() async version works correctly', async () => {
+      const connectFn = vi.fn()
+
+      class AsyncModule extends Module {
+        static name = 'async'
+        async connect(ctx) {
+          await new Promise(resolve => setTimeout(resolve, 10))
+          connectFn(ctx)
+        }
+      }
+
+      kernel = new Kernel({
+        root: MockApp,
+        pages: { login: MockLogin, layout: MockLayout },
+        homeRoute: { name: 'home', component: MockHome },
+        authAdapter: mockAuthAdapter,
+        moduleDefs: [AsyncModule]
+      })
+
+      kernel._createSignalBus()
+      kernel._createHookRegistry()
+      kernel._createZoneRegistry()
+      kernel._createDeferredRegistry()
+
+      await kernel._loadModules()
+
+      expect(connectFn).toHaveBeenCalled()
+      expect(kernel.moduleLoader).toBeInstanceOf(ModuleLoader)
+    })
+
+    it('_wireModules() emits kernel:ready signal', () => {
+      const readyHandler = vi.fn()
+
+      class TestModule extends Module {
+        static name = 'test'
+        connect(ctx) {
+          ctx.signals.on('kernel:ready', readyHandler)
+        }
+      }
+
+      kernel = new Kernel({
+        root: MockApp,
+        pages: { login: MockLogin, layout: MockLayout },
+        homeRoute: { name: 'home', component: MockHome },
+        authAdapter: mockAuthAdapter,
+        managers: {},
+        moduleDefs: [TestModule]
+      })
+
+      kernel._createSignalBus()
+      kernel._createHookRegistry()
+      kernel._createZoneRegistry()
+      kernel._createDeferredRegistry()
+      kernel._loadModulesSync()
+      kernel._createOrchestrator()
+
+      kernel._wireModules()
+
+      expect(readyHandler).toHaveBeenCalled()
+      const event = readyHandler.mock.calls[0][0]
+      expect(event.data.orchestrator).toBe(kernel.orchestrator)
+      expect(event.data.kernel).toBe(kernel)
+    })
+
+    it('legacy modules and new modules coexist', () => {
+      const legacyInitFn = vi.fn()
+      const newConnectFn = vi.fn()
+
+      const legacyModules = {
+        './test/init.js': {
+          init: legacyInitFn
+        }
+      }
+
+      class NewModule extends Module {
+        static name = 'new'
+        connect(ctx) {
+          newConnectFn(ctx)
+        }
+      }
+
+      kernel = new Kernel({
+        root: MockApp,
+        pages: { login: MockLogin, layout: MockLayout },
+        homeRoute: { name: 'home', component: MockHome },
+        authAdapter: mockAuthAdapter,
+        modules: legacyModules,
+        moduleDefs: [NewModule]
+      })
+
+      kernel._createSignalBus()
+      kernel._createHookRegistry()
+      kernel._createZoneRegistry()
+      kernel._createDeferredRegistry()
+
+      // Load legacy modules
+      kernel._initModules()
+      expect(legacyInitFn).toHaveBeenCalled()
+
+      // Load new modules
+      kernel._loadModulesSync()
+      expect(newConnectFn).toHaveBeenCalled()
     })
   })
 })

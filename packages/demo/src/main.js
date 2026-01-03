@@ -24,7 +24,7 @@
  *    - Data survives page refresh
  */
 
-import { Kernel, EntityManager, MockApiStorage, ApiStorage, MemoryStorage, LocalStorage } from 'qdadm'
+import { Kernel, EntityManager, MockApiStorage, ApiStorage, MemoryStorage, LocalStorage, ToastBridgeModule } from 'qdadm'
 import PrimeVue from 'primevue/config'
 import Aura from '@primeuix/themes/aura'
 import 'qdadm/styles'
@@ -36,6 +36,18 @@ import { version } from '../package.json'
 import { authAdapter } from './adapters/authAdapter'
 import { demoEntityAuthAdapter } from './adapters/entityAuthAdapter'
 
+// Module System v2 - Class-based modules
+import { BooksModule } from './modules/books/BooksModule'
+import { debugBar } from 'qdadm/debug'
+import { UsersModule } from './modules/users/UsersModule'
+import { LoansModule } from './modules/loans/LoansModule'
+import { GenresModule } from './modules/genres/GenresModule'
+import { CountriesModule } from './modules/countries/CountriesModule'
+import { ProductsModule } from './modules/products/ProductsModule'
+import { TodosModule } from './modules/todos/TodosModule'
+import { SettingsModule } from './modules/settings/SettingsModule'
+import { FavoritesModule } from './modules/favorites/FavoritesModule'
+
 // ============================================================================
 // DUMMYJSON STORAGE
 // ============================================================================
@@ -45,6 +57,8 @@ import { demoEntityAuthAdapter } from './adapters/entityAuthAdapter'
 class DummyJsonStorage extends ApiStorage {
   /**
    * List entities with DummyJSON pagination (limit/skip)
+   * Note: DummyJSON has a limit cap (~100 items max per request)
+   * Cache will work in "overflow" mode for larger datasets
    */
   async list(params = {}) {
     const { page = 1, page_size = 20, sort_by, sort_order, filters = {} } = params
@@ -172,12 +186,9 @@ const roleOptions = [
 class LoansStorage extends MockApiStorage {
   static capabilities = {
     ...MockApiStorage.capabilities,
-    supportsCaching: true,  // Enable for EntityManager caching (needed for searchFields)
+    // supportsCaching stays false: MockApiStorage is already in-memory,
+    // EntityManager cache adds no benefit. searchFields works without it.
     searchFields: ['book.title', 'user.username']  // parentKey.field syntax
-  }
-
-  get supportsCaching() {
-    return LoansStorage.capabilities.supportsCaching
   }
 }
 
@@ -615,7 +626,7 @@ const allManagers = {
   // DummyJSON API integration demonstrating different pagination style (limit/skip).
   // Note: DummyJSON is read-only (changes are simulated but not persisted).
 
-  // DummyJSON Products
+  // DummyJSON Products - read-only
   products: new EntityManager({
     name: 'products',
     label: 'Product',
@@ -623,7 +634,7 @@ const allManagers = {
     routePrefix: 'product',
     labelField: 'title',
     readOnly: true,
-    localFilterThreshold: 0,  // Disable qdadm caching for external API
+    localFilterThreshold: 200,  // DummyJSON has 194 products
     fields: {
       id: { type: 'number', label: 'ID', readOnly: true },
       title: { type: 'text', label: 'Title', required: true },
@@ -758,9 +769,19 @@ const kernel = new Kernel({
   root: App,
   basePath: import.meta.env.BASE_URL,
   hashMode: true, // Use /#/path for static hosting (GitHub Pages)
-  // Auto-discover modules from ./modules/*/init.js
-  // Each module exports init(registry) function
-  modules: import.meta.glob('./modules/*/init.js', { eager: true }),
+  // Module System v2 - Class-based modules
+  moduleDefs: [
+    ToastBridgeModule,  // Toast bridge for signal-based toasts
+    BooksModule,
+    UsersModule,
+    LoansModule,
+    GenresModule,
+    CountriesModule,
+    ProductsModule,
+    TodosModule,
+    SettingsModule,
+    FavoritesModule
+  ],
   modulesOptions: {
     coreNavItems: [
       { section: 'Library', route: 'home', icon: 'pi pi-home', label: 'Home' }
@@ -814,7 +835,8 @@ const kernel = new Kernel({
   primevue: {
     plugin: PrimeVue,
     theme: Aura
-  }
+  },
+  debugBar
 })
 
 // Create and mount the app
@@ -829,12 +851,15 @@ const app = kernel.createApp()
 
 // ---------- LIFECYCLE HOOKS ----------
 // Demonstrate presave/postsave/predelete hooks for audit timestamps
+// All entity hooks use generic 'entity:*' pattern with entity name in context
 
 /**
  * presave hook: Add/update audit timestamps
  * Called before create() and update()
+ * Filter by context.entity for entity-specific behavior
  */
-kernel.hooks.register('books:presave', (context) => {
+kernel.hooks.register('entity:presave', (context) => {
+  if (context.entity !== 'books') return
   const { record, isNew } = context
   const now = new Date().toISOString()
   if (isNew) {
@@ -847,7 +872,8 @@ kernel.hooks.register('books:presave', (context) => {
  * postsave hook: Log save operations
  * Called after create() and update()
  */
-kernel.hooks.register('books:postsave', (context) => {
+kernel.hooks.register('entity:postsave', (context) => {
+  if (context.entity !== 'books') return
   const { result, isNew } = context
   console.log(`[demo] Book ${isNew ? 'created' : 'updated'}: ${result.title}`)
 }, { priority: 50 })
@@ -856,7 +882,8 @@ kernel.hooks.register('books:postsave', (context) => {
  * predelete hook: Log delete operations
  * Called before delete() - can throw to abort
  */
-kernel.hooks.register('books:predelete', (context) => {
+kernel.hooks.register('entity:predelete', (context) => {
+  if (context.entity !== 'books') return
   console.log(`[demo] About to delete book ID: ${context.id}`)
 }, { priority: 50 })
 

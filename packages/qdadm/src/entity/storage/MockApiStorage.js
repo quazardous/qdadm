@@ -29,7 +29,23 @@ export class MockApiStorage extends IStorage {
    * - supportsTotal: true - Returns accurate total from in-memory data
    * - supportsFilters: true - Filters in-memory via list() params
    * - supportsPagination: true - Paginates in-memory
-   * - supportsCaching: false - Already in-memory, no cache benefit
+   * - supportsCaching: false - Suggests EntityManager cache is not useful (see below)
+   *
+   * WHY supportsCaching = false?
+   * MockApiStorage is already in-memory, so the primary benefit of caching (avoiding
+   * network calls) doesn't apply. However, EntityManager cache CAN still be enabled
+   * by subclassing and setting supportsCaching: true. This is useful when you need:
+   * - Parent field resolution for searchFields (e.g., 'book.title' in loans)
+   * - Warmup at boot for consistent initial state
+   * - Local filtering without re-calling list()
+   *
+   * To enable EntityManager caching on MockApiStorage:
+   * ```js
+   * class CacheableMockStorage extends MockApiStorage {
+   *   static capabilities = { ...MockApiStorage.capabilities, supportsCaching: true }
+   *   get supportsCaching() { return true }
+   * }
+   * ```
    *
    * @type {import('./index.js').StorageCapabilities}
    */

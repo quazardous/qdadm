@@ -47,5 +47,12 @@ export * from './query/index.js'
 // Utils
 export * from './utils/index.js'
 
+// Toast (signal-based notifications)
+export * from './toast/index.js'
+
+// Debug tools are NOT exported here to enable tree-shaking.
+// Import from 'qdadm/debug' separately when needed:
+//   import { debugBar, DebugModule } from 'qdadm/debug'
+
 // Assets
 export { default as qdadmLogo } from './assets/logo.svg'

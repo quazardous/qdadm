@@ -13,7 +13,7 @@
 
 import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { PageLayout, usePageTitle, useOrchestrator } from 'qdadm'
+import { PageLayout, usePageTitle, useOrchestrator, useCurrentEntity } from 'qdadm'
 import Card from 'primevue/card'
 import Button from 'primevue/button'
 import Message from 'primevue/message'
@@ -26,6 +26,9 @@ const router = useRouter()
 // Get manager from orchestrator
 const { getManager } = useOrchestrator()
 const productsManager = getManager('products')
+
+// Share entity with navigation context (avoids double fetch for breadcrumb)
+const { setCurrentEntity } = useCurrentEntity()
 
 // State
 const product = ref(null)
@@ -59,6 +62,8 @@ async function loadProduct() {
       error.value = 'Product not found'
       return
     }
+    // Share with navigation context for breadcrumb (avoids double fetch)
+    setCurrentEntity(product.value)
   } catch (err) {
     console.error('Failed to load product:', err)
     error.value = err.message || 'Failed to load product'

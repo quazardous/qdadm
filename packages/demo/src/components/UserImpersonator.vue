@@ -136,7 +136,7 @@ function onUserSelect(event) {
  * Start impersonating a user
  * @param {string} userId - ID of user to impersonate
  */
-function impersonateUser(userId) {
+async function impersonateUser(userId) {
   const targetUser = users.value.find(u => u.id === userId)
   if (!targetUser) return
 
@@ -158,20 +158,21 @@ function impersonateUser(userId) {
 
   setStoredAuth(auth)
 
-  // Emit signal before refresh
-  orchestrator?.signals?.emit('auth:impersonate:start', {
+  // Emit auth:impersonate signal (triggers cache invalidation via EventRouter)
+  await orchestrator?.signals?.emit('auth:impersonate', {
     target: auth.user,
     original
   })
 
-  // Refresh page to apply new permissions
-  router.go(0)
+  // Reload state and navigate to home to apply new permissions
+  loadState()
+  router.push({ name: 'home' })
 }
 
 /**
  * Exit impersonation and restore original user
  */
-function exitImpersonation() {
+async function exitImpersonation() {
   const auth = getStoredAuth()
   if (!auth?.originalUser) return
 
@@ -183,11 +184,16 @@ function exitImpersonation() {
 
   setStoredAuth(auth)
 
-  // Emit signal before refresh
-  orchestrator?.signals?.emit('auth:impersonate:end', { original })
+  // Emit auth:impersonate signal (triggers cache invalidation via EventRouter)
+  await orchestrator?.signals?.emit('auth:impersonate', {
+    target: original,
+    original: null,
+    exit: true
+  })
 
-  // Refresh page to apply original permissions
-  router.go(0)
+  // Reload state and navigate to home to apply original permissions
+  loadState()
+  router.push({ name: 'home' })
 }
 
 onMounted(() => {

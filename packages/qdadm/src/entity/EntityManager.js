@@ -119,6 +119,19 @@ export class EntityManager {
 
     // Cleanup function for signal listeners
     this._signalCleanup = null
+
+    // Operation stats tracking (for debug panel)
+    this._stats = {
+      list: 0,         // Total list() calls
+      get: 0,          // Total get() calls
+      create: 0,       // Total create() calls
+      update: 0,       // Total update() calls (includes patch)
+      delete: 0,       // Total delete() calls
+      cacheHits: 0,    // list() served from local cache
+      cacheMisses: 0,  // list() fetched from API
+      maxItemsSeen: 0, // Max items returned in a single list()
+      maxTotal: 0      // Max total count reported by API
+    }
   }
 
   // ============ SIGNALS ============
@@ -166,20 +179,15 @@ export class EntityManager {
   /**
    * Invoke a lifecycle hook for this entity
    *
-   * Invokes both entity-specific hook (e.g., 'books:presave') and
-   * generic hook (e.g., 'entity:presave'). Entity-specific hooks run first.
+   * Invokes generic hook (e.g., 'entity:presave') with entity name in context.
+   * Handlers can filter by context.entity if needed.
    *
    * @param {string} hookName - Hook name without entity prefix (e.g., 'presave')
-   * @param {object} context - Hook context passed to handlers
+   * @param {object} context - Hook context passed to handlers (includes entity name)
    * @private
    */
   async _invokeHook(hookName, context) {
     if (!this._hooks) return
-
-    // Invoke entity-specific hook first (e.g., 'books:presave')
-    await this._hooks.invoke(`${this.name}:${hookName}`, context)
-
-    // Invoke generic hook (e.g., 'entity:presave')
     await this._hooks.invoke(`entity:${hookName}`, context)
   }
 
@@ -688,35 +696,67 @@ export class EntityManager {
       throw new Error(`[EntityManager:${this.name}] list() not implemented`)
     }
 
-    // Extract cacheSafe flag (for ownership/scope filters that are session-bound)
-    const { cacheSafe = false, ...queryParams } = params
+    // Extract internal flag and cacheSafe flag
+    const { _internal = false, cacheSafe = false, ...queryParams } = params
+
+    // Only count stats for non-internal operations
+    if (!_internal) {
+      this._stats.list++
+    }
 
     const hasFilters = queryParams.search || Object.keys(queryParams.filters || {}).length > 0
     const canUseCache = !hasFilters || cacheSafe
 
     // 1. Cache valid + cacheable → use cache with local filtering
     if (this._cache.valid && canUseCache) {
+      if (!_internal) this._stats.cacheHits++
       console.log('[cache] Using local cache for entity:', this.name)
       const filtered = this._filterLocally(this._cache.items, queryParams)
+      // Update max stats
+      if (filtered.items.length > this._stats.maxItemsSeen) {
+        this._stats.maxItemsSeen = filtered.items.length
+      }
+      if (filtered.total > this._stats.maxTotal) {
+        this._stats.maxTotal = filtered.total
+      }
       return { ...filtered, fromCache: true }
     }
+
+    if (!_internal) this._stats.cacheMisses++
 
     // 2. Fetch from API (storage normalizes response to { items, total })
     const response = await this.storage.list(queryParams)
     const items = response.items || []
     const total = response.total ?? items.length
 
+    // Update max stats
+    if (items.length > this._stats.maxItemsSeen) {
+      this._stats.maxItemsSeen = items.length
+    }
+    if (total > this._stats.maxTotal) {
+      this._stats.maxTotal = total
+    }
+
     // 3. Fill cache opportunistically if:
     //    - canUseCache (no filters or cacheSafe filters)
     //    - isCacheEnabled (threshold > 0 and storage supports total)
     //    - total <= threshold (all items fit in cache for complete local filtering)
+    //    - items.length >= total (we actually received all items)
     if (canUseCache && this.isCacheEnabled && total <= this.effectiveThreshold) {
-      this._cache.items = items  // Store all items (no slicing - total fits threshold)
-      this._cache.total = total
-      this._cache.valid = true
-      this._cache.loadedAt = Date.now()
-      // Resolve parent fields for search (book.title, user.username, etc.)
-      await this._resolveSearchFields(items)
+      // Only cache if we received ALL items (not a partial page)
+      if (items.length >= total) {
+        this._cache.items = items
+        this._cache.total = total
+        this._cache.valid = true
+        this._cache.loadedAt = Date.now()
+        // Resolve parent fields for search (book.title, user.username, etc.)
+        await this._resolveSearchFields(items)
+      }
+      // If we got partial results but total fits threshold, load all items for cache
+      else if (!this._cacheLoading) {
+        // Fire-and-forget: load full cache in background
+        this._loadCacheInBackground()
+      }
     }
 
     return { items, total, fromCache: false }
@@ -724,10 +764,28 @@ export class EntityManager {
 
   /**
    * Get a single entity by ID
+   *
+   * If cache is valid and complete (not overflow), serves from cache.
+   * Otherwise fetches from storage.
+   *
    * @param {string|number} id
    * @returns {Promise<object>}
    */
   async get(id) {
+    this._stats.get++
+
+    // Try cache first if valid and complete
+    if (this._cache.valid && !this.overflow) {
+      const idStr = String(id)
+      const cached = this._cache.items.find(item => String(item[this.idField]) === idStr)
+      if (cached) {
+        this._stats.cacheHits++
+        return { ...cached }  // Return copy to avoid mutation
+      }
+    }
+
+    // Fallback to storage
+    this._stats.cacheMisses++
     if (this.storage) {
       return this.storage.get(id)
     }
@@ -736,15 +794,38 @@ export class EntityManager {
 
   /**
    * Get multiple entities by IDs (batch fetch)
+   *
+   * If cache is valid and complete, serves from cache.
+   * Otherwise fetches from storage (or parallel get() calls).
+   *
    * @param {Array<string|number>} ids
    * @returns {Promise<Array<object>>}
    */
   async getMany(ids) {
     if (!ids || ids.length === 0) return []
+
+    // Try cache first if valid and complete
+    if (this._cache.valid && !this.overflow) {
+      const idStrs = new Set(ids.map(String))
+      const cached = this._cache.items
+        .filter(item => idStrs.has(String(item[this.idField])))
+        .map(item => ({ ...item }))  // Return copies
+
+      // If we found all items in cache
+      if (cached.length === ids.length) {
+        this._stats.cacheHits += ids.length
+        return cached
+      }
+      // Partial cache hit - fall through to storage
+    }
+
+    this._stats.cacheMisses += ids.length
+
     if (this.storage?.getMany) {
       return this.storage.getMany(ids)
     }
-    // Fallback: parallel get calls
+    // Fallback: parallel get calls (get() handles its own stats)
+    this._stats.cacheMisses -= ids.length  // Avoid double counting
     return Promise.all(ids.map(id => this.get(id).catch(() => null)))
       .then(results => results.filter(Boolean))
   }
@@ -760,6 +841,7 @@ export class EntityManager {
    * @returns {Promise<object>} - The created entity
    */
   async create(data) {
+    this._stats.create++
     if (this.storage) {
       // Invoke presave hooks (can modify data or throw to abort)
       const presaveContext = this._buildPresaveContext(data, true)
@@ -795,6 +877,7 @@ export class EntityManager {
    * @returns {Promise<object>}
    */
   async update(id, data) {
+    this._stats.update++
     if (this.storage) {
       // Invoke presave hooks (can modify data or throw to abort)
       const presaveContext = this._buildPresaveContext(data, false, id)
@@ -830,6 +913,7 @@ export class EntityManager {
    * @returns {Promise<object>}
    */
   async patch(id, data) {
+    this._stats.update++  // patch counts as update
     if (this.storage) {
       // Invoke presave hooks (can modify data or throw to abort)
       const presaveContext = this._buildPresaveContext(data, false, id)
@@ -863,6 +947,7 @@ export class EntityManager {
    * @returns {Promise<void>}
    */
   async delete(id) {
+    this._stats.delete++
     if (this.storage) {
       // Invoke predelete hooks (can throw to abort, e.g., for cascade checks)
       const predeleteContext = this._buildPredeleteContext(id)
@@ -1173,12 +1258,24 @@ export class EntityManager {
   }
 
   /**
+   * Internal: load all items into cache in background (fire-and-forget)
+   * Called when a partial list() response indicates caching is possible.
+   */
+  _loadCacheInBackground() {
+    this._cacheLoading = this._loadCache()
+    this._cacheLoading
+      .catch(err => console.error(`[EntityManager:${this.name}] Background cache load failed:`, err))
+      .finally(() => { this._cacheLoading = null })
+  }
+
+  /**
    * Internal: load all items into cache
    * @returns {Promise<boolean>} - true if cached, false if too many items
    */
   async _loadCache() {
     // First, check total count with minimal request
-    const probe = await this.list({ page_size: 1 })
+    // Use _internal to skip stats counting
+    const probe = await this.list({ page_size: 1, _internal: true })
 
     if (probe.total > this.effectiveThreshold) {
       // Too many items, don't cache
@@ -1186,8 +1283,8 @@ export class EntityManager {
       return false
     }
 
-    // Load all items
-    const result = await this.list({ page_size: probe.total || this.effectiveThreshold })
+    // Load all items (internal operation, skip stats)
+    const result = await this.list({ page_size: probe.total || this.effectiveThreshold, _internal: true })
     this._cache.items = result.items || []
     this._cache.total = result.total
     this._cache.loadedAt = Date.now()
@@ -1440,6 +1537,31 @@ export class EntityManager {
       itemCount: this._cache.items.length,
       total: this._cache.total,
       loadedAt: this._cache.loadedAt
+    }
+  }
+
+  /**
+   * Get operation stats (for debug panel)
+   * @returns {object}
+   */
+  getStats() {
+    return { ...this._stats }
+  }
+
+  /**
+   * Reset operation stats
+   */
+  resetStats() {
+    this._stats = {
+      list: 0,
+      get: 0,
+      create: 0,
+      update: 0,
+      delete: 0,
+      cacheHits: 0,
+      cacheMisses: 0,
+      maxItemsSeen: 0,
+      maxTotal: 0
     }
   }
 

@@ -126,13 +126,8 @@ export class SignalBus {
    * @returns {Promise<void>}
    */
   async emitEntity(entityName, action, data) {
-    const specificSignal = buildSignal(entityName, action)
-    const genericSignal = buildSignal('entity', action)
-
-    // Emit both specific and generic signals
-    // Specific first, then generic
-    await this.emit(specificSignal, { entity: entityName, data })
-    await this.emit(genericSignal, { entity: entityName, data })
+    const signal = buildSignal('entity', action)
+    await this.emit(signal, { entity: entityName, data })
   }
 
   /**

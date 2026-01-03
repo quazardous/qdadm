@@ -9,8 +9,7 @@
  */
 
 import { ref, onMounted } from 'vue'
-import { useToast } from 'primevue/usetoast'
-import { useOrchestrator } from 'qdadm'
+import { useOrchestrator, useSignalToast } from 'qdadm'
 
 /**
  * Add favorite toggle action to a list builder
@@ -20,7 +19,7 @@ import { useOrchestrator } from 'qdadm'
  * @param {string} options.labelField - Field to use as favorite name (default: 'title' or 'name')
  */
 export function useFavoriteAction(listBuilder, entityType, options = {}) {
-  const toast = useToast()
+  const toast = useSignalToast('FavoriteAction')
 
   // Use qdadm's orchestrator to get the favorites manager
   const { getManager, hasManager } = useOrchestrator()
@@ -77,12 +76,7 @@ export function useFavoriteAction(listBuilder, entityType, options = {}) {
         if (favorite) {
           await favoritesManager.delete(favorite.id)
           favoriteIds.value.delete(entityId)
-          toast.add({
-            severity: 'info',
-            summary: 'Removed from favorites',
-            detail: label,
-            life: 2000
-          })
+          toast.info('Removed from favorites', label, 2000)
         }
       } else {
         // Add favorite
@@ -93,21 +87,11 @@ export function useFavoriteAction(listBuilder, entityType, options = {}) {
           createdAt: new Date().toISOString()
         })
         favoriteIds.value.add(entityId)
-        toast.add({
-          severity: 'success',
-          summary: 'Added to favorites',
-          detail: label,
-          life: 2000
-        })
+        toast.success('Added to favorites', label, 2000)
       }
     } catch (e) {
       console.error('[favorites] Toggle failed:', e)
-      toast.add({
-        severity: 'error',
-        summary: 'Error',
-        detail: 'Failed to update favorites',
-        life: 3000
-      })
+      toast.error('Error', 'Failed to update favorites')
     }
   }
 

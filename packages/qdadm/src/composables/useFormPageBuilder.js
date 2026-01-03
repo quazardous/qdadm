@@ -17,7 +17,7 @@
  * form.addSaveAction()
  * form.addDeleteAction()
  *
- * <FormPage v-bind="form.props" v-on="form.events">
+ * <FormPage v-bind="form.props.value" v-on="form.events">
  *   <template #fields>
  *     <FormField v-model="form.data.title" name="title" />
  *   </template>
@@ -1011,7 +1011,7 @@ export function useFormPageBuilder(config = {}) {
 
   /**
    * Props object for FormPage component
-   * Use with v-bind: <FormPage v-bind="form.props">
+   * Use with v-bind: <FormPage v-bind="form.props.value">
    */
   const formProps = computed(() => ({
     // Mode
@@ -1049,7 +1049,7 @@ export function useFormPageBuilder(config = {}) {
 
   /**
    * Event handlers for FormPage
-   * Use with v-on: <FormPage v-bind="form.props" v-on="form.events">
+   * Use with v-on: <FormPage v-bind="form.props.value" v-on="form.events">
    */
   const formEvents = {
     save: () => submit(false),

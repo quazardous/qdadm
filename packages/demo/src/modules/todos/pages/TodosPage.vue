@@ -11,13 +11,12 @@
  */
 
 import { ref, onMounted } from 'vue'
-import { useListPageBuilder, ListPage, useOrchestrator } from 'qdadm'
+import { useListPageBuilder, ListPage, useOrchestrator, useSignalToast } from 'qdadm'
 import Column from 'primevue/column'
 import Checkbox from 'primevue/checkbox'
-import { useToast } from 'primevue/usetoast'
 
 const { getManager } = useOrchestrator()
-const toast = useToast()
+const toast = useSignalToast('TodosPage')
 
 // ============ LIST BUILDER ============
 const list = useListPageBuilder({ entity: 'todos' })

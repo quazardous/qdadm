@@ -157,8 +157,20 @@ function handleLogout() {
 const slots = useSlots()
 const hasSlotContent = computed(() => !!slots.default)
 
+// Current page entity data - pages can inject and set this to avoid double fetch
+// When a page loads an entity, it sets this ref, and useNavContext uses it for breadcrumb
+const currentEntityData = ref(null)
+provide('qdadmCurrentEntityData', currentEntityData)
+
+// Clear entity data on route change (before new page mounts)
+watch(() => route.fullPath, () => {
+  currentEntityData.value = null
+})
+
 // Navigation context (breadcrumb + navlinks from route config)
-const { breadcrumb: defaultBreadcrumb, navlinks: defaultNavlinks } = useNavContext()
+const { breadcrumb: defaultBreadcrumb, navlinks: defaultNavlinks } = useNavContext({
+  entityData: currentEntityData
+})
 
 // Allow child pages to override breadcrumb/navlinks via provide/inject
 const breadcrumbOverride = ref(null)
