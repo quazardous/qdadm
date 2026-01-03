@@ -211,14 +211,6 @@ function getCapabilityLabel(cap) {
         <!-- Test Fetch row - always visible for testing auth protection -->
         <div class="entity-row">
           <span class="entity-key">Test:</span>
-          <button
-            class="entity-test-btn"
-            :disabled="isTesting(entity.name)"
-            @click.stop="testFetch(entity.name)"
-          >
-            <i :class="['pi', isTesting(entity.name) ? 'pi-spin pi-spinner' : 'pi-download']" />
-            {{ isTesting(entity.name) ? 'Testing...' : 'Fetch' }}
-          </button>
           <span v-if="getTestResult(entity.name)" class="entity-test-result" :class="getTestResult(entity.name).success ? 'test-success' : 'test-error'">
             <template v-if="getTestResult(entity.name).success">
               <i class="pi pi-check-circle" />
@@ -229,6 +221,15 @@ function getCapabilityLabel(cap) {
               {{ getTestResult(entity.name).status || 'ERR' }}: {{ getTestResult(entity.name).error }}
             </template>
           </span>
+          <span v-else class="entity-value entity-test-na">-</span>
+          <button
+            class="entity-test-btn"
+            :disabled="isTesting(entity.name)"
+            @click.stop="testFetch(entity.name)"
+          >
+            <i :class="['pi', isTesting(entity.name) ? 'pi-spin pi-spinner' : 'pi-download']" />
+            {{ isTesting(entity.name) ? 'Testing...' : 'Fetch' }}
+          </button>
         </div>
         <div class="entity-row">
           <span class="entity-key">Fields:</span>
@@ -474,6 +475,7 @@ function getCapabilityLabel(cap) {
   color: #fff;
   cursor: pointer;
   font-size: 10px;
+  margin-left: auto;
 }
 .entity-test-btn:hover {
   background: #2563eb;
@@ -498,6 +500,10 @@ function getCapabilityLabel(cap) {
 .test-error {
   background: rgba(239, 68, 68, 0.2);
   color: #ef4444;
+}
+.entity-test-na {
+  color: #52525b;
+  font-style: italic;
 }
 
 /* Collapsed summary */
