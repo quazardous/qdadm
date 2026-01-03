@@ -39,8 +39,11 @@ export class AuthCollector extends Collector {
     this._ctx = null
     this._signalCleanups = []
     // Activity tracking for login/logout events
-    this._hasActivity = false
-    this._lastEvent = null // 'login' | 'logout' | null
+    // Keep recent events to show stacked (last N events)
+    this._recentEvents = [] // Array of { type: 'login'|'logout', timestamp: Date, seen: boolean }
+    this._maxEvents = 5
+    this._eventTtl = options.eventTtl ?? 60000 // Events expire after 60s by default
+    this._expiryTimer = null
   }
 
   /**
@@ -71,18 +74,65 @@ export class AuthCollector extends Collector {
 
     // Listen to auth events and track activity
     const loginCleanup = signals.on('auth:login', () => {
-      this._hasActivity = true
-      this._lastEvent = 'login'
-      this.notifyChange()
+      this._addEvent('login')
     })
     this._signalCleanups.push(loginCleanup)
 
     const logoutCleanup = signals.on('auth:logout', () => {
-      this._hasActivity = true
-      this._lastEvent = 'logout'
-      this.notifyChange()
+      this._addEvent('logout')
     })
     this._signalCleanups.push(logoutCleanup)
+  }
+
+  /**
+   * Add an auth event to the recent events list
+   * @param {string} type - 'login' | 'logout'
+   * @private
+   */
+  _addEvent(type) {
+    this._recentEvents.unshift({
+      type,
+      timestamp: new Date(),
+      id: Date.now(), // Unique ID for Vue key
+      seen: false
+    })
+    // Keep only last N events
+    if (this._recentEvents.length > this._maxEvents) {
+      this._recentEvents.pop()
+    }
+    this._scheduleExpiry()
+    this.notifyChange()
+  }
+
+  /**
+   * Schedule event expiry check
+   * @private
+   */
+  _scheduleExpiry() {
+    if (this._expiryTimer) return // Already scheduled
+    this._expiryTimer = setTimeout(() => {
+      this._expireOldEvents()
+    }, this._eventTtl)
+  }
+
+  /**
+   * Remove expired events
+   * @private
+   */
+  _expireOldEvents() {
+    this._expiryTimer = null
+    const now = Date.now()
+    const before = this._recentEvents.length
+    this._recentEvents = this._recentEvents.filter(
+      e => (now - e.timestamp.getTime()) < this._eventTtl
+    )
+    if (this._recentEvents.length < before) {
+      this.notifyChange()
+    }
+    // Reschedule if still have events
+    if (this._recentEvents.length > 0) {
+      this._scheduleExpiry()
+    }
   }
 
   /**
@@ -90,6 +140,10 @@ export class AuthCollector extends Collector {
    * @protected
    */
   _doUninstall() {
+    if (this._expiryTimer) {
+      clearTimeout(this._expiryTimer)
+      this._expiryTimer = null
+    }
     for (const cleanup of this._signalCleanups) {
       if (typeof cleanup === 'function') cleanup()
     }
@@ -99,11 +153,11 @@ export class AuthCollector extends Collector {
   }
 
   /**
-   * Get badge - show 1 if there's unseen auth activity
-   * @returns {number} 1 if activity unseen, 0 otherwise
+   * Get badge - show count of unseen auth events
+   * @returns {number} Number of unseen events
    */
   getBadge() {
-    return this._hasActivity ? 1 : 0
+    return this._recentEvents.filter(e => !e.seen).length
   }
 
   /**
@@ -111,24 +165,41 @@ export class AuthCollector extends Collector {
    * @returns {boolean}
    */
   hasActivity() {
-    return this._hasActivity
+    return this._recentEvents.some(e => !e.seen)
   }
 
   /**
-   * Get the last auth event type
+   * Get all recent auth events (newest first)
+   * @returns {Array<{type: string, timestamp: Date, id: number, seen: boolean}>}
+   */
+  getRecentEvents() {
+    return this._recentEvents
+  }
+
+  /**
+   * Get the last auth event type (for backward compatibility)
    * @returns {string|null} 'login' | 'logout' | null
    */
   getLastEvent() {
-    return this._lastEvent
+    return this._recentEvents[0]?.type || null
   }
 
   /**
-   * Mark activity as seen (clear activity state)
+   * Mark all events as seen (badge resets but events stay visible)
    * Note: Does not call notifyChange() to avoid re-render loop
    */
   markSeen() {
-    this._hasActivity = false
-    this._lastEvent = null
+    for (const event of this._recentEvents) {
+      event.seen = true
+    }
+  }
+
+  /**
+   * Clear all events (for explicit dismissal)
+   */
+  clearEvents() {
+    this._recentEvents = []
+    this.notifyChange()
   }
 
   /**

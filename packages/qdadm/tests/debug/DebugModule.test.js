@@ -278,7 +278,7 @@ describe('DebugModule', () => {
     })
 
     it('exports DEBUG_ZONE constant', () => {
-      expect(DEBUG_ZONE).toBe('app:debug')
+      expect(DEBUG_ZONE).toBe('_app:debug')
     })
   })
 })
