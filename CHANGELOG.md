@@ -5,6 +5,31 @@ All notable changes to qdadm will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.32.0] - 2026-01-03
+
+### Added
+- **Multi-source auth with `CompositeAuthAdapter`**: Route entity permissions to different auth backends
+  - `CompositeAuthAdapter`: Routes `canPerform()`/`canAccessRecord()` based on entity patterns
+  - Exact match: `'products': apiKeyAdapter`
+  - Glob patterns: `'external-*': externalAuth`, `'*-readonly': readonlyAuth`
+  - `authFactory()`: Factory/resolver pattern (like storage factory)
+  - Backward compatible: passing AuthAdapter instance works as before
+  - Kernel auto-resolves via `_resolveEntityAuthAdapter()` at boot
+
+### Example
+```js
+createKernel({
+  authTypes: { apikey: ApiKeyAdapter },
+  entityAuthAdapter: {
+    default: internalAuth,          // JWT for most entities
+    mapping: {
+      'products': { type: 'apikey', key: 'xxx' },
+      'external-*': externalOAuth   // OAuth for external-*
+    }
+  }
+})
+```
+
 ## [0.31.1] - 2026-01-03
 
 ### Added

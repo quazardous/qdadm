@@ -54,6 +54,7 @@ import { createZoneRegistry } from '../zones/ZoneRegistry.js'
 import { registerStandardZones } from '../zones/zones.js'
 import { createHookRegistry } from '../hooks/HookRegistry.js'
 import { createSecurityChecker } from '../entity/auth/SecurityChecker.js'
+import { authFactory, CompositeAuthAdapter } from '../entity/auth/index.js'
 import { createManagers } from '../entity/factory.js'
 import { defaultStorageResolver } from '../entity/storage/factory.js'
 import { createDeferredRegistry } from '../deferred/DeferredRegistry.js'
@@ -140,6 +141,33 @@ export class Kernel {
   }
 
   /**
+   * Resolve entityAuthAdapter through authFactory
+   *
+   * Enables multiple configuration styles:
+   * - Instance passthrough (backward compatible): authAdapter instance
+   * - String pattern: 'permissive', 'jwt' (if registered in authTypes)
+   * - Config object: { type: 'jwt', ... }
+   * - Composite: { default: adapter, mapping: { 'entity': adapter } }
+   *
+   * @private
+   */
+  _resolveEntityAuthAdapter() {
+    const { entityAuthAdapter, authTypes } = this.options
+
+    // No adapter configured → nothing to resolve
+    if (entityAuthAdapter == null) return
+
+    // Build factory context with CompositeAuthAdapter available
+    const context = {
+      authTypes: authTypes || {},
+      CompositeAuthAdapter
+    }
+
+    // Resolve through factory (handles all input types)
+    this.options.entityAuthAdapter = authFactory(entityAuthAdapter, context)
+  }
+
+  /**
    * Create and configure the Vue app
    *
    * Note: This method is synchronous for backward compatibility.
@@ -149,6 +177,8 @@ export class Kernel {
    * @returns {App} Vue app instance ready to mount
    */
   createApp() {
+    // 0. Resolve entityAuthAdapter (supports instance, string, config, composite)
+    this._resolveEntityAuthAdapter()
     // 1. Create services first (modules need them)
     this._createSignalBus()
     this._createHookRegistry()
@@ -192,6 +222,8 @@ export class Kernel {
    * @returns {Promise<App>} Vue app instance ready to mount
    */
   async createAppAsync() {
+    // 0. Resolve entityAuthAdapter (supports instance, string, config, composite)
+    this._resolveEntityAuthAdapter()
     // 1. Create services first (modules need them)
     this._createSignalBus()
     this._createHookRegistry()
