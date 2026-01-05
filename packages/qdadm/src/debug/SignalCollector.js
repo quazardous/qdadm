@@ -29,6 +29,13 @@ export class SignalCollector extends Collector {
   static name = 'signals'
 
   /**
+   * Signals to skip recording (internal kernel signals with non-serializable data)
+   * @type {Set<string>}
+   * @private
+   */
+  static _skipSignals = new Set(['kernel:ready', 'kernel:shutdown'])
+
+  /**
    * Internal install - subscribe to all signals
    *
    * @param {object} ctx - Context object from Kernel
@@ -45,12 +52,63 @@ export class SignalCollector extends Collector {
     // QuarKernel supports wildcards with the configured delimiter (:)
     // '**' matches all signals including multi-segment (entity:data-invalidate)
     this._unsubscribe = ctx.signals.on('**', (event) => {
+      // Skip internal signals with non-serializable data (kernel, orchestrator)
+      if (SignalCollector._skipSignals.has(event.name)) {
+        return
+      }
+
+      // Sanitize data to avoid cyclic references
+      const data = this._sanitizeData(event.data)
+
       this.record({
         name: event.name,
-        data: event.data,
-        source: event.data?.source ?? null
+        data,
+        source: data?.source ?? null
       })
     })
+  }
+
+  /**
+   * Sanitize event data to remove non-serializable objects
+   *
+   * Handles cases where data contains references to Kernel, Orchestrator,
+   * or other complex objects that would cause cyclic reference errors.
+   *
+   * @param {*} data - Raw event data
+   * @returns {*} Sanitized data safe for recording
+   * @private
+   */
+  _sanitizeData(data) {
+    if (data === null || data === undefined) return data
+    if (typeof data !== 'object') return data
+
+    // Try to create a simple clone, fallback to description if cyclic
+    try {
+      // Quick check for obviously problematic properties
+      if (data.kernel || data.orchestrator || data._kernel) {
+        // Extract only safe properties
+        const safe = {}
+        for (const [key, value] of Object.entries(data)) {
+          if (key !== 'kernel' && key !== 'orchestrator' && key !== '_kernel') {
+            if (typeof value !== 'object' || value === null) {
+              safe[key] = value
+            } else if (Array.isArray(value)) {
+              safe[key] = `[Array(${value.length})]`
+            } else {
+              safe[key] = '[Object]'
+            }
+          }
+        }
+        return safe
+      }
+
+      // For other objects, try JSON roundtrip to detect cycles
+      JSON.stringify(data)
+      return data
+    } catch {
+      // If serialization fails, return a safe representation
+      return { _type: 'unserializable', keys: Object.keys(data) }
+    }
   }
 
   /**

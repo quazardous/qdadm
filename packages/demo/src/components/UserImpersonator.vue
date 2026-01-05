@@ -7,7 +7,7 @@
  * actual users from the demo database.
  *
  * Permission check:
- *   - Requires 'user:impersonate' permission (granted to ROLE_ADMIN)
+ *   - Requires 'auth:impersonate' permission (granted to ROLE_ADMIN)
  *   - Uses isGranted() from SecurityChecker
  *
  * Impersonation state:
@@ -19,16 +19,17 @@
  *   <UserImpersonator />
  */
 
-import { ref, computed, onMounted, inject } from 'vue'
+import { ref, computed, onMounted, onUnmounted, inject } from 'vue'
 import { useRouter } from 'vue-router'
 import AutoComplete from 'primevue/autocomplete'
 import Button from 'primevue/button'
 
-const AUTH_STORAGE_KEY = 'qdadm_demo_auth'
 const USERS_STORAGE_KEY = 'mockapi_users_data'
 
 const router = useRouter()
 const orchestrator = inject('qdadmOrchestrator')
+const authAdapter = inject('authAdapter')
+const signalCleanups = []
 
 // State
 const users = ref([])
@@ -41,9 +42,9 @@ const filteredUsers = ref([])
  * Check if current user can impersonate others
  */
 const canImpersonate = computed(() => {
-  const authAdapter = orchestrator?.entityAuthAdapter
-  if (!authAdapter?.isGranted) return false
-  return authAdapter.isGranted('user:impersonate')
+  const entityAuth = orchestrator?.entityAuthAdapter
+  if (!entityAuth?.isGranted) return false
+  return entityAuth.isGranted('auth:impersonate')
 })
 
 /**
@@ -54,36 +55,20 @@ const isImpersonating = computed(() => {
 })
 
 /**
- * Users available for impersonation (excluding current original user)
+ * Users available for impersonation
+ * Excludes: original admin AND currently impersonated user (can't impersonate yourself)
  */
 const availableUsers = computed(() => {
-  const origId = originalUser.value?.id || currentUser.value?.id
-  return users.value.filter(u => u.id !== origId).map(u => ({
+  const excludeIds = new Set()
+  // Always exclude the original admin
+  if (originalUser.value?.id) excludeIds.add(originalUser.value.id)
+  // Also exclude the currently impersonated user
+  if (currentUser.value?.id) excludeIds.add(currentUser.value.id)
+  return users.value.filter(u => !excludeIds.has(u.id)).map(u => ({
     id: u.id,
     username: u.username
   }))
 })
-
-/**
- * Get stored auth data
- */
-function getStoredAuth() {
-  try {
-    const stored = localStorage.getItem(AUTH_STORAGE_KEY)
-    return stored ? JSON.parse(stored) : null
-  } catch {
-    return null
-  }
-}
-
-/**
- * Update stored auth data
- */
-function setStoredAuth(data) {
-  if (data) {
-    localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(data))
-  }
-}
 
 /**
  * Get all users from MockApiStorage
@@ -98,12 +83,11 @@ function getAllUsers() {
 }
 
 /**
- * Load current state from localStorage
+ * Load current state from authAdapter
  */
 function loadState() {
-  const auth = getStoredAuth()
-  currentUser.value = auth?.user || null
-  originalUser.value = auth?.originalUser || null
+  currentUser.value = authAdapter?.getUser?.() || null
+  originalUser.value = authAdapter?.getOriginalUser?.() || null
   users.value = getAllUsers()
 
   if (isImpersonating.value) {
@@ -134,68 +118,78 @@ function onUserSelect(event) {
 
 /**
  * Start impersonating a user
+ *
+ * Signal-driven: just emit the signal, authAdapter reacts via connectSignals().
+ *
  * @param {string} userId - ID of user to impersonate
  */
 async function impersonateUser(userId) {
-  const targetUser = users.value.find(u => u.id === userId)
+  // Fetch fresh user data from storage (not stale users.value)
+  const freshUsers = getAllUsers()
+  const targetUser = freshUsers.find(u => u.id === userId)
   if (!targetUser) return
 
-  const auth = getStoredAuth()
-  if (!auth) return
+  // Get current user for signal payload
+  const original = authAdapter?.getUser?.()
 
-  // Store original user if not already impersonating
-  const original = originalUser.value || auth.user
-  if (!originalUser.value) {
-    auth.originalUser = auth.user
-  }
-
-  // Swap to impersonated user
-  auth.user = {
+  // Build target user object
+  const impersonatedUser = {
     id: targetUser.id,
     username: targetUser.username,
     role: targetUser.role
   }
 
-  setStoredAuth(auth)
-
-  // Emit auth:impersonate signal (triggers cache invalidation via EventRouter)
+  // Emit auth:impersonate signal - authAdapter reacts via connectSignals()
+  // Signal handlers (including this component's) refresh state automatically
   await orchestrator?.signals?.emit('auth:impersonate', {
-    target: auth.user,
+    target: impersonatedUser,
     original
   })
 
-  // Reload state and navigate to home to apply new permissions
-  loadState()
+  // Navigate to home to apply new permissions
   router.push({ name: 'home' })
 }
 
 /**
  * Exit impersonation and restore original user
+ *
+ * Signal-driven: just emit the signal, authAdapter reacts via connectSignals().
  */
 async function exitImpersonation() {
-  const auth = getStoredAuth()
-  if (!auth?.originalUser) return
+  // Get original user for signal payload
+  const original = authAdapter?.getOriginalUser?.()
 
-  const original = auth.originalUser
-
-  // Restore original user
-  auth.user = auth.originalUser
-  delete auth.originalUser
-
-  setStoredAuth(auth)
-
-  // Emit auth:impersonate:stop signal
+  // Emit auth:impersonate:stop signal - authAdapter reacts via connectSignals()
+  // Signal handlers (including this component's) refresh state automatically
   await orchestrator?.signals?.emit('auth:impersonate:stop', {
     original
   })
 
-  // Reload state and navigate to home to apply original permissions
-  loadState()
+  // Navigate to home to apply original permissions
   router.push({ name: 'home' })
 }
 
 onMounted(() => {
   loadState()
+
+  // Subscribe to impersonation signals to refresh state
+  const signals = orchestrator?.signals
+  if (signals) {
+    signalCleanups.push(signals.on('auth:impersonate', () => {
+      loadState()
+    }))
+    signalCleanups.push(signals.on('auth:impersonate:stop', () => {
+      loadState()
+      selectedUser.value = null
+    }))
+  }
+})
+
+onUnmounted(() => {
+  // Cleanup signal subscriptions
+  for (const cleanup of signalCleanups) {
+    if (typeof cleanup === 'function') cleanup()
+  }
 })
 </script>
 

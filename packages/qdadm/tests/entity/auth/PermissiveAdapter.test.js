@@ -105,25 +105,37 @@ describe('createPermissiveAdapter', () => {
 })
 
 describe('EntityAuthAdapter base class', () => {
-  it('throws error when canPerform is not implemented', () => {
+  it('canPerform delegates to isGranted when no SecurityChecker (permissive)', () => {
     const adapter = new EntityAuthAdapter()
-    expect(() => adapter.canPerform('users', 'read')).toThrow(
-      '[EntityAuthAdapter] canPerform() must be implemented by subclass'
-    )
+    // Without SecurityChecker, isGranted returns true (permissive)
+    expect(adapter.canPerform('users', 'read')).toBe(true)
+    expect(adapter.canPerform('users', 'delete')).toBe(true)
   })
 
-  it('throws error when canAccessRecord is not implemented', () => {
+  it('canAccessRecord delegates to isGranted when no SecurityChecker (permissive)', () => {
     const adapter = new EntityAuthAdapter()
-    expect(() => adapter.canAccessRecord('users', { id: 1 })).toThrow(
-      '[EntityAuthAdapter] canAccessRecord() must be implemented by subclass'
-    )
+    // Without SecurityChecker, isGranted returns true (permissive)
+    expect(adapter.canAccessRecord('users', { id: 1 })).toBe(true)
   })
 
-  it('throws error when getCurrentUser is not implemented', () => {
+  it('getCurrentUser returns null when no callback provided', () => {
     const adapter = new EntityAuthAdapter()
-    expect(() => adapter.getCurrentUser()).toThrow(
-      '[EntityAuthAdapter] getCurrentUser() must be implemented by subclass'
-    )
+    expect(adapter.getCurrentUser()).toBeNull()
+  })
+
+  it('getCurrentUser uses callback when provided', () => {
+    const user = { id: 1, name: 'Test User' }
+    const adapter = new EntityAuthAdapter({
+      getCurrentUser: () => user
+    })
+    expect(adapter.getCurrentUser()).toBe(user)
+  })
+
+  it('getCurrentUser callback can return null', () => {
+    const adapter = new EntityAuthAdapter({
+      getCurrentUser: () => null
+    })
+    expect(adapter.getCurrentUser()).toBeNull()
   })
 })
 

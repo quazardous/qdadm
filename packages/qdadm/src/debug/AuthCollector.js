@@ -40,9 +40,8 @@ export class AuthCollector extends Collector {
     this._ctx = null
     this._signalCleanups = []
     // Activity tracking for login/logout events
-    // Keep recent events to show stacked (last N events)
+    // Events auto-expire after TTL (no max limit)
     this._recentEvents = [] // Array of { type: 'login'|'logout', timestamp: Date, seen: boolean }
-    this._maxEvents = 5
     this._eventTtl = options.eventTtl ?? 60000 // Events expire after 60s by default
     this._expiryTimer = null
   }
@@ -97,6 +96,11 @@ export class AuthCollector extends Collector {
       this._addEvent('impersonate-stop', payload)
     })
     this._signalCleanups.push(impersonateStopCleanup)
+
+    const loginErrorCleanup = signals.on('auth:login:error', (payload) => {
+      this._addEvent('login-error', payload)
+    })
+    this._signalCleanups.push(loginErrorCleanup)
   }
 
   /**
@@ -113,23 +117,33 @@ export class AuthCollector extends Collector {
       seen: false,
       data
     })
-    // Keep only last N events
-    if (this._recentEvents.length > this._maxEvents) {
-      this._recentEvents.pop()
-    }
+    // Events auto-expire via TTL, no max limit
     this._scheduleExpiry()
     this.notifyChange()
   }
 
   /**
-   * Schedule event expiry check
+   * Schedule event expiry check based on oldest event
    * @private
    */
   _scheduleExpiry() {
-    if (this._expiryTimer) return // Already scheduled
+    // Clear existing timer
+    if (this._expiryTimer) {
+      clearTimeout(this._expiryTimer)
+      this._expiryTimer = null
+    }
+
+    if (this._recentEvents.length === 0) return
+
+    // Find the oldest event and calculate when it expires
+    const now = Date.now()
+    const oldest = this._recentEvents[this._recentEvents.length - 1]
+    const age = now - oldest.timestamp.getTime()
+    const delay = Math.max(100, this._eventTtl - age) // At least 100ms
+
     this._expiryTimer = setTimeout(() => {
       this._expireOldEvents()
-    }, this._eventTtl)
+    }, delay)
   }
 
   /**
@@ -225,32 +239,71 @@ export class AuthCollector extends Collector {
    * @returns {Array<object>} Auth info as entries
    */
   getEntries() {
-    if (!this._authAdapter) {
+    // Always get fresh authAdapter from ctx (may have updated state)
+    const authAdapter = this._ctx?.auth || this._ctx?.authAdapter || this._authAdapter
+    if (!authAdapter) {
       return [{ type: 'status', message: 'No auth adapter configured' }]
     }
 
     const entries = []
 
-    // User info
+    // User info with effective permissions
     try {
-      const user = this._authAdapter.getUser?.()
+      const user = authAdapter.getUser?.()
+      // Always get fresh security (created after collector install)
+      const securityChecker = this._ctx?.security || this._securityChecker
+
       if (user) {
+        // Check if impersonating (use fresh authAdapter)
+        const isImpersonating = authAdapter.isImpersonating?.() || false
+        const originalUser = isImpersonating ? authAdapter.getOriginalUser?.() : null
+
+        // Current User = the real logged in user (original when impersonating)
+        const realUser = originalUser || user
+        const realRoles = this._normalizeRoles(realUser.roles || realUser.role)
+        const realPermissions = this._getEffectivePermissions(securityChecker, realRoles)
+
         entries.push({
           type: 'user',
           label: 'Current User',
           data: {
-            id: user.id || user.userId,
-            username: user.username || user.name || user.email,
-            email: user.email,
-            roles: user.roles || [],
-            ...this._sanitizeUser(user)
+            id: realUser.id || realUser.userId,
+            username: realUser.username || realUser.name || realUser.email,
+            email: realUser.email,
+            roles: realRoles,
+            permissions: realPermissions
           }
         })
+
+        // Impersonated User (when active) - shown separately with type 'impersonated'
+        if (isImpersonating) {
+          const impersonatedRoles = this._normalizeRoles(user.roles || user.role)
+          const impersonatedPermissions = this._getEffectivePermissions(securityChecker, impersonatedRoles)
+
+          entries.push({
+            type: 'impersonated',
+            label: 'Impersonated User',
+            data: {
+              id: user.id || user.userId,
+              username: user.username || user.name || user.email,
+              roles: impersonatedRoles,
+              permissions: impersonatedPermissions  // These are the ACTIVE permissions!
+            }
+          })
+        }
       } else {
+        // Show anonymous role when not authenticated
+        const anonymousRole = securityChecker?.roleGranter?.getAnonymousRole?.() || 'ROLE_ANONYMOUS'
+        const effectivePermissions = this._getEffectivePermissions(securityChecker, [anonymousRole])
+
         entries.push({
-          type: 'status',
-          label: 'Status',
-          message: 'Not authenticated'
+          type: 'user',
+          label: 'Anonymous',
+          data: {
+            role: anonymousRole,
+            authenticated: false,
+            permissions: effectivePermissions
+          }
         })
       }
     } catch (e) {
@@ -263,7 +316,7 @@ export class AuthCollector extends Collector {
 
     // Token info
     try {
-      const token = this._authAdapter.getToken?.()
+      const token = authAdapter.getToken?.()
       if (token) {
         const decoded = this._decodeToken(token)
         entries.push({
@@ -281,14 +334,14 @@ export class AuthCollector extends Collector {
       // Token not available or decode failed
     }
 
-    // Permissions
+    // User's effective permissions (from authAdapter)
     try {
-      const permissions = this._authAdapter.getPermissions?.()
-      if (permissions && permissions.length > 0) {
+      const userPermissions = authAdapter.getPermissions?.()
+      if (userPermissions && userPermissions.length > 0) {
         entries.push({
-          type: 'permissions',
-          label: 'Permissions',
-          data: permissions
+          type: 'user-permissions',
+          label: 'User Permissions',
+          data: userPermissions
         })
       }
     } catch (e) {
@@ -318,21 +371,110 @@ export class AuthCollector extends Collector {
       // Security checker not available
     }
 
+    // Registered permissions from PermissionRegistry (flat list of all permission keys)
+    try {
+      // Try multiple paths to find permissionRegistry
+      const permissionRegistry = this._ctx?.permissionRegistry
+        || this._ctx?._kernel?.permissionRegistry
+        || this._ctx?.orchestrator?.kernel?.permissionRegistry
+      if (permissionRegistry && permissionRegistry.size > 0) {
+        // Get flat list of permission keys (e.g., ['entity:books:read', 'auth:impersonate'])
+        const permissions = permissionRegistry.getKeys()
+        entries.push({
+          type: 'permissions',
+          label: 'Permissions',
+          data: permissions
+        })
+      }
+    } catch (e) {
+      // Permission registry not available
+      console.warn('[AuthCollector] Error accessing permissionRegistry:', e)
+    }
+
     // Adapter info
     entries.push({
       type: 'adapter',
       label: 'Auth Adapter',
       data: {
-        type: this._authAdapter.constructor?.name || 'Unknown',
-        hasUser: !!this._authAdapter.getUser,
-        hasToken: !!this._authAdapter.getToken,
-        hasPermissions: !!this._authAdapter.getPermissions,
-        hasLogin: !!this._authAdapter.login,
-        hasLogout: !!this._authAdapter.logout
+        type: authAdapter.constructor?.name || 'Unknown',
+        hasUser: !!authAdapter.getUser,
+        hasToken: !!authAdapter.getToken,
+        hasPermissions: !!authAdapter.getPermissions,
+        hasLogin: !!authAdapter.login,
+        hasLogout: !!authAdapter.logout,
+        hasImpersonate: !!authAdapter.impersonate,
+        isImpersonating: authAdapter.isImpersonating?.() || false
       }
     })
 
     return entries
+  }
+
+  /**
+   * Get effective permissions for a set of roles
+   * Uses SecurityChecker.getUserPermissions() which resolves hierarchy
+   *
+   * @param {object} securityChecker - SecurityChecker instance
+   * @param {string[]} roles - User's roles
+   * @returns {string[]} Effective permissions (deduplicated, sorted)
+   * @private
+   */
+  _getEffectivePermissions(securityChecker, roles) {
+    if (!securityChecker || !roles || roles.length === 0) {
+      return []
+    }
+
+    try {
+      // Use SecurityChecker.getUserPermissions with a mock user
+      if (securityChecker.getUserPermissions) {
+        const mockUser = { roles }
+        const perms = securityChecker.getUserPermissions(mockUser)
+        return [...new Set(perms)].sort()
+      }
+
+      // Fallback: direct access to roleGranter
+      const roleGranter = securityChecker.roleGranter
+      if (!roleGranter) return []
+
+      const permissions = new Set()
+      for (const role of roles) {
+        // Get reachable roles (includes inherited)
+        const reachable = securityChecker.roleHierarchy?.getReachableRoles?.(role) || [role]
+        for (const r of reachable) {
+          const rolePerms = roleGranter.getPermissions?.(r) || []
+          for (const perm of rolePerms) {
+            permissions.add(perm)
+          }
+        }
+      }
+
+      return [...permissions].sort()
+    } catch (e) {
+      console.warn('[AuthCollector] Error getting effective permissions:', e)
+      return []
+    }
+  }
+
+  /**
+   * Normalize roles to array with ROLE_ prefix
+   * Supports: 'admin' → ['ROLE_ADMIN'], ['user'] → ['ROLE_USER'], ['ROLE_ADMIN'] → ['ROLE_ADMIN']
+   *
+   * @param {string|string[]} roles - Role(s) to normalize
+   * @returns {string[]} Normalized roles array
+   * @private
+   */
+  _normalizeRoles(roles) {
+    if (!roles) return []
+
+    // Convert to array
+    const arr = Array.isArray(roles) ? roles : [roles]
+
+    // Add ROLE_ prefix if missing and uppercase
+    return arr.map(role => {
+      if (!role) return null
+      const upper = role.toUpperCase()
+      return upper.startsWith('ROLE_') ? upper : `ROLE_${upper}`
+    }).filter(Boolean)
   }
 
   /**

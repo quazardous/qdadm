@@ -83,60 +83,46 @@ export class JsonPlaceholderModule extends Module {
     })
 
     // ════════════════════════════════════════════════════════════════════════
-    // ROUTES
+    // ROUTES (using ctx.crud for list+nav, ctx.routes for detail pages)
     // ════════════════════════════════════════════════════════════════════════
 
-    ctx.routes('jp-users', [
+    // JP Users - list + detail
+    ctx.crud('jp_users', {
+      list: () => import('../../pages/JpUsersPage.vue')
+    }, {
+      routePrefix: 'jp_user',
+      nav: { section: 'JSONPlaceholder', icon: 'pi pi-users', label: 'JP Users' }
+    })
+    ctx.routes('jp-users/:id', [
       {
         path: '',
-        name: 'jp_user',
-        component: () => import('../../pages/JpUsersPage.vue'),
-        meta: { layout: 'list' }
-      },
-      {
-        path: ':id',
         name: 'jp_user-show',
         component: () => import('../../pages/JpUserDetailPage.vue'),
         meta: { layout: 'form' }
       }
     ], { entity: 'jp_users' })
 
-    ctx.routes('posts', [
+    // Posts - list + detail
+    ctx.crud('posts', {
+      list: () => import('../posts/pages/PostsPage.vue')
+    }, {
+      nav: { section: 'JSONPlaceholder', icon: 'pi pi-file', label: 'Posts' }
+    })
+    ctx.routes('posts/:id', [
       {
         path: '',
-        name: 'post',
-        component: () => import('../posts/pages/PostsPage.vue'),
-        meta: { layout: 'list' }
-      },
-      {
-        path: ':id',
         name: 'post-show',
         component: () => import('../posts/pages/PostDetailPage.vue'),
         meta: { layout: 'form' }
       }
     ], { entity: 'posts' })
 
-    ctx.routes('todos', [
-      {
-        path: '',
-        name: 'todo',
-        component: () => import('../todos/pages/TodosPage.vue'),
-        meta: { layout: 'list' }
-      }
-    ], { entity: 'todos' })
-
-    // ════════════════════════════════════════════════════════════════════════
-    // NAVIGATION
-    // ════════════════════════════════════════════════════════════════════════
-
-    ctx.navItem({ section: 'JSONPlaceholder', route: 'jp_user', icon: 'pi pi-users', label: 'JP Users' })
-    ctx.navItem({ section: 'JSONPlaceholder', route: 'post', icon: 'pi pi-file', label: 'Posts' })
-    ctx.navItem({ section: 'JSONPlaceholder', route: 'todo', icon: 'pi pi-check-square', label: 'Todos' })
-
-    // Route families
-    ctx.routeFamily('jp_user', ['jp_user-'])
-    ctx.routeFamily('post', ['post-'])
-    ctx.routeFamily('todo', ['todo-'])
+    // Todos - list only
+    ctx.crud('todos', {
+      list: () => import('../todos/pages/TodosPage.vue')
+    }, {
+      nav: { section: 'JSONPlaceholder', icon: 'pi pi-check-square', label: 'Todos' }
+    })
   }
 }
 

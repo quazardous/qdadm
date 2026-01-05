@@ -193,19 +193,26 @@ function handleLogout() {
 const slots = useSlots()
 const hasSlotContent = computed(() => !!slots.default)
 
-// Current page entity data - pages can inject and set this to avoid double fetch
-const currentEntityData = ref(null)
-provide('qdadmCurrentEntityData', currentEntityData)
+// Breadcrumb entity data - multi-level support for parent/child entities
+const breadcrumbEntities = ref(new Map())
+
+function setBreadcrumbEntity(data, level = 1) {
+  const newMap = new Map(breadcrumbEntities.value)
+  newMap.set(level, data)
+  breadcrumbEntities.value = newMap
+}
+
+provide('qdadmSetBreadcrumbEntity', setBreadcrumbEntity)
+provide('qdadmBreadcrumbEntities', breadcrumbEntities)
 
 // Clear entity data on route change
 watch(() => route.fullPath, () => {
-  currentEntityData.value = null
+  breadcrumbEntities.value = new Map()
 })
 
 // Navigation context (breadcrumb + navlinks from route config)
-const { breadcrumb: defaultBreadcrumb, navlinks: defaultNavlinks } = useNavContext({
-  entityData: currentEntityData
-})
+// Pass breadcrumbEntities directly since we're in the same component that provides it
+const { breadcrumb: defaultBreadcrumb, navlinks: defaultNavlinks } = useNavContext({ breadcrumbEntities })
 
 // Allow child pages to override breadcrumb/navlinks via provide/inject
 const breadcrumbOverride = ref(null)

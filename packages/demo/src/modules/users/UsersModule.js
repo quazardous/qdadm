@@ -1,15 +1,11 @@
 /**
- * Users Module - Module-Centric Pattern
+ * Users Module - Using ctx.userEntity() helper
  *
- * Self-contained module that owns:
- * - Entity definition (fields, storage, manager)
- * - Routes (CRUD)
- * - Navigation
- *
+ * Self-contained module that uses the system-provided UsersManager.
  * Admin-only access: Only ROLE_ADMIN can manage users.
  */
 
-import { Module, EntityManager, MockApiStorage } from 'qdadm'
+import { Module, MockApiStorage } from 'qdadm'
 
 // ============================================================================
 // STORAGE
@@ -33,30 +29,6 @@ export const usersStorageInternal = new MockApiStorage({
 })
 
 // ============================================================================
-// ENTITY MANAGER
-// ============================================================================
-
-const roleOptions = [
-  { label: 'Admin', value: 'ROLE_ADMIN' },
-  { label: 'User', value: 'ROLE_USER' }
-]
-
-/**
- * UsersManager - Admin-only access
- */
-class UsersManager extends EntityManager {
-  _isAdmin() {
-    const user = this._orchestrator?.kernel?.options?.authAdapter?.getUser?.()
-    return user?.role === 'ROLE_ADMIN'
-  }
-
-  canRead() { return this._isAdmin() }
-  canCreate() { return this._isAdmin() }
-  canUpdate() { return this._isAdmin() }
-  canDelete() { return this._isAdmin() }
-}
-
-// ============================================================================
 // MODULE
 // ============================================================================
 
@@ -67,18 +39,43 @@ export class UsersModule extends Module {
 
   async connect(ctx) {
     // ════════════════════════════════════════════════════════════════════════
-    // ENTITY
+    // ENTITY - Using ctx.userEntity() helper
     // ════════════════════════════════════════════════════════════════════════
-    ctx.entity('users', new UsersManager({
-      name: 'users',
-      labelField: 'username',
-      fields: {
-        username: { type: 'text', label: 'Username', required: true, default: '' },
-        password: { type: 'password', label: 'Password', required: true, default: '' },
-        role: { type: 'select', label: 'Role', options: roleOptions, default: 'ROLE_USER' }
-      },
+    // Creates a UsersManager with:
+    // - username, password, role fields (role linked to roles entity)
+    // - System entity flag
+    // - Admin-only access
+    //
+    // Override examples:
+    // -----------------
+    // ctx.userEntity({
+    //   storage: usersStorage,
+    //
+    //   // Add extra fields beyond username/password/role
+    //   extraFields: {
+    //     email: { type: 'email', label: 'Email', required: true },
+    //     firstName: { type: 'text', label: 'First Name' },
+    //     lastName: { type: 'text', label: 'Last Name' },
+    //     avatar: { type: 'image', label: 'Avatar' }
+    //   },
+    //
+    //   // Override default field configs
+    //   fieldOverrides: {
+    //     username: { label: 'Login', placeholder: 'Enter login...' },
+    //     password: { label: 'Secret', required: false },  // Optional password
+    //     role: { default: 'ROLE_GUEST' }  // Different default role
+    //   },
+    //
+    //   // Change admin role (default: 'ROLE_ADMIN')
+    //   adminRole: 'ROLE_SUPER_ADMIN',
+    //
+    //   // Allow non-admin access (default: true = admin only)
+    //   adminOnly: false
+    // })
+    //
+    ctx.userEntity({
       storage: usersStorage
-    }))
+    })
 
     // ════════════════════════════════════════════════════════════════════════
     // ROUTES (using ctx.crud helper)
@@ -87,7 +84,7 @@ export class UsersModule extends Module {
       list: () => import('./pages/UserList.vue'),
       form: () => import('./pages/UserForm.vue')
     }, {
-      nav: { section: 'Administration', icon: 'pi pi-users' }
+      nav: { section: 'Security', icon: 'pi pi-users' }
     })
   }
 }

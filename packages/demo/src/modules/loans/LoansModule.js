@@ -49,30 +49,31 @@ const loansStorage = new LoansStorage({
 // ============================================================================
 
 /**
- * LoansManager - Ownership-based access + enrichment pattern
+ * LoansManager - Enrichment + data filtering pattern
  *
- * - Admin sees all loans
- * - Regular user sees only their own loans
- * - Enrichment: adds book_title and username from related entities
+ * Uses base EntityManager for permissions via:
+ * - entity:loans:* permissions for admin access
+ * - entity-own:loans:* permissions for owner access on own records
+ * - isOwn callback to identify ownership
+ *
+ * Data filtering:
+ * - Admin sees all loans (no filter)
+ * - Regular user sees only their own loans (user_id filter)
+ *
+ * Enrichment: adds book_title and username from related entities
  */
 class LoansManager extends EntityManager {
-  _isAdmin() {
-    const user = this._orchestrator?.kernel?.options?.authAdapter?.getUser?.()
-    return user?.role === 'ROLE_ADMIN'
-  }
-
-  _isOwner(loan) {
-    if (!loan) return true
-    const user = this._orchestrator?.kernel?.options?.authAdapter?.getUser?.()
-    return loan.user_id === user?.id
-  }
-
+  /**
+   * Filter list results by ownership for non-admin users
+   * This is DATA filtering, not permission checking
+   */
   async list(params = {}) {
-    if (!this._isAdmin()) {
-      const user = this._orchestrator?.kernel?.options?.authAdapter?.getUser?.()
+    const user = this._getCurrentUser()
+    // Admin sees all, regular users see only their own
+    if (user && !this.authAdapter?.isGranted?.('entity:loans:list-all')) {
       params.filters = params.filters || {}
-      params.filters.user_id = user?.id
-      params.cacheSafe = true
+      params.filters.user_id = user.id
+      params.cacheSafe = true  // User filter is session-bound, safe to cache
     }
     return super.list(params)
   }
@@ -94,32 +95,22 @@ class LoansManager extends EntityManager {
     return data
   }
 
+  /**
+   * Create loan - auto-assign user_id for non-admin users
+   */
   async create(data) {
-    if (!this._isAdmin()) {
-      const user = this._orchestrator?.kernel?.options?.authAdapter?.getUser?.()
-      data.user_id = user?.id
+    const user = this._getCurrentUser()
+    // Non-admin users can only create loans for themselves
+    if (user && !this.authAdapter?.isGranted?.('entity:loans:create-any')) {
+      data.user_id = user.id
     }
     await this._enrichLoan(data)
-    return this.storage.create(data)
+    return super.create(data)
   }
 
   async update(id, data) {
     await this._enrichLoan(data)
-    return this.storage.update(id, data)
-  }
-
-  canRead(loan = null) {
-    return this._isAdmin() || this._isOwner(loan)
-  }
-
-  canCreate() { return true }
-
-  canUpdate(loan = null) {
-    return this._isAdmin() || this._isOwner(loan)
-  }
-
-  canDelete(loan = null) {
-    return this._isAdmin() || this._isOwner(loan)
+    return super.update(id, data)
   }
 }
 
@@ -160,7 +151,10 @@ export class LoansModule extends Module {
         returned_at: { type: 'datetime', label: 'Returned At', default: null },
         read: { type: 'boolean', label: 'Read?', default: false }
       },
-      storage: loansStorage
+      storage: loansStorage,
+      // Ownership: user owns their own loans
+      // Enables entity-own:loans:* permission checks
+      isOwn: (record, user) => record?.user_id === user?.id
     }))
 
     // ════════════════════════════════════════════════════════════════════════

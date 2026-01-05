@@ -311,7 +311,9 @@ describe('Zone', () => {
 
       const wrapper = mountZone({ name: 'empty-zone' })
 
-      expect(wrapper.html()).toBe('<!--v-if-->')
+      // Zone wrapper is rendered even when empty (for CSS targeting/debugging)
+      expect(wrapper.find('[data-zone="empty-zone"]').exists()).toBe(true)
+      expect(wrapper.find('.qdadm-zone').exists()).toBe(true)
     })
 
     it('handles zone with blocks and blockProps together', () => {

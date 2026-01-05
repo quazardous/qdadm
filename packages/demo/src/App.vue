@@ -3,7 +3,7 @@
  * App Root Component
  *
  * Provides:
- * - Toast notifications
+ * - Toast notifications (needed for pages outside BaseLayout like LoginPage)
  * - Confirmation dialogs
  * - RouterView
  */

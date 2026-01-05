@@ -59,7 +59,7 @@ describe('defaultStorageResolver', () => {
   it('creates LocalStorage for local type', () => {
     const storage = defaultStorageResolver({ type: 'local', key: 'myKey' }, 'items')
     expect(storage).toBeInstanceOf(LocalStorage)
-    expect(storage.storageKey).toBe('myKey')
+    expect(storage.key).toBe('myKey')
   })
 
   it('creates MemoryStorage for memory type', () => {
@@ -74,7 +74,7 @@ describe('defaultStorageResolver', () => {
 
   it('throws for unknown type', () => {
     expect(() => defaultStorageResolver({ type: 'unknown' }, 'items'))
-      .toThrow('Unknown storage type: unknown')
+      .toThrow('Unknown storage type: "unknown"')
   })
 })
 
@@ -111,9 +111,10 @@ describe('storageFactory', () => {
     expect(result).toBeInstanceOf(MemoryStorage)
   })
 
-  it('handles config object with string storage', () => {
-    const result = storageFactory({ storage: 'api:/api/items' }, 'items')
+  it('handles config object with endpoint (infers api type)', () => {
+    const result = storageFactory({ endpoint: '/api/items' }, 'items')
     expect(result).toBeInstanceOf(ApiStorage)
+    expect(result.endpoint).toBe('/api/items')
   })
 
   it('uses custom resolver when provided', () => {
@@ -133,7 +134,7 @@ describe('storageFactory', () => {
 
   it('throws for unparseable string', () => {
     expect(() => storageFactory('invalid', 'test'))
-      .toThrow('Cannot parse storage pattern')
+      .toThrow('Invalid storage pattern')
   })
 })
 

@@ -60,8 +60,11 @@ export class EntityManager {
       readOnly = false,             // If true, canCreate/canUpdate/canDelete return false
       warmup = true,                // If true, cache is preloaded at boot via DeferredRegistry
       authSensitive,                // If true, auto-invalidate datalayer on auth events (auto-inferred from storage.requiresAuth if not set)
+      system = false,               // If true, marks entity as system-provided (roles, users)
       // Scope control
       scopeWhitelist = null,        // Array of scopes/modules that can bypass restrictions
+      // Ownership (for record-level access control)
+      isOwn = null,                 // (record, user) => boolean - check if user owns the record
       // Relations
       children = {},      // { roles: { entity: 'roles', endpoint?: ':id/roles' } }
       parent = null,      // { entity: 'users', foreignKey: 'user_id' }
@@ -88,9 +91,13 @@ export class EntityManager {
     this._warmup = warmup
     // Auto-infer authSensitive from storage.requiresAuth if not explicitly set
     this._authSensitive = authSensitive ?? this._getStorageRequiresAuth()
+    this._system = system
 
     // Scope control
     this._scopeWhitelist = scopeWhitelist
+
+    // Ownership
+    this._isOwn = isOwn
 
     // Relations
     this._children = children
@@ -368,48 +375,54 @@ export class EntityManager {
   }
 
   /**
-   * Build permission string for an action based on entity_permissions config
+   * Build permission string for an entity action
    *
-   * The permission format depends on the security config:
-   * - entity_permissions: false → 'entity:read'
-   * - entity_permissions: true → 'books:read'
-   * - entity_permissions: ['books'] → 'books:read' for books, 'entity:read' for others
+   * Format: entity:{name}:{action}
+   * Examples: entity:books:read, entity:users:create
+   *
+   * Role permissions can use wildcards to match:
+   * - entity:*:read → read any entity
+   * - entity:books:* → any action on books
+   * - entity:** → all entity permissions
    *
    * @param {string} action - Action name (read, create, update, delete, list)
    * @returns {string} - Permission string
    * @private
    */
   _getPermissionString(action) {
-    const checker = this.authAdapter._securityChecker
-    if (!checker) return `entity:${action}`
-
-    const config = checker.entityPermissions
-    if (config === false) return `entity:${action}`
-    if (config === true) return `${this.name}:${action}`
-    if (Array.isArray(config) && config.includes(this.name)) {
-      return `${this.name}:${action}`
-    }
-    return `entity:${action}`
+    return `entity:${this.name}:${action}`
   }
 
   /**
-   * Check permission using isGranted() if security is configured
+   * Get the current authenticated user
    *
-   * Falls back to traditional canPerform()/canAccessRecord() if no SecurityChecker.
-   * This method respects the entity_permissions config for granular permissions.
+   * Tries authAdapter.getCurrentUser() first, then falls back to kernel's authAdapter.
    *
-   * @param {string} action - Action to check (read, create, update, delete, list)
-   * @param {object} [subject] - Optional subject for context-aware checks
-   * @returns {boolean}
+   * @returns {object|null} Current user or null
+   * @private
    */
-  checkPermission(action, subject = null) {
-    // If isGranted is available, use it
-    if (this.authAdapter.isGranted && this.authAdapter._securityChecker) {
-      const perm = this._getPermissionString(action)
-      return this.authAdapter.isGranted(perm, subject)
+  _getCurrentUser() {
+    // Try authAdapter.getCurrentUser() first (EntityAuthAdapter subclass)
+    if (typeof this.authAdapter?.getCurrentUser === 'function') {
+      try {
+        return this.authAdapter.getCurrentUser()
+      } catch {
+        // Fallback if not implemented
+      }
     }
-    // Fallback to traditional method
-    return this.canAccess(action, subject)
+    // Fallback to kernel's authAdapter
+    return this._orchestrator?.kernel?.options?.authAdapter?.getUser?.() ?? null
+  }
+
+  /**
+   * Check if SecurityChecker is configured via authAdapter
+   * Only returns true when adapter has _securityChecker set,
+   * allowing legacy canPerform() adapters to work correctly.
+   * @returns {boolean}
+   * @private
+   */
+  _hasSecurityChecker() {
+    return this.authAdapter?._securityChecker != null
   }
 
   /**
@@ -424,9 +437,22 @@ export class EntityManager {
    * Check if the current user can perform an action, optionally on a specific record
    *
    * This is the primary permission check method. It combines:
-   * 1. Local restrictions (readOnly, scopeWhitelist)
-   * 2. Scope check via AuthAdapter.canPerform() - can user do this action type?
-   * 3. Silo check via AuthAdapter.canAccessRecord() - can user access this record?
+   * 1. Local restrictions (readOnly)
+   * 2. Ownership check via isOwn callback (if configured)
+   * 3. Permission check via isGranted() (if SecurityChecker configured)
+   *    OR legacy canPerform()/canAccessRecord() fallback
+   *
+   * Permission format: entity:{name}:{action}
+   * Wildcard examples:
+   * - entity:*:read → can read any entity
+   * - entity:books:* → any action on books
+   * - entity:** → all entity permissions
+   *
+   * Ownership pattern:
+   * - Configure isOwn callback: (record, user) => boolean
+   * - When user owns a record, check entity-own:{entity}:{action} permission
+   * - Example: entity-own:loans:update allows owner to update their loans
+   * - Use entity-own:{entity}:** to allow all actions on owned records
    *
    * @param {string} action - Action to check: 'read', 'create', 'update', 'delete', 'list'
    * @param {object} [record] - Optional: specific record to check (for silo validation)
@@ -442,6 +468,16 @@ export class EntityManager {
    * manager.canAccess('read', item)   // Can user see this specific item?
    * manager.canAccess('update', item) // Can user edit this specific item?
    * manager.canAccess('delete', item) // Can user delete this specific item?
+   *
+   * @example
+   * // Ownership pattern with permissions
+   * const loansManager = new EntityManager({
+   *   name: 'loans',
+   *   isOwn: (record, user) => record.user_id === user?.id,
+   *   storage: loansStorage
+   * })
+   * // Role config: { permissions: ['entity-own:loans:**'] }
+   * loansManager.canAccess('update', myLoan)  // true if I own the loan
    */
   canAccess(action, record = null) {
     // 1. Check readOnly restriction for write actions
@@ -449,13 +485,31 @@ export class EntityManager {
       return false
     }
 
-    // 2. Scope check: can user perform this action on this entity type?
+    // 2. Ownership check: if user owns the record, check entity-own permission
+    if (record && this._isOwn && this._hasSecurityChecker()) {
+      const user = this._getCurrentUser()
+      if (user && this._isOwn(record, user)) {
+        // Owner - check entity-own:{entity}:{action} permission
+        const ownPerm = `entity-own:${this.name}:${action}`
+        if (this.authAdapter.isGranted(ownPerm, record)) {
+          return true
+        }
+      }
+    }
+
+    // 3. Use isGranted() with entity:name:action format when available
+    if (this._hasSecurityChecker()) {
+      const perm = this._getPermissionString(action)
+      return this.authAdapter.isGranted(perm, record)
+    }
+
+    // 4. Legacy fallback: canPerform() + canAccessRecord()
     const canPerformAction = this.authAdapter.canPerform(this.name, action)
     if (!canPerformAction) {
       return false
     }
 
-    // 3. Silo check: if record provided, can user access this specific record?
+    // 5. Silo check: if record provided, can user access this specific record?
     if (record !== null) {
       return this.authAdapter.canAccessRecord(this.name, record)
     }
@@ -483,6 +537,14 @@ export class EntityManager {
    */
   get readOnly() {
     return this._readOnly
+  }
+
+  /**
+   * Check if entity is system-provided (roles, users)
+   * @returns {boolean}
+   */
+  get system() {
+    return this._system
   }
 
   /**
@@ -641,6 +703,91 @@ export class EntityManager {
     return Object.entries(this._fields)
       .filter(([, config]) => config.editable !== false)
       .map(([name, config]) => ({ name, ...config }))
+  }
+
+  // ============ REFERENCE OPTIONS ============
+
+  /**
+   * Resolve reference options for a field
+   *
+   * If the field has a `reference` property, fetches data from the referenced
+   * entity and returns options array for select/dropdown.
+   *
+   * @param {string} fieldName - Field name
+   * @returns {Promise<Array<{label: string, value: any}>>} - Options array
+   *
+   * @example
+   * // Field config: { type: 'select', reference: { entity: 'roles', labelField: 'label' } }
+   * const options = await manager.resolveReferenceOptions('role')
+   * // Returns: [{ label: 'Admin', value: 'ROLE_ADMIN' }, { label: 'User', value: 'ROLE_USER' }]
+   */
+  async resolveReferenceOptions(fieldName) {
+    const fieldConfig = this._fields[fieldName]
+    if (!fieldConfig) {
+      console.warn(`[EntityManager:${this.name}] Unknown field '${fieldName}'`)
+      return []
+    }
+
+    // If field has static options, return them
+    if (fieldConfig.options && !fieldConfig.reference) {
+      return fieldConfig.options
+    }
+
+    // If no reference, return empty
+    if (!fieldConfig.reference) {
+      return []
+    }
+
+    // Need orchestrator to access other managers
+    if (!this._orchestrator) {
+      console.warn(`[EntityManager:${this.name}] No orchestrator, cannot resolve reference for '${fieldName}'`)
+      return fieldConfig.options || []
+    }
+
+    const { entity, labelField, valueField } = fieldConfig.reference
+    const refManager = this._orchestrator.get(entity)
+
+    if (!refManager) {
+      console.warn(`[EntityManager:${this.name}] Referenced entity '${entity}' not found`)
+      return fieldConfig.options || []
+    }
+
+    try {
+      // Fetch all items from referenced entity
+      const { items } = await refManager.list({ limit: 1000 })
+
+      // Build options array
+      const refLabelField = labelField || refManager.labelField || 'label'
+      const refValueField = valueField || refManager.idField || 'id'
+
+      return items.map(item => ({
+        label: item[refLabelField] ?? item[refValueField],
+        value: item[refValueField]
+      }))
+    } catch (error) {
+      console.error(`[EntityManager:${this.name}] Failed to resolve reference for '${fieldName}':`, error)
+      return fieldConfig.options || []
+    }
+  }
+
+  /**
+   * Resolve all reference options for form fields
+   *
+   * Returns a map of fieldName -> options for all fields with references.
+   *
+   * @returns {Promise<Map<string, Array<{label: string, value: any}>>>}
+   */
+  async resolveAllReferenceOptions() {
+    const optionsMap = new Map()
+
+    for (const [fieldName, fieldConfig] of Object.entries(this._fields)) {
+      if (fieldConfig.reference) {
+        const options = await this.resolveReferenceOptions(fieldName)
+        optionsMap.set(fieldName, options)
+      }
+    }
+
+    return optionsMap
   }
 
   // ============ SEVERITY MAPS ============
@@ -1263,7 +1410,9 @@ export class EntityManager {
    */
   get isCacheEnabled() {
     if (this.effectiveThreshold <= 0) return false
-    if (this.storage?.supportsCaching === false) return false
+    // Check capabilities (instance getter or static)
+    const caps = this.storage?.capabilities || this.storage?.constructor?.capabilities
+    if (caps?.supportsCaching === false) return false
     if (!this.storageSupportsTotal) return false
     return true
   }

@@ -20,6 +20,18 @@ html, body, #app {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
 }
 
+/* Global placeholder styling - light blue-gray for better visibility */
+input::placeholder,
+textarea::placeholder,
+.p-inputtext::placeholder,
+.p-autocomplete-input::placeholder,
+.p-textarea::placeholder,
+.p-select-label.p-placeholder,
+.p-dropdown-label.p-placeholder {
+  color: #a0aec0 !important;
+  opacity: 1;
+}
+
 /* Layout - AppLayout styles are now scoped in AppLayout.vue */
 /* Only keep truly global layout utilities here */
 
@@ -181,11 +193,59 @@ html, body, #app {
   flex: 1;
 }
 
-/* Field hint */
+/* Field hint - small helper text below inputs */
 .field-hint,
 .form-hint {
-  font-size: 0.75rem;
+  font-size: 0.8rem;
+  color: var(--p-surface-400);
+  margin-top: 0.25rem;
+  display: block;
+}
+
+/* Field error - validation error text */
+.field-error {
+  font-size: 0.8rem;
+  color: var(--p-red-500);
+  margin-top: 0.25rem;
+  display: block;
+}
+
+/* Editor box - container for complex editors (permissions, scopes, etc.) */
+.editor-box {
+  border: 1px solid var(--p-surface-200);
+  border-radius: 0.5rem;
+  padding: 0.75rem;
+  background: var(--p-surface-50);
+}
+
+/* Chips container with separator */
+.editor-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid var(--p-surface-200);
+}
+
+/* Chip typography for code-like content */
+.chip-code {
+  font-family: monospace;
+  font-size: 0.875rem;
+}
+
+.chip-namespace {
   color: var(--p-surface-500);
+}
+
+.chip-action {
+  color: var(--p-primary-600);
+  font-weight: 500;
+}
+
+.chip-wildcard {
+  color: var(--p-orange-500);
+  font-weight: 700;
 }
 
 /* Info grid for readonly data */

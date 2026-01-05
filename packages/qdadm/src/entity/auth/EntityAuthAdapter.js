@@ -1,37 +1,31 @@
 /**
- * EntityAuthAdapter - Interface for entity-level permission checks
+ * EntityAuthAdapter - Thin layer for entity-level permission checks
  *
- * Applications implement this interface to plug their authorization
- * system into qdadm's EntityManager. The adapter provides two levels of permission checks:
+ * Provides entity-level permission checking by delegating to SecurityChecker.
+ * All methods have sensible defaults - subclass only if you need custom behavior.
  *
- * 1. **Scopes** (action-level): Can the user perform this action on this entity type?
- *    Example: Can user create invoices? Can user delete users?
+ * Default behavior (when SecurityChecker is configured):
+ * - canPerform() → isGranted('entity:{entity}:{action}')
+ * - canAccessRecord() → isGranted('entity:{entity}:read', record)
+ * - getCurrentUser() → uses callback if provided, null otherwise
  *
- * 2. **Silos** (record-level): Can the user access this specific record?
- *    Example: Can user see invoice #123? (ownership, team membership, etc.)
- *
- * Note: For user session authentication (login/logout), see SessionAuthAdapter.
- *
- * Usage:
+ * Usage patterns:
  * ```js
- * class MyEntityAuthAdapter extends EntityAuthAdapter {
+ * // 1. Callback-based (simplest - no subclass needed)
+ * const adapter = new EntityAuthAdapter({
+ *   getCurrentUser: () => myAuthStore.user
+ * })
+ *
+ * // 2. Subclass-based (for custom permission logic)
+ * class MyAdapter extends EntityAuthAdapter {
  *   canPerform(entity, action) {
- *     const user = this.getCurrentUser()
- *     return user?.permissions?.includes(`${entity}:${action}`)
- *   }
- *
- *   canAccessRecord(entity, record) {
- *     const user = this.getCurrentUser()
- *     return record.owner_id === user?.id || record.team_id === user?.team_id
- *   }
- *
- *   getCurrentUser() {
- *     return this._userStore.currentUser
+ *     if (['orders', 'invoices'].includes(entity) && !this.getCurrentUser()) {
+ *       return false
+ *     }
+ *     return super.canPerform(entity, action)
  *   }
  * }
  * ```
- *
- * @interface
  */
 export class EntityAuthAdapter {
   /**
@@ -40,6 +34,23 @@ export class EntityAuthAdapter {
    * @private
    */
   _securityChecker = null
+
+  /**
+   * Callback to get current user (alternative to subclassing)
+   * @type {Function|null}
+   * @private
+   */
+  _getCurrentUserCallback = null
+
+  /**
+   * @param {object} [options]
+   * @param {Function} [options.getCurrentUser] - Callback that returns current user or null
+   */
+  constructor(options = {}) {
+    if (options.getCurrentUser) {
+      this._getCurrentUserCallback = options.getCurrentUser
+    }
+  }
 
   /**
    * Set the SecurityChecker instance for isGranted() delegation
@@ -62,7 +73,7 @@ export class EntityAuthAdapter {
    *
    * @example
    * adapter.isGranted('ROLE_ADMIN')           // Check role
-   * adapter.isGranted('entity:delete')        // Check permission
+   * adapter.isGranted('entity:books:delete')  // Check permission
    * adapter.isGranted('books:delete', book)   // Check with subject
    */
   isGranted(attribute, subject = null) {
@@ -72,8 +83,6 @@ export class EntityAuthAdapter {
 
   /**
    * Check if current user can assign a specific role
-   *
-   * Uses SecurityChecker's canAssignRole if available.
    *
    * @param {string} targetRole - Role to assign
    * @returns {boolean} True if user can assign this role
@@ -96,50 +105,49 @@ export class EntityAuthAdapter {
   /**
    * Check if the current user can perform an action on an entity type (scope check)
    *
-   * This is the coarse-grained permission check. It determines if the user has
-   * the right to perform a category of actions, regardless of which specific
-   * record they want to act on.
+   * Default: delegates to isGranted('entity:{entity}:{action}')
+   * Override for custom authentication requirements or business rules.
    *
    * @param {string} entity - Entity name (e.g., 'users', 'invoices', 'products')
    * @param {string} action - Action to check: 'read', 'create', 'update', 'delete', 'list'
    * @returns {boolean} True if user can perform the action on this entity type
-   *
-   * @example
-   * adapter.canPerform('invoices', 'create') // true/false
-   * adapter.canPerform('users', 'delete') // true/false
    */
   canPerform(entity, action) {
-    throw new Error('[EntityAuthAdapter] canPerform() must be implemented by subclass')
+    return this.isGranted(`entity:${entity}:${action}`)
   }
 
   /**
    * Check if the current user can access a specific record (silo check)
    *
-   * This is the fine-grained permission check. After the scope check passes,
-   * this determines if the user can access a particular record based on
-   * ownership, team membership, or other business rules.
+   * Default: delegates to isGranted('entity:{entity}:read', record)
+   * Note: Ownership checks are typically handled via EntityManager's isOwn callback.
    *
    * @param {string} entity - Entity name (e.g., 'users', 'invoices')
    * @param {object} record - The full entity record to check access for
    * @returns {boolean} True if user can access this specific record
-   *
-   * @example
-   * adapter.canAccessRecord('invoices', { id: 123, owner_id: 456, ... })
    */
   canAccessRecord(entity, record) {
-    throw new Error('[EntityAuthAdapter] canAccessRecord() must be implemented by subclass')
+    return this.isGranted(`entity:${entity}:read`, record)
   }
 
   /**
    * Get the current authenticated user
    *
-   * Returns the user object or null if not authenticated. The user object
-   * should contain whatever information is needed for permission checks.
+   * Returns user from:
+   * 1. _getCurrentUserCallback if provided in constructor
+   * 2. Subclass override if using class extension pattern
+   * 3. null if neither is configured
+   *
+   * Note: SecurityChecker calls this method, so it cannot delegate back to SecurityChecker.
    *
    * @returns {object|null} Current user object or null if not authenticated
    */
   getCurrentUser() {
-    throw new Error('[EntityAuthAdapter] getCurrentUser() must be implemented by subclass')
+    if (this._getCurrentUserCallback) {
+      return this._getCurrentUserCallback()
+    }
+    // Subclasses can override this method
+    return null
   }
 }
 

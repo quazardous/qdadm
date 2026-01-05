@@ -763,6 +763,11 @@ describe('EntityManager', () => {
         this.emittedSignals.push({ entityName, action, data })
       }
 
+      // Stub for entity:data-invalidate signal
+      async emit(signal, payload) {
+        // Just stub - tests focus on entity signals
+      }
+
       // Stub for cache listener setup
       on() {
         return () => {} // Return cleanup function
@@ -946,6 +951,7 @@ describe('EntityManager', () => {
           async emitEntity(entityName, action, data) {
             order.push(`signal:entity:${action}`)
           }
+          async emit() {} // Stub for entity:data-invalidate signal
           on() { return () => {} }
         }
 
@@ -1214,17 +1220,18 @@ describe('EntityManager', () => {
           localFilterThreshold: 100
         })
 
-        // First list with default page_size=20 stores 20 items in cache
-        const result = await manager.list()
+        // Note: Cache is only populated when ALL items are received
+        // Request all items to trigger caching
+        const result = await manager.list({ page_size: 100 })
 
-        expect(result.items.length).toBe(20) // Default page size
+        expect(result.items.length).toBe(50) // All items
         expect(result.total).toBe(50)
         expect(result.fromCache).toBe(false) // First call is from storage
 
-        // Verify cache is populated with what was fetched
+        // Verify cache is populated with all items
         const cacheInfo = manager.getCacheInfo()
         expect(cacheInfo.valid).toBe(true)
-        expect(cacheInfo.itemCount).toBe(20) // Stores what was fetched
+        expect(cacheInfo.itemCount).toBe(50)
         expect(cacheInfo.total).toBe(50)
       })
 
@@ -1257,15 +1264,15 @@ describe('EntityManager', () => {
           localFilterThreshold: 100
         })
 
-        // First list populates cache
-        await manager.list()
+        // First list populates cache (request all to trigger caching)
+        await manager.list({ page_size: 100 })
 
         // Second list should use cache
         const result = await manager.list()
 
         expect(result.fromCache).toBe(true)
         // Total reflects cached total, items are filtered from cache
-        expect(result.total).toBe(20) // Filters from 20 cached items
+        expect(result.total).toBe(50) // All 50 cached items
       })
 
       it('uses default threshold of 100 when not specified', async () => {
@@ -1276,7 +1283,8 @@ describe('EntityManager', () => {
           // No localFilterThreshold specified
         })
 
-        await manager.list()
+        // Request all items to trigger caching
+        await manager.list({ page_size: 100 })
 
         expect(manager.effectiveThreshold).toBe(100)
         expect(manager.getCacheInfo().valid).toBe(true)

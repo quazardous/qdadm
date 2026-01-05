@@ -65,6 +65,7 @@
 import { ref, computed, watch, onMounted, inject, provide } from 'vue'
 import { useBareForm } from './useBareForm'
 import { useHooks } from './useHooks'
+import { useCurrentEntity } from './useCurrentEntity'
 import { deepClone } from '../utils/transformers'
 
 export function useForm(options = {}) {
@@ -92,6 +93,9 @@ export function useForm(options = {}) {
 
   // Get HookRegistry for form:alter hook (optional, may not exist in tests)
   const hooks = useHooks()
+
+  // Share entity data with navigation context (for breadcrumb)
+  const { setCurrentEntity } = useCurrentEntity()
 
   // Read config from manager with option overrides
   const routePrefix = options.routePrefix ?? manager.routePrefix
@@ -240,6 +244,9 @@ export function useForm(options = {}) {
       form.value = data
       originalData.value = deepClone(data)
       takeSnapshot()
+
+      // Share with navigation context for breadcrumb
+      setCurrentEntity(data)
 
       // Invoke form:alter hooks after data is loaded
       await invokeFormAlterHook()

@@ -58,27 +58,13 @@ export class SettingsModule extends Module {
     })
 
     // ════════════════════════════════════════════════════════════════════════
-    // ROUTES (list only - no crud helper for read-only entities)
+    // ROUTES (list only - read-only entity)
     // ════════════════════════════════════════════════════════════════════════
-    ctx.routes('settings', [
-      {
-        path: '',
-        name: 'setting',
-        component: () => import('./pages/SettingsPage.vue'),
-        meta: { layout: 'list' }
-      }
-    ], { entity: 'settings' })
-
-    // Navigation
-    ctx.navItem({
-      section: 'Memory Storage',
-      route: 'setting',
-      icon: 'pi pi-cog',
-      label: 'Settings'
+    ctx.crud('settings', {
+      list: () => import('./pages/SettingsPage.vue')
+    }, {
+      nav: { section: 'Memory Storage', icon: 'pi pi-cog' }
     })
-
-    // Route family
-    ctx.routeFamily('setting', ['setting-'])
   }
 }
 

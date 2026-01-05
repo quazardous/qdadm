@@ -26,6 +26,7 @@
 
 import { managerFactory } from '../entity/factory.js'
 import { registry } from '../module/moduleRegistry.js'
+import { UsersManager } from '../security/UsersManager.js'
 
 export class KernelContext {
   /**
@@ -129,6 +130,22 @@ export class KernelContext {
     return this._kernel.securityChecker
   }
 
+  /**
+   * Get permission registry
+   * @returns {import('../security/PermissionRegistry.js').PermissionRegistry|null}
+   */
+  get permissionRegistry() {
+    return this._kernel.permissionRegistry
+  }
+
+  /**
+   * Get auth adapter shortcut
+   * @returns {object|null}
+   */
+  get auth() {
+    return this._kernel.options?.authAdapter ?? null
+  }
+
   // ─────────────────────────────────────────────────────────────────────────────
   // Fluent registration methods (return this for chaining)
   // ─────────────────────────────────────────────────────────────────────────────
@@ -165,6 +182,73 @@ export class KernelContext {
     // Register with orchestrator
     if (this._kernel.orchestrator) {
       this._kernel.orchestrator.register(name, manager)
+    }
+
+    // Auto-register CRUD permissions for this entity
+    if (this._kernel.permissionRegistry) {
+      this._kernel.permissionRegistry.registerEntity(name, {
+        module: this._module?.constructor?.name || 'unknown',
+        // Register entity-own:* permissions if manager has isOwn configured
+        hasOwnership: !!manager._isOwn
+      })
+    }
+
+    return this
+  }
+
+  /**
+   * Register a users entity with standard fields and role linking
+   *
+   * Creates a UsersManager with:
+   * - username, password, role fields (role linked to roles entity)
+   * - System entity flag
+   * - Admin-only access by default
+   *
+   * @param {Object} options - Configuration options
+   * @param {Object} options.storage - Storage adapter (required)
+   * @param {Object} [options.extraFields={}] - Additional fields beyond username/password/role
+   * @param {string} [options.adminRole='ROLE_ADMIN'] - Role required for user management
+   * @param {boolean} [options.adminOnly=true] - Restrict access to admin role only
+   * @param {Object} [options.fieldOverrides={}] - Override default field configs
+   * @returns {this}
+   *
+   * @example
+   * // Basic usage with MockApiStorage
+   * ctx.userEntity({
+   *   storage: new MockApiStorage({ entityName: 'users', initialData: usersFixture })
+   * })
+   *
+   * @example
+   * // With extra fields and API storage
+   * ctx.userEntity({
+   *   storage: new ApiStorage({ endpoint: '/api/users' }),
+   *   extraFields: {
+   *     email: { type: 'email', label: 'Email', required: true },
+   *     firstName: { type: 'text', label: 'First Name' },
+   *     lastName: { type: 'text', label: 'Last Name' }
+   *   }
+   * })
+   *
+   * @example
+   * // Allow non-admin access (e.g., for user profile editing)
+   * ctx.userEntity({
+   *   storage: usersStorage,
+   *   adminOnly: false
+   * })
+   */
+  userEntity(options = {}) {
+    const manager = new UsersManager(options)
+
+    // Register with orchestrator
+    if (this._kernel.orchestrator) {
+      this._kernel.orchestrator.register('users', manager)
+    }
+
+    // Auto-register CRUD permissions for users entity
+    if (this._kernel.permissionRegistry) {
+      this._kernel.permissionRegistry.registerEntity('users', {
+        module: this._module?.constructor?.name || 'unknown'
+      })
     }
 
     return this
@@ -520,6 +604,80 @@ export class KernelContext {
       this._kernel.deferred.queue(name, factory)
     }
     return this
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // Permission registration
+  // ─────────────────────────────────────────────────────────────────────────────
+
+  /**
+   * Register permissions for this module
+   *
+   * Permissions are namespaced and collected in the central PermissionRegistry.
+   * Use this to declare what permissions your module provides.
+   *
+   * Permission format: namespace:action
+   * - For entity CRUD: automatically prefixed with 'entity:'
+   * - For system features: use any namespace (auth:, admin:, feature:, etc.)
+   *
+   * @param {string} namespace - Permission namespace (e.g., 'books', 'auth', 'admin:config')
+   * @param {Object<string, string|PermissionMeta>} permissions - Permission definitions
+   * @param {Object} [options={}]
+   * @param {boolean} [options.isEntity=false] - Auto-prefix with 'entity:'
+   * @returns {this}
+   *
+   * @example
+   * // Entity custom permissions (auto-prefixed with 'entity:')
+   * ctx.permissions('books', {
+   *   checkout: 'Checkout a book',
+   *   reserve: { label: 'Reserve', description: 'Reserve a book for later' }
+   * }, { isEntity: true })
+   * // → entity:books:checkout, entity:books:reserve
+   *
+   * @example
+   * // System permissions (no prefix)
+   * ctx.permissions('auth', {
+   *   impersonate: 'Impersonate another user',
+   *   'manage-roles': 'Manage user roles'
+   * })
+   * // → auth:impersonate, auth:manage-roles
+   *
+   * @example
+   * // Admin permissions with nested namespace
+   * ctx.permissions('admin:config', {
+   *   view: 'View configuration',
+   *   edit: 'Edit configuration'
+   * })
+   * // → admin:config:view, admin:config:edit
+   */
+  permissions(namespace, permissions, options = {}) {
+    if (this._kernel.permissionRegistry) {
+      this._kernel.permissionRegistry.register(namespace, permissions, {
+        ...options,
+        module: this._module?.constructor?.name || 'unknown'
+      })
+    }
+    return this
+  }
+
+  /**
+   * Register entity permissions (convenience method)
+   *
+   * Shorthand for registering entity-namespaced permissions.
+   * Equivalent to: ctx.permissions(entity, perms, { isEntity: true })
+   *
+   * @param {string} entity - Entity name
+   * @param {Object<string, string|PermissionMeta>} permissions - Permission definitions
+   * @returns {this}
+   *
+   * @example
+   * ctx.entityPermissions('books', {
+   *   checkout: 'Checkout a book'
+   * })
+   * // → entity:books:checkout
+   */
+  entityPermissions(entity, permissions) {
+    return this.permissions(entity, permissions, { isEntity: true })
   }
 }
 

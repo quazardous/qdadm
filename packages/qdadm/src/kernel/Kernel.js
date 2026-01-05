@@ -37,7 +37,7 @@
  * ```
  */
 
-import { createApp, h } from 'vue'
+import { createApp, h, defineComponent } from 'vue'
 import { createPinia } from 'pinia'
 import { createRouter, createWebHistory } from 'vue-router'
 import ToastService from 'primevue/toastservice'
@@ -55,6 +55,8 @@ import { registerStandardZones } from '../zones/zones.js'
 import { createHookRegistry } from '../hooks/HookRegistry.js'
 import { createSecurityChecker } from '../entity/auth/SecurityChecker.js'
 import { authFactory, CompositeAuthAdapter } from '../entity/auth/index.js'
+import { PermissionRegistry } from '../security/PermissionRegistry.js'
+import { StaticRoleGranterAdapter } from '../security/StaticRoleGranterAdapter.js'
 import { createManagers } from '../entity/factory.js'
 import { defaultStorageResolver } from '../entity/storage/factory.js'
 import { createDeferredRegistry } from '../deferred/DeferredRegistry.js'
@@ -131,6 +133,8 @@ export class Kernel {
     this.sseBridge = null
     this.layoutComponents = null
     this.securityChecker = null
+    /** @type {import('../security/PermissionRegistry.js').PermissionRegistry|null} */
+    this.permissionRegistry = null
     /** @type {import('./ModuleLoader.js').ModuleLoader|null} */
     this.moduleLoader = null
     /** @type {Map<string|symbol, any>} Pending provides from modules (applied after vueApp creation) */
@@ -185,6 +189,10 @@ export class Kernel {
     this._createDeferredRegistry()
     // 2. Create orchestrator early (modules need it for ctx.entity())
     this._createOrchestrator()
+    // 2.5. Create PermissionRegistry early (modules register permissions via ctx.entity())
+    this._createPermissionRegistry()
+    // 2.6. Setup security early (SecurityModule needs ctx.security)
+    this._setupSecurity()
     // 3. Register auth:ready deferred (if auth configured)
     this._registerAuthDeferred()
     // 4. Initialize legacy modules (can use all services, registers routes)
@@ -197,13 +205,14 @@ export class Kernel {
     this._setupAuthGuard()
     // 6. Setup auth:expired handler (needs router + authAdapter)
     this._setupAuthExpiredHandler()
+    // 6.5. Setup auth impersonation (authAdapter reacts to signals)
+    this._setupAuthImpersonation()
     // 7. Wire modules that need orchestrator (phase 2 - kernel:ready signal)
     this._wireModules()
     // 8. Create EventRouter (needs signals + orchestrator)
     this._createEventRouter()
     // 9. Create SSEBridge (needs signals + authAdapter for token)
     this._createSSEBridge()
-    this._setupSecurity()
     this._createLayoutComponents()
     this._createVueApp()
     this._installPlugins()
@@ -230,6 +239,10 @@ export class Kernel {
     this._createDeferredRegistry()
     // 2. Create orchestrator early (modules need it for ctx.entity())
     this._createOrchestrator()
+    // 2.5. Create PermissionRegistry early (modules register permissions via ctx.entity())
+    this._createPermissionRegistry()
+    // 2.6. Setup security early (SecurityModule needs ctx.security)
+    this._setupSecurity()
     // 3. Register auth:ready deferred (if auth configured)
     this._registerAuthDeferred()
     // 4. Initialize legacy modules (can use all services, registers routes)
@@ -242,13 +255,14 @@ export class Kernel {
     this._setupAuthGuard()
     // 6. Setup auth:expired handler (needs router + authAdapter)
     this._setupAuthExpiredHandler()
+    // 6.5. Setup auth impersonation (authAdapter reacts to signals)
+    this._setupAuthImpersonation()
     // 7. Wire modules that need orchestrator (phase 2 - kernel:ready signal)
     await this._wireModulesAsync()
     // 8. Create EventRouter (needs signals + orchestrator)
     this._createEventRouter()
     // 9. Create SSEBridge (needs signals + authAdapter for token)
     this._createSSEBridge()
-    this._setupSecurity()
     this._createLayoutComponents()
     this._createVueApp()
     this._installPlugins()
@@ -325,6 +339,29 @@ export class Kernel {
         onAuthExpired(payload)
       }
     })
+  }
+
+  /**
+   * Setup authAdapter to react to impersonation signals
+   *
+   * If the authAdapter has a connectSignals() method, wire it up to the
+   * signal bus so it can react to auth:impersonate and auth:impersonate:stop
+   * signals automatically.
+   *
+   * This enables signal-driven impersonation: components emit signals,
+   * authAdapter updates its state in response.
+   */
+  _setupAuthImpersonation() {
+    const { authAdapter } = this.options
+    if (!authAdapter?.connectSignals) return
+
+    const debug = this.options.debug ?? false
+    if (debug) {
+      console.debug('[Kernel] Wiring authAdapter.connectSignals() for impersonation')
+    }
+
+    // Connect authAdapter to signals - returns cleanup function
+    this._authImpersonationCleanup = authAdapter.connectSignals(this.signals)
   }
 
   /**
@@ -467,15 +504,19 @@ export class Kernel {
    * Some modules may need access to the orchestrator after it's created.
    * This method emits 'kernel:ready' signal that modules can listen to.
    *
+   * Note: We don't pass kernel/orchestrator in the payload to avoid cyclic
+   * reference errors when debug logging is enabled. Handlers can access
+   * these via their stored context from connect().
+   *
    * @private
    */
   _wireModules() {
     if (!this.moduleLoader) return
 
-    // Emit kernel:ready signal for modules that need orchestrator
+    // Emit kernel:ready signal - payload is intentionally minimal to avoid
+    // cyclic reference errors when QuarKernel debug mode serializes events
     const result = this.signals.emit('kernel:ready', {
-      orchestrator: this.orchestrator,
-      kernel: this
+      ready: true
     })
 
     // If emit returns a promise (async handlers), we can't await it
@@ -495,10 +536,10 @@ export class Kernel {
   async _wireModulesAsync() {
     if (!this.moduleLoader) return
 
-    // Emit kernel:ready signal for modules that need orchestrator
+    // Emit kernel:ready signal - payload is intentionally minimal to avoid
+    // cyclic reference errors when QuarKernel debug mode serializes events
     await this.signals.emit('kernel:ready', {
-      orchestrator: this.orchestrator,
-      kernel: this
+      ready: true
     })
   }
 
@@ -693,6 +734,35 @@ export class Kernel {
   }
 
   /**
+   * Create PermissionRegistry early so modules can register permissions
+   * via ctx.entity() and ctx.permissions()
+   */
+  _createPermissionRegistry() {
+    this.permissionRegistry = new PermissionRegistry()
+
+    // Register core system permissions
+    this._registerCorePermissions()
+  }
+
+  /**
+   * Register core system permissions provided by the framework
+   * These are always available regardless of which modules are loaded
+   */
+  _registerCorePermissions() {
+    // Auth permissions - for impersonation and auth management
+    this.permissionRegistry.register('auth', {
+      'impersonate': 'Impersonate other users',
+      'manage': 'Manage authentication settings'
+    })
+
+    // Admin permissions - for system administration
+    this.permissionRegistry.register('admin', {
+      'access': 'Access admin panel',
+      'config': 'Edit system configuration'
+    })
+  }
+
+  /**
    * Setup security layer (role hierarchy, permissions)
    *
    * If security config is provided, creates a SecurityChecker and wires it
@@ -712,12 +782,28 @@ export class Kernel {
    */
   _setupSecurity() {
     const { security, entityAuthAdapter } = this.options
+
+    // PermissionRegistry should already be created by _createPermissionRegistry()
+    // but create it here as fallback for backward compatibility
+    if (!this.permissionRegistry) {
+      this.permissionRegistry = new PermissionRegistry()
+    }
+
     if (!security) return
 
-    // Create SecurityChecker with role hierarchy and permissions
+    // Resolve roleGranter: explicit adapter or auto-create from config
+    let roleGranter = security.roleGranter
+    if (!roleGranter && (security.role_permissions || security.role_hierarchy)) {
+      roleGranter = new StaticRoleGranterAdapter({
+        role_hierarchy: security.role_hierarchy || {},
+        role_permissions: security.role_permissions || {},
+        role_labels: security.role_labels || {}
+      })
+    }
+
+    // Create SecurityChecker with roleGranter
     this.securityChecker = createSecurityChecker({
-      role_hierarchy: security.role_hierarchy || {},
-      role_permissions: security.role_permissions || {},
+      roleGranter,
       getCurrentUser: () => entityAuthAdapter?.getCurrentUser?.() || null
     })
 
@@ -727,6 +813,16 @@ export class Kernel {
     // Wire SecurityChecker into entityAuthAdapter
     if (entityAuthAdapter?.setSecurityChecker) {
       entityAuthAdapter.setSecurityChecker(this.securityChecker)
+    }
+
+    // Install roleGranter (for EntityRoleGranterAdapter signal subscriptions)
+    if (roleGranter?.install) {
+      // Create minimal context for roleGranter installation
+      const ctx = {
+        orchestrator: this.orchestrator,
+        signals: this.signals
+      }
+      roleGranter.install(ctx)
     }
   }
 
@@ -839,19 +935,26 @@ export class Kernel {
       throw new Error('[Kernel] root component is required')
     }
 
-    // If debugBar is enabled and component provided, wrap root with DebugBar
-    if (this.options.debugBar?.component && QdadmDebugBar) {
-      const OriginalRoot = this.options.root
-      const DebugBarComponent = QdadmDebugBar
-      const WrappedRoot = {
+    // Always wrap root with Toast (and DebugBar if enabled)
+    const OriginalRoot = this.options.root
+    const DebugBarComponent = this.options.debugBar?.component && QdadmDebugBar ? QdadmDebugBar : null
+
+    // Wrap root with DebugBar if enabled
+    // Note: Toast must be included by apps in their App.vue for pages outside BaseLayout
+    if (DebugBarComponent) {
+      const WrappedRoot = defineComponent({
         name: 'QdadmRootWrapper',
-        render() {
-          return [h(OriginalRoot), h(DebugBarComponent)]
+        components: { OriginalRoot, DebugBarComponent },
+        setup() {
+          return () => h('div', { id: 'qdadm-root', style: 'display: contents' }, [
+            h(OriginalRoot),
+            h(DebugBarComponent)
+          ])
         }
-      }
+      })
       this.vueApp = createApp(WrappedRoot)
     } else {
-      this.vueApp = createApp(this.options.root)
+      this.vueApp = createApp(OriginalRoot)
     }
   }
 
@@ -940,6 +1043,14 @@ export class Kernel {
 
     // Layout components injection for useLayoutResolver
     app.provide('qdadmLayoutComponents', this.layoutComponents)
+
+    // Security injection (for SecurityModule and other system modules)
+    if (this.securityChecker) {
+      app.provide('qdadmSecurityChecker', this.securityChecker)
+    }
+    if (this.permissionRegistry) {
+      app.provide('qdadmPermissionRegistry', this.permissionRegistry)
+    }
 
     // qdadm plugin
     // Note: Don't pass managers here - orchestrator already has resolved managers

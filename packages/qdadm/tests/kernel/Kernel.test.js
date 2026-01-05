@@ -571,8 +571,10 @@ describe('Kernel', () => {
 
       expect(readyHandler).toHaveBeenCalled()
       const event = readyHandler.mock.calls[0][0]
-      expect(event.data.orchestrator).toBe(kernel.orchestrator)
-      expect(event.data.kernel).toBe(kernel)
+      // Note: kernel:ready payload is minimal { ready: true } to avoid cyclic references
+      // Modules access kernel/orchestrator via their stored context from connect()
+      expect(event.data.ready).toBe(true)
+      expect(kernel.orchestrator).toBeDefined()
     })
 
     it('legacy modules and new modules coexist', () => {

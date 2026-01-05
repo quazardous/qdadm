@@ -20,6 +20,9 @@ export * from './entity/index.js'
 // Session auth (user authentication)
 export * from './auth/index.js'
 
+// Security (permissions, roles)
+export * from './security/index.js'
+
 // Orchestrator
 export * from './orchestrator/index.js'
 

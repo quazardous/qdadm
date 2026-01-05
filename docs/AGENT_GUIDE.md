@@ -3,7 +3,7 @@
 > Navigation index for AI agents. Read code directly for details.
 > Philosophy: see [QDADM_CREDO.md](../packages/qdadm/QDADM_CREDO.md)
 >
-> **Versions:** qdadm 0.29.0 | demo 0.13.0
+> **Versions:** qdadm 0.37.0 | demo 0.16.0
 
 ## Dev Commands
 
@@ -20,10 +20,12 @@ npm test             # Run tests (from packages/qdadm)
 | Concept | Location | Search Pattern |
 |---------|----------|----------------|
 | App bootstrap | `qdadm/src/kernel/Kernel.js` | `class Kernel` |
+| Module base class | `qdadm/src/module/Module.js` | `class Module` |
+| Module context | `qdadm/src/module/KernelContext.js` | `class KernelContext` |
 | Entity CRUD | `qdadm/src/entity/EntityManager.js` | `class EntityManager` |
 | Manager registry | `qdadm/src/orchestrator/Orchestrator.js` | `class Orchestrator` |
-| Storage backends | `qdadm/src/entity/storage/` | `ApiStorage`, `MockApiStorage`, etc. |
-| Permissions | `qdadm/src/entity/auth/` | `AuthAdapter`, `SecurityChecker` |
+| Storage backends | `qdadm/src/entity/storage/` | `ApiStorage`, `MockApiStorage`, `SdkStorage` |
+| Permissions | `qdadm/src/entity/auth/` | `SecurityChecker`, `PermissionRegistry` |
 
 ### Extensibility
 
@@ -31,7 +33,7 @@ npm test             # Run tests (from packages/qdadm)
 |-----------|----------|----------------|
 | Signals (events) | `qdadm/src/kernel/SignalBus.js` | `signals.emit`, `signals.on` |
 | Hooks (alter/invoke) | `qdadm/src/hooks/HookRegistry.js` | `hooks.register`, `hooks.alter` |
-| Zones (UI blocks) | `qdadm/src/zones/ZoneRegistry.js` | `registerBlock`, `defineZone` |
+| Zones (UI blocks) | `qdadm/src/zones/ZoneRegistry.js` | `ctx.zone()`, `ctx.block()` |
 | Decorators | `qdadm/src/core/decorator.js` | `createDecoratedManager` |
 
 ### UI Components
@@ -39,53 +41,143 @@ npm test             # Run tests (from packages/qdadm)
 | Component | Location | Use Case |
 |-----------|----------|----------|
 | ListPage | `qdadm/src/components/lists/ListPage.vue` | CRUD list pages |
-| FormPage | `qdadm/src/components/forms/FormPage.vue` | Create/Edit forms |
+| PageLayout | `qdadm/src/components/layout/PageLayout.vue` | Page wrapper |
 | FormField | `qdadm/src/components/forms/FormField.vue` | Form inputs |
 | Zone | `qdadm/src/components/layout/Zone.vue` | Extensible slots |
+| AppLayout | `qdadm/src/components/layout/AppLayout.vue` | Main layout |
 
 ### Composables (Vue)
 
 | Composable | Location | Use Case |
 |------------|----------|----------|
 | useListPageBuilder | `qdadm/src/composables/useListPageBuilder.js` | Build list pages |
-| useFormPageBuilder | `qdadm/src/composables/useFormPageBuilder.js` | Build form pages |
 | useForm | `qdadm/src/composables/useForm.js` | Form state management |
 | useOrchestrator | `qdadm/src/orchestrator/useOrchestrator.js` | Access managers |
 
-### Query System
+## Module Pattern (Current)
 
-| Component | Location | Search Pattern |
-|-----------|----------|----------------|
-| Filter queries | `qdadm/src/query/FilterQuery.js` | `class FilterQuery` |
-| Query executor | `qdadm/src/query/QueryExecutor.js` | `class QueryExecutor` |
+Modules extend `Module` class and use `ctx` (KernelContext) for registration:
+
+```js
+import { Module, EntityManager, MockApiStorage } from 'qdadm'
+
+export class BooksModule extends Module {
+  static name = 'books'
+
+  async connect(ctx) {
+    // Entity
+    ctx.entity('books', new EntityManager({
+      name: 'books',
+      labelField: 'title',
+      fields: { title: { type: 'text', label: 'Title' } },
+      storage: new MockApiStorage({ entityName: 'books' })
+    }))
+
+    // CRUD routes + nav (single form pattern)
+    ctx.crud('books', {
+      list: () => import('./pages/BookList.vue'),
+      form: () => import('./pages/BookForm.vue')  // create & edit
+    }, {
+      nav: { section: 'Library', icon: 'pi pi-book' }
+    })
+
+    // Zones
+    ctx.zone('books-header')
+    ctx.block('books-header', { id: 'header', component: MyHeader })
+  }
+}
+```
 
 ## Demo App Examples
 
 | Feature | Example File | Shows |
 |---------|--------------|-------|
-| List page | `demo/src/modules/books/pages/BookList.vue` | useListPageBuilder, filters, actions |
-| Create form | `demo/src/modules/books/pages/BookCreate.vue` | useFormPageBuilder |
-| Edit form | `demo/src/modules/books/pages/BookEdit.vue` | Form with existing data |
-| Module init | `demo/src/modules/books/init.js` | Routes, nav, entity config |
-| Auth adapter | `demo/src/adapters/authAdapter.js` | Login/logout implementation |
-| Entity auth | `demo/src/adapters/entityAuthAdapter.js` | Permissions per entity |
-| Zone extension | `demo/src/modules/loans/init.js` | Cross-module UI injection |
-| Custom column | `demo/src/modules/loans/components/LoanStatusColumn.vue` | Slot-based column |
+| Module class | `demo/src/modules/books/BooksModule.js` | Full module pattern |
+| List page | `demo/src/modules/books/pages/BookList.vue` | useListPageBuilder |
+| Form (create/edit) | `demo/src/modules/books/pages/BookForm.vue` | useForm, single form |
+| Custom page | `demo/src/modules/books/pages/BookStats.vue` | Non-CRUD route |
+| Auth adapter | `demo/src/adapters/authAdapter.js` | Login/logout |
+| Entity auth | `demo/src/adapters/entityAuthAdapter.js` | Permissions |
+| User impersonation | `demo/src/components/UserImpersonator.vue` | Signal-driven |
+| Module template | `demo/src/modules/_template/` | Copy to create new |
+
+## Context Methods (KernelContext)
+
+| Method | Purpose |
+|--------|---------|
+| `ctx.entity(name, manager)` | Register entity manager |
+| `ctx.crud(path, components, options)` | Register CRUD routes + nav |
+| `ctx.routes(path, routes, options)` | Register custom routes |
+| `ctx.navItem(config)` | Add navigation item |
+| `ctx.zone(name)` | Define zone |
+| `ctx.block(zone, config)` | Add block to zone |
+| `ctx.signals` | Access SignalBus |
+| `ctx.hooks` | Access HookRegistry |
+| `ctx.security` | Access SecurityChecker |
+
+## Security System
+
+### Core Components
+
+| Component | Location | Purpose |
+|-----------|----------|---------|
+| SecurityChecker | `qdadm/src/entity/auth/SecurityChecker.js` | Central permission checking |
+| PermissionRegistry | `qdadm/src/entity/auth/PermissionRegistry.js` | Register permission keys |
+| RoleGranter | `qdadm/src/entity/auth/RoleGranter.js` | Map roles → permissions |
+| RoleHierarchy | `qdadm/src/entity/auth/RoleHierarchy.js` | Role inheritance |
+| PermissionMatcher | `qdadm/src/entity/auth/PermissionMatcher.js` | Wildcard matching |
+
+### Permission Flow
+
+```
+User roles → RoleHierarchy (expand) → RoleGranter (get perms) → PermissionMatcher (check)
+```
+
+### Key Patterns
+
+```js
+// Check permission
+ctx.security.isGranted('entity:books:delete')
+ctx.security.isGranted('entity:books:*')  // wildcard
+
+// In EntityManager
+canDelete() {
+  return this._orchestrator?.kernel?.options?.authAdapter?.getUser?.()?.role === 'ROLE_ADMIN'
+}
+
+// Storage-level auth (MockApiStorage)
+new MockApiStorage({
+  entityName: 'books',
+  authCheck: () => authAdapter.isAuthenticated()  // throws 401 if false
+})
+```
+
+### Auth Signals
+
+| Signal | When |
+|--------|------|
+| `auth:login` | User logs in |
+| `auth:logout` | User logs out |
+| `auth:expired` | 401/403 from API |
+| `auth:impersonate` | Start impersonation |
+| `auth:impersonate:stop` | End impersonation |
+
+### Debug Bar
+
+AuthCollector shows: user, token, permissions, role hierarchy, impersonation events.
 
 ## Common Tasks
 
-| Task | Where to Look |
-|------|---------------|
-| Add a new entity | `demo/src/modules/*/init.js` → `registry.addEntity()` |
-| Add CRUD routes | `demo/src/modules/*/init.js` → `registry.addRoutes()` |
-| Add navigation item | `demo/src/modules/*/init.js` → `registry.addNavItem()` |
-| Create list page | `demo/src/modules/books/pages/BookList.vue` |
-| Create form page | `demo/src/modules/books/pages/BookCreate.vue` |
-| Add filter | Search `addFilter` in demo pages |
-| Add custom action | Search `addAction` in demo pages |
-| Extend another module | `demo/src/modules/loans/init.js` (zones example) |
-| Handle permissions | `demo/src/adapters/entityAuthAdapter.js` |
-| Add presave hook | Search `presave` in tests or docs |
+| Task | How |
+|------|-----|
+| Add new entity | Create module class extending `Module`, use `ctx.entity()` |
+| Add CRUD routes | Use `ctx.crud(path, { list, form }, { nav })` |
+| Add custom route | Use `ctx.routes(path, routes)` + `ctx.navItem()` |
+| Add filter | `list.addFilter('status', { ... })` in list page |
+| Add action | `list.addAction({ ... })` or `list.addEditAction()` |
+| Check permissions | `ctx.security.isGranted('permission:key')` |
+| Emit signal | `ctx.signals.emit('event:name', payload)` |
+| Listen to signal | `ctx.signals.on('event:name', handler)` |
 
 ## Tests Location
 
@@ -97,6 +189,7 @@ npm test             # Run tests (from packages/qdadm)
 | Hooks | `qdadm/tests/hooks/HookRegistry.test.js` |
 | Zones | `qdadm/tests/zones/*.test.js` |
 | Kernel | `qdadm/tests/kernel/*.test.js` |
+| Debug | `qdadm/tests/debug/*.test.js` |
 
 ## Documentation
 

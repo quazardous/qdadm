@@ -196,6 +196,7 @@ export class LocalStorageSessionAuthAdapter extends SessionAuthAdapter {
   constructor(storageKey = 'qdadm_auth') {
     super()
     this._storageKey = storageKey
+    this._originalUser = null  // Stores original user during impersonation
     this._restore()
   }
 
@@ -207,9 +208,10 @@ export class LocalStorageSessionAuthAdapter extends SessionAuthAdapter {
     try {
       const stored = localStorage.getItem(this._storageKey)
       if (stored) {
-        const { token, user } = JSON.parse(stored)
+        const { token, user, originalUser } = JSON.parse(stored)
         this._token = token
         this._user = user
+        this._originalUser = originalUser || null
       }
     } catch {
       // Invalid stored data, ignore
@@ -223,10 +225,14 @@ export class LocalStorageSessionAuthAdapter extends SessionAuthAdapter {
    */
   persist() {
     if (this._token && this._user) {
-      localStorage.setItem(this._storageKey, JSON.stringify({
+      const data = {
         token: this._token,
         user: this._user
-      }))
+      }
+      if (this._originalUser) {
+        data.originalUser = this._originalUser
+      }
+      localStorage.setItem(this._storageKey, JSON.stringify(data))
     } else {
       localStorage.removeItem(this._storageKey)
     }
@@ -234,6 +240,7 @@ export class LocalStorageSessionAuthAdapter extends SessionAuthAdapter {
 
   // Arrow functions to preserve `this` when used as callbacks
   logout = () => {
+    this._originalUser = null
     this.clearSession()
     localStorage.removeItem(this._storageKey)
   }
@@ -248,6 +255,110 @@ export class LocalStorageSessionAuthAdapter extends SessionAuthAdapter {
 
   getUser = () => {
     return this._user
+  }
+
+  // ─────────────────────────────────────────────────────────────────
+  // Impersonation support
+  // ─────────────────────────────────────────────────────────────────
+
+  /**
+   * Check if currently impersonating another user
+   * @returns {boolean}
+   */
+  isImpersonating = () => {
+    return this._originalUser !== null
+  }
+
+  /**
+   * Get the original user (admin) when impersonating
+   * @returns {object|null} Original user or null if not impersonating
+   */
+  getOriginalUser = () => {
+    return this._originalUser
+  }
+
+  /**
+   * Start impersonating another user
+   *
+   * @param {object} targetUser - User to impersonate
+   * @returns {object} The impersonated user
+   */
+  impersonate = (targetUser) => {
+    if (!this._user) {
+      throw new Error('Must be authenticated to impersonate')
+    }
+    if (this._originalUser) {
+      throw new Error('Already impersonating. Stop first.')
+    }
+
+    this._originalUser = this._user
+    this._user = targetUser
+    this.persist()
+
+    return targetUser
+  }
+
+  /**
+   * Stop impersonating and return to original user
+   *
+   * @returns {object} The original user
+   */
+  stopImpersonating = () => {
+    if (!this._originalUser) {
+      throw new Error('Not currently impersonating')
+    }
+
+    const original = this._originalUser
+    this._user = this._originalUser
+    this._originalUser = null
+    this.persist()
+
+    return original
+  }
+
+  // ─────────────────────────────────────────────────────────────────
+  // Signal integration
+  // ─────────────────────────────────────────────────────────────────
+
+  /**
+   * Connect authAdapter to signals for reactive impersonation
+   *
+   * Call this during kernel boot to enable signal-driven impersonation.
+   * The adapter will listen to auth:impersonate and auth:impersonate:stop
+   * signals and update its internal state automatically.
+   *
+   * @param {object} signals - Signals instance (from orchestrator.signals)
+   * @returns {Function} Cleanup function to unsubscribe
+   */
+  connectSignals(signals) {
+    if (!signals) return () => {}
+
+    const cleanups = []
+
+    // Listen for impersonate signal
+    cleanups.push(signals.on('auth:impersonate', (event) => {
+      const data = event?.data || event
+      const targetUser = data?.target
+      if (targetUser && !this._originalUser) {
+        this._originalUser = this._user
+        this._user = targetUser
+        this.persist()
+      }
+    }))
+
+    // Listen for stop impersonation signal
+    cleanups.push(signals.on('auth:impersonate:stop', () => {
+      if (this._originalUser) {
+        this._user = this._originalUser
+        this._originalUser = null
+        this.persist()
+      }
+    }))
+
+    // Return cleanup function
+    return () => {
+      cleanups.forEach(cleanup => cleanup?.())
+    }
   }
 }
 

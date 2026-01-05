@@ -75,7 +75,7 @@ describe('SecurityChecker', () => {
     it('grants wildcard permission', () => {
       const checker = createChecker({ role: 'ROLE_SUPER' }, {
         role_hierarchy: {},
-        role_permissions: { ROLE_SUPER: ['*'] }
+        role_permissions: { ROLE_SUPER: ['**'] }  // ** = match everything
       })
       expect(checker.isGranted('any:permission')).toBe(true)
       expect(checker.isGranted('entity:delete')).toBe(true)
@@ -126,13 +126,13 @@ describe('SecurityChecker', () => {
       const checker = createChecker({ role: 'ROLE_ADMIN' }, {
         role_hierarchy: { ROLE_ADMIN: ['ROLE_USER'] },
         role_permissions: {
-          ROLE_ADMIN: ['role:assign']
+          ROLE_ADMIN: ['security:roles:assign']
         }
       })
       expect(checker.canAssignRole('ROLE_USER')).toBe(true)
     })
 
-    it('denies when no role:assign permission', () => {
+    it('denies when no security:roles:assign permission', () => {
       const checker = createChecker({ role: 'ROLE_ADMIN' })
       expect(checker.canAssignRole('ROLE_USER')).toBe(false)
     })
@@ -140,14 +140,14 @@ describe('SecurityChecker', () => {
     it('denies assigning role user does not have', () => {
       const checker = createChecker({ role: 'ROLE_USER' }, {
         role_hierarchy: {},
-        role_permissions: { ROLE_USER: ['role:assign'] }
+        role_permissions: { ROLE_USER: ['security:roles:assign'] }
       })
       expect(checker.canAssignRole('ROLE_ADMIN')).toBe(false)
     })
   })
 
   describe('getAssignableRoles', () => {
-    it('returns empty when no role:assign permission', () => {
+    it('returns empty when no security:roles:assign permission', () => {
       const checker = createChecker({ role: 'ROLE_ADMIN' })
       expect(checker.getAssignableRoles()).toEqual([])
     })
@@ -155,7 +155,7 @@ describe('SecurityChecker', () => {
     it('returns reachable roles when has permission', () => {
       const checker = createChecker({ role: 'ROLE_ADMIN' }, {
         role_hierarchy: { ROLE_ADMIN: ['ROLE_USER'] },
-        role_permissions: { ROLE_ADMIN: ['role:assign'] }
+        role_permissions: { ROLE_ADMIN: ['security:roles:assign'] }
       })
       const assignable = checker.getAssignableRoles()
       expect(assignable).toContain('ROLE_ADMIN')
@@ -165,7 +165,7 @@ describe('SecurityChecker', () => {
     it('returns empty when no user', () => {
       const checker = createChecker(null, {
         role_hierarchy: {},
-        role_permissions: { ROLE_ADMIN: ['role:assign'] }
+        role_permissions: { ROLE_ADMIN: ['security:roles:assign'] }
       })
       expect(checker.getAssignableRoles()).toEqual([])
     })

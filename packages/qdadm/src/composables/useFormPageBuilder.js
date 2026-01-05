@@ -84,6 +84,7 @@ import { useConfirm } from 'primevue/useconfirm'
 import { useDirtyState } from './useDirtyState'
 import { useUnsavedChangesGuard } from './useUnsavedChangesGuard'
 import { useBreadcrumb } from './useBreadcrumb'
+import { useCurrentEntity } from './useCurrentEntity'
 import { registerGuardDialog, unregisterGuardDialog } from './useGuardStore'
 import { deepClone } from '../utils/transformers'
 import { onUnmounted } from 'vue'
@@ -132,6 +133,9 @@ export function useFormPageBuilder(config = {}) {
 
   // Provide entity context for child components (e.g., SeverityTag auto-discovery)
   provide('mainEntity', entity)
+
+  // Share entity data with navigation context (for breadcrumb)
+  const { setCurrentEntity } = useCurrentEntity()
 
   // Read config from manager with option overrides
   const entityName = config.entityName ?? manager.label
@@ -257,6 +261,9 @@ export function useFormPageBuilder(config = {}) {
       data.value = transformed
       originalData.value = deepClone(transformed)
       takeSnapshot()
+
+      // Share with navigation context for breadcrumb
+      setCurrentEntity(transformed)
 
       if (onLoadSuccess) {
         await onLoadSuccess(transformed)

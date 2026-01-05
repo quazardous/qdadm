@@ -172,8 +172,7 @@ export function init({ registry }) {
 ```
 src/
 ├── adapters/
-│   ├── authAdapter.js        # Auth with localStorage
-│   └── entityAuthAdapter.js  # Entity-level permissions
+│   └── authAdapter.js        # Auth with localStorage (entity permissions inline in main.js)
 ├── modules/
 │   ├── books/                # MockApiStorage - Books CRUD
 │   ├── genres/               # MockApiStorage - Genres with children

@@ -1,45 +1,105 @@
 import { RoleHierarchy } from './RoleHierarchy.js'
+import { PermissionMatcher } from '../../security/PermissionMatcher.js'
+import { StaticRoleGranterAdapter } from '../../security/StaticRoleGranterAdapter.js'
 
 /**
  * SecurityChecker - Symfony-inspired permission checking
  *
  * Provides the `isGranted(attribute, subject?)` contract for checking permissions.
- * Supports both role checks (ROLE_*) and permission checks (entity:action).
+ * Supports both role checks (ROLE_*) and permission checks with wildcards.
  *
- * Note: Symfony's full security system includes "voters" for custom business logic
- * (e.g., "owner can edit their own posts"). This implementation focuses on
- * role hierarchy + declarative permissions. For complex rules, override
- * EntityManager.canRead/canWrite methods directly.
+ * Permission format: namespace:target:action
+ * - entity:books:read     - Entity CRUD
+ * - auth:impersonate      - System feature
+ * - admin:config:edit     - Admin feature
+ *
+ * Wildcard patterns (like signals):
+ * - `*` matches exactly one segment
+ * - `**` matches zero or more segments (greedy)
  *
  * @example
- * ```js
  * const checker = new SecurityChecker({
- *   roleHierarchy: new RoleHierarchy({ ROLE_ADMIN: ['ROLE_USER'] }),
- *   rolePermissions: {
- *     ROLE_USER: ['entity:read', 'entity:list'],
- *     ROLE_ADMIN: ['entity:create', 'entity:update', 'entity:delete'],
- *   },
+ *   roleGranter: new StaticRoleGranterAdapter({
+ *     role_hierarchy: { ROLE_ADMIN: ['ROLE_USER'] },
+ *     role_permissions: {
+ *       ROLE_USER: ['entity:*:read', 'entity:*:list'],
+ *       ROLE_ADMIN: ['entity:**', 'admin:**']
+ *     }
+ *   }),
  *   getCurrentUser: () => authStore.user
  * })
  *
- * checker.isGranted('ROLE_ADMIN')           // Check role
- * checker.isGranted('entity:delete')        // Check permission
- * checker.isGranted('books:delete', book)   // Check with subject
- * ```
+ * checker.isGranted('ROLE_ADMIN')              // Check role
+ * checker.isGranted('entity:books:read')       // Check permission
+ * checker.isGranted('entity:books:delete')     // Matches 'entity:**' for ADMIN
  */
 export class SecurityChecker {
   /**
    * @param {Object} options
-   * @param {RoleHierarchy} options.roleHierarchy - Role hierarchy instance
-   * @param {Object<string, string[]>} options.rolePermissions - Permissions per role
+   * @param {RoleGranterAdapter} [options.roleGranter] - Role granter adapter
+   * @param {RoleHierarchy} [options.roleHierarchy] - Role hierarchy (legacy, prefer roleGranter)
+   * @param {Object<string, string[]>} [options.rolePermissions] - Permissions per role (legacy)
    * @param {Function} options.getCurrentUser - Function returning current user or null
    */
-  constructor({ roleHierarchy, rolePermissions = {}, getCurrentUser }) {
-    this.roleHierarchy = roleHierarchy instanceof RoleHierarchy
-      ? roleHierarchy
-      : new RoleHierarchy(roleHierarchy || {})
-    this.rolePermissions = rolePermissions
+  constructor({ roleGranter, roleHierarchy, rolePermissions, getCurrentUser }) {
+    // Support both new roleGranter and legacy rolePermissions
+    if (roleGranter) {
+      this._roleGranter = roleGranter
+      // Note: roleHierarchy is now a getter that reads dynamically from roleGranter
+      // This ensures hierarchy changes after async load() are reflected
+      this._legacyRoleHierarchy = null
+    } else {
+      // Legacy: create static granter from rolePermissions
+      this._roleGranter = new StaticRoleGranterAdapter({
+        role_hierarchy: roleHierarchy instanceof RoleHierarchy
+          ? {} // Can't extract map from RoleHierarchy, use empty
+          : (roleHierarchy || {}),
+        role_permissions: rolePermissions || {}
+      })
+      this._legacyRoleHierarchy = roleHierarchy instanceof RoleHierarchy
+        ? roleHierarchy
+        : new RoleHierarchy(roleHierarchy || {})
+    }
+
     this.getCurrentUser = getCurrentUser
+  }
+
+  /**
+   * Get role hierarchy (dynamically resolved from roleGranter)
+   *
+   * This is a getter instead of a cached property to ensure that
+   * hierarchy changes after async load() are reflected immediately.
+   *
+   * @returns {RoleHierarchy}
+   */
+  get roleHierarchy() {
+    // Legacy mode: use cached hierarchy
+    if (this._legacyRoleHierarchy) {
+      return this._legacyRoleHierarchy
+    }
+    // Dynamic mode: create fresh RoleHierarchy from current granter state
+    return new RoleHierarchy(this._roleGranter.getHierarchy())
+  }
+
+  /**
+   * Get role granter adapter
+   * @returns {RoleGranterAdapter}
+   */
+  get roleGranter() {
+    return this._roleGranter
+  }
+
+  /**
+   * Get role permissions (for backward compatibility / debug panel)
+   * @returns {Object<string, string[]>}
+   */
+  get rolePermissions() {
+    const roles = this._roleGranter.getRoles()
+    const perms = {}
+    for (const role of roles) {
+      perms[role] = this._roleGranter.getPermissions(role)
+    }
+    return perms
   }
 
   /**
@@ -49,16 +109,16 @@ export class SecurityChecker {
    *
    * Checking flow:
    * 1. If attribute starts with 'ROLE_' → check role hierarchy
-   * 2. Check if user has the permission (from role or direct)
+   * 2. Check if user has the permission (with wildcard support)
    *
-   * @param {string} attribute - Role (ROLE_*) or permission (entity:action)
+   * @param {string} attribute - Role (ROLE_*) or permission (namespace:target:action)
    * @param {object} [subject] - Optional subject for context-aware checks (reserved for future use)
    * @returns {boolean} True if user is granted the attribute
    *
    * @example
-   * checker.isGranted('ROLE_ADMIN')           // true/false
-   * checker.isGranted('entity:delete')        // true/false
-   * checker.isGranted('books:delete', book)   // true/false (with subject)
+   * checker.isGranted('ROLE_ADMIN')              // true/false
+   * checker.isGranted('entity:books:read')       // true/false
+   * checker.isGranted('entity:books:delete', book)  // true/false (with subject)
    */
   isGranted(attribute, subject = null) {
     const user = this.getCurrentUser()
@@ -72,12 +132,9 @@ export class SecurityChecker {
       )
     }
 
-    // 2. Check if it's a permission
+    // 2. Check if it's a permission (with wildcard support)
     const userPerms = this.getUserPermissions(user)
-    if (userPerms.includes('*')) return true
-    if (userPerms.includes(attribute)) return true
-
-    return false
+    return PermissionMatcher.any(userPerms, attribute)
   }
 
   /**
@@ -85,11 +142,11 @@ export class SecurityChecker {
    *
    * Resolves permissions by:
    * 1. Getting all reachable roles from role hierarchy
-   * 2. Collecting permissions from each role
+   * 2. Collecting permissions from each role via roleGranter
    * 3. Adding any user-specific permission overrides
    *
    * @param {object} user - User object with role/roles and optional permissions
-   * @returns {string[]} Array of all permissions
+   * @returns {string[]} Array of all permissions (may include wildcards)
    */
   getUserPermissions(user) {
     const roles = user.roles || [user.role]
@@ -99,7 +156,7 @@ export class SecurityChecker {
       if (!role) continue
       const reachable = this.roleHierarchy.getReachableRoles(role)
       for (const r of reachable) {
-        const rolePerms = this.rolePermissions[r] || []
+        const rolePerms = this._roleGranter.getPermissions(r)
         rolePerms.forEach(p => perms.add(p))
       }
     }
@@ -115,14 +172,14 @@ export class SecurityChecker {
   /**
    * Check if user can assign a role to another user
    *
-   * Rule: Can only assign roles if user has 'role:assign' permission
+   * Rule: Can only assign roles if user has 'security:roles:assign' permission
    * AND has the target role (or higher) themselves.
    *
    * @param {string} targetRole - Role to assign
    * @returns {boolean} True if user can assign this role
    */
   canAssignRole(targetRole) {
-    return this.isGranted('role:assign') && this.isGranted(targetRole)
+    return this.isGranted('security:roles:assign') && this.isGranted(targetRole)
   }
 
   /**
@@ -131,7 +188,7 @@ export class SecurityChecker {
    * @returns {string[]} Array of assignable role names
    */
   getAssignableRoles() {
-    if (!this.isGranted('role:assign')) return []
+    if (!this.isGranted('security:roles:assign')) return []
 
     const user = this.getCurrentUser()
     if (!user) return []
@@ -153,15 +210,26 @@ export class SecurityChecker {
  * Create a SecurityChecker instance from config
  *
  * @param {Object} config
- * @param {Object<string, string[]>} config.role_hierarchy - Role hierarchy config
- * @param {Object<string, string[]>} config.role_permissions - Permissions per role
+ * @param {RoleGranterAdapter} [config.roleGranter] - Role granter adapter
+ * @param {Object<string, string[]>} [config.role_hierarchy] - Role hierarchy config (legacy)
+ * @param {Object<string, string[]>} [config.role_permissions] - Permissions per role (legacy)
  * @param {Function} config.getCurrentUser - User getter function
  * @returns {SecurityChecker}
  */
 export function createSecurityChecker(config) {
+  if (config.roleGranter) {
+    return new SecurityChecker({
+      roleGranter: config.roleGranter,
+      getCurrentUser: config.getCurrentUser
+    })
+  }
+
+  // Legacy config: auto-create static granter
   return new SecurityChecker({
-    roleHierarchy: new RoleHierarchy(config.role_hierarchy || {}),
-    rolePermissions: config.role_permissions || {},
+    roleGranter: new StaticRoleGranterAdapter({
+      role_hierarchy: config.role_hierarchy || {},
+      role_permissions: config.role_permissions || {}
+    }),
     getCurrentUser: config.getCurrentUser
   })
 }

@@ -9,6 +9,7 @@
 
 import { Kernel } from 'qdadm'
 import { debugBar } from 'qdadm/debug'
+import { createLocalStorageRoleGranter } from 'qdadm/security'
 import PrimeVue from 'primevue/config'
 import Aura from '@primeuix/themes/aura'
 import 'qdadm/styles'
@@ -17,7 +18,6 @@ import 'primeicons/primeicons.css'
 import App from './App.vue'
 import { version } from '../package.json'
 import { authAdapter } from './adapters/authAdapter'
-import { demoEntityAuthAdapter } from './adapters/entityAuthAdapter'
 import { moduleDefs, modulesOptions, sectionOrder, registerHooks } from './config'
 
 // ============================================================================
@@ -36,15 +36,32 @@ const kernel = new Kernel({
 
   // Authentication
   authAdapter,
-  entityAuthAdapter: demoEntityAuthAdapter,
+  entityAuthAdapter: () => authAdapter.getUser(), // Function → EntityAuthAdapter with getCurrentUser
   security: {
-    role_hierarchy: {
-      ROLE_ADMIN: ['ROLE_USER']
-    },
-    role_permissions: {
-      ROLE_USER: ['entity:read', 'entity:list'],
-      ROLE_ADMIN: ['entity:create', 'entity:update', 'entity:delete', 'user:manage', 'role:assign', 'user:impersonate']
-    }
+    roleGranter: createLocalStorageRoleGranter({
+      key: 'demo_roles',
+      // Fixed: system permissions, cannot be edited
+      fixed: {
+        role_permissions: {
+          ROLE_ANONYMOUS: ['auth:login']
+        }
+      },
+      // Defaults: editable via Roles UI
+      defaults: {
+        role_hierarchy: {
+          ROLE_ADMIN: ['ROLE_USER']
+        },
+        role_permissions: {
+          ROLE_USER: ['entity:*:read', 'entity:*:list'],
+          ROLE_ADMIN: ['entity:*:create', 'entity:*:update', 'entity:*:delete', 'admin:**', 'security:**', 'auth:impersonate']
+        },
+        role_labels: {
+          ROLE_ANONYMOUS: 'Anonymous',
+          ROLE_USER: 'User',
+          ROLE_ADMIN: 'Administrator'
+        }
+      }
+    })
   },
 
   // Event routing: auth events → datalayer invalidation (only authSensitive entities react)

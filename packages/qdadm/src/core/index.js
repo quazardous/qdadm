@@ -11,9 +11,6 @@ export {
 
 export {
   createDecoratedManager,
-  withAuditLog as withAuditLogDecorator,
-  withSoftDelete as withSoftDeleteDecorator,
-  withTimestamps as withTimestampsDecorator,
   withValidation,
 } from './decorator.js'
 

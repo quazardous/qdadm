@@ -36,6 +36,7 @@ export { default as FilterBar } from './lists/FilterBar.vue'
 export { default as KeyValueEditor } from './editors/KeyValueEditor.vue'
 export { default as LanguageEditor } from './editors/LanguageEditor.vue'
 export { default as ScopeEditor } from './editors/ScopeEditor.vue'
+export { default as PermissionEditor } from './editors/PermissionEditor.vue'
 export { default as JsonEditorFoldable } from './editors/JsonEditorFoldable.vue'
 export { default as JsonViewer } from './editors/JsonViewer.vue'
 

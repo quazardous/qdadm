@@ -1,138 +1,254 @@
 # Security
 
-qdadm is **auth-agnostic** - it provides interfaces, not implementation.
+qdadm provides a unified permission system with role hierarchy, permission matching, and signal-driven auth events.
 
-## Two Security Dimensions
-
-### Scope (Actions)
-
-What can the user **do**?
-
-- Create, Read, Update, Delete
-- Custom actions (export, archive, approve)
-- Field-level: which fields can be read/written
-
-### Silo (Records)
-
-Which records can the user **see**?
-
-- Row-level filtering based on user/role
-- Multi-tenant isolation
-- Ownership-based access
-
-## EntityManager as Gatekeeper
-
-EntityManager exposes security methods:
-
-| Method | Purpose |
-|--------|---------|
-| `canRead(entity)` | Can user see this entity type? |
-| `canAccess(entity, action)` | Can user perform action? |
-| `canAccess(entity, action, record)` | Can user act on specific record? |
-
-Pages call these via builders - never implement security logic directly.
-
-## AuthAdapter Pattern
+## Architecture
 
 ```
-┌─────────────────────────────────────────┐
-│ App Bootstrap                           │
-│   └─► Registers AuthAdapter             │
-├─────────────────────────────────────────┤
-│ EntityManager                           │
-│   └─► Calls adapter.canRead/canAccess   │
-├─────────────────────────────────────────┤
-│ AuthAdapter (app-specific)              │
-│   └─► Implements actual auth logic      │
-│       - JWT validation                  │
-│       - Role checking                   │
-│       - Record ownership                │
-└─────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────┐
+│                        SecurityChecker                          │
+│  Central facade for all permission checks                       │
+├─────────────────────────────────────────────────────────────────┤
+│  ┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐  │
+│  │  RoleHierarchy  │  │   RoleGranter   │  │PermissionMatcher│  │
+│  │  Role → Roles   │  │  Role → Perms   │  │ Wildcard match  │  │
+│  └─────────────────┘  └─────────────────┘  └─────────────────┘  │
+├─────────────────────────────────────────────────────────────────┤
+│                     PermissionRegistry                          │
+│  Stores all registered permission keys                          │
+└─────────────────────────────────────────────────────────────────┘
 ```
 
-qdadm doesn't define **how** security is implemented. Each app provides its own AuthAdapter at bootstrap.
+## Core Components
 
-## Why This Design?
+### SecurityChecker
 
-- **Flexibility** - Any auth system works (JWT, sessions, OAuth)
-- **Separation** - Framework doesn't impose auth choices
-- **Testability** - Mock adapter for testing
-- **Multi-app** - Same qdadm, different auth per app
+Central facade for permission checks:
 
-## Token Expiration & Auto-Logout
+```js
+// Check if user has permission
+ctx.security.isGranted('entity:books:delete')
+ctx.security.isGranted('entity:books:*')  // wildcard
 
-qdadm handles token expiration via signals:
+// Get user's effective permissions (resolves hierarchy)
+ctx.security.getUserPermissions(user)
+```
 
-### The Problem
+### PermissionRegistry
 
-When an API returns 401/403, the user should be automatically logged out and redirected to login. Without centralized handling, users continue with stale sessions.
+Stores all permission keys (for UI display, validation):
 
-### The Solution: `auth:expired` Signal
+```js
+// Auto-registered by EntityManager for CRUD
+// entity:books:create, entity:books:read, entity:books:update, entity:books:delete
 
-```javascript
-// 1. API client emits auth:expired on 401/403
+// Register custom permission
+ctx.permissionRegistry.register('reports:export', { label: 'Export Reports' })
+
+// Get all keys
+ctx.permissionRegistry.getKeys()  // ['entity:books:read', 'reports:export', ...]
+```
+
+### RoleGranter
+
+Maps roles to permissions:
+
+```js
+const roleGranter = new RoleGranter({
+  ROLE_ADMIN: ['*'],  // All permissions
+  ROLE_EDITOR: ['entity:books:*', 'entity:loans:read'],
+  ROLE_USER: ['entity:books:read']
+})
+
+// With anonymous role
+const roleGranter = new RoleGranter({
+  ROLE_ANONYMOUS: ['entity:books:read'],  // Public read
+  ROLE_USER: ['entity:books:*']
+}, { anonymousRole: 'ROLE_ANONYMOUS' })
+```
+
+### RoleHierarchy
+
+Defines role inheritance:
+
+```js
+const roleHierarchy = new RoleHierarchy({
+  ROLE_ADMIN: ['ROLE_EDITOR'],      // Admin inherits Editor
+  ROLE_EDITOR: ['ROLE_USER'],       // Editor inherits User
+  ROLE_USER: ['ROLE_ANONYMOUS']     // User inherits Anonymous
+})
+
+// Get all reachable roles
+roleHierarchy.getReachableRoles('ROLE_ADMIN')
+// → ['ROLE_ADMIN', 'ROLE_EDITOR', 'ROLE_USER', 'ROLE_ANONYMOUS']
+```
+
+### PermissionMatcher
+
+Wildcard permission matching:
+
+```js
+PermissionMatcher.matches('entity:books:read', 'entity:books:read')  // true
+PermissionMatcher.matches('entity:books:*', 'entity:books:read')     // true
+PermissionMatcher.matches('entity:*:read', 'entity:books:read')      // true
+PermissionMatcher.matches('*', 'anything')                           // true
+```
+
+## Permission Flow
+
+```
+1. User has roles: ['ROLE_EDITOR']
+2. RoleHierarchy expands: ['ROLE_EDITOR', 'ROLE_USER', 'ROLE_ANONYMOUS']
+3. RoleGranter collects permissions for all roles
+4. PermissionMatcher checks if requested permission matches any granted
+```
+
+## Integration with Kernel
+
+```js
+const kernel = new Kernel({
+  authAdapter,
+  security: {
+    roleHierarchy: {
+      ROLE_ADMIN: ['ROLE_USER']
+    },
+    rolePermissions: {
+      ROLE_ADMIN: ['*'],
+      ROLE_USER: ['entity:books:read']
+    }
+  }
+})
+
+// Access via context
+ctx.security.isGranted('entity:books:delete')
+```
+
+## EntityManager Permissions
+
+EntityManager auto-registers CRUD permissions and provides can* methods:
+
+```js
+class BooksManager extends EntityManager {
+  // Override for custom logic
+  canDelete(record) {
+    // Only admin can delete
+    const user = this._orchestrator?.kernel?.options?.authAdapter?.getUser?.()
+    return user?.role === 'ROLE_ADMIN'
+  }
+
+  canUpdate(record) {
+    // Owner or admin
+    const user = this._orchestrator?.kernel?.options?.authAdapter?.getUser?.()
+    return record.owner_id === user?.id || user?.role === 'ROLE_ADMIN'
+  }
+}
+```
+
+## Storage-Level Auth
+
+MockApiStorage supports auth checking:
+
+```js
+const storage = new MockApiStorage({
+  entityName: 'books',
+  authCheck: () => {
+    if (!authAdapter.isAuthenticated()) {
+      throw { status: 401, message: 'Unauthorized' }
+    }
+    return true
+  }
+})
+
+// Capability flag for debug panel
+storage.capabilities  // { requiresAuth: true }
+```
+
+## Auth Signals
+
+Signal-driven authentication events:
+
+| Signal | Payload | When |
+|--------|---------|------|
+| `auth:login` | `{ user }` | User logs in successfully |
+| `auth:login:error` | `{ username, error, status }` | Login failed (wrong credentials) |
+| `auth:logout` | - | User logs out |
+| `auth:expired` | `{ status, url }` | 401/403 from API (session expired) |
+| `auth:impersonate` | `{ target, original }` | Start impersonation |
+| `auth:impersonate:stop` | `{ original }` | End impersonation |
+
+### Login Error vs Session Expired
+
+**Important distinction:**
+- `auth:login:error` - Login attempt failed (wrong password). User stays on login page, sees error toast.
+- `auth:expired` - Authenticated session expired. User is logged out and redirected to login.
+
+When wiring your API client's 401 handler, **exclude the login endpoint** to avoid treating login failures as session expiration:
+
+```js
+setAuthExpiredHandler((status, url) => {
+  // Don't emit auth:expired on login endpoint
+  if (url?.includes('/auth/login')) {
+    return  // Let LoginPage handle via toast + auth:login:error
+  }
+  signals.emit('auth:expired', { status, url })
+})
+```
+
+### Token Expiration Handling
+
+```js
+// API client emits auth:expired on 401/403
 axios.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401 || error.response?.status === 403) {
+    if ([401, 403].includes(error.response?.status)) {
       signals.emit('auth:expired', { status: error.response.status })
     }
     return Promise.reject(error)
   }
 )
 
-// 2. Kernel auto-handles: logout + redirect to /login
-// This is automatic when authAdapter is configured
+// Kernel auto-handles: logout + redirect to /login?expired=1
 ```
 
-### Using setupApiClient
+## Impersonation
 
-Kernel provides a helper to wire axios clients:
+Signal-driven impersonation for testing user permissions:
 
-```javascript
-import axios from 'axios'
+```js
+// Start impersonation
+await signals.emit('auth:impersonate', {
+  target: { id: 'user-123', username: 'bob', role: 'ROLE_USER' },
+  original: authAdapter.getUser()
+})
 
-const apiClient = axios.create({ baseURL: '/api' })
-kernel.setupApiClient(apiClient)  // Adds 401/403 → auth:expired
+// End impersonation
+await signals.emit('auth:impersonate:stop', {
+  original: authAdapter.getOriginalUser()
+})
 
-// Now use apiClient with ApiStorage
-const storage = new ApiStorage({ endpoint: '/users', client: apiClient })
+// Check state
+authAdapter.isImpersonating()     // true/false
+authAdapter.getUser()             // Current (or impersonated) user
+authAdapter.getOriginalUser()     // Real admin user
 ```
 
-### Auth Signals
+SessionAuthAdapter handles these signals via `connectSignals()`.
 
-| Signal | Emitted When | Default Handler |
-|--------|--------------|-----------------|
-| `auth:login` | User logs in | Resolves `auth:ready` deferred |
-| `auth:logout` | User logs out | - |
-| `auth:expired` | 401/403 from API | Logout + redirect to `/login?expired=1` |
+## Debug Bar
 
-### Token Expiration Check
+AuthCollector displays in debug panel:
+- Current user (with effective permissions)
+- Impersonated user (when active)
+- Token info (expiry, claims)
+- Role hierarchy
+- Role permissions map
+- Auth events (login/logout/impersonate) with auto-expiry
 
-AuthAdapter should check token expiration proactively:
+## Best Practices
 
-```javascript
-// In authAdapter.isAuthenticated()
-function isTokenExpired(token) {
-  const payload = JSON.parse(atob(token.split('.')[1]))
-  return payload.exp * 1000 < Date.now()
-}
-
-isAuthenticated() {
-  const token = this.getToken()
-  if (!token || isTokenExpired(token)) {
-    this.logout()
-    return false
-  }
-  return true
-}
-```
-
-## Audit Trail
-
-Use signal bus for audit:
-- `entity:presave` - log who's changing what
-- `entity:postsave` - log what changed
-- `entity:delete` - log deletions
-
-Decoupled from security logic itself.
+1. **Use SecurityChecker** - Don't implement permission logic in components
+2. **Register permissions** - Use PermissionRegistry for discoverability
+3. **Use signals** - Don't manipulate auth state directly
+4. **Storage authCheck** - Protect at storage level, not just UI
+5. **Role hierarchy** - Define inheritance, don't duplicate permissions

@@ -105,16 +105,20 @@ function isCompositeConfig(config) {
  *
  * Handles:
  * - AuthAdapter instance → return directly (backward compatible)
+ * - Function → wrap as EntityAuthAdapter with getCurrentUser callback
  * - String pattern 'type' → parse and resolve
  * - Config object with 'type' → resolve via registry
  * - Config object with 'default' → create CompositeAuthAdapter
  *
- * @param {EntityAuthAdapter | string | object} config - Auth config
+ * @param {EntityAuthAdapter | Function | string | object} config - Auth config
  * @param {object} [context={}] - Context with authTypes, authResolver
  * @returns {EntityAuthAdapter} Adapter instance
  *
  * @example
- * // Instance passthrough (most common, backward compatible)
+ * // Function (simplest - for getCurrentUser callback)
+ * authFactory(() => authStore.user)  // → EntityAuthAdapter
+ *
+ * // Instance passthrough (backward compatible)
  * authFactory(myAdapter)  // → myAdapter
  *
  * // String patterns
@@ -136,6 +140,11 @@ export function authFactory(config, context = {}) {
   // Null/undefined → permissive (safe default)
   if (config == null) {
     return new PermissiveAuthAdapter()
+  }
+
+  // Function → wrap in EntityAuthAdapter with getCurrentUser callback
+  if (typeof config === 'function') {
+    return new EntityAuthAdapter({ getCurrentUser: config })
   }
 
   // Already an EntityAuthAdapter instance → return directly (backward compatible)

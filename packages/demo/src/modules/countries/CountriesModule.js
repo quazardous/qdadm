@@ -98,31 +98,21 @@ export class CountriesModule extends Module {
     // ════════════════════════════════════════════════════════════════════════
     // ROUTES (list + detail - read-only)
     // ════════════════════════════════════════════════════════════════════════
-    ctx.routes('countries', [
+    ctx.crud('countries', {
+      list: () => import('./pages/CountriesPage.vue')
+    }, {
+      nav: { section: 'REST Countries', icon: 'pi pi-globe' }
+    })
+
+    // Detail page (read-only, not part of CRUD pattern)
+    ctx.routes('countries/:id', [
       {
         path: '',
-        name: 'country',
-        component: () => import('./pages/CountriesPage.vue'),
-        meta: { layout: 'list' }
-      },
-      {
-        path: ':id',
         name: 'country-show',
         component: () => import('./pages/CountryDetailPage.vue'),
         meta: { layout: 'form' }
       }
     ], { entity: 'countries' })
-
-    // Navigation
-    ctx.navItem({
-      section: 'REST Countries',
-      route: 'country',
-      icon: 'pi pi-globe',
-      label: 'Countries'
-    })
-
-    // Route family
-    ctx.routeFamily('country', ['country-'])
   }
 }
 

@@ -55,6 +55,7 @@ export class Collector {
     this._ctx = null
     this._seenCount = 0  // Number of entries that have been "seen"
     this._bridge = null  // Set by DebugBridge when added
+    this._notifyCallbacks = []  // Direct notification subscribers
   }
 
   /**
@@ -120,8 +121,8 @@ export class Collector {
         this._seenCount--
       }
     }
-    // Notify bridge for reactive UI update
-    this._bridge?.notify()
+    // Notify bridge and direct subscribers
+    this.notifyChange()
   }
 
   /**
@@ -130,6 +131,27 @@ export class Collector {
    */
   notifyChange() {
     this._bridge?.notify()
+    // Call direct subscribers
+    for (const cb of this._notifyCallbacks) {
+      try {
+        cb()
+      } catch (e) {
+        console.warn('[Collector] Notify callback error:', e)
+      }
+    }
+  }
+
+  /**
+   * Subscribe to change notifications
+   * @param {Function} callback - Called when collector state changes
+   * @returns {Function} Unsubscribe function
+   */
+  onNotify(callback) {
+    this._notifyCallbacks.push(callback)
+    return () => {
+      const idx = this._notifyCallbacks.indexOf(callback)
+      if (idx >= 0) this._notifyCallbacks.splice(idx, 1)
+    }
   }
 
   /**

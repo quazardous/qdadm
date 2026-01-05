@@ -1,44 +1,53 @@
 /**
- * useCurrentEntity - Share page entity data with navigation context
+ * useCurrentEntity - Share page entity data with navigation context (breadcrumb)
  *
- * When a page loads an entity (e.g., ProductDetailPage fetches a product),
- * it can call setCurrentEntity() to share that data with the navigation context.
- * This avoids a second fetch for breadcrumb display.
+ * When a page loads an entity, it calls setBreadcrumbEntity() to share
+ * the data with AppLayout for breadcrumb display.
  *
  * Usage in a detail page:
  * ```js
- * const { setCurrentEntity } = useCurrentEntity()
+ * const { setBreadcrumbEntity } = useCurrentEntity()
  *
  * async function loadProduct() {
  *   product.value = await productsManager.get(productId)
- *   setCurrentEntity(product.value)  // Share with navigation
+ *   setBreadcrumbEntity(product.value)  // Level 1 (main entity)
  * }
  * ```
  *
- * The navigation context (useNavContext) will use this data instead of
- * fetching the entity again for the breadcrumb.
+ * For nested routes with parent/child entities:
+ * ```js
+ * // Parent page loaded first
+ * setBreadcrumbEntity(book, 1)  // Level 1: the book
+ *
+ * // Child page
+ * setBreadcrumbEntity(loan, 2)  // Level 2: the loan under the book
+ * ```
  */
 import { inject } from 'vue'
 
 /**
- * Composable to share current page entity with navigation context
- * @returns {{ setCurrentEntity: (data: object) => void }}
+ * Composable to share page entity data with breadcrumb
+ * @returns {{ setBreadcrumbEntity: (data: object, level?: number) => void }}
  */
 export function useCurrentEntity() {
-  const currentEntityData = inject('qdadmCurrentEntityData', null)
+  const setBreadcrumbEntityFn = inject('qdadmSetBreadcrumbEntity', null)
 
   /**
-   * Set the current entity data for navigation context
-   * Call this after loading an entity to avoid double fetch
+   * Set entity data for breadcrumb at a specific level
    * @param {object} data - Entity data
+   * @param {number} level - Breadcrumb level (1 = main entity, 2 = child, etc.)
    */
-  function setCurrentEntity(data) {
-    if (currentEntityData) {
-      currentEntityData.value = data
+  function setBreadcrumbEntity(data, level = 1) {
+    if (setBreadcrumbEntityFn) {
+      setBreadcrumbEntityFn(data, level)
     }
   }
 
+  // Backwards compat alias
+  const setCurrentEntity = (data) => setBreadcrumbEntity(data, 1)
+
   return {
-    setCurrentEntity
+    setBreadcrumbEntity,
+    setCurrentEntity  // deprecated alias
   }
 }

@@ -110,7 +110,7 @@ function getCapabilityLabel(cap) {
     <div v-if="entries[0]?.type === 'status'" class="entities-status">
       {{ entries[0].message }}
     </div>
-    <div v-else v-for="entity in entries" :key="entity.name" class="entity-item" :class="{ 'entity-active': entity.hasActivity }">
+    <div v-else v-for="entity in entries" :key="entity.name" class="entity-item" :class="{ 'entity-active': entity.hasActivity, 'entity-system': entity.system }">
       <div class="entity-header" @click="toggleExpand(entity.name)">
         <button class="entity-expand">
           <i :class="['pi', isExpanded(entity.name) ? 'pi-chevron-down' : 'pi-chevron-right']" />
@@ -352,6 +352,22 @@ function getCapabilityLabel(cap) {
 .entity-active {
   border-left-color: #f59e0b;
   background: linear-gradient(90deg, rgba(245, 158, 11, 0.1) 0%, #27272a 30%);
+}
+.entity-system {
+  border-left-color: #ef4444;
+  background: linear-gradient(90deg, rgba(239, 68, 68, 0.1) 0%, #27272a 30%);
+}
+.entity-system .entity-header {
+  color: #ef4444;
+}
+.entity-system .entity-header:hover {
+  color: #f87171;
+}
+.entity-system .entity-name::after {
+  content: ' (system)';
+  font-size: 9px;
+  color: #f87171;
+  font-weight: normal;
 }
 .entity-header {
   display: flex;

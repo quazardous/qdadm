@@ -8,23 +8,20 @@ qdadm is an **ultra-DRY** admin framework. 80% of admin pages are built by decla
 
 ```vue
 <script setup>
-import { useListPageBuilder, ListPage, Column } from 'qdadm'
+import { ListPage } from 'qdadm/components'
+import { useListPageBuilder } from 'qdadm/composables'
 
-const list = useListPageBuilder({ entity: 'books' })
-list.setSearch({ fields: ['title', 'author'] })
+const list = useListPageBuilder('books')
+list.addColumn('title', 'Title')
+list.addColumn('author', 'Author')
+list.setSearch({ placeholder: 'Search...' })
 list.addFilter('genre', { optionsEntity: 'genres' })
-list.addCreateAction()
 list.addEditAction()
 list.addDeleteAction()
 </script>
 
 <template>
-  <ListPage v-bind="list.props.value" v-on="list.events">
-    <template #columns>
-      <Column field="title" header="Title" sortable />
-      <Column field="author" header="Author" sortable />
-    </template>
-  </ListPage>
+  <ListPage v-bind="list.props.value" v-on="list.events" />
 </template>
 ```
 
@@ -153,29 +150,41 @@ const { items } = await booksManager.list()  // Uses preloaded cache
 Organize features as class-based modules with lifecycle hooks:
 
 ```javascript
-import { Module } from 'qdadm'
+import { Module, EntityManager, MockApiStorage } from 'qdadm'
 
 export class BooksModule extends Module {
   static name = 'books'
-  static requires = ['auth']  // Dependencies
+  static requires = []        // Dependencies
   static priority = 50        // Load order (lower = earlier)
 
   async connect(ctx) {
-    // Register routes, signals, zones
-    ctx.addRoutes('/books', booksRoutes, { entity: 'books' })
-    ctx.addNavItem({ label: 'Books', icon: 'pi-book', to: '/books' })
+    // Register entity
+    ctx.entity('books', new EntityManager({
+      name: 'books',
+      labelField: 'title',
+      storage: new MockApiStorage({ entityName: 'books' })
+    }))
 
-    // Listen to signals (auto-cleanup on disconnect)
-    this.onSignal('book:created', (book) => {
-      ctx.emit('toast:success', { summary: `Book "${book.title}" created` })
+    // CRUD routes + nav (single form pattern)
+    ctx.crud('books', {
+      list: () => import('./pages/BookList.vue'),
+      form: () => import('./pages/BookForm.vue')
+    }, {
+      nav: { section: 'Library', icon: 'pi pi-book' }
     })
+
+    // Zones for extensibility
+    ctx.zone('books-header')
+    ctx.block('books-header', { id: 'stats', component: BookStats })
   }
 }
 
-// In main.js
-kernel.use(new BooksModule())
-kernel.use(new DebugModule({ enabled: true }))
-await kernel.boot()
+// In main.js - auto-discovery via glob
+const kernel = new Kernel({
+  modules: import.meta.glob('./modules/*/index.js', { eager: true }),
+  // ...
+})
+kernel.createApp().mount('#app')
 ```
 
 **Why modules?**
@@ -242,15 +251,39 @@ Even these should use EntityManager for data access.
 
 ## Security by Default
 
-qdadm handles token expiration and auth errors automatically:
+### Unified Permission System
 
 ```js
-// Kernel auto-handles auth:expired signal
 new Kernel({
-  authAdapter,  // Your auth adapter
-  // ... rest of config
+  authAdapter,
+  security: {
+    roleHierarchy: {
+      ROLE_ADMIN: ['ROLE_EDITOR'],
+      ROLE_EDITOR: ['ROLE_USER']
+    },
+    rolePermissions: {
+      ROLE_ADMIN: ['*'],
+      ROLE_EDITOR: ['entity:books:*'],
+      ROLE_USER: ['entity:books:read']
+    }
+  }
 })
 
+// Check permission anywhere
+ctx.security.isGranted('entity:books:delete')
+ctx.security.isGranted('entity:*:read')  // wildcard
+```
+
+**Permission flow:**
+```
+User roles → RoleHierarchy (expand) → RoleGranter (get perms) → PermissionMatcher (check)
+```
+
+### Token Expiration
+
+qdadm handles auth errors automatically:
+
+```js
 // Wire your API client to emit auth:expired on 401/403
 kernel.setupApiClient(axios.create({ baseURL: '/api' }))
 ```
@@ -260,17 +293,16 @@ kernel.setupApiClient(axios.create({ baseURL: '/api' }))
 2. `authAdapter.logout()` called
 3. User redirected to `/login?expired=1`
 
-**Token expiration check:**
+### Impersonation
+
+Signal-driven impersonation for testing permissions:
+
 ```js
-// In authAdapter.isAuthenticated() - check expiration
-isAuthenticated() {
-  const token = this.getToken()
-  if (!token || this.isTokenExpired(token)) {
-    this.logout()
-    return false
-  }
-  return true
-}
+// Start impersonation
+await signals.emit('auth:impersonate', { target: user, original: admin })
+
+// End impersonation
+await signals.emit('auth:impersonate:stop', { original: admin })
 ```
 
 See [Security docs](./docs/security.md) for full auth flow.

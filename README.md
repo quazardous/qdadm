@@ -1,75 +1,104 @@
 # qdadm
 
-**Vue 3 admin framework. PrimeVue. Zero boilerplate.**
+**Build your Vue 3 admin in 5 minutes.**
 
 [![Live Demo](https://img.shields.io/badge/demo-live-brightgreen)](https://quazardous.github.io/qdadm/)
 
+---
+
+## Quick Start (5 minutes)
+
+### 1. Create Vue project (1 min)
+
 ```bash
-npm install qdadm
+npm create vite@latest my-admin -- --template vue
+cd my-admin
+npm install
 ```
 
-## 30-Second Setup
+### 2. Install qdadm + PrimeVue (30 sec)
+
+```bash
+npm install qdadm primevue @primeuix/themes
+```
+
+### 3. Setup main.js (1 min)
+
+Replace `src/main.js`:
 
 ```js
-import { Kernel, EntityManager, LocalStorage } from 'qdadm'
+import { Kernel, EntityManager, MockApiStorage } from 'qdadm'
 import PrimeVue from 'primevue/config'
 import Aura from '@primeuix/themes/aura'
 import 'qdadm/styles'
 
+import App from './App.vue'
+import MainLayout from './MainLayout.vue'
+
 const kernel = new Kernel({
   root: App,
-  modules: import.meta.glob('./modules/*/init.js', { eager: true }),
+  modules: import.meta.glob('./modules/*/index.js', { eager: true }),
   managers: {
     books: new EntityManager({
       name: 'books',
-      storage: new LocalStorage({ key: 'books' }),
+      storage: new MockApiStorage({
+        key: 'books',
+        initialData: [
+          { id: '1', title: '1984', author: 'Orwell' },
+          { id: '2', title: 'Dune', author: 'Herbert' }
+        ]
+      }),
       labelField: 'title'
     })
   },
-  authAdapter,
-  pages: { login: LoginPage, layout: MainLayout },
-  homeRoute: 'book',
-  app: { name: 'My App' },
+  pages: { layout: MainLayout },
+  homeRoute: 'books',
+  app: { name: 'My Admin' },
   primevue: { plugin: PrimeVue, theme: Aura }
 })
 
 kernel.createApp().mount('#app')
 ```
 
-## Module in 20 Lines
+### 4. Create layout (30 sec)
 
-```
-modules/books/
-├── init.js
-└── pages/
-    ├── BookList.vue
-    └── BookForm.vue
-```
-
-**init.js:**
-```js
-export function init(registry) {
-  registry.addRoutes('books', [
-    { path: '', name: 'book', component: () => import('./pages/BookList.vue') },
-    { path: 'create', name: 'book-create', component: () => import('./pages/BookForm.vue') },
-    { path: ':id/edit', name: 'book-edit', component: () => import('./pages/BookForm.vue') }
-  ], { entity: 'books' })
-
-  registry.addNavItem({ section: 'Library', route: 'book', label: 'Books', entity: 'books' })
-}
-```
-
-## List Page in 15 Lines
+Create `src/MainLayout.vue`:
 
 ```vue
 <script setup>
-import { useListPageBuilder } from 'qdadm/composables'
+import { AppLayout } from 'qdadm/components'
+</script>
+
+<template>
+  <AppLayout />
+</template>
+```
+
+### 5. Create your first module (2 min)
+
+Create `src/modules/books/index.js`:
+
+```js
+export function init(ctx) {
+  ctx.routes('books', [
+    { path: '', name: 'books', component: () => import('./BookList.vue') },
+    { path: 'create', name: 'books-create', component: () => import('./BookForm.vue') },
+    { path: ':id/edit', name: 'books-edit', component: () => import('./BookForm.vue') }
+  ])
+  ctx.nav({ section: 'Library', route: 'books', label: 'Books' })
+}
+```
+
+Create `src/modules/books/BookList.vue`:
+
+```vue
+<script setup>
 import { ListPage } from 'qdadm/components'
+import { useListPageBuilder } from 'qdadm/composables'
 
 const list = useListPageBuilder('books')
 list.addColumn('title', 'Title')
 list.addColumn('author', 'Author')
-list.setSearch({ placeholder: 'Search...' })
 list.addEditAction()
 list.addDeleteAction()
 </script>
@@ -79,12 +108,12 @@ list.addDeleteAction()
 </template>
 ```
 
-## Form in 20 Lines
+Create `src/modules/books/BookForm.vue`:
 
 ```vue
 <script setup>
-import { useForm } from 'qdadm/composables'
 import { PageLayout, FormField, FormActions } from 'qdadm/components'
+import { useForm } from 'qdadm/composables'
 
 const { form, loading, saving, save, saveAndClose, cancel } = useForm('books')
 </script>
@@ -98,61 +127,106 @@ const { form, loading, saving, save, saveAndClose, cancel } = useForm('books')
 </template>
 ```
 
-## Permissions Built-In
+### 6. Run it
+
+```bash
+npm run dev
+```
+
+Open http://localhost:5173 - You have a working admin with CRUD operations.
+
+---
+
+## Next Steps
+
+### Add more entities
 
 ```js
-class BooksManager extends EntityManager {
-  canRead() { return true }
-  canCreate() { return auth.user?.role === 'admin' }
-  canUpdate(book) { return book.author_id === auth.user?.id }
-  canDelete(book) { return auth.user?.role === 'admin' }
+// main.js - add a 'users' manager
+managers: {
+  books: new EntityManager({ ... }),
+  users: new EntityManager({
+    name: 'users',
+    storage: new MockApiStorage({ key: 'users' }),
+    labelField: 'name'
+  })
 }
 ```
 
-- Nav items auto-hide when `canRead()` = false
-- Routes auto-redirect when `canRead()` = false
-- Create/Edit/Delete buttons auto-hide per entity
-
-## Smart Caching
+### Connect to real API
 
 ```js
-// Automatic: cache fills on first list(), local filtering when < threshold
-const manager = new EntityManager({
+import { ApiStorage } from 'qdadm'
+
+new EntityManager({
   name: 'books',
-  storage: new ApiStorage({ endpoint: '/api/books' }),
-  localFilterThreshold: 100  // Switch to local mode below 100 items
+  storage: new ApiStorage({
+    baseUrl: '/api/books',
+    // Automatic: GET /, GET /:id, POST /, PATCH /:id, DELETE /:id
+  })
+})
+```
+
+### Add authentication
+
+```js
+import { SessionAuthAdapter } from 'qdadm'
+import LoginPage from './LoginPage.vue'
+
+const authAdapter = new SessionAuthAdapter({
+  loginFn: async (credentials) => {
+    const res = await fetch('/api/login', { method: 'POST', body: JSON.stringify(credentials) })
+    return res.json() // { user, token }
+  }
 })
 
-// Ownership filters: cacheSafe = true for session-bound filters
-async list(params) {
-  params.user_id = auth.user.id
-  params.cacheSafe = true  // Safe to cache despite filter
-  return super.list(params)
-}
+const kernel = new Kernel({
+  authAdapter,
+  pages: { login: LoginPage, layout: MainLayout },
+  // ...
+})
 ```
+
+### Add permissions
+
+```js
+// In EntityManager subclass or manager options
+new EntityManager({
+  name: 'books',
+  storage,
+  permissions: {
+    create: () => auth.hasRole('admin'),
+    update: (book) => book.owner_id === auth.user.id,
+    delete: () => auth.hasRole('admin')
+  }
+})
+```
+
+---
 
 ## What's Included
 
-| Category | What You Get |
-|----------|--------------|
-| **Bootstrap** | Kernel, createQdadm, module registry |
-| **Data** | EntityManager, ApiStorage, LocalStorage |
-| **Forms** | useForm, useBareForm, FormField, FormActions |
-| **Lists** | useListPageBuilder, ListPage, FilterBar |
-| **Layout** | AppLayout, PageLayout, Breadcrumb |
-| **Dialogs** | SimpleDialog, UnsavedChangesDialog |
-| **Editors** | JsonViewer, KeyValueEditor |
+| Feature | Description |
+|---------|-------------|
+| **Kernel** | Bootstrap, routing, module loading |
+| **EntityManager** | CRUD, caching, permissions |
+| **Storage** | MockApiStorage, ApiStorage, SdkStorage |
+| **ListPage** | Sortable table, filters, pagination |
+| **FormField** | Auto-detect input type, validation |
+| **AppLayout** | Sidebar nav, breadcrumbs, theme |
 
 ## Packages
 
 | Package | Description |
 |---------|-------------|
 | [qdadm](packages/qdadm) | Core library |
-| [demo](packages/demo) | Working demo app |
+| [demo](packages/demo) | Full demo app |
 
-## Run Demo
+## Run Demo Locally
 
 ```bash
+git clone https://github.com/quazardous/qdadm.git
+cd qdadm
 npm install
 npm run dev
 ```
@@ -161,11 +235,11 @@ npm run dev
 
 | Doc | Purpose |
 |-----|---------|
-| [QDADM_CREDO](packages/qdadm/QDADM_CREDO.md) | Philosophy, patterns, anti-patterns |
-| [AGENT_GUIDE](docs/AGENT_GUIDE.md) | Quick index for AI agents |
-| [Architecture](packages/qdadm/docs/architecture.md) | PAC pattern, layer separation |
-| [Extension](packages/qdadm/docs/extension.md) | Hooks, signals, zones overview |
-| [Examples](EXAMPLES.md) | Live examples index |
+| [QDADM_CREDO](packages/qdadm/QDADM_CREDO.md) | Philosophy, patterns, concepts |
+| [Architecture](packages/qdadm/docs/architecture.md) | PAC pattern, layers |
+| [Extension](packages/qdadm/docs/extension.md) | Hooks, signals, zones |
+| [SdkStorage](packages/qdadm/README.md#sdkstorage) | Generated SDK integration |
+| [CHANGELOG](CHANGELOG.md) | Version history |
 
 ## License
 

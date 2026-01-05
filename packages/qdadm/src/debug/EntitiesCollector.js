@@ -196,6 +196,13 @@ export class EntitiesCollector extends Collector {
       }
     }
 
+    // Sort: system entities first, then alphabetically
+    entries.sort((a, b) => {
+      if (a.system && !b.system) return -1
+      if (!a.system && b.system) return 1
+      return (a.name || '').localeCompare(b.name || '')
+    })
+
     return entries
   }
 
@@ -212,6 +219,7 @@ export class EntitiesCollector extends Collector {
 
     return {
       name,
+      system: manager.system ?? false,
       hasActivity: this._activeEntities.has(name),
       label: manager.label,
       labelPlural: manager.labelPlural,

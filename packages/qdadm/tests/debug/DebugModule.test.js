@@ -35,6 +35,7 @@ function createMockContext(overrides = {}) {
     provide: vi.fn((key, value) => {
       provided.set(key, value)
     }),
+    component: vi.fn(), // Register global Vue component
     // Test helpers
     _zones: zones,
     _blocks: blocks,

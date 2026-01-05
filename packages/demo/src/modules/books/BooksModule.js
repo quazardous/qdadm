@@ -10,7 +10,7 @@
  * This is the canonical pattern for qdadm modules.
  */
 
-import { Module, EntityManager, MockApiStorage } from 'qdadm'
+import { Module, MockApiStorage, EntityManager } from 'qdadm'
 import { defineAsyncComponent } from 'vue'
 
 // ============================================================================
@@ -35,7 +35,7 @@ export const booksStorageInternal = new MockApiStorage({
 })
 
 // ============================================================================
-// ENTITY MANAGER
+// ENTITY CONFIG
 // ============================================================================
 
 const genreOptions = [
@@ -46,15 +46,10 @@ const genreOptions = [
   { label: 'Mystery', value: 'mystery' }
 ]
 
-/**
- * BooksManager - Everyone can edit, only admin can delete
- */
-class BooksManager extends EntityManager {
-  canDelete() {
-    const user = this._orchestrator?.kernel?.options?.authAdapter?.getUser?.()
-    return user?.role === 'ROLE_ADMIN'
-  }
-}
+// Books permissions are handled by the SecurityChecker:
+// - entity:books:* for admin access
+// - entity:books:read, entity:books:list, entity:books:create, entity:books:update for regular users
+// - entity:books:delete restricted to admin only via role permissions
 
 // ============================================================================
 // MODULE
@@ -72,7 +67,7 @@ export class BooksModule extends Module {
     // ════════════════════════════════════════════════════════════════════════
     // ENTITY
     // ════════════════════════════════════════════════════════════════════════
-    ctx.entity('books', new BooksManager({
+    ctx.entity('books', new EntityManager({
       name: 'books',
       labelField: 'title',
       fields: {

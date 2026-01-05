@@ -131,22 +131,43 @@ async function handleLogin() {
       password: password.value
     })
 
+    toast.add({
+      severity: 'success',
+      summary: 'Welcome',
+      detail: `Logged in as ${result.user?.username || result.user?.email || username.value}`,
+      life: 3000
+    })
+
     // Emit business signal if enabled
     if (props.emitSignal && orchestrator?.signals) {
       orchestrator.signals.emit('auth:login', { user: result.user })
     }
 
-    // Emit component event
     emit('login', result)
-
     router.push(props.redirectTo)
   } catch (error) {
+    password.value = ''
+
+    const message = error.response?.data?.error?.message
+      || error.response?.data?.message
+      || error.message
+      || 'Invalid credentials'
+
     toast.add({
       severity: 'error',
       summary: 'Login Failed',
-      detail: error.message || 'Invalid credentials',
-      life: 3000
+      detail: message,
+      life: 5000
     })
+
+    if (orchestrator?.signals) {
+      orchestrator.signals.emit('auth:login:error', {
+        username: username.value,
+        error: message,
+        status: error.response?.status
+      })
+    }
+
     emit('error', error)
   } finally {
     loading.value = false
@@ -167,7 +188,7 @@ async function handleLogin() {
         </div>
       </template>
       <template #content>
-        <form @submit.prevent="handleLogin" class="qdadm-login-form">
+        <form @submit.prevent="handleLogin" class="qdadm-login-form" autocomplete="off">
           <div class="qdadm-login-field">
             <label for="qdadm-username">{{ usernameLabel }}</label>
             <InputText

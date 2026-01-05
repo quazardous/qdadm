@@ -5,6 +5,80 @@ All notable changes to qdadm will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.38.0] - 2026-01-05
+
+### Added
+- **SecurityModule**: Built-in role management UI
+  - `RoleList.vue`: List all roles with permissions count
+  - `RoleForm.vue`: Create/edit roles with permission picker
+  - `PermissionEditor.vue`: Visual permission selector with grouped permissions
+  - `RolesManager`: EntityManager for roles with permission validation
+  - `UsersManager`: EntityManager for users with role assignment
+  - Auto-registers routes under `/roles` and `/users` when enabled
+  - Uses `PersistableRoleGranterAdapter` for role persistence
+
+### Changed
+- **Cleanup unused exports**: Removed `withAuditLogDecorator`, `withSoftDeleteDecorator`, `withTimestampsDecorator` from `core/index.js`
+  - These were never used; the bundle versions (`withAuditLog`, etc.) are the preferred API
+
+### Fixed
+- **Permission bug**: Wildcard permissions (`**`) inherited from roles were lost on refresh
+  - `SecurityChecker.roleHierarchy` changed from cached property to dynamic getter
+  - `createLocalStorageRoleGranter()` now loads data synchronously (localStorage is sync)
+
+### Demo (0.17.0)
+- **Modules migrated to `ctx.crud()` pattern**:
+  - `SettingsModule`: list-only entity
+  - `CountriesModule`: list + detail (read-only)
+  - `JsonPlaceholderModule`: jp_users, posts, todos
+- **JpUserDetailPage.vue**: Uses `useOrchestrator()` instead of legacy `inject('qdadmOrchestrator')`
+
+## [0.37.0] - 2026-01-05
+
+### Added
+- **Unified Permission System**: Wildcard-based permission matching with module registration
+  - **Permission format**: `namespace:target:action` (e.g., `entity:books:read`, `auth:impersonate`)
+  - **PermissionMatcher**: Wildcard pattern matching (`*` = one segment, `**` = greedy)
+    - `entity:*:read` matches `entity:books:read`, `entity:loans:read`
+    - `entity:**` matches all entity permissions
+    - `admin:**` matches all admin permissions
+  - **PermissionRegistry**: Central registry for module-declared permissions
+    - `ctx.permissions('auth', { impersonate: 'Impersonate users' })` - system permissions
+    - `ctx.entity()` auto-registers CRUD permissions (`entity:name:read`, `list`, `create`, `update`, `delete`)
+    - Query methods: `getAll()`, `getGrouped()`, `getByModule()`, `getEntityPermissions()`
+  - **RoleGranterAdapter**: Interface for role→permissions mapping
+    - `StaticRoleGranterAdapter`: Config-based (default, from `security.role_permissions`)
+    - `EntityRoleGranterAdapter`: Entity-based for apps with role management UI
+- **`qdadm/security` subpath export**: Direct access to security classes
+  - `import { PermissionMatcher, PermissionRegistry, RoleGranterAdapter } from 'qdadm/security'`
+- **PersistableRoleGranterAdapter**: Load/persist role mapping from any source
+  - Callbacks for `load()` and `persist()` - works with localStorage, API, entity
+  - Default mapping as fallback when source unavailable
+  - Merge strategies: `extend` (default), `replace`, `defaults-only`
+  - Mutation methods: `setRolePermissions()`, `addRolePermissions()`, `deleteRole()`, etc.
+  - Helper: `createLocalStorageRoleGranter({ key, defaults })`
+
+### Changed
+- **SecurityChecker**: Now uses `PermissionMatcher.any()` for wildcard permission checks
+  - `isGranted('entity:books:read')` matches user permissions `['entity:*:read']`
+  - Role permission format changed: `entity:read` → `entity:*:read`
+  - Role assign permission: `role:assign` → `security:roles:assign`
+- **EntityManager.canAccess()**: Uses `isGranted()` when SecurityChecker configured
+  - Permission format: `entity:{name}:{action}` (e.g., `entity:books:read`)
+  - Falls back to legacy `canPerform()`/`canAccessRecord()` if no SecurityChecker
+
+### Fixed
+- **Cyclic reference error on kernel:ready**: Signal payload no longer includes kernel/orchestrator
+  - QuarKernel debug mode serializes payloads, causing errors with cyclic objects
+  - Handlers access kernel/orchestrator via their stored context from `connect()` instead
+- **SignalCollector safety**: Skip internal signals and sanitize data
+  - Skip `kernel:ready`, `kernel:shutdown` signals in debug panel
+  - Sanitize any remaining non-serializable objects from recorded signals
+
+### Demo
+- Updated role_permissions to use new wildcard format
+- `auth:impersonate` permission for user impersonation feature
+
 ## [0.36.0] - 2026-01-05
 
 ### Added

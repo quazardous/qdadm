@@ -174,10 +174,28 @@ Auth signals handle session lifecycle and security events:
 | Signal | When | Payload | Default Handler |
 |--------|------|---------|-----------------|
 | `auth:login` | User logs in | `{ user }` | Resolves `auth:ready` deferred |
+| `auth:login:error` | Login failed | `{ username, error, status }` | Toast error shown |
 | `auth:logout` | User logs out | `{ user?, reason? }` | - |
 | `auth:expired` | Token expired or 401/403 | `{ status?, url? }` | Logout + redirect to `/login` |
 | `auth:impersonate` | Admin impersonates user | `{ target, original }` | - |
 | `auth:impersonate:stop` | Impersonation ends | `{ original }` | - |
+
+### Login Error vs Session Expired
+
+**Important**: `auth:login:error` ≠ `auth:expired`
+
+- `auth:login:error` → Wrong credentials. User stays on login page, sees toast error.
+- `auth:expired` → Session expired. User is logged out and redirected to login.
+
+When wiring API interceptors for 401, **exclude the login endpoint**:
+
+```js
+// In main.js
+setAuthExpiredHandler((status, url) => {
+  if (url?.includes('/auth/login')) return  // Let LoginPage handle
+  signals.emit('auth:expired', { status, url })
+})
+```
 
 ### Token Expiration Flow
 

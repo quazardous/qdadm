@@ -5,12 +5,12 @@
  * Renders the Toast component for notifications.
  * Uses PrimeVue Toast with default positioning.
  *
- * This is the default component rendered in the "toaster" zone
- * when no blocks are registered.
+ * NOTE: For pages outside BaseLayout (like LoginPage),
+ * apps must include Toast in their App.vue root component.
  */
 import Toast from 'primevue/toast'
 </script>
 
 <template>
-  <Toast />
+  <Toast position="top-right" />
 </template>

@@ -82,6 +82,35 @@ describe('authFactory', () => {
     })
   })
 
+  describe('function callback', () => {
+    it('wraps function in EntityAuthAdapter with getCurrentUser', () => {
+      const user = { id: 1, name: 'Test' }
+      const result = authFactory(() => user)
+
+      expect(result).toBeInstanceOf(EntityAuthAdapter)
+      expect(result.getCurrentUser()).toBe(user)
+    })
+
+    it('function can return null', () => {
+      const result = authFactory(() => null)
+
+      expect(result).toBeInstanceOf(EntityAuthAdapter)
+      expect(result.getCurrentUser()).toBeNull()
+    })
+
+    it('function is called each time getCurrentUser is called', () => {
+      let callCount = 0
+      const result = authFactory(() => {
+        callCount++
+        return { id: callCount }
+      })
+
+      expect(result.getCurrentUser()).toEqual({ id: 1 })
+      expect(result.getCurrentUser()).toEqual({ id: 2 })
+      expect(callCount).toBe(2)
+    })
+  })
+
   describe('string patterns', () => {
     it('resolves built-in types', () => {
       const result = authFactory('permissive')

@@ -92,17 +92,7 @@ function onBlur() {
 </template>
 
 <style scoped>
-.field-hint {
-  color: var(--p-surface-500);
-  margin-top: 0.25rem;
-  display: block;
-}
-
-.field-error {
-  color: var(--p-red-500);
-  margin-top: 0.25rem;
-  display: block;
-}
+/* .field-hint and .field-error are global (main.css) */
 
 .field-invalid :deep(input),
 .field-invalid :deep(textarea),

@@ -27,7 +27,7 @@
  *   Path: /books/:bookId/loans/:id/edit   meta: { entity: 'loans', parent: { entity: 'books', param: 'bookId' } }
  *   → Home > Books > "Le Petit Prince" > Loans > "Loan #abc123"
  */
-import { ref, computed, watch, inject, unref } from 'vue'
+import { ref, computed, watch, inject } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { getSiblingRoutes } from '../module/moduleRegistry.js'
 
@@ -41,6 +41,12 @@ export function useNavContext(options = {}) {
   // Injected dependencies
   const orchestrator = inject('qdadmOrchestrator', null)
   const homeRouteName = inject('qdadmHomeRoute', null)
+
+  // Breadcrumb entity data - multi-level Map from AppLayout
+  // Updated by pages via setBreadcrumbEntity(data, level)
+  // Can be passed directly (for layout component that provides AND uses breadcrumb)
+  // or injected from parent (for child pages)
+  const breadcrumbEntities = options.breadcrumbEntities ?? inject('qdadmBreadcrumbEntities', null)
 
   // Entity data cache
   const entityDataCache = ref(new Map())
@@ -215,34 +221,42 @@ export function useNavContext(options = {}) {
    *
    * For PARENT items: always fetches from manager
    */
-  // Watch navChain and entityData ref (deep watch to catch value changes)
-  const entityDataRef = computed(() => options.entityData ? unref(options.entityData) : null)
-  watch([navChain, entityDataRef], async ([chain, externalData]) => {
+  // Watch navChain and breadcrumbEntities to populate chainData
+  // breadcrumbEntities is a ref to Map: level -> entityData (set by pages via setBreadcrumbEntity)
+  // Note: watch ref directly, not () => ref.value, for proper reactivity tracking
+  watch([navChain, breadcrumbEntities], async ([chain, entitiesMap]) => {
     // Build new Map (reassignment triggers Vue reactivity, Map.set() doesn't)
     const newChainData = new Map()
+
+    // Count item segments to determine their level (1-based)
+    let itemLevel = 0
 
     for (let i = 0; i < chain.length; i++) {
       const segment = chain[i]
       if (segment.type !== 'item') continue
 
+      itemLevel++
       const isLastItem = !chain.slice(i + 1).some(s => s.type === 'item')
 
-      // For the last item, use external data from page (don't fetch)
-      if (isLastItem) {
-        if (externalData) {
-          newChainData.set(i, externalData)
-        }
-        // If no externalData, breadcrumb will show "..." until page provides it
+      // Check if page provided data for this level via setBreadcrumbEntity
+      const providedData = entitiesMap?.get(itemLevel)
+      if (providedData) {
+        newChainData.set(i, providedData)
         continue
       }
 
-      // For parent items, fetch from manager
-      try {
-        const data = await segment.manager.get(segment.id)
-        newChainData.set(i, data)
-      } catch (e) {
-        console.warn(`[useNavContext] Failed to fetch ${segment.entity}:${segment.id}`, e)
+      // For items without provided data:
+      // - Last item: show "..." (page should call setBreadcrumbEntity)
+      // - Parent items: fetch from manager
+      if (!isLastItem) {
+        try {
+          const data = await segment.manager.get(segment.id)
+          newChainData.set(i, data)
+        } catch (e) {
+          console.warn(`[useNavContext] Failed to fetch ${segment.entity}:${segment.id}`, e)
+        }
       }
+      // Last item without data will show "..." in breadcrumb
     }
 
     // Assign new Map to trigger reactivity

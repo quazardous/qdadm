@@ -6,9 +6,9 @@
  * Read-only view since JSONPlaceholder doesn't persist changes.
  */
 
-import { ref, computed, onMounted, inject } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { PageLayout, usePageTitle } from 'qdadm'
+import { PageLayout, usePageTitle, useOrchestrator } from 'qdadm'
 import Card from 'primevue/card'
 import Button from 'primevue/button'
 import Message from 'primevue/message'
@@ -17,7 +17,7 @@ const route = useRoute()
 const router = useRouter()
 
 // Get the users manager from orchestrator
-const orchestrator = inject('qdadmOrchestrator')
+const orchestrator = useOrchestrator()
 const manager = orchestrator.get('jp_users')
 
 // State

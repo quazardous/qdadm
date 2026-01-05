@@ -3,6 +3,7 @@
  * UserForm - Create/Edit user page
  */
 
+import { ref, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { useForm, PageLayout, FormField, FormActions } from 'qdadm'
 import Card from 'primevue/card'
@@ -36,8 +37,13 @@ const {
   getId: () => route.params.id
 })
 
-// Get field config from manager
-const roleField = manager.getFieldConfig('role')
+// Role options - loaded from roles entity via reference
+const roleOptions = ref([])
+
+onMounted(async () => {
+  // Resolve reference options for role field
+  roleOptions.value = await manager.resolveReferenceOptions('role')
+})
 </script>
 
 <template>
@@ -62,7 +68,7 @@ const roleField = manager.getFieldConfig('role')
           <FormField name="role" label="Role">
             <Select
               v-model="form.role"
-              :options="roleField.options"
+              :options="roleOptions"
               optionLabel="label"
               optionValue="value"
               class="w-full"

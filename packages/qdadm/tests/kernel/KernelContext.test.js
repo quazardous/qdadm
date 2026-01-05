@@ -51,6 +51,9 @@ function createMockKernel(overrides = {}) {
       managerResolver: vi.fn(),
       managerRegistry: {},
     },
+    // For graceful handling when vueApp is null
+    _pendingProvides: new Map(),
+    _pendingComponents: new Map(),
     ...overrides,
   }
 }

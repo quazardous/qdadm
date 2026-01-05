@@ -5,6 +5,7 @@
  */
 
 import { ToastBridgeModule } from 'qdadm'
+import { SecurityModule } from 'qdadm/security'
 import { BooksModule } from '../modules/books/BooksModule'
 import { UsersModule } from '../modules/users/UsersModule'
 import { LoansModule } from '../modules/loans/LoansModule'
@@ -17,6 +18,7 @@ import { JsonPlaceholderModule } from '../modules/jsonplaceholder/JsonPlaceholde
 
 export const moduleDefs = [
   ToastBridgeModule,
+  SecurityModule,
   BooksModule,
   UsersModule,
   LoansModule,
@@ -41,5 +43,5 @@ export const sectionOrder = [
   'JSONPlaceholder',
   'DummyJSON',
   'REST Countries',
-  'Administration'
+  'Security'
 ]
