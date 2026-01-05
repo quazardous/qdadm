@@ -5,6 +5,17 @@ All notable changes to qdadm will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.41.0] - 2026-01-06
+
+### Added
+- **`hashMode` option**: Use hash-based routing for static hosting (GitHub Pages)
+  - `hashMode: true` → URLs like `/#/books` instead of `/books`
+  - Works with `basePath` for subdirectory deployments
+  - Demo: Enable via `VITE_HASH_MODE=true` environment variable
+
+### Demo (0.17.3)
+- **hashMode support**: Configurable via `VITE_HASH_MODE` env variable
+
 ## [0.40.1] - 2026-01-06
 
 ### Demo (0.17.2)

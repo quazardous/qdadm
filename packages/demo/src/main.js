@@ -27,6 +27,7 @@ import { moduleDefs, modulesOptions, sectionOrder, registerHooks } from './confi
 const kernel = new Kernel({
   root: App,
   basePath: import.meta.env.BASE_URL,
+  hashMode: import.meta.env.VITE_HASH_MODE === 'true',
 
   // Modules & Navigation
   // Module-centric: modules define their own entities via ctx.entity()
