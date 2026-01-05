@@ -76,16 +76,24 @@ import { AppLayout } from 'qdadm/components'
 
 ### 5. Create your first module (2 min)
 
-Create `src/modules/books/index.js`:
+Create `src/modules/books/BooksModule.js`:
 
 ```js
-export function init(ctx) {
-  ctx.routes('books', [
-    { path: '', name: 'books', component: () => import('./BookList.vue') },
-    { path: 'create', name: 'books-create', component: () => import('./BookForm.vue') },
-    { path: ':id/edit', name: 'books-edit', component: () => import('./BookForm.vue') }
-  ])
-  ctx.nav({ section: 'Library', route: 'books', label: 'Books' })
+import { Module } from 'qdadm'
+
+export class BooksModule extends Module {
+  static name = 'books'
+
+  async connect(ctx) {
+    ctx.entity('books', { ... })  // or reference manager from kernel
+
+    ctx.crud('books', {
+      list: () => import('./BookList.vue'),
+      form: () => import('./BookForm.vue')
+    }, {
+      nav: { section: 'Library', icon: 'pi pi-book' }
+    })
+  }
 }
 ```
 
@@ -190,16 +198,25 @@ const kernel = new Kernel({
 ### Add permissions
 
 ```js
-// In EntityManager subclass or manager options
-new EntityManager({
-  name: 'books',
-  storage,
-  permissions: {
-    create: () => auth.hasRole('admin'),
-    update: (book) => book.owner_id === auth.user.id,
-    delete: () => auth.hasRole('admin')
+import { createLocalStorageRoleGranter } from 'qdadm/security'
+
+const kernel = new Kernel({
+  // ...
+  security: {
+    roleGranter: createLocalStorageRoleGranter({
+      defaults: {
+        role_hierarchy: { ROLE_ADMIN: ['ROLE_USER'] },
+        role_permissions: {
+          ROLE_USER: ['entity:*:read', 'entity:*:list'],
+          ROLE_ADMIN: ['entity:**', 'admin:**']  // ** = all
+        }
+      }
+    })
   }
 })
+
+// Permissions auto-checked via SecurityChecker.isGranted()
+// entity:books:read, entity:books:create, entity:books:update, entity:books:delete
 ```
 
 ---
