@@ -5,6 +5,14 @@ All notable changes to qdadm will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.35.0] - 2026-01-05
+
+### Changed
+- **Debug panels improvements**:
+  - SignalsPanel: configurable max signals limit (persisted), top-down display (newest first)
+  - SignalsPanel & EntriesPanel: orange dot indicator for unseen entries
+  - Unified unseen indicator color to orange (`#f59e0b`) across all panels
+
 ## [0.34.0] - 2026-01-05
 
 ### Added

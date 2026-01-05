@@ -59,6 +59,7 @@ export class EntityManager {
       localFilterThreshold = null,  // Items threshold to switch to local filtering (null = use default)
       readOnly = false,             // If true, canCreate/canUpdate/canDelete return false
       warmup = true,                // If true, cache is preloaded at boot via DeferredRegistry
+      authSensitive = false,        // If true, auto-invalidate datalayer on auth events
       // Scope control
       scopeWhitelist = null,        // Array of scopes/modules that can bypass restrictions
       // Relations
@@ -85,6 +86,7 @@ export class EntityManager {
     this.localFilterThreshold = localFilterThreshold
     this._readOnly = readOnly
     this._warmup = warmup
+    this._authSensitive = authSensitive
 
     // Scope control
     this._scopeWhitelist = scopeWhitelist
@@ -172,6 +174,25 @@ export class EntityManager {
     if (!this._signals) return
     // Use SignalBus.emitEntity for proper dual-signal emission
     this._signals.emitEntity(this.name, action, data)
+  }
+
+  /**
+   * Emit entity:data-invalidate signal for client cache invalidation
+   *
+   * This is a unified signal for clients to know when entity data has changed.
+   * Clients can listen to `entity:data-invalidate` to refresh their views.
+   *
+   * @param {string} action - 'created', 'updated', 'deleted'
+   * @param {string|number} id - The affected record ID
+   * @private
+   */
+  _emitDataInvalidate(action, id) {
+    if (!this._signals) return
+    this._signals.emit('entity:data-invalidate', {
+      entity: this.name,
+      action,
+      id
+    })
   }
 
   // ============ LIFECYCLE HOOKS ============
@@ -860,6 +881,7 @@ export class EntityManager {
         manager: this.name,
         id: result?.[this.idField]
       })
+      this._emitDataInvalidate('created', result?.[this.idField])
       return result
     }
     throw new Error(`[EntityManager:${this.name}] create() not implemented`)
@@ -896,6 +918,7 @@ export class EntityManager {
         manager: this.name,
         id
       })
+      this._emitDataInvalidate('updated', id)
       return result
     }
     throw new Error(`[EntityManager:${this.name}] update() not implemented`)
@@ -932,6 +955,7 @@ export class EntityManager {
         manager: this.name,
         id
       })
+      this._emitDataInvalidate('updated', id)
       return result
     }
     throw new Error(`[EntityManager:${this.name}] patch() not implemented`)
@@ -959,6 +983,7 @@ export class EntityManager {
         manager: this.name,
         id
       })
+      this._emitDataInvalidate('deleted', id)
       return result
     }
     throw new Error(`[EntityManager:${this.name}] delete() not implemented`)
@@ -1143,11 +1168,12 @@ export class EntityManager {
 
     const cleanups = []
 
-    // Listen for parent cache invalidation (if parents defined)
+    // Listen for parent data changes (if parents defined)
+    // When a parent entity's data changes, clear search cache to re-resolve parent fields
     if (this._parents && Object.keys(this._parents).length > 0) {
       const parentEntities = Object.values(this._parents).map(p => p.entity)
       cleanups.push(
-        this._signals.on('cache:entity:invalidated', ({ entity }) => {
+        this._signals.on('entity:data-invalidate', ({ entity }) => {
           if (parentEntities.includes(entity)) {
             this._clearSearchCache()
           }
@@ -1155,12 +1181,28 @@ export class EntityManager {
       )
     }
 
-    // Listen for targeted cache invalidation (routed by EventRouter)
-    // EntityManager only listens to its own signal, staying simple.
-    // EventRouter transforms high-level events (auth:impersonate) into targeted signals.
+    // Design choice: EntityManager-centric architecture
+    // Storages stay simple (pure data access), EntityManager owns invalidation logic.
+    //
+    // Signal: entity:datalayer-invalidate { entity, actuator? }
+    //   - entity: target entity name, '*' for all, or null/undefined for all
+    //   - actuator: source of the signal ('auth' for auth events, undefined for manual)
+    //
+    // Routing is handled by EventRouter (configured at Kernel level):
+    //   'auth:**' → { signal: 'entity:datalayer-invalidate', transform: () => ({ actuator: 'auth' }) }
+    //
+    // Only authSensitive entities react to actuator='auth' signals.
+    // All entities react to manual signals (no actuator).
+
     cleanups.push(
-      this._signals.on(`cache:entity:invalidate:${this.name}`, () => {
-        this.invalidateCache()
+      this._signals.on('entity:datalayer-invalidate', ({ entity, actuator } = {}) => {
+        // Auth-triggered: only react if authSensitive
+        if (actuator === 'auth' && !this._authSensitive) return
+
+        // Check entity match (global or targeted)
+        if (!entity || entity === '*' || entity === this.name) {
+          this.invalidateDataLayer()
+        }
       })
     )
 
@@ -1216,24 +1258,34 @@ export class EntityManager {
   }
 
   /**
-   * Invalidate the cache (call after create/update/delete)
+   * Invalidate the cache, forcing next list() to refetch
    *
-   * Emits cache:entity:invalidated signal only when cache was previously valid
-   * to avoid duplicate signals on repeated invalidation calls.
+   * Note: entity:data-invalidate signal is emitted by CRUD methods,
+   * not here (to include action and id context).
    */
   invalidateCache() {
-    const wasValid = this._cache.valid
-
     this._cache.valid = false
     this._cache.items = []
     this._cache.total = 0
     this._cache.loadedAt = null
     this._cacheLoading = null
+  }
 
-    // Emit cache invalidation signal only when cache was actually valid
-    // This prevents noise on repeated invalidation calls
-    if (wasValid && this._signals) {
-      this._signals.emit('cache:entity:invalidated', { entity: this.name })
+  /**
+   * Invalidate the entire data layer (cache + storage state)
+   *
+   * Called when external context changes (auth, impersonation, etc.)
+   * that may affect what data the storage returns.
+   *
+   * - Clears EntityManager cache
+   * - Calls storage.reset() if available (for storages with internal state)
+   */
+  invalidateDataLayer() {
+    this.invalidateCache()
+
+    // Reset storage if it supports it (e.g., clear auth tokens, cached responses)
+    if (typeof this.storage?.reset === 'function') {
+      this.storage.reset()
     }
   }
 

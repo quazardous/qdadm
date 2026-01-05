@@ -77,12 +77,12 @@ export class EntitiesCollector extends Collector {
     })
     this._signalCleanups.push(entityCleanup)
 
-    // Listen to cache invalidation
-    const cacheCleanup = signals.on('cache:entity:invalidated', () => {
+    // Listen to entity data changes (CRUD operations)
+    const dataCleanup = signals.on('entity:data-invalidate', () => {
       this._lastUpdate = Date.now()
       this.notifyChange()
     })
-    this._signalCleanups.push(cacheCleanup)
+    this._signalCleanups.push(dataCleanup)
   }
 
   /**
@@ -247,6 +247,9 @@ export class EntitiesCollector extends Collector {
         canDelete: manager.canDelete?.() ?? true,
         canList: manager.canList?.() ?? true
       },
+
+      // Auth sensitivity (auto-invalidates on auth events)
+      authSensitive: manager._authSensitive ?? false,
 
       // Warmup
       warmup: {

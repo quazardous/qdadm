@@ -12,7 +12,7 @@
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import Badge from 'primevue/badge'
 import Button from 'primevue/button'
-import { ZonesPanel, AuthPanel, EntitiesPanel, ToastsPanel, EntriesPanel } from './panels'
+import { ZonesPanel, AuthPanel, EntitiesPanel, ToastsPanel, EntriesPanel, SignalsPanel } from './panels'
 
 const props = defineProps({
   bridge: { type: Object, required: true },
@@ -656,6 +656,13 @@ function getCollectorColor(name) {
         :collector="currentCollector.collector"
         :entries="currentCollector.entries"
         @update="notifyBridge"
+      />
+
+      <!-- Signals collector -->
+      <SignalsPanel
+        v-else-if="currentCollector.name === 'signals' || currentCollector.name === 'SignalCollector'"
+        :collector="currentCollector.collector"
+        :entries="currentCollector.entries"
       />
 
       <div v-else-if="currentCollector.entries.length === 0" class="debug-empty">

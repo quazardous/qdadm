@@ -6,7 +6,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { EntityManager, createEntityManager } from '../../src/entity/EntityManager.js'
 import {
-  AuthAdapter,
+  EntityAuthAdapter,
   AuthActions,
   PermissiveAuthAdapter
 } from '../../src/entity/auth/index.js'
@@ -15,7 +15,7 @@ import { MemoryStorage } from '../../src/entity/storage/MemoryStorage.js'
 /**
  * Test AuthAdapter that denies specific actions/records
  */
-class RestrictiveAuthAdapter extends AuthAdapter {
+class RestrictiveAuthAdapter extends EntityAuthAdapter {
   constructor(options = {}) {
     super()
     this.allowedActions = options.allowedActions || []
@@ -993,14 +993,14 @@ describe('EntityManager', () => {
       })
     })
 
-    describe('cache:entity:invalidated signal', () => {
+    describe('entity:data-invalidate signal', () => {
       /**
        * Mock SignalBus that tracks both emitEntity and emit calls
        */
-      class CacheAwareSignalBus {
+      class DataInvalidateSignalBus {
         constructor() {
           this.emittedSignals = []
-          this.emittedCacheSignals = []
+          this.emittedDataSignals = []
         }
 
         async emitEntity(entityName, action, data) {
@@ -1008,7 +1008,7 @@ describe('EntityManager', () => {
         }
 
         async emit(signal, payload) {
-          this.emittedCacheSignals.push({ signal, payload })
+          this.emittedDataSignals.push({ signal, payload })
         }
 
         // Stub for cache listener setup
@@ -1016,18 +1016,18 @@ describe('EntityManager', () => {
           return () => {} // Return cleanup function
         }
 
-        getCacheSignals() {
-          return this.emittedCacheSignals
+        getDataSignals() {
+          return this.emittedDataSignals.filter(s => s.signal === 'entity:data-invalidate')
         }
 
         reset() {
           this.emittedSignals = []
-          this.emittedCacheSignals = []
+          this.emittedDataSignals = []
         }
       }
 
-      it('emits cache:entity:invalidated when cache was valid', async () => {
-        const signals = new CacheAwareSignalBus()
+      it('emits entity:data-invalidate on create', async () => {
+        const signals = new DataInvalidateSignalBus()
         const storage = new MockStorage()
         const manager = new EntityManager({
           name: 'books',
@@ -1035,92 +1035,88 @@ describe('EntityManager', () => {
         })
         manager.setSignals(signals)
 
-        // Manually make cache valid
-        manager._cache.valid = true
-        manager._cache.items = [{ id: 1, title: 'Book' }]
-        manager._cache.total = 1
+        await manager.create({ title: 'New Book' })
 
-        // Invalidate cache (should emit signal)
-        manager.invalidateCache()
-
-        const cacheSignals = signals.getCacheSignals()
-        expect(cacheSignals.length).toBe(1)
-        expect(cacheSignals[0].signal).toBe('cache:entity:invalidated')
-        expect(cacheSignals[0].payload.entity).toBe('books')
+        const dataSignals = signals.getDataSignals()
+        expect(dataSignals.length).toBe(1)
+        expect(dataSignals[0].payload.entity).toBe('books')
+        expect(dataSignals[0].payload.action).toBe('created')
       })
 
-      it('does not emit signal when cache was already invalid', () => {
-        const signals = new CacheAwareSignalBus()
+      it('emits entity:data-invalidate on update', async () => {
+        const signals = new DataInvalidateSignalBus()
+        const storage = new MockStorage()
+        const manager = new EntityManager({
+          name: 'books',
+          storage
+        })
+        manager.setSignals(signals)
+
+        // Create a book first
+        const created = await manager.create({ title: 'Book' })
+        signals.reset()
+
+        // Update it
+        await manager.update(created.id, { title: 'Updated Book' })
+
+        const dataSignals = signals.getDataSignals()
+        expect(dataSignals.length).toBe(1)
+        expect(dataSignals[0].payload.entity).toBe('books')
+        expect(dataSignals[0].payload.action).toBe('updated')
+        expect(dataSignals[0].payload.id).toBe(created.id)
+      })
+
+      it('emits entity:data-invalidate on delete', async () => {
+        const signals = new DataInvalidateSignalBus()
+        const storage = new MockStorage()
+        const manager = new EntityManager({
+          name: 'books',
+          storage
+        })
+        manager.setSignals(signals)
+
+        // Create a book first
+        const created = await manager.create({ title: 'Book' })
+        signals.reset()
+
+        // Delete it
+        await manager.delete(created.id)
+
+        const dataSignals = signals.getDataSignals()
+        expect(dataSignals.length).toBe(1)
+        expect(dataSignals[0].payload.entity).toBe('books')
+        expect(dataSignals[0].payload.action).toBe('deleted')
+        expect(dataSignals[0].payload.id).toBe(created.id)
+      })
+
+      it('does not emit signal when signals not set', async () => {
         const manager = new EntityManager({
           name: 'books',
           storage: new MockStorage()
+        })
+
+        // Should not throw when signals not set
+        await expect(manager.create({ title: 'Book' })).resolves.toBeDefined()
+      })
+
+      it('emits signal regardless of cache state', async () => {
+        const signals = new DataInvalidateSignalBus()
+        const storage = new MockStorage()
+        const manager = new EntityManager({
+          name: 'books',
+          storage
         })
         manager.setSignals(signals)
 
         // Cache starts invalid (default state)
         expect(manager._cache.valid).toBe(false)
 
-        // Invalidate again (should not emit)
-        manager.invalidateCache()
+        // Create should still emit signal (cache state doesn't matter)
+        await manager.create({ title: 'Book 1' })
 
-        const cacheSignals = signals.getCacheSignals()
-        expect(cacheSignals.length).toBe(0)
-      })
-
-      it('does not emit signal when signals not set', () => {
-        const manager = new EntityManager({
-          name: 'books',
-          storage: new MockStorage()
-        })
-
-        // Make cache valid
-        manager._cache.valid = true
-
-        // Should not throw when signals not set
-        expect(() => manager.invalidateCache()).not.toThrow()
-      })
-
-      it('only emits once per valid cache cycle', async () => {
-        const signals = new CacheAwareSignalBus()
-        const storage = new MockStorage()
-        const manager = new EntityManager({
-          name: 'books',
-          storage
-        })
-        manager.setSignals(signals)
-
-        // First cycle: make valid, then invalidate
-        manager._cache.valid = true
-        manager.invalidateCache()
-
-        // Second invalidation (cache already invalid)
-        manager.invalidateCache()
-
-        // Third invalidation (still invalid)
-        manager.invalidateCache()
-
-        const cacheSignals = signals.getCacheSignals()
-        expect(cacheSignals.length).toBe(1) // Only one signal emitted
-      })
-
-      it('emits signal on create when cache was valid', async () => {
-        const signals = new CacheAwareSignalBus()
-        const storage = new MockStorage()
-        const manager = new EntityManager({
-          name: 'books',
-          storage
-        })
-        manager.setSignals(signals)
-
-        // Make cache valid
-        manager._cache.valid = true
-
-        // Create triggers invalidateCache
-        await manager.create({ title: 'New Book' })
-
-        const cacheSignals = signals.getCacheSignals()
-        expect(cacheSignals.length).toBe(1)
-        expect(cacheSignals[0].signal).toBe('cache:entity:invalidated')
+        const dataSignals = signals.getDataSignals()
+        expect(dataSignals.length).toBe(1)
+        expect(dataSignals[0].payload.action).toBe('created')
       })
     })
   })
@@ -1431,8 +1427,8 @@ describe('EntityManager', () => {
       })
     })
 
-    describe('signal emission on invalidation', () => {
-      it('emits cache:entity:invalidated signal when cache was valid', async () => {
+    describe('entity:data-invalidate signal on CRUD', () => {
+      it('emits entity:data-invalidate on create (regardless of cache state)', async () => {
         const storage = createStorageWithItems(10)
         const signals = new MockSignalBus()
         const manager = new EntityManager({
@@ -1446,15 +1442,16 @@ describe('EntityManager', () => {
         await manager.list()
         expect(manager.getCacheInfo().valid).toBe(true)
 
-        // Invalidate via create
+        // Create emits entity:data-invalidate
         await manager.create({ name: 'New Product' })
 
-        const cacheSignals = signals.getSignals().filter(s => s.signal === 'cache:entity:invalidated')
-        expect(cacheSignals.length).toBe(1)
-        expect(cacheSignals[0].payload.entity).toBe('products')
+        const dataSignals = signals.getSignals().filter(s => s.signal === 'entity:data-invalidate')
+        expect(dataSignals.length).toBe(1)
+        expect(dataSignals[0].payload.entity).toBe('products')
+        expect(dataSignals[0].payload.action).toBe('created')
       })
 
-      it('does NOT emit signal when cache was already invalid', async () => {
+      it('emits signal even when cache was never valid', async () => {
         const storage = createStorageWithItems(150) // Exceeds threshold
         const signals = new MockSignalBus()
         const manager = new EntityManager({
@@ -1468,11 +1465,12 @@ describe('EntityManager', () => {
         await manager.list()
         expect(manager.getCacheInfo().valid).toBe(false)
 
-        // Create should not emit cache invalidation signal
+        // Create still emits entity:data-invalidate (signal is about data change, not cache)
         await manager.create({ name: 'New Product' })
 
-        const cacheSignals = signals.getSignals().filter(s => s.signal === 'cache:entity:invalidated')
-        expect(cacheSignals.length).toBe(0)
+        const dataSignals = signals.getSignals().filter(s => s.signal === 'entity:data-invalidate')
+        expect(dataSignals.length).toBe(1)
+        expect(dataSignals[0].payload.action).toBe('created')
       })
     })
 

@@ -10,10 +10,13 @@
  *   signals,      // SignalBus instance
  *   orchestrator, // Orchestrator instance (optional, for callbacks)
  *   routes: {
- *     'auth:impersonate': [
- *       'cache:entity:invalidate:loans',     // string = emit signal
- *       { signal: 'notify', transform: (p) => ({ msg: p.user }) },  // object = transform
- *       (payload, ctx) => { ... }            // function = callback
+ *     // Auth events → datalayer invalidation with actuator (only authSensitive entities react)
+ *     'auth:**': [{ signal: 'entity:datalayer-invalidate', transform: () => ({ actuator: 'auth' }) }],
+ *
+ *     // Custom routing with transform
+ *     'order:completed': [
+ *       { signal: 'notify', transform: (p) => ({ msg: `Order ${p.id} done` }) },
+ *       (payload, ctx) => { ... }  // callback
  *     ]
  *   }
  * })

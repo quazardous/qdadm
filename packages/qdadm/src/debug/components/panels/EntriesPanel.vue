@@ -46,6 +46,7 @@ async function copyEntry(entry, idx) {
       :class="{ 'entry-new': entry._isNew }"
     >
       <div class="entry-meta">
+        <span v-if="entry._isNew" class="entry-new-dot" title="New (unseen)" />
         <span class="entry-time">{{ formatTime(entry.timestamp) }}</span>
         <span v-if="entry.name" class="entry-name">{{ entry.name }}</span>
       </div>
@@ -62,6 +63,7 @@ async function copyEntry(entry, idx) {
       :class="{ 'entry-new': entry._isNew }"
     >
       <div class="entry-header">
+        <span v-if="entry._isNew" class="entry-new-dot" title="New (unseen)" />
         <span class="entry-time">{{ formatTime(entry.timestamp) }}</span>
         <span v-if="entry.name" class="entry-name">{{ entry.name }}</span>
         <span v-if="entry.message" class="entry-message">{{ entry.message }}</span>
@@ -98,9 +100,6 @@ async function copyEntry(entry, idx) {
 .entry-h:last-child {
   border-right: none;
 }
-.entry-h.entry-new {
-  border-left: 3px solid #8b5cf6;
-}
 
 /* Vertical entries (right/fullscreen mode) */
 .entries-v {
@@ -118,7 +117,7 @@ async function copyEntry(entry, idx) {
 /* New entry indicator */
 .entry-new {
   position: relative;
-  background: rgba(139, 92, 246, 0.08);
+  background: rgba(245, 158, 11, 0.08);
 }
 .entry-v.entry-new::before {
   content: '';
@@ -127,7 +126,20 @@ async function copyEntry(entry, idx) {
   top: 0;
   bottom: 0;
   width: 3px;
-  background: #8b5cf6;
+  background: #f59e0b;
+}
+.entry-h.entry-new {
+  border-left: 3px solid #f59e0b;
+}
+
+.entry-new-dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  background: #f59e0b;
+  border-radius: 50%;
+  margin-right: 4px;
+  flex-shrink: 0;
 }
 
 /* Entry parts */

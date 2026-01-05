@@ -47,10 +47,9 @@ const kernel = new Kernel({
     }
   },
 
-  // Event routing for cache invalidation
+  // Event routing: auth events → datalayer invalidation (only authSensitive entities react)
   eventRouter: {
-    'auth:impersonate': ['cache:entity:invalidate:loans'],
-    'auth:impersonate:stop': ['cache:entity:invalidate:loans']
+    'auth:**': [{ signal: 'entity:datalayer-invalidate', transform: () => ({ actuator: 'auth' }) }]
   },
 
   // Pages

@@ -18,8 +18,8 @@ import { Collector } from './Collector.js'
  * Collector for SignalBus events
  *
  * Records all signals with their name, data, and source for debugging.
- * Uses the `*:*` wildcard pattern to capture all signals following the
- * domain:action naming convention.
+ * Uses the `**` wildcard pattern to capture all signals including
+ * multi-segment names (e.g., entity:data-invalidate, auth:impersonate:start).
  */
 export class SignalCollector extends Collector {
   /**
@@ -43,8 +43,8 @@ export class SignalCollector extends Collector {
 
     // Subscribe to all signals using wildcard pattern
     // QuarKernel supports wildcards with the configured delimiter (:)
-    // '*:*' matches any domain:action signal
-    this._unsubscribe = ctx.signals.on('*:*', (event) => {
+    // '**' matches all signals including multi-segment (entity:data-invalidate)
+    this._unsubscribe = ctx.signals.on('**', (event) => {
       this.record({
         name: event.name,
         data: event.data,

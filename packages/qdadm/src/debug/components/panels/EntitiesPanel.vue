@@ -138,6 +138,11 @@ function getCapabilityLabel(cap) {
             class="pi pi-eye perm-icon-readonly"
             title="Read-only entity"
           />
+          <i
+            v-if="entity.authSensitive"
+            class="pi pi-shield perm-icon-auth-sensitive"
+            title="Auth-sensitive (auto-invalidates on auth events)"
+          />
         </div>
         <span class="entity-label">{{ entity.label }}</span>
         <span v-if="entity.cache.enabled" class="entity-cache" :class="{ 'entity-cache-valid': entity.cache.valid }">
@@ -395,6 +400,10 @@ function getCapabilityLabel(cap) {
 }
 .perm-icon-readonly {
   color: #f59e0b;
+  margin-left: 2px;
+}
+.perm-icon-auth-sensitive {
+  color: #8b5cf6;
   margin-left: 2px;
 }
 .entity-label {

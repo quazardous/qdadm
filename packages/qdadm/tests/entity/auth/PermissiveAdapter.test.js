@@ -7,15 +7,15 @@ import { describe, it, expect } from 'vitest'
 import {
   PermissiveAuthAdapter,
   createPermissiveAdapter,
-  AuthAdapter,
+  EntityAuthAdapter,
   AuthActions
 } from '../../../src/entity/auth/index.js'
 
 describe('PermissiveAuthAdapter', () => {
   describe('inheritance', () => {
-    it('extends AuthAdapter', () => {
+    it('extends EntityAuthAdapter', () => {
       const adapter = new PermissiveAuthAdapter()
-      expect(adapter).toBeInstanceOf(AuthAdapter)
+      expect(adapter).toBeInstanceOf(EntityAuthAdapter)
     })
   })
 
@@ -104,25 +104,25 @@ describe('createPermissiveAdapter', () => {
   })
 })
 
-describe('AuthAdapter base class', () => {
+describe('EntityAuthAdapter base class', () => {
   it('throws error when canPerform is not implemented', () => {
-    const adapter = new AuthAdapter()
+    const adapter = new EntityAuthAdapter()
     expect(() => adapter.canPerform('users', 'read')).toThrow(
-      '[AuthAdapter] canPerform() must be implemented by subclass'
+      '[EntityAuthAdapter] canPerform() must be implemented by subclass'
     )
   })
 
   it('throws error when canAccessRecord is not implemented', () => {
-    const adapter = new AuthAdapter()
+    const adapter = new EntityAuthAdapter()
     expect(() => adapter.canAccessRecord('users', { id: 1 })).toThrow(
-      '[AuthAdapter] canAccessRecord() must be implemented by subclass'
+      '[EntityAuthAdapter] canAccessRecord() must be implemented by subclass'
     )
   })
 
   it('throws error when getCurrentUser is not implemented', () => {
-    const adapter = new AuthAdapter()
+    const adapter = new EntityAuthAdapter()
     expect(() => adapter.getCurrentUser()).toThrow(
-      '[AuthAdapter] getCurrentUser() must be implemented by subclass'
+      '[EntityAuthAdapter] getCurrentUser() must be implemented by subclass'
     )
   })
 })
