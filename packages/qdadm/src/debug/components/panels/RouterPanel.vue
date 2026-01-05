@@ -227,7 +227,10 @@ function hasParams(obj) {
           v-for="route in routes"
           :key="route.path"
           class="route-entry"
-          :class="{ 'route-current-entry': currentRoute?.name === route.name }"
+          :class="{
+            'route-current-entry': currentRoute?.name === route.name,
+            'route-internal': route.name?.startsWith('_')
+          }"
         >
           <div class="route-entry-header">
             <span class="route-entry-name">{{ route.name }}</span>
@@ -603,6 +606,14 @@ function hasParams(obj) {
 .route-current-entry {
   border-left: 2px solid #3b82f6;
   padding-left: 6px;
+}
+
+.route-internal {
+  opacity: 0.6;
+}
+
+.route-internal .route-entry-name {
+  font-style: italic;
 }
 
 .route-entry-header {

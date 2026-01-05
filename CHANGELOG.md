@@ -5,6 +5,16 @@ All notable changes to qdadm will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.43.0] - 2026-01-06
+
+### Added
+- **Internal route names**: Add `_shell` and `_layout` names to wrapper routes
+  - Fixes "(unnamed)" display in RouterPanel
+  - `_` prefix indicates internal framework routes
+
+### Changed
+- **RouterPanel**: Internal routes (`_*`) displayed with dimmed italic style
+
 ## [0.42.0] - 2026-01-06
 
 ### Fixed

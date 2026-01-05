@@ -608,6 +608,7 @@ export class Kernel {
       routes = [
         {
           path: '/',
+          name: '_shell',
           component: pages.shell,
           children: [
             // Public routes at shell level (login, register, etc.)
@@ -615,6 +616,7 @@ export class Kernel {
             // Protected area with layout
             {
               path: '',
+              name: '_layout',
               component: pages.layout,
               meta: { requiresAuth: true },
               children: layoutChildren
@@ -631,6 +633,7 @@ export class Kernel {
         // Protected area with layout
         {
           path: '/',
+          name: '_layout',
           component: pages.layout,
           meta: { requiresAuth: true },
           children: layoutChildren
