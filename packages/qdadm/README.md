@@ -26,6 +26,10 @@ import { MockApiStorage, ApiStorage, SdkStorage } from 'qdadm'
 // Auth
 import { SessionAuthAdapter, LocalStorageSessionAuthAdapter } from 'qdadm'
 
+// Security (permissions, roles)
+import { SecurityChecker, PermissionMatcher, PermissionRegistry } from 'qdadm/security'
+import { PersistableRoleGranterAdapter, createLocalStorageRoleGranter } from 'qdadm/security'
+
 // Composables
 import { useForm, useBareForm, useListPageBuilder } from 'qdadm/composables'
 
@@ -38,6 +42,33 @@ import { KernelContext } from 'qdadm/module'
 // Styles
 import 'qdadm/styles'
 ```
+
+## ctx.crud() - Route Helper
+
+Register CRUD routes + navigation in one call:
+
+```js
+class BooksModule extends Module {
+  async connect(ctx) {
+    ctx.entity('books', { ... })
+
+    // Full CRUD with single form
+    ctx.crud('books', {
+      list: () => import('./pages/BookList.vue'),
+      form: () => import('./pages/BookForm.vue')  // create + edit
+    }, {
+      nav: { section: 'Library', icon: 'pi pi-book' }
+    })
+
+    // List only (read-only entity)
+    ctx.crud('settings', {
+      list: () => import('./pages/SettingsPage.vue')
+    }, { nav: { section: 'Config', icon: 'pi pi-cog' } })
+  }
+}
+```
+
+Auto-generates: routes, route family, nav item. Use `ctx.routes()` for custom pages.
 
 ## SdkStorage
 
