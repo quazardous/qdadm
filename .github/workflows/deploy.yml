@@ -33,6 +33,7 @@ jobs:
         run: npm run build -w packages/demo -- --base=/qdadm/demo/
         env:
           GITHUB_PAGES: true
+          VITE_HASH_MODE: true
 
       - name: Build hello-world
         run: npm run build -w examples/hello-world -- --base=/qdadm/hello-world/
