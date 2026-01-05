@@ -20,6 +20,8 @@ import { IStorage } from './IStorage.js'
  * ```
  */
 export class MemoryStorage extends IStorage {
+  static storageName = 'MemoryStorage'
+
   /**
    * Storage capabilities declaration.
    * Describes what features this storage adapter supports.

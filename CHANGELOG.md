@@ -5,6 +5,13 @@ All notable changes to qdadm will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.42.0] - 2026-01-06
+
+### Fixed
+- **Debug bar storage names**: Add `static storageName` to all storage classes
+  - Prevents minified names (e.g., "ts") in production builds
+  - EntitiesCollector prefers `storageName` over `constructor.name`
+
 ## [0.41.1] - 2026-01-06
 
 ### Fixed

@@ -21,6 +21,8 @@ import { IStorage } from './IStorage.js'
  * localStorage key pattern: mockapi_${entityName}_data
  */
 export class MockApiStorage extends IStorage {
+  static storageName = 'MockApiStorage'
+
   /**
    * Storage capabilities declaration.
    * Describes what features this storage adapter supports.

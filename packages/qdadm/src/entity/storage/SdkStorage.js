@@ -96,6 +96,8 @@ import { IStorage } from './IStorage.js'
  * ```
  */
 export class SdkStorage extends IStorage {
+  static storageName = 'SdkStorage'
+
   /**
    * Storage capabilities declaration
    * @type {import('./index.js').StorageCapabilities}

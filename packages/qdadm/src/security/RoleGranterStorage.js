@@ -7,6 +7,12 @@
 
 export class RoleGranterStorage {
   /**
+   * Storage name for debug display (survives minification)
+   * @type {string}
+   */
+  static storageName = 'RoleGranterStorage'
+
+  /**
    * Static capabilities (standard storage pattern)
    * @type {import('../entity/storage/index.js').StorageCapabilities}
    */

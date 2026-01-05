@@ -23,6 +23,8 @@ import { IStorage } from './IStorage.js'
  * ```
  */
 export class ApiStorage extends IStorage {
+  static storageName = 'ApiStorage'
+
   /**
    * Storage capabilities declaration.
    * Describes what features this storage adapter supports.

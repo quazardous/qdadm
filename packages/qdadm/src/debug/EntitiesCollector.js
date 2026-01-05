@@ -229,7 +229,7 @@ export class EntitiesCollector extends Collector {
       // Storage info
       // Prefer instance capabilities (may include requiresAuth) over static ones
       storage: {
-        type: storage?.constructor?.name || 'None',
+        type: storage?.constructor?.storageName || storage?.constructor?.name || 'None',
         endpoint: storage?.endpoint || storage?._endpoint || null,
         capabilities: storage?.capabilities || storage?.constructor?.capabilities || {}
       },
