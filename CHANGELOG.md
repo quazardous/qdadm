@@ -5,6 +5,11 @@ All notable changes to qdadm will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.40.1] - 2026-01-06
+
+### Demo (0.17.2)
+- **Login page**: Add "powered by QDAdm" with logo and GitHub link
+
 ## [0.40.0] - 2026-01-06
 
 ### Added
