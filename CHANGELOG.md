@@ -5,6 +5,11 @@ All notable changes to qdadm will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.41.1] - 2026-01-06
+
+### Fixed
+- **GitHub Pages deploy**: Enable `VITE_HASH_MODE=true` in CI workflow
+
 ## [0.41.0] - 2026-01-06
 
 ### Added
