@@ -1,6 +1,9 @@
 <script setup>
 /**
- * BookEdit - Book edit page
+ * BookForm - Unified Create/Edit form
+ *
+ * Single Form Pattern: one component handles both create and edit modes.
+ * Mode detection is automatic via useFormPageBuilder.
  *
  * ZONE EXTENSIBILITY DEMO
  * =======================
@@ -18,6 +21,8 @@ import Select from 'primevue/select'
 const form = useFormPageBuilder({ entity: 'books' })
 form.generateFields()
 form.addSaveAction({ andClose: true })
+
+// Delete action only shown in edit mode (handled by addDeleteAction visibility)
 form.addDeleteAction()
 </script>
 <template>

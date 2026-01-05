@@ -2,13 +2,13 @@
  * Tests for auth factory and CompositeAuthAdapter
  */
 import { describe, it, expect } from 'vitest'
-import { AuthAdapter } from './AuthAdapter.js'
+import { EntityAuthAdapter } from './EntityAuthAdapter.js'
 import { PermissiveAuthAdapter } from './PermissiveAdapter.js'
 import { CompositeAuthAdapter } from './CompositeAuthAdapter.js'
 import { authFactory, parseAuthPattern, authTypes } from './factory.js'
 
 // Test adapter for custom types
-class TestAuthAdapter extends AuthAdapter {
+class TestAuthAdapter extends EntityAuthAdapter {
   constructor(options = {}) {
     super()
     this.options = options
@@ -19,7 +19,7 @@ class TestAuthAdapter extends AuthAdapter {
 }
 
 // Adapter that tracks which entity was checked
-class TrackingAdapter extends AuthAdapter {
+class TrackingAdapter extends EntityAuthAdapter {
   constructor(name) {
     super()
     this.name = name
@@ -53,7 +53,7 @@ describe('parseAuthPattern', () => {
 
 describe('authFactory', () => {
   describe('instance passthrough', () => {
-    it('returns AuthAdapter instance as-is', () => {
+    it('returns EntityAuthAdapter instance as-is', () => {
       const adapter = new PermissiveAuthAdapter()
       const result = authFactory(adapter)
       expect(result).toBe(adapter)

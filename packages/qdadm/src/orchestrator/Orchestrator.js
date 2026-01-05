@@ -200,7 +200,27 @@ export class Orchestrator {
       }
     }
 
-    throw new Error(`[Orchestrator] No manager for entity "${name}" and no factory provided`)
+    // Build helpful error message
+    const registered = this.getRegisteredNames()
+    const hint = registered.length > 0
+      ? `\nRegistered entities: ${registered.join(', ')}\n`
+      : '\nNo entities registered yet.\n'
+
+    const suggestion = `
+Possible causes:
+1. Entity "${name}" not declared in any module (ctx.entity('${name}', {...}))
+2. Module not loaded (check moduleDefs in config/modules.js)
+3. Typo in entity name
+
+Example fix in your module:
+  ctx.entity('${name}', {
+    name: '${name}',
+    labelField: 'name',
+    fields: { ... },
+    storage: yourStorage
+  })`
+
+    throw new Error(`[Orchestrator] No manager for entity "${name}"${hint}${suggestion}`)
   }
 
   /**

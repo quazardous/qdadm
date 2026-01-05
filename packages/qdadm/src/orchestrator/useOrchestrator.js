@@ -18,7 +18,13 @@ export function useOrchestrator() {
   const orchestrator = inject('qdadmOrchestrator')
 
   if (!orchestrator) {
-    throw new Error('[qdadm] Orchestrator not provided. Make sure to use createQdadm() with entityFactory.')
+    throw new Error(
+      '[qdadm] Orchestrator not provided.\n' +
+      'Possible causes:\n' +
+      '1. Kernel not initialized - ensure createKernel().createApp() is called before mounting\n' +
+      '2. Component used outside of qdadm app context\n' +
+      '3. Missing entityFactory in Kernel options'
+    )
   }
 
   /**

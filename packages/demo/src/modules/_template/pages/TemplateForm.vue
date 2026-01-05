@@ -1,12 +1,19 @@
 <script setup>
+/**
+ * {{EntityName}}Form - Unified Create/Edit form template
+ *
+ * Single Form Pattern: handles both create and edit modes.
+ * Mode detection is automatic via useFormPageBuilder.
+ *
+ * Replace {{EntityName}} and {{entity_name}} with your entity names.
+ */
 import { useFormPageBuilder, FormPage, FormField } from 'qdadm'
 import InputText from 'primevue/inputtext'
-import InputNumber from 'primevue/inputnumber'
-import Select from 'primevue/select'
 
-const form = useFormPageBuilder({ entity: 'books' })
+const form = useFormPageBuilder({ entity: '{{entity_name}}' })
 form.generateFields()
 form.addSaveAction({ andClose: true })
+form.addDeleteAction()  // Only shown in edit mode
 </script>
 <template>
   <FormPage v-bind="form.props.value" v-on="form.events">
@@ -14,8 +21,11 @@ form.addSaveAction({ andClose: true })
       <div class="form-grid">
         <FormField v-for="f in form.fields.value" :key="f.name" :name="f.name" :label="f.label">
           <InputText v-if="f.type === 'text'" v-model="form.data.value[f.name]" class="w-full" />
-          <InputNumber v-else-if="f.type === 'number'" v-model="form.data.value[f.name]" class="w-full" :useGrouping="false" />
+          <!-- Add more field types as needed:
+          <InputNumber v-else-if="f.type === 'number'" v-model="form.data.value[f.name]" class="w-full" />
           <Select v-else-if="f.type === 'select'" v-model="form.data.value[f.name]" :options="f.options" optionLabel="label" optionValue="value" class="w-full" />
+          <Textarea v-else-if="f.type === 'textarea'" v-model="form.data.value[f.name]" class="w-full" rows="5" />
+          -->
         </FormField>
       </div>
     </template>

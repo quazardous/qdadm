@@ -17,6 +17,9 @@ export { createQdadm } from './plugin.js'
 // Entity system
 export * from './entity/index.js'
 
+// Session auth (user authentication)
+export * from './auth/index.js'
+
 // Orchestrator
 export * from './orchestrator/index.js'
 

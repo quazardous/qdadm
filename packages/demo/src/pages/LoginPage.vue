@@ -16,7 +16,6 @@ import { LoginPage } from 'qdadm'
     icon="pi pi-book"
     defaultUsername="admin"
     defaultPassword="admin"
-    :emitSignal="true"
   >
     <template #footer>
       <div class="demo-hint">

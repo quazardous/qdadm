@@ -27,13 +27,13 @@
  * ```
  */
 
-import { AuthAdapter } from './AuthAdapter.js'
+import { EntityAuthAdapter } from './EntityAuthAdapter.js'
 import { PermissiveAuthAdapter } from './PermissiveAdapter.js'
 
 /**
  * Built-in auth adapter types
  * Extended via context.authTypes for custom adapters
- * @type {Record<string, typeof AuthAdapter>}
+ * @type {Record<string, typeof EntityAuthAdapter>}
  */
 export const authTypes = {
   permissive: PermissiveAuthAdapter
@@ -65,7 +65,7 @@ export function parseAuthPattern(pattern) {
  *
  * @param {object} config - Normalized auth config with `type` property
  * @param {object} context - Context with authTypes registry
- * @returns {AuthAdapter} Adapter instance
+ * @returns {EntityAuthAdapter} Adapter instance
  */
 export function defaultAuthResolver(config, context = {}) {
   const { type, ...rest } = config
@@ -109,9 +109,9 @@ function isCompositeConfig(config) {
  * - Config object with 'type' → resolve via registry
  * - Config object with 'default' → create CompositeAuthAdapter
  *
- * @param {AuthAdapter | string | object} config - Auth config
+ * @param {EntityAuthAdapter | string | object} config - Auth config
  * @param {object} [context={}] - Context with authTypes, authResolver
- * @returns {AuthAdapter} Adapter instance
+ * @returns {EntityAuthAdapter} Adapter instance
  *
  * @example
  * // Instance passthrough (most common, backward compatible)
@@ -138,8 +138,8 @@ export function authFactory(config, context = {}) {
     return new PermissiveAuthAdapter()
   }
 
-  // Already an AuthAdapter instance → return directly (backward compatible)
-  if (config instanceof AuthAdapter) {
+  // Already an EntityAuthAdapter instance → return directly (backward compatible)
+  if (config instanceof EntityAuthAdapter) {
     return config
   }
 

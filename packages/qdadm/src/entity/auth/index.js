@@ -10,7 +10,7 @@
  */
 
 // Interface
-export { AuthAdapter, AuthActions } from './AuthAdapter.js'
+export { EntityAuthAdapter, AuthActions } from './EntityAuthAdapter.js'
 
 // Role Hierarchy (topological resolution)
 export { RoleHierarchy, createRoleHierarchy } from './RoleHierarchy.js'

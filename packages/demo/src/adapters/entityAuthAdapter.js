@@ -12,7 +12,7 @@
  * with your app's authentication system.
  */
 
-import { AuthAdapter } from 'qdadm'
+import { EntityAuthAdapter } from 'qdadm'
 import { authAdapter } from './authAdapter.js'
 
 /**
@@ -83,7 +83,7 @@ const generalPermissions = {
   'user:impersonate': (user) => user?.role === 'ROLE_ADMIN'
 }
 
-export class DemoEntityAuthAdapter extends AuthAdapter {
+export class DemoEntityAuthAdapter extends EntityAuthAdapter {
   /**
    * Check if user has a general permission (not entity-specific)
    *

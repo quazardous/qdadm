@@ -1,10 +1,58 @@
 /**
- * Products Module - Module System v2 Implementation
+ * Products Module - Module-Centric Pattern
  *
- * Class-based module for DummyJSON API integration.
+ * Self-contained module that owns:
+ * - Entity definition (fields, custom storage)
+ * - Routes (list + detail)
+ * - Navigation
+ *
+ * Demonstrates external API integration (DummyJSON API).
+ * Custom storage handles limit/skip pagination.
  */
 
-import { Module } from 'qdadm'
+import { Module, ApiStorage } from 'qdadm'
+import axios from 'axios'
+
+// ============================================================================
+// STORAGE
+// ============================================================================
+
+const dummyJsonClient = axios.create({
+  baseURL: 'https://dummyjson.com'
+})
+
+/**
+ * DummyJSON storage
+ *
+ * Uses limit/skip pagination instead of page/page_size.
+ */
+class DummyJsonStorage extends ApiStorage {
+  async list(params = {}) {
+    const { page = 1, page_size = 20, filters = {} } = params
+    const limit = page_size
+    const skip = (page - 1) * page_size
+
+    const response = await this.client.get(this.endpoint, {
+      params: { limit, skip, ...filters }
+    })
+
+    const data = response.data
+    return {
+      items: data[this.responseItemsKey] || data.items || data,
+      total: data[this.responseTotalKey] || data.total || (Array.isArray(data) ? data.length : 0)
+    }
+  }
+}
+
+const productsStorage = new DummyJsonStorage({
+  endpoint: '/products',
+  client: dummyJsonClient,
+  responseItemsKey: 'products'
+})
+
+// ============================================================================
+// MODULE
+// ============================================================================
 
 export class ProductsModule extends Module {
   static name = 'products'
@@ -12,6 +60,27 @@ export class ProductsModule extends Module {
   static priority = 0
 
   async connect(ctx) {
+    // ════════════════════════════════════════════════════════════════════════
+    // ENTITY
+    // ════════════════════════════════════════════════════════════════════════
+    ctx.entity('products', {
+      name: 'products',
+      labelField: 'title',
+      readOnly: true,
+      localFilterThreshold: 200,
+      fields: {
+        id: { type: 'number', label: 'ID', readOnly: true },
+        title: { type: 'text', label: 'Title', required: true },
+        price: { type: 'number', label: 'Price' },
+        category: { type: 'text', label: 'Category' },
+        thumbnail: { type: 'url', label: 'Thumbnail' }
+      },
+      storage: productsStorage
+    })
+
+    // ════════════════════════════════════════════════════════════════════════
+    // ROUTES (list + detail - read-only)
+    // ════════════════════════════════════════════════════════════════════════
     ctx.routes('products', [
       {
         path: '',
@@ -27,6 +96,7 @@ export class ProductsModule extends Module {
       }
     ], { entity: 'products' })
 
+    // Navigation
     ctx.navItem({
       section: 'DummyJSON',
       route: 'product',
@@ -34,6 +104,7 @@ export class ProductsModule extends Module {
       label: 'Products'
     })
 
+    // Route family
     ctx.routeFamily('product', ['product-'])
   }
 }

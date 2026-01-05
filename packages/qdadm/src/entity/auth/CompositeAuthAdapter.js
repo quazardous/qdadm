@@ -26,10 +26,10 @@
  * ```
  */
 
-import { AuthAdapter } from './AuthAdapter.js'
+import { EntityAuthAdapter } from './EntityAuthAdapter.js'
 import { authFactory } from './factory.js'
 
-export class CompositeAuthAdapter extends AuthAdapter {
+export class CompositeAuthAdapter extends EntityAuthAdapter {
   /**
    * @param {object} config - Composite auth configuration
    * @param {AuthAdapter|string|object} config.default - Default adapter (required)

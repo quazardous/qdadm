@@ -35,6 +35,7 @@ const route = useRoute()
 const app = useApp()
 const { navSections, isNavActive, sectionHasActiveItem, handleNavClick } = useNavigation()
 const { isAuthenticated, user, logout, authEnabled } = useAuth()
+const signals = inject('qdadmSignals', null)
 
 // LocalStorage key for collapsed sections state (namespaced by app)
 const STORAGE_KEY = computed(() => `${app.shortName.toLowerCase()}_nav_collapsed`)
@@ -150,6 +151,7 @@ const userSubtitle = computed(() => {
 
 function handleLogout() {
   logout()
+  signals?.emit('auth:logout', { reason: 'user' })
   router.push({ name: 'login' })
 }
 

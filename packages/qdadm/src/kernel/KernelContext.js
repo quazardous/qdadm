@@ -223,6 +223,148 @@ export class KernelContext {
   }
 
   /**
+   * Register standard CRUD routes with naming conventions
+   *
+   * Generates routes following qdadm conventions:
+   * - Entity 'books' → route prefix 'book'
+   * - List: /books → name 'book'
+   * - Create: /books/create → name 'book-create'
+   * - Edit: /books/:id/edit → name 'book-edit'
+   *
+   * Also registers route family and optional nav item.
+   *
+   * @param {string} entity - Entity name (plural, e.g., 'books', 'users')
+   * @param {object} pages - Page components (lazy imports)
+   * @param {Function} pages.list - List page: () => import('./pages/List.vue')
+   * @param {Function} [pages.form] - Single form for create+edit (recommended)
+   * @param {Function} [pages.create] - Separate create page (alternative to form)
+   * @param {Function} [pages.edit] - Separate edit page (alternative to form)
+   * @param {object} [options={}] - Additional options
+   * @param {object} [options.nav] - Navigation config
+   * @param {string} options.nav.section - Nav section (e.g., 'Library')
+   * @param {string} [options.nav.icon] - Icon class (e.g., 'pi pi-book')
+   * @param {string} [options.nav.label] - Display label (default: capitalized entity)
+   * @param {string} [options.routePrefix] - Override route prefix (default: singularized entity)
+   * @returns {this}
+   *
+   * @example
+   * // Minimal - list only (read-only entity)
+   * ctx.crud('countries', { list: () => import('./pages/CountriesList.vue') })
+   *
+   * @example
+   * // Single form pattern (recommended)
+   * ctx.crud('books', {
+   *   list: () => import('./pages/BookList.vue'),
+   *   form: () => import('./pages/BookForm.vue')
+   * }, {
+   *   nav: { section: 'Library', icon: 'pi pi-book' }
+   * })
+   *
+   * @example
+   * // Separate create/edit pages
+   * ctx.crud('users', {
+   *   list: () => import('./pages/UserList.vue'),
+   *   create: () => import('./pages/UserCreate.vue'),
+   *   edit: () => import('./pages/UserEdit.vue')
+   * }, {
+   *   nav: { section: 'Admin', icon: 'pi pi-users', label: 'Users' }
+   * })
+   */
+  crud(entity, pages, options = {}) {
+    // Derive route prefix: 'books' → 'book', 'countries' → 'country'
+    const routePrefix = options.routePrefix || this._singularize(entity)
+
+    // Build routes array
+    const routes = []
+
+    // List route (always required)
+    if (pages.list) {
+      routes.push({
+        path: '',
+        name: routePrefix,
+        component: pages.list,
+        meta: { layout: 'list' }
+      })
+    }
+
+    // Form routes - single form or separate create/edit
+    if (pages.form) {
+      // Single form pattern (recommended)
+      routes.push({
+        path: 'create',
+        name: `${routePrefix}-create`,
+        component: pages.form
+      })
+      routes.push({
+        path: ':id/edit',
+        name: `${routePrefix}-edit`,
+        component: pages.form
+      })
+    } else {
+      // Separate create/edit pages
+      if (pages.create) {
+        routes.push({
+          path: 'create',
+          name: `${routePrefix}-create`,
+          component: pages.create
+        })
+      }
+      if (pages.edit) {
+        routes.push({
+          path: ':id/edit',
+          name: `${routePrefix}-edit`,
+          component: pages.edit
+        })
+      }
+    }
+
+    // Register routes with entity binding
+    this.routes(entity, routes, { entity })
+
+    // Register route family for active state detection
+    this.routeFamily(routePrefix, [`${routePrefix}-`])
+
+    // Register nav item if provided
+    if (options.nav) {
+      const label = options.nav.label || this._capitalize(entity)
+      this.navItem({
+        section: options.nav.section,
+        route: routePrefix,
+        icon: options.nav.icon,
+        label,
+        entity
+      })
+    }
+
+    return this
+  }
+
+  /**
+   * Singularize a plural word (simple English rules)
+   * @param {string} plural - Plural word
+   * @returns {string} Singular form
+   * @private
+   */
+  _singularize(plural) {
+    if (plural.endsWith('ies')) return plural.slice(0, -3) + 'y'
+    if (plural.endsWith('ses') || plural.endsWith('xes') || plural.endsWith('zes')) {
+      return plural.slice(0, -2)
+    }
+    if (plural.endsWith('s') && !plural.endsWith('ss')) return plural.slice(0, -1)
+    return plural
+  }
+
+  /**
+   * Capitalize first letter
+   * @param {string} str - String to capitalize
+   * @returns {string} Capitalized string
+   * @private
+   */
+  _capitalize(str) {
+    return str.charAt(0).toUpperCase() + str.slice(1)
+  }
+
+  /**
    * Define a zone for extensible UI composition
    *
    * @param {string} name - Zone name (e.g., 'users-list-header')

@@ -1,12 +1,36 @@
 /**
- * Genres Module (v2)
+ * Genres Module - Module-Centric Pattern
+ *
+ * Self-contained module that owns:
+ * - Entity definition (fields, storage)
+ * - Routes (CRUD + child route for books by genre)
+ * - Navigation
  *
  * Demonstrates child routes with parent entity filtering:
  * - /genres - List all genres
  * - /genres/:genreId/books - Books of a specific genre
  */
 
-import { Module } from 'qdadm'
+import { Module, MockApiStorage } from 'qdadm'
+
+// ============================================================================
+// STORAGE
+// ============================================================================
+
+import genresFixture from '../../fixtures/genres.json'
+
+// Auth check imported from shared config
+import { authCheck } from '../../config/storages'
+
+const genresStorage = new MockApiStorage({
+  entityName: 'genres',
+  initialData: genresFixture,
+  authCheck
+})
+
+// ============================================================================
+// MODULE
+// ============================================================================
 
 export class GenresModule extends Module {
   static name = 'genres'
@@ -14,25 +38,31 @@ export class GenresModule extends Module {
   static priority = 0
 
   async connect(ctx) {
-    // ============ ROUTES ============
-    ctx.routes('genres', [
-      {
-        path: '',
-        name: 'genre',
-        component: () => import('./pages/GenreList.vue'),
-        meta: { layout: 'list' }
+    // ════════════════════════════════════════════════════════════════════════
+    // ENTITY
+    // ════════════════════════════════════════════════════════════════════════
+    ctx.entity('genres', {
+      name: 'genres',
+      labelField: 'name',
+      fields: {
+        name: { type: 'text', label: 'Name', required: true, default: '' },
+        description: { type: 'text', label: 'Description', default: '' }
       },
-      {
-        path: 'create',
-        name: 'genre-create',
-        component: () => import('./pages/GenreForm.vue')
+      children: {
+        books: { entity: 'books', foreignKey: 'genre', label: 'Books' }
       },
-      {
-        path: ':id/edit',
-        name: 'genre-edit',
-        component: () => import('./pages/GenreForm.vue')
-      }
-    ], { entity: 'genres' })
+      storage: genresStorage
+    })
+
+    // ════════════════════════════════════════════════════════════════════════
+    // ROUTES (using ctx.crud helper)
+    // ════════════════════════════════════════════════════════════════════════
+    ctx.crud('genres', {
+      list: () => import('./pages/GenreList.vue'),
+      form: () => import('./pages/GenreForm.vue')
+    }, {
+      nav: { section: 'Library', icon: 'pi pi-tags' }
+    })
 
     // Child route: books for a specific genre
     ctx.routes('genres/:genreId/books', [
@@ -50,17 +80,6 @@ export class GenresModule extends Module {
       },
       label: 'Books'
     })
-
-    // ============ NAVIGATION ============
-    ctx.navItem({
-      section: 'Library',
-      route: 'genre',
-      icon: 'pi pi-tags',
-      label: 'Genres'
-    })
-
-    // ============ ROUTE FAMILY ============
-    ctx.routeFamily('genre', ['genre-'])
   }
 }
 

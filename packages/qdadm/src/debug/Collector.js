@@ -179,10 +179,11 @@ export class Collector {
 
   /**
    * Get all entries
+   * Returns a shallow copy to trigger Vue reactivity when used in computed
    * @returns {Array<object>} All recorded entries
    */
   getEntries() {
-    return this.entries
+    return [...this.entries]
   }
 
   /**

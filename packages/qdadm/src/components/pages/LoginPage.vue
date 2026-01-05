@@ -90,11 +90,12 @@ const props = defineProps({
     default: ''
   },
   /**
-   * Emit business signal on login (requires orchestrator)
+   * Emit auth:login signal on successful login
+   * Required for debug bar auth tracking and other signal listeners
    */
   emitSignal: {
     type: Boolean,
-    default: false
+    default: true
   }
 })
 

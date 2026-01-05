@@ -6,12 +6,12 @@
 import { describe, it, expect } from 'vitest'
 import { Orchestrator } from '../../src/orchestrator/Orchestrator.js'
 import { EntityManager } from '../../src/entity/EntityManager.js'
-import { AuthAdapter, PermissiveAuthAdapter } from '../../src/entity/auth/index.js'
+import { EntityAuthAdapter, PermissiveAuthAdapter } from '../../src/entity/auth/index.js'
 
 /**
- * Test AuthAdapter that tracks which entity/action was checked
+ * Test EntityAuthAdapter that tracks which entity/action was checked
  */
-class TrackerAuthAdapter extends AuthAdapter {
+class TrackerAuthAdapter extends EntityAuthAdapter {
   constructor() {
     super()
     this.calls = []
@@ -35,7 +35,7 @@ class TrackerAuthAdapter extends AuthAdapter {
 /**
  * Restrictive adapter for testing denials
  */
-class RestrictiveAuthAdapter extends AuthAdapter {
+class RestrictiveAuthAdapter extends EntityAuthAdapter {
   canPerform(entity, action) {
     return action === 'read'
   }

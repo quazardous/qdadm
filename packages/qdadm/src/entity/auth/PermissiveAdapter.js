@@ -1,7 +1,7 @@
 /**
  * PermissiveAuthAdapter - Default adapter that allows all operations
  *
- * This adapter is used when no custom AuthAdapter is provided to EntityManager.
+ * This adapter is used when no custom EntityAuthAdapter is provided to EntityManager.
  * It returns `true` for all permission checks, effectively disabling authorization.
  *
  * Use cases:
@@ -11,18 +11,16 @@
  * - Testing environments
  *
  * @example
- * // Explicit usage (rarely needed)
  * const adapter = new PermissiveAuthAdapter()
- *
  * adapter.canPerform('users', 'delete') // true
  * adapter.canAccessRecord('invoices', { id: 123, secret: true }) // true
  * adapter.getCurrentUser() // null
  *
- * @extends AuthAdapter
+ * @extends EntityAuthAdapter
  */
-import { AuthAdapter } from './AuthAdapter.js'
+import { EntityAuthAdapter } from './EntityAuthAdapter.js'
 
-export class PermissiveAuthAdapter extends AuthAdapter {
+export class PermissiveAuthAdapter extends EntityAuthAdapter {
   /**
    * Always allows any action on any entity type
    *

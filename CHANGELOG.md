@@ -5,6 +5,65 @@ All notable changes to qdadm will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.34.0] - 2026-01-05
+
+### Added
+- **Single Form pattern**: Unified create/edit form component
+  - `ctx.crud()` now accepts `form` key for single component handling both modes
+  - `useFormPageBuilder` auto-detects mode via route name suffix (`-create` vs `-edit`)
+  - Delete action only visible in edit mode (via `addDeleteAction()` visibility)
+- **Module template** (`_template/`): Copy-ready scaffold for new modules
+  - `TemplateModule.js`: Module class with placeholders
+  - `pages/TemplateList.vue`: List page template
+  - `pages/TemplateForm.vue`: Form page template
+  - `README.md`: Quick start guide with search/replace instructions
+- **Custom page example**: `BookStats.vue` demonstrates non-CRUD page in module
+  - Uses `useOrchestrator()` to fetch data
+  - Registered via `ctx.routes()` + `ctx.navItem()`
+
+### Changed
+- **Improved error messages**: Better debugging hints for common issues
+  - `Orchestrator.get()`: Lists registered entities + fix suggestion
+  - `useOrchestrator()`: Clearer initialization hints
+  - `useFormPageBuilder()`: Same
+  - `useListPageBuilder()`: Same
+
+### Demo (0.16.0)
+- **BooksModule**: Migrated to single form pattern
+  - Removed: `BookCreate.vue`, `BookEdit.vue`
+  - Added: `BookForm.vue` (unified), `BookStats.vue` (custom page)
+
+## [0.33.0] - 2026-01-05
+
+### Added
+- **SessionAuthAdapter**: New base class for user session authentication
+  - `SessionAuthAdapter`: Abstract base with `login()`, `logout()`, `isAuthenticated()`, `getToken()`, `getUser()`
+  - `LocalStorageSessionAuthAdapter`: Ready-to-use implementation with localStorage persistence
+  - Helper methods: `setSession(token, user)`, `clearSession()`, `persist()`
+- **`qdadm/auth` subpath export**: Direct access to auth classes
+  - `import { SessionAuthAdapter, LocalStorageSessionAuthAdapter } from 'qdadm/auth'`
+  - Also exported from main index for convenience
+
+### Changed
+- **BREAKING**: Renamed `AuthAdapter` to `EntityAuthAdapter`
+  - Before: `import { AuthAdapter } from 'qdadm'`
+  - After: `import { EntityAuthAdapter } from 'qdadm'`
+  - File moved: `src/entity/auth/AuthAdapter.js` → `src/entity/auth/EntityAuthAdapter.js`
+- Clear separation of concerns:
+  - `SessionAuthAdapter`: User authentication (login, logout, token management)
+  - `EntityAuthAdapter`: Entity-level permissions (canPerform, canAccessRecord)
+
+### Demo (0.15.0)
+- **Canonical bootstrap**: main.js reduced from ~944 lines to ~80 lines
+- **Config separation**: New `config/` directory structure
+  - `config/storages.js`: Storage classes and instances
+  - `config/managers.js`: Entity definitions and custom managers
+  - `config/modules.js`: Module imports and navigation config
+  - `config/hooks.js`: Lifecycle hooks registration
+  - `config/index.js`: Re-exports all config
+- `authAdapter` now extends `LocalStorageSessionAuthAdapter`
+- Removed all legacy `init.js` files from modules
+
 ## [0.32.0] - 2026-01-03
 
 ### Added

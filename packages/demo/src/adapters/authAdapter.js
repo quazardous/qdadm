@@ -1,34 +1,18 @@
 /**
  * Auth Adapter for demo
  *
- * Validates credentials against users stored via MockApiStorage.
- * Users are seeded from fixtures in main.js on first load.
+ * Extends SessionAuthAdapter to validate credentials against users
+ * stored via MockApiStorage. Users are seeded from fixtures in main.js.
  *
  * Demo accounts (password = username):
  *   - admin (role: admin) - Full access
  *   - bob, june (role: user) - Limited access
  */
 
-const AUTH_STORAGE_KEY = 'qdadm_demo_auth'
+import { LocalStorageSessionAuthAdapter } from 'qdadm'
+
 // MockApiStorage key pattern: mockapi_${entityName}_data
 const USERS_STORAGE_KEY = 'mockapi_users_data'
-
-function getStoredAuth() {
-  try {
-    const stored = localStorage.getItem(AUTH_STORAGE_KEY)
-    return stored ? JSON.parse(stored) : null
-  } catch {
-    return null
-  }
-}
-
-function setStoredAuth(data) {
-  if (data) {
-    localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(data))
-  } else {
-    localStorage.removeItem(AUTH_STORAGE_KEY)
-  }
-}
 
 function getUsers() {
   try {
@@ -39,7 +23,11 @@ function getUsers() {
   }
 }
 
-export const authAdapter = {
+class DemoSessionAuthAdapter extends LocalStorageSessionAuthAdapter {
+  constructor() {
+    super('qdadm_demo_auth')
+  }
+
   /**
    * Login with username/password
    * Validates against users in MockApiStorage (seeded from fixtures)
@@ -57,43 +45,13 @@ export const authAdapter = {
     }
 
     const token = btoa(`${user.id}:${Date.now()}`)
-    const authData = {
-      user: { id: user.id, username: user.username, role: user.role },
-      token
-    }
+    const userData = { id: user.id, username: user.username, role: user.role }
 
-    setStoredAuth(authData)
-    return authData
-  },
+    this.setSession(token, userData)
+    this.persist()
 
-  /**
-   * Logout current user
-   */
-  logout() {
-    setStoredAuth(null)
-  },
-
-  /**
-   * Check if user is authenticated
-   * @returns {boolean}
-   */
-  isAuthenticated() {
-    return !!getStoredAuth()?.token
-  },
-
-  /**
-   * Get current auth token
-   * @returns {string|null}
-   */
-  getToken() {
-    return getStoredAuth()?.token || null
-  },
-
-  /**
-   * Get current user
-   * @returns {object|null}
-   */
-  getUser() {
-    return getStoredAuth()?.user || null
+    return { user: userData, token }
   }
 }
+
+export const authAdapter = new DemoSessionAuthAdapter()
