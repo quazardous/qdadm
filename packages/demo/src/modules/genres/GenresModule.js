@@ -43,7 +43,6 @@ export class GenresModule extends Module {
     // ════════════════════════════════════════════════════════════════════════
     ctx.entity('genres', {
       name: 'genres',
-      authSensitive: true,
       labelField: 'name',
       fields: {
         name: { type: 'text', label: 'Name', required: true, default: '' },

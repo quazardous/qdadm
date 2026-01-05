@@ -59,7 +59,7 @@ export class EntityManager {
       localFilterThreshold = null,  // Items threshold to switch to local filtering (null = use default)
       readOnly = false,             // If true, canCreate/canUpdate/canDelete return false
       warmup = true,                // If true, cache is preloaded at boot via DeferredRegistry
-      authSensitive = false,        // If true, auto-invalidate datalayer on auth events
+      authSensitive,                // If true, auto-invalidate datalayer on auth events (auto-inferred from storage.requiresAuth if not set)
       // Scope control
       scopeWhitelist = null,        // Array of scopes/modules that can bypass restrictions
       // Relations
@@ -86,7 +86,8 @@ export class EntityManager {
     this.localFilterThreshold = localFilterThreshold
     this._readOnly = readOnly
     this._warmup = warmup
-    this._authSensitive = authSensitive
+    // Auto-infer authSensitive from storage.requiresAuth if not explicitly set
+    this._authSensitive = authSensitive ?? this._getStorageRequiresAuth()
 
     // Scope control
     this._scopeWhitelist = scopeWhitelist
@@ -1032,6 +1033,25 @@ export class EntityManager {
   get storageSupportsTotal() {
     const caps = this.storage?.constructor?.capabilities || {}
     return caps.supportsTotal ?? false
+  }
+
+  /**
+   * Check if storage requires authentication
+   *
+   * Used to auto-infer authSensitive when not explicitly set.
+   * Checks both instance capabilities and static capabilities.
+   *
+   * @returns {boolean} - true if storage requires auth
+   * @private
+   */
+  _getStorageRequiresAuth() {
+    // Check instance capabilities first (may have dynamic requiresAuth)
+    if (this.storage?.capabilities?.requiresAuth !== undefined) {
+      return this.storage.capabilities.requiresAuth
+    }
+    // Fallback to static capabilities
+    const caps = this.storage?.constructor?.capabilities || {}
+    return caps.requiresAuth ?? false
   }
 
   /**

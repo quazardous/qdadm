@@ -146,7 +146,6 @@ export class LoansModule extends Module {
     // ════════════════════════════════════════════════════════════════════════
     ctx.entity('loans', new LoansManager({
       name: 'loans',
-      authSensitive: true,  // Auto-invalidate on auth events (user-specific data)
       parents: {
         book: { entity: 'books', foreignKey: 'book_id' },
         user: { entity: 'users', foreignKey: 'user_id' }

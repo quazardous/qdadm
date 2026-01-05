@@ -39,7 +39,7 @@
 
 import { createApp, h } from 'vue'
 import { createPinia } from 'pinia'
-import { createRouter, createWebHistory, createWebHashHistory } from 'vue-router'
+import { createRouter, createWebHistory } from 'vue-router'
 import ToastService from 'primevue/toastservice'
 import ConfirmationService from 'primevue/confirmationservice'
 import Tooltip from 'primevue/tooltip'
@@ -86,7 +86,6 @@ export class Kernel {
    * @param {string} options.homeRoute - Route name for home redirect (or object { name, component })
    * @param {Array} options.coreRoutes - Additional routes as layout children (before module routes)
    * @param {string} options.basePath - Base path for router (e.g., '/dashboard/')
-   * @param {boolean} options.hashMode - Use hash-based routing (/#/path) for static hosting
    * @param {object} options.app - App config { name, shortName, version, logo, theme }
    * @param {object} options.features - Feature toggles { auth, poweredBy }
    * @param {object} options.primevue - PrimeVue config { plugin, theme, options }
@@ -520,7 +519,7 @@ export class Kernel {
    * - **Layout-only mode**: Layout at root with all routes as children
    */
   _createRouter() {
-    const { pages, homeRoute, coreRoutes, basePath, hashMode } = this.options
+    const { pages, homeRoute, coreRoutes, basePath } = this.options
 
     // Layout is required (shell is optional)
     if (!pages?.layout) {
@@ -598,7 +597,7 @@ export class Kernel {
     }
 
     this.router = createRouter({
-      history: hashMode ? createWebHashHistory(basePath) : createWebHistory(basePath),
+      history: createWebHistory(basePath),
       routes
     })
   }

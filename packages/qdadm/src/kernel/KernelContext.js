@@ -121,6 +121,14 @@ export class KernelContext {
     return this._kernel.options?.authAdapter ?? null
   }
 
+  /**
+   * Get security checker (role hierarchy, permissions)
+   * @returns {import('../entity/auth/SecurityChecker.js').SecurityChecker|null}
+   */
+  get security() {
+    return this._kernel.securityChecker
+  }
+
   // ─────────────────────────────────────────────────────────────────────────────
   // Fluent registration methods (return this for chaining)
   // ─────────────────────────────────────────────────────────────────────────────

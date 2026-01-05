@@ -36,6 +36,7 @@ export class AuthCollector extends Collector {
   constructor(options = {}) {
     super(options)
     this._authAdapter = null
+    this._securityChecker = null
     this._ctx = null
     this._signalCleanups = []
     // Activity tracking for login/logout events
@@ -58,6 +59,7 @@ export class AuthCollector extends Collector {
       // Try alternate locations
       this._authAdapter = ctx.authAdapter
     }
+    this._securityChecker = ctx.security
     this._setupSignals()
   }
 
@@ -164,6 +166,7 @@ export class AuthCollector extends Collector {
     }
     this._signalCleanups = []
     this._authAdapter = null
+    this._securityChecker = null
     this._ctx = null
   }
 
@@ -290,6 +293,29 @@ export class AuthCollector extends Collector {
       }
     } catch (e) {
       // Permissions not available
+    }
+
+    // Role hierarchy & permissions (lazy fetch - securityChecker created after module connect)
+    try {
+      const securityChecker = this._securityChecker || this._ctx?.security
+      const hierarchy = securityChecker?.roleHierarchy?.map
+      if (hierarchy && Object.keys(hierarchy).length > 0) {
+        entries.push({
+          type: 'hierarchy',
+          label: 'Role Hierarchy',
+          data: hierarchy
+        })
+      }
+      const rolePermissions = securityChecker?.rolePermissions
+      if (rolePermissions && Object.keys(rolePermissions).length > 0) {
+        entries.push({
+          type: 'role-permissions',
+          label: 'Role Permissions',
+          data: rolePermissions
+        })
+      }
+    } catch (e) {
+      // Security checker not available
     }
 
     // Adapter info

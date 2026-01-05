@@ -23,6 +23,8 @@ function getIcon(type) {
     user: 'pi-user',
     token: 'pi-key',
     permissions: 'pi-shield',
+    hierarchy: 'pi-sitemap',
+    'role-permissions': 'pi-lock',
     adapter: 'pi-cog'
   }
   return icons[type] || 'pi-info-circle'

@@ -5,7 +5,23 @@ All notable changes to qdadm will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
-## [0.35.0] - 2026-01-05
+## [0.36.0] - 2026-01-05
+
+### Added
+- **Auto-infer `authSensitive`**: EntityManager now auto-detects `authSensitive` from storage capabilities
+  - If storage has `requiresAuth: true` capability, `authSensitive` defaults to `true`
+  - Can still be explicitly set to override (e.g., `authSensitive: false` for public entities)
+  - Reduces boilerplate: no need to manually set `authSensitive` when using protected storage
+- **Security info in debug panel**: AuthPanel now displays role configuration
+  - **Role Hierarchy**: Shows inheritance structure (e.g., `ROLE_ADMIN → [ROLE_USER]`)
+  - **Role Permissions**: Shows permissions assigned to each role
+  - Uses `pi-sitemap` and `pi-lock` icons for visual distinction
+  - KernelContext now exposes `ctx.security` for accessing SecurityChecker
+
+### Removed
+- **`hashMode` option**: Removed hash-based routing (`/#/path`) option from Kernel
+  - All applications now use standard history mode (`createWebHistory`)
+  - Simplifies routing config and aligns with modern SPA patterns
 
 ### Changed
 - **Debug panels improvements**:

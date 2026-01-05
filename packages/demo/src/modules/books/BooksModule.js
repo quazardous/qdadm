@@ -74,7 +74,6 @@ export class BooksModule extends Module {
     // ════════════════════════════════════════════════════════════════════════
     ctx.entity('books', new BooksManager({
       name: 'books',
-      authSensitive: true,
       labelField: 'title',
       fields: {
         title: { type: 'text', label: 'Title', required: true, default: '' },

@@ -28,7 +28,6 @@ const noAuthAdapter = {
 // Kernel configuration
 const kernel = new Kernel({
   root: App,
-  hashMode: true,
 
   // Module System v2: pass module classes via moduleDefs
   moduleDefs: [
