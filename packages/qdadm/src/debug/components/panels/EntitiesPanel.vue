@@ -141,7 +141,7 @@ function getCapabilityLabel(cap) {
           <i
             v-if="entity.authSensitive"
             class="pi pi-shield perm-icon-auth-sensitive"
-            title="Auth-sensitive (auto-invalidates on auth events)"
+            title="Auth-sensitive"
           />
         </div>
         <span class="entity-label">{{ entity.label }}</span>
