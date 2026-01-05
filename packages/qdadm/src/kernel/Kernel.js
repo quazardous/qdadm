@@ -637,6 +637,18 @@ export class Kernel {
       ]
     }
 
+    // Add 404 catch-all route
+    const notFoundComponent = pages.notFound || (() => import('../components/pages/NotFoundPage.vue'))
+    const notFoundRoute = {
+      path: '/:pathMatch(.*)*',
+      name: 'not-found',
+      component: notFoundComponent,
+      meta: { public: true }
+    }
+
+    // Insert 404 route at the end of top-level routes
+    routes.push(notFoundRoute)
+
     this.router = createRouter({
       history: createWebHistory(basePath),
       routes

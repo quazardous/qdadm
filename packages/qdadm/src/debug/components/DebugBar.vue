@@ -12,7 +12,7 @@
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import Badge from 'primevue/badge'
 import Button from 'primevue/button'
-import { ZonesPanel, AuthPanel, EntitiesPanel, ToastsPanel, EntriesPanel, SignalsPanel } from './panels'
+import { ZonesPanel, AuthPanel, EntitiesPanel, ToastsPanel, EntriesPanel, SignalsPanel, RouterPanel } from './panels'
 
 const props = defineProps({
   bridge: { type: Object, required: true },
@@ -429,12 +429,14 @@ function getCollectorIcon(name) {
     zones: 'pi-th-large',
     auth: 'pi-user',
     entities: 'pi-database',
+    router: 'pi-directions',
     ErrorCollector: 'pi-exclamation-triangle',
     SignalCollector: 'pi-bolt',
     ToastCollector: 'pi-bell',
     ZonesCollector: 'pi-th-large',
     AuthCollector: 'pi-user',
-    EntitiesCollector: 'pi-database'
+    EntitiesCollector: 'pi-database',
+    RouterCollector: 'pi-directions'
   }
   return icons[name] || 'pi-database'
 }
@@ -447,12 +449,14 @@ function getCollectorLabel(name) {
     zones: 'Zones',
     auth: 'Auth',
     entities: 'Entities',
+    router: 'Router',
     ErrorCollector: 'Errors',
     SignalCollector: 'Signals',
     ToastCollector: 'Toasts',
     ZonesCollector: 'Zones',
     AuthCollector: 'Auth',
-    EntitiesCollector: 'Entities'
+    EntitiesCollector: 'Entities',
+    RouterCollector: 'Router'
   }
   return labels[name] || name
 }
@@ -464,7 +468,8 @@ function getCollectorColor(name) {
     signals: '#8b5cf6',
     zones: '#06b6d4',
     auth: '#10b981',
-    entities: '#3b82f6'
+    entities: '#3b82f6',
+    router: '#ec4899'
   }
   return colors[name] || '#6b7280'
 }
@@ -665,11 +670,6 @@ function getCollectorColor(name) {
         :entries="currentCollector.entries"
       />
 
-      <div v-else-if="currentCollector.entries.length === 0" class="debug-empty">
-        <i class="pi pi-inbox" />
-        <span>No entries</span>
-      </div>
-
       <!-- Auth collector -->
       <AuthPanel
         v-else-if="currentCollector.name === 'auth' || currentCollector.name === 'AuthCollector'"
@@ -685,11 +685,24 @@ function getCollectorColor(name) {
         @update="notifyBridge"
       />
 
+      <!-- Router collector -->
+      <RouterPanel
+        v-else-if="currentCollector.name === 'router' || currentCollector.name === 'RouterCollector'"
+        :collector="currentCollector.collector"
+        :entries="currentCollector.entries"
+      />
+
       <!-- Toasts collector (vertical modes) -->
       <ToastsPanel
         v-else-if="(currentCollector.name === 'toasts' || currentCollector.name === 'ToastCollector') && (displayMode !== 'bottom' || fullscreen)"
         :entries="currentCollector.entries"
       />
+
+      <!-- Empty state for generic collectors without entries -->
+      <div v-else-if="currentCollector.entries.length === 0" class="debug-empty">
+        <i class="pi pi-inbox" />
+        <span>No entries</span>
+      </div>
 
       <!-- Default entries - horizontal (bottom mode) -->
       <EntriesPanel

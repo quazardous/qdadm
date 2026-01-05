@@ -27,6 +27,7 @@ import { ToastCollector } from './ToastCollector.js'
 import { ZonesCollector } from './ZonesCollector.js'
 import { AuthCollector } from './AuthCollector.js'
 import { EntitiesCollector } from './EntitiesCollector.js'
+import { RouterCollector } from './RouterCollector.js'
 import DebugBar from './components/DebugBar.vue'
 
 /**
@@ -92,6 +93,7 @@ export class DebugModule extends Module {
    * @param {boolean} [options.zonesCollector=true] - Include ZonesCollector
    * @param {boolean} [options.authCollector=true] - Include AuthCollector
    * @param {boolean} [options.entitiesCollector=true] - Include EntitiesCollector
+   * @param {boolean} [options.routerCollector=true] - Include RouterCollector
    */
   constructor(options = {}) {
     super(options)
@@ -153,6 +155,10 @@ export class DebugModule extends Module {
 
     if (this.options.entitiesCollector !== false) {
       this._bridge.addCollector(new EntitiesCollector(collectorOptions))
+    }
+
+    if (this.options.routerCollector !== false) {
+      this._bridge.addCollector(new RouterCollector(collectorOptions))
     }
 
     // Install collectors with context

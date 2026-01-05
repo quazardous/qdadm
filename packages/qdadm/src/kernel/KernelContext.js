@@ -366,6 +366,11 @@ export class KernelContext {
     // Derive route prefix: 'books' → 'book', 'countries' → 'country'
     const routePrefix = options.routePrefix || this._singularize(entity)
 
+    // Check if entity is actually registered in orchestrator (for permission binding)
+    // If not registered, don't bind entity to routes/nav (allows pure route registration)
+    const hasEntity = this._kernel.orchestrator?.isRegistered(entity) ?? false
+    const entityBinding = hasEntity ? entity : undefined
+
     // Build routes array
     const routes = []
 
@@ -410,8 +415,9 @@ export class KernelContext {
       }
     }
 
-    // Register routes with entity binding
-    this.routes(entity, routes, { entity })
+    // Register routes (with entity binding only if entity exists)
+    const routeOpts = entityBinding ? { entity: entityBinding } : {}
+    this.routes(entity, routes, routeOpts)
 
     // Register route family for active state detection
     this.routeFamily(routePrefix, [`${routePrefix}-`])
@@ -419,13 +425,16 @@ export class KernelContext {
     // Register nav item if provided
     if (options.nav) {
       const label = options.nav.label || this._capitalize(entity)
-      this.navItem({
+      const navItem = {
         section: options.nav.section,
         route: routePrefix,
         icon: options.nav.icon,
-        label,
-        entity
-      })
+        label
+      }
+      if (entityBinding) {
+        navItem.entity = entityBinding
+      }
+      this.navItem(navItem)
     }
 
     return this

@@ -61,3 +61,4 @@ export { default as SeverityTag } from './SeverityTag.vue'
 
 // Pages
 export { default as LoginPage } from './pages/LoginPage.vue'
+export { default as NotFoundPage } from './pages/NotFoundPage.vue'

@@ -1547,6 +1547,7 @@ export function useListPageBuilder(config = {}) {
     selectable: hasBulkActions.value,
 
     // Pagination
+    lazy: true,  // Let parent handle pagination via @page events
     totalRecords: totalRecords.value,
     rows: pageSize.value,
     rowsPerPageOptions,

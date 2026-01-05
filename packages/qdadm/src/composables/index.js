@@ -4,6 +4,7 @@
 
 export { useBareForm } from './useBareForm'
 export { useBreadcrumb } from './useBreadcrumb'
+export { useSemanticBreadcrumb, computeSemanticBreadcrumb } from './useSemanticBreadcrumb'
 export { useDirtyState } from './useDirtyState'
 export { useForm } from './useForm'
 export { useFormPageBuilder } from './useFormPageBuilder'

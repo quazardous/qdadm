@@ -1,42 +1,32 @@
 /**
  * useNavContext - Route-aware navigation context for breadcrumb and navlinks
  *
- * Builds navigation from route path pattern analysis (not heuristics).
+ * Uses semantic breadcrumb as the source of truth for navigation structure.
+ * Semantic breadcrumb is computed from route path and registered routes.
  *
- * The route path pattern defines the navigation structure:
- *   - Static segments (e.g., 'books') → entity list
- *   - Param segments (e.g., ':id', ':bookId') → entity item
- *   - Action segments (e.g., 'edit', 'create') → ignored
- *
- * Route meta configuration:
- *   - meta.entity: Entity managed by this route (required)
- *   - meta.parent: Parent entity config for nested routes
- *     - parent.entity: Parent entity name
- *     - parent.param: Route param for parent ID
+ * Semantic breadcrumb kinds:
+ *   - entity-list: Entity collection (e.g., /books)
+ *   - entity-show: Entity instance view (e.g., /books/1)
+ *   - entity-edit: Entity instance edit (e.g., /books/1/edit)
+ *   - entity-create: Entity creation (e.g., /books/create)
+ *   - route: Generic route (e.g., /settings)
  *
  * Examples:
- *   Path: /books              meta: { entity: 'books' }
- *   → Home > Books
- *
- *   Path: /books/:id/edit     meta: { entity: 'books' }
- *   → Home > Books > "Le Petit Prince"
- *
- *   Path: /books/:bookId/loans   meta: { entity: 'loans', parent: { entity: 'books', param: 'bookId' } }
- *   → Home > Books > "Le Petit Prince" > Loans
- *
- *   Path: /books/:bookId/loans/:id/edit   meta: { entity: 'loans', parent: { entity: 'books', param: 'bookId' } }
- *   → Home > Books > "Le Petit Prince" > Loans > "Loan #abc123"
+ *   Path: /books              → [{ kind: 'entity-list', entity: 'books' }]
+ *   Path: /books/1/edit       → [{ kind: 'entity-list', entity: 'books' }, { kind: 'entity-edit', entity: 'books', id: '1' }]
+ *   Path: /books/stats        → [{ kind: 'entity-list', entity: 'books' }, { kind: 'route', route: 'book-stats' }]
  */
 import { ref, computed, watch, inject } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { getSiblingRoutes } from '../module/moduleRegistry.js'
-
-// Action segments that don't appear in breadcrumb
-const ACTION_SEGMENTS = ['edit', 'create', 'new', 'show', 'view', 'delete']
+import { useSemanticBreadcrumb } from './useSemanticBreadcrumb.js'
 
 export function useNavContext(options = {}) {
   const route = useRoute()
   const router = useRouter()
+
+  // Semantic breadcrumb as source of truth
+  const { breadcrumb: semanticBreadcrumb } = useSemanticBreadcrumb()
 
   // Injected dependencies
   const orchestrator = inject('qdadmOrchestrator', null)
@@ -48,9 +38,6 @@ export function useNavContext(options = {}) {
   // or injected from parent (for child pages)
   const breadcrumbEntities = options.breadcrumbEntities ?? inject('qdadmBreadcrumbEntities', null)
 
-  // Entity data cache
-  const entityDataCache = ref(new Map())
-
   function getManager(entityName) {
     return orchestrator?.get(entityName)
   }
@@ -59,122 +46,53 @@ export function useNavContext(options = {}) {
     return router.getRoutes().some(r => r.name === name)
   }
 
-  // ============================================================================
-  // PATH PATTERN ANALYSIS
-  // ============================================================================
-
   /**
-   * Parse route path pattern into typed segments
-   *
-   * Input: '/books/:bookId/loans/:id/edit'
-   * Output: [
-   *   { type: 'static', value: 'books' },
-   *   { type: 'param', value: 'bookId' },
-   *   { type: 'static', value: 'loans' },
-   *   { type: 'param', value: 'id' },
-   *   { type: 'action', value: 'edit' }
-   * ]
+   * Convert semantic breadcrumb to navigation chain format
+   * Maps semantic kinds to chain types for compatibility
    */
-  function parsePathPattern(pathPattern) {
-    const segments = []
-    const parts = pathPattern.split('/').filter(Boolean)
-
-    for (const part of parts) {
-      if (part.startsWith(':')) {
-        // Param segment: :id, :bookId
-        segments.push({ type: 'param', value: part.slice(1) })
-      } else if (ACTION_SEGMENTS.includes(part.toLowerCase())) {
-        // Action segment: edit, create, show
-        segments.push({ type: 'action', value: part })
-      } else {
-        // Static segment: books, loans
-        segments.push({ type: 'static', value: part })
-      }
-    }
-
-    return segments
-  }
-
-  /**
-   * Build navigation chain from parsed path segments + route meta
-   *
-   * Uses route meta to know which entity each static segment represents.
-   * The meta.parent chain declares the entity hierarchy.
-   */
-  function buildNavChain(pathSegments, routeMeta, routeParams) {
+  function semanticToNavChain(semantic) {
     const chain = []
-    const meta = routeMeta || {}
 
-    // Collect all entities in the hierarchy (parent chain + current)
-    const entityHierarchy = []
-
-    // Build parent chain (oldest ancestor first)
-    function collectParents(parentConfig) {
-      if (!parentConfig) return
-      const parentManager = getManager(parentConfig.entity)
-      if (!parentManager) return
-
-      // Check if this parent has its own parent
-      const parentRoute = router.getRoutes().find(r =>
-        r.name === `${parentManager.routePrefix}-edit`
-      )
-      if (parentRoute?.meta?.parent) {
-        collectParents(parentRoute.meta.parent)
-      }
-
-      entityHierarchy.push({
-        entity: parentConfig.entity,
-        manager: parentManager,
-        idParam: parentConfig.param
-      })
-    }
-
-    collectParents(meta.parent)
-
-    // Add current entity
-    if (meta.entity) {
-      const currentManager = getManager(meta.entity)
-      if (currentManager) {
-        entityHierarchy.push({
-          entity: meta.entity,
-          manager: currentManager,
-          idParam: 'id'  // Standard param for current entity
+    for (const item of semantic) {
+      if (item.kind === 'entity-list') {
+        const manager = getManager(item.entity)
+        chain.push({
+          type: 'list',
+          entity: item.entity,
+          manager,
+          label: manager?.labelPlural || item.entity,
+          routeName: manager?.routePrefix || item.entity.slice(0, -1)
         })
-      }
-    }
-
-    // Now build chain from hierarchy
-    for (const { entity, manager, idParam } of entityHierarchy) {
-      const entityId = routeParams[idParam]
-
-      // Add list segment
-      chain.push({
-        type: 'list',
-        entity,
-        manager,
-        label: manager.labelPlural || manager.name,
-        routeName: manager.routePrefix
-      })
-
-      // Add item segment if we have an ID for this entity
-      if (entityId) {
+      } else if (item.kind.startsWith('entity-') && item.id) {
+        // entity-show, entity-edit, entity-delete
+        const manager = getManager(item.entity)
         chain.push({
           type: 'item',
-          entity,
+          entity: item.entity,
           manager,
-          id: entityId,
-          routeName: `${manager.routePrefix}-edit`
+          id: item.id,
+          routeName: manager ? `${manager.routePrefix}-edit` : null
         })
-      }
-    }
-
-    // Handle child-list case: when on a child route without :id
-    // The last segment is a child-list, not a regular list
-    if (meta.parent && !routeParams.id && chain.length > 0) {
-      const lastSegment = chain[chain.length - 1]
-      if (lastSegment.type === 'list') {
-        lastSegment.type = 'child-list'
-        lastSegment.navLabel = meta.navLabel
+      } else if (item.kind === 'entity-create') {
+        // Create page - treat as special list
+        const manager = getManager(item.entity)
+        chain.push({
+          type: 'create',
+          entity: item.entity,
+          manager,
+          label: 'Create',
+          routeName: manager ? `${manager.routePrefix}-create` : null
+        })
+      } else if (item.kind === 'route') {
+        // Generic route (like /books/stats)
+        // Use label from semantic item if provided (custom breadcrumb), else lookup route
+        const routeRecord = router.getRoutes().find(r => r.name === item.route)
+        chain.push({
+          type: 'route',
+          route: item.route,
+          label: item.label || routeRecord?.meta?.navLabel || routeRecord?.meta?.title || item.route,
+          routeName: item.route
+        })
       }
     }
 
@@ -186,23 +104,10 @@ export function useNavContext(options = {}) {
   // ============================================================================
 
   /**
-   * Parsed path segments from current route
-   */
-  const pathSegments = computed(() => {
-    // Get the matched route's path pattern
-    const matched = route.matched
-    if (!matched.length) return []
-
-    // Use the last matched route's full path
-    const lastMatch = matched[matched.length - 1]
-    return parsePathPattern(lastMatch.path)
-  })
-
-  /**
-   * Navigation chain built from path analysis
+   * Navigation chain built from semantic breadcrumb
    */
   const navChain = computed(() => {
-    return buildNavChain(pathSegments.value, route.meta, route.params)
+    return semanticToNavChain(semanticBreadcrumb.value)
   })
 
   // ============================================================================
@@ -293,15 +198,25 @@ export function useNavContext(options = {}) {
       if (segment.type === 'list') {
         items.push({
           label: segment.label,
-          to: { name: segment.routeName }
+          to: isLast ? null : (segment.routeName && routeExists(segment.routeName) ? { name: segment.routeName } : null)
         })
       } else if (segment.type === 'item') {
         const data = chainData.value.get(i)
-        const label = data ? segment.manager.getEntityLabel(data) : '...'
+        const label = data && segment.manager ? segment.manager.getEntityLabel(data) : '...'
 
         items.push({
           label,
-          to: isLast ? null : { name: segment.routeName, params: { id: segment.id } }
+          to: isLast ? null : (segment.routeName && routeExists(segment.routeName) ? { name: segment.routeName, params: { id: segment.id } } : null)
+        })
+      } else if (segment.type === 'create') {
+        items.push({
+          label: segment.label
+        })
+      } else if (segment.type === 'route') {
+        // Generic route (e.g., /books/stats)
+        items.push({
+          label: segment.label,
+          to: isLast ? null : (segment.routeName && routeExists(segment.routeName) ? { name: segment.routeName } : null)
         })
       } else if (segment.type === 'child-list') {
         items.push({
@@ -383,8 +298,8 @@ export function useNavContext(options = {}) {
 
   return {
     // Analysis
-    pathSegments,
     navChain,
+    semanticBreadcrumb,
 
     // Data
     entityData,

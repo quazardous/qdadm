@@ -13,6 +13,7 @@ export { ToastCollector } from './ToastCollector.js'
 export { ZonesCollector } from './ZonesCollector.js'
 export { AuthCollector } from './AuthCollector.js'
 export { EntitiesCollector } from './EntitiesCollector.js'
+export { RouterCollector } from './RouterCollector.js'
 export { LocalStorageAdapter, createLocalStorageAdapter } from './LocalStorageAdapter.js'
 
 // Module System v2 integration

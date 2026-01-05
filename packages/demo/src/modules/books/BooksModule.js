@@ -123,7 +123,12 @@ export class BooksModule extends Module {
       {
         path: '',
         name: 'book-stats',
-        component: () => import('./pages/BookStats.vue')
+        component: () => import('./pages/BookStats.vue'),
+        meta: {
+          breadcrumb: [
+            { kind: 'route', route: 'book-stats', label: 'Statistics' }
+          ]
+        }
       }
     ])
 

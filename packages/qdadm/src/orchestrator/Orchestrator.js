@@ -161,12 +161,22 @@ export class Orchestrator {
   }
 
   /**
-   * Check if a manager exists (registered or can be created)
+   * Check if a manager exists (registered or can be created via factory)
    * @param {string} name - Entity name
    * @returns {boolean}
    */
   has(name) {
     return this._managers.has(name) || !!this._entityFactory
+  }
+
+  /**
+   * Check if a manager is actually registered (not just creatable)
+   * Use this to check if ctx.entity() was called for this entity
+   * @param {string} name - Entity name
+   * @returns {boolean}
+   */
+  isRegistered(name) {
+    return this._managers.has(name)
   }
 
   /**

@@ -5,6 +5,59 @@ All notable changes to qdadm will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.40.0] - 2026-01-06
+
+### Added
+- **`useSemanticBreadcrumb`**: New composable - single source of truth for navigation
+  - Extracted from `useNavContext` for reuse across composables
+  - Computes semantic breadcrumb from route path and metadata
+  - Kinds: `entity-list`, `entity-show`, `entity-edit`, `entity-create`, `route`
+- **RouterPanel**: Debug bar panel showing current route info
+  - Route name, path, params, query, meta
+  - Semantic breadcrumb visualization
+- **NotFoundPage**: Default 404 page component
+  - Used when no custom `pages.notFound` provided
+
+### Changed
+- **`useNavigation`**: Menu active state uses semantic breadcrumb only
+  - No more route segment deduction or `isRouteInFamily` fallback
+  - Entity-based items match ONLY by entity (no fall-through to route check)
+- **`useBreadcrumb`**: Refactored to use `useSemanticBreadcrumb`
+  - Cleaner separation: semantic model → display adapter
+- **`useNavContext`**: Refactored to use `useSemanticBreadcrumb`
+  - Reduced code duplication
+
+### Fixed
+- **Pagination**: Added `lazy: true` as default in `useListPageBuilder`
+  - PrimeVue DataTable with `lazy: false` (default) expects ALL items for client-side pagination
+  - `useListPageBuilder` returns only current page items (EntityManager handles pagination)
+  - Fix ensures DataTable delegates pagination to parent via `@page` events
+- **Menu highlight bug**: Both "Books" and "Stats" were highlighted on `/books/stats`
+  - Entity-based menu items now return `false` immediately when no entity in breadcrumb
+- **Breadcrumb leaf items**: Last items are no longer links (you're already there)
+
+### Demo (0.17.1)
+- **BookStats route**: Added breadcrumb metadata for proper semantic breadcrumb
+
+## [0.39.0] - 2026-01-05
+
+### Added
+- **`orchestrator.isRegistered(name)`**: Check if entity is actually registered
+  - Unlike `has()` which returns true if factory can create, `isRegistered()` only returns true if `ctx.entity()` was called
+  - Used internally by `ctx.crud()` for auto-detection
+- **404 Page handling**: Catch-all route for unknown paths
+  - Default `NotFoundPage` component with "Back to Home" link
+  - Custom page via `pages.notFound` option in Kernel config
+  - Route name: `not-found`, path: `/:pathMatch(.*)*`
+  - Public route (accessible without auth)
+
+### Changed
+- **`ctx.crud()` without entity**: Now works for pages without entity registration
+  - Auto-detects if entity exists in orchestrator via `isRegistered()`
+  - If entity not registered, routes/nav work without permission checks
+  - Enables `ctx.crud('logs', {...})` for SSE-based or custom pages
+  - No more "No manager for entity" error for non-CRUD pages
+
 ## [0.38.1] - 2026-01-05
 
 ### Added

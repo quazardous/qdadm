@@ -1,99 +1,75 @@
 import { computed, inject } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { useRouter } from 'vue-router'
+import { useSemanticBreadcrumb } from './useSemanticBreadcrumb'
 
 /**
- * useBreadcrumb - Auto-generate breadcrumb from route hierarchy
+ * useBreadcrumb - Generate display-ready breadcrumb from semantic breadcrumb
  *
- * Generates breadcrumb items automatically from:
- * 1. route.meta.breadcrumb if defined (manual override)
- * 2. Route path segments with smart label generation
+ * Uses useSemanticBreadcrumb for the semantic model, then applies adapters
+ * to resolve labels, paths, and icons for display.
  *
- * Usage:
- * const { breadcrumbItems } = useBreadcrumb()
+ * @param {object} options - Options
+ * @param {object} [options.entity] - Current entity data for dynamic labels
+ * @param {Function} [options.getEntityLabel] - Custom label resolver for entities
+ * @param {object} [options.labelMap] - Custom label mappings
+ * @param {object} [options.iconMap] - Custom icon mappings
  *
- * // Or with entity data for dynamic labels
- * const { breadcrumbItems } = useBreadcrumb({ entity: agentData })
+ * @example
+ * const { breadcrumbItems, semanticBreadcrumb } = useBreadcrumb()
  *
- * // Or with custom label callback
- * const { breadcrumbItems } = useBreadcrumb({
- *   entity: newsroomData,
- *   getEntityLabel: (entity) => entity.name || entity.slug
- * })
- *
- * Route meta example:
- * {
- *   path: 'agents/:id/edit',
- *   name: 'agent-edit',
- *   meta: {
- *     breadcrumb: [
- *       { label: 'Agents', to: { name: 'agents' } },
- *       { label: ':name', dynamic: true }  // Resolved from entity.name
- *     ]
- *   }
- * }
+ * // With entity data for dynamic labels
+ * const { breadcrumbItems } = useBreadcrumb({ entity: bookData })
  */
 export function useBreadcrumb(options = {}) {
-  const route = useRoute()
   const router = useRouter()
   const homeRouteName = inject('qdadmHomeRoute', null)
 
-  // Label mapping for common route names
-  const labelMap = {
+  // Get semantic breadcrumb
+  const { breadcrumb: semanticBreadcrumb } = useSemanticBreadcrumb()
+
+  // Default label mapping
+  const defaultLabelMap = {
     home: 'Home',
     dashboard: 'Dashboard',
-    users: 'Users',
-    roles: 'Roles',
-    apikeys: 'API Keys',
-    newsrooms: 'Newsrooms',
-    agents: 'Agents',
-    events: 'Events',
-    taxonomy: 'Taxonomy',
-    domains: 'Domains',
-    nexus: 'Nexus',
-    queue: 'Queue',
     create: 'Create',
     edit: 'Edit',
-    show: 'View'
+    show: 'View',
+    delete: 'Delete'
   }
 
-  // Icon mapping for root sections
-  const iconMap = {
+  // Default icon mapping for entities
+  const defaultIconMap = {
     users: 'pi pi-users',
     roles: 'pi pi-shield',
-    apikeys: 'pi pi-key',
-    newsrooms: 'pi pi-building',
-    agents: 'pi pi-user',
-    events: 'pi pi-calendar',
-    taxonomy: 'pi pi-tags',
-    domains: 'pi pi-globe',
-    nexus: 'pi pi-sitemap',
-    queue: 'pi pi-server'
+    books: 'pi pi-book',
+    genres: 'pi pi-tags',
+    loans: 'pi pi-exchange',
+    settings: 'pi pi-cog'
   }
+
+  // Merge with custom mappings
+  const labelMap = { ...defaultLabelMap, ...options.labelMap }
+  const iconMap = { ...defaultIconMap, ...options.iconMap }
 
   /**
    * Capitalize first letter
    */
   function capitalize(str) {
+    if (!str) return ''
     return str.charAt(0).toUpperCase() + str.slice(1)
   }
 
   /**
-   * Get human-readable label from path segment
+   * Get route name for entity
    */
-  function getLabel(segment) {
-    // Check labelMap first
-    if (labelMap[segment]) return labelMap[segment]
-    // Capitalize and replace hyphens
-    return capitalize(segment.replace(/-/g, ' '))
-  }
-
-  /**
-   * Resolve dynamic label from entity data
-   */
-  function resolveDynamicLabel(label, entity) {
-    if (!label.startsWith(':')) return label
-    const field = label.slice(1) // Remove ':'
-    return entity?.[field] || label
+  function getEntityRouteName(entity, kind) {
+    // Convention: entity-list -> 'book', entity-edit -> 'book-edit'
+    const singular = entity.endsWith('s') ? entity.slice(0, -1) : entity
+    if (kind === 'entity-list') return singular
+    if (kind === 'entity-show') return `${singular}-show`
+    if (kind === 'entity-edit') return `${singular}-edit`
+    if (kind === 'entity-create') return `${singular}-create`
+    return singular
   }
 
   /**
@@ -104,131 +80,114 @@ export function useBreadcrumb(options = {}) {
   }
 
   /**
-   * Get home breadcrumb item from configured homeRoute
+   * Resolve semantic item to display item
+   * @param {object} item - Semantic breadcrumb item
+   * @param {number} index - Index in the breadcrumb array
+   * @param {object} entity - Current entity data (for labels)
+   * @param {boolean} isLast - Whether this is the last item (no link)
+   */
+  function resolveItem(item, index, entity, isLast) {
+    const displayItem = {
+      label: '',
+      to: null,
+      icon: null
+    }
+
+    if (item.kind === 'route') {
+      // Generic route
+      const routeName = item.route
+      displayItem.label = item.label || labelMap[routeName] || capitalize(routeName)
+      displayItem.to = isLast ? null : (routeExists(routeName) ? { name: routeName } : null)
+      if (routeName === 'home') {
+        displayItem.icon = 'pi pi-home'
+      }
+    } else if (item.kind.startsWith('entity-')) {
+      // Entity-related item
+      const entityName = item.entity
+
+      if (item.kind === 'entity-list') {
+        // Entity list - use plural label
+        displayItem.label = labelMap[entityName] || capitalize(entityName)
+        displayItem.icon = index === 1 ? iconMap[entityName] : null
+        const routeName = getEntityRouteName(entityName, item.kind)
+        displayItem.to = isLast ? null : (routeExists(routeName) ? { name: routeName } : null)
+      } else if (item.id) {
+        // Entity instance (show/edit/delete)
+        // Try to get label from entity data or use ID
+        if (entity && options.getEntityLabel) {
+          displayItem.label = options.getEntityLabel(entity)
+        } else if (entity?.name) {
+          displayItem.label = entity.name
+        } else if (entity?.title) {
+          displayItem.label = entity.title
+        } else {
+          displayItem.label = `#${item.id}`
+        }
+
+        // Last item = no link. Otherwise link to show page if exists
+        if (!isLast && (item.kind === 'entity-edit' || item.kind === 'entity-delete')) {
+          const showRouteName = getEntityRouteName(entityName, 'entity-show')
+          if (routeExists(showRouteName)) {
+            displayItem.to = { name: showRouteName, params: { id: item.id } }
+          }
+        }
+      } else if (item.kind === 'entity-create') {
+        // Create page - label as action
+        displayItem.label = labelMap.create || 'Create'
+      }
+    }
+
+    return displayItem
+  }
+
+  /**
+   * Get home breadcrumb item
    */
   function getHomeItem() {
-    if (!homeRouteName || !routeExists(homeRouteName)) {
-      return null
+    if (!homeRouteName || !routeExists(homeRouteName)) return null
+    return {
+      label: labelMap.home || 'Home',
+      to: { name: homeRouteName },
+      icon: 'pi pi-home'
     }
-    // Use label from labelMap or capitalize route name
-    const label = labelMap[homeRouteName] || capitalize(homeRouteName)
-    return { label, to: { name: homeRouteName }, icon: 'pi pi-home' }
   }
 
   /**
-   * Build breadcrumb from route.meta.breadcrumb (manual)
-   */
-  function buildFromMeta(metaBreadcrumb, entity) {
-    const items = []
-    const home = getHomeItem()
-    if (home) items.push(home)
-
-    for (const item of metaBreadcrumb) {
-      const resolved = {
-        label: item.dynamic ? resolveDynamicLabel(item.label, entity) : item.label,
-        to: item.to || null,
-        icon: item.icon || null
-      }
-      items.push(resolved)
-    }
-
-    return items
-  }
-
-  // Action segments that should be excluded from breadcrumb
-  const actionSegments = ['edit', 'create', 'show', 'view', 'new', 'delete']
-
-  /**
-   * Build breadcrumb automatically from route path
-   *
-   * Breadcrumb shows navigable parents only:
-   * - Excludes action segments (edit, create, show, etc.)
-   * - Excludes IDs
-   * - All items have links (to navigate back to parent)
-   */
-  function buildFromPath(entity, getEntityLabel) {
-    const items = []
-    const home = getHomeItem()
-    if (home) items.push(home)
-
-    // Get path segments, filter empty and params
-    const segments = route.path.split('/').filter(s => s && !s.startsWith(':'))
-
-    let currentPath = ''
-    for (let i = 0; i < segments.length; i++) {
-      const segment = segments[i]
-      currentPath += `/${segment}`
-
-      // Skip action segments (edit, create, show, etc.)
-      if (actionSegments.includes(segment.toLowerCase())) {
-        continue
-      }
-
-      // Skip IDs: numeric, UUID, ULID, or any alphanumeric string > 10 chars
-      const isId = /^\d+$/.test(segment) ||  // numeric
-        segment.match(/^[0-9a-f-]{36}$/i) ||  // UUID
-        segment.match(/^[0-7][0-9a-hjkmnp-tv-z]{25}$/i) ||  // ULID
-        (segment.match(/^[a-z0-9]+$/i) && segment.length > 10)  // Generated ID
-      if (isId) {
-        continue
-      }
-
-      // Get label for this segment
-      const label = getLabel(segment)
-
-      // Find matching route for this path
-      const matchedRoute = router.getRoutes().find(r => {
-        const routePath = r.path.replace(/:\w+/g, '[^/]+')
-        const regex = new RegExp(`^${routePath}$`)
-        return regex.test(currentPath)
-      })
-
-      const item = {
-        label,
-        to: matchedRoute ? { name: matchedRoute.name } : null,
-        icon: i === 0 ? iconMap[segment] : null
-      }
-
-      items.push(item)
-    }
-
-    // Remove last item if it matches current route (we only show parents)
-    if (items.length > 1) {
-      const lastItem = items[items.length - 1]
-      if (lastItem.to?.name === route.name) {
-        items.pop()
-      }
-    }
-
-    return items
-  }
-
-  /**
-   * Computed breadcrumb items
+   * Computed display-ready breadcrumb items
    */
   const breadcrumbItems = computed(() => {
     const entity = options.entity?.value || options.entity
-    const getEntityLabel = options.getEntityLabel || null
+    const items = []
 
-    // Use meta.breadcrumb if defined
-    if (route.meta?.breadcrumb) {
-      return buildFromMeta(route.meta.breadcrumb, entity)
+    // Add home first (display concern, not in semantic breadcrumb)
+    const homeItem = getHomeItem()
+    if (homeItem) {
+      items.push(homeItem)
     }
 
-    // Auto-generate from path
-    return buildFromPath(entity, getEntityLabel)
+    // Resolve semantic items to display items
+    const semanticItems = semanticBreadcrumb.value
+    for (let i = 0; i < semanticItems.length; i++) {
+      const semanticItem = semanticItems[i]
+      const isLast = i === semanticItems.length - 1
+      const displayItem = resolveItem(semanticItem, i, entity, isLast)
+      items.push(displayItem)
+    }
+
+    return items
   })
 
   /**
    * Manual override - set custom breadcrumb items
    */
   function setBreadcrumb(items) {
-    const home = getHomeItem()
-    return home ? [home, ...items] : items
+    const homeItem = { label: labelMap.home || 'Home', to: { name: homeRouteName }, icon: 'pi pi-home' }
+    return homeRouteName && routeExists(homeRouteName) ? [homeItem, ...items] : items
   }
 
   return {
     breadcrumbItems,
+    semanticBreadcrumb,
     setBreadcrumb
   }
 }

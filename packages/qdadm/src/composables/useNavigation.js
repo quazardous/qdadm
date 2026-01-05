@@ -11,7 +11,8 @@
 
 import { computed, inject, ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { getNavSections, isRouteInFamily, alterMenuSections, isMenuAltered } from '../module/moduleRegistry'
+import { getNavSections, alterMenuSections, isMenuAltered } from '../module/moduleRegistry'
+import { useSemanticBreadcrumb } from './useSemanticBreadcrumb'
 
 /**
  * Navigation composable
@@ -30,6 +31,9 @@ export function useNavigation() {
   const router = useRouter()
   const orchestrator = inject('qdadmOrchestrator', null)
   const hooks = inject('qdadmHooks', null)
+
+  // Semantic breadcrumb for entity-based active detection
+  const { breadcrumb } = useSemanticBreadcrumb()
 
   // Track whether menu:alter has completed
   const isReady = ref(isMenuAltered())
@@ -74,17 +78,29 @@ export function useNavigation() {
 
   /**
    * Check if a nav item is currently active
+   * Uses semantic breadcrumb only - no route segment deduction
    */
   function isNavActive(item) {
-    const currentRouteName = route.name
-
     // Exact match mode
     if (item.exact) {
-      return currentRouteName === item.route
+      return route.name === item.route
     }
 
-    // Use registry's family detection
-    return isRouteInFamily(currentRouteName, item.route)
+    // Check semantic breadcrumb for match
+    const bc = breadcrumb.value
+
+    // Entity-based menu item: match ONLY by entity (don't fall through)
+    if (item.entity) {
+      const firstEntityItem = bc.find(b => b.kind.startsWith('entity-'))
+      return firstEntityItem ? firstEntityItem.entity === item.entity : false
+    }
+
+    // Route-based menu item: check if route is in breadcrumb
+    if (item.route) {
+      return bc.some(b => b.kind === 'route' && b.route === item.route)
+    }
+
+    return false
   }
 
   /**
