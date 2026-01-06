@@ -49,35 +49,11 @@ const loansStorage = new LoansStorage({
 // ============================================================================
 
 /**
- * LoansManager - Enrichment + data filtering pattern
- *
- * Uses base EntityManager for permissions via:
- * - entity:loans:* permissions for admin access
- * - entity-own:loans:* permissions for owner access on own records
- * - isOwn callback to identify ownership
- *
- * Data filtering:
- * - Admin sees all loans (no filter)
- * - Regular user sees only their own loans (user_id filter)
+ * LoansManager - Enrichment pattern
  *
  * Enrichment: adds book_title and username from related entities
  */
 class LoansManager extends EntityManager {
-  /**
-   * Filter list results by ownership for non-admin users
-   * This is DATA filtering, not permission checking
-   */
-  async list(params = {}) {
-    const user = this._getCurrentUser()
-    // Admin sees all, regular users see only their own
-    if (user && !this.authAdapter?.isGranted?.('entity:loans:list-all')) {
-      params.filters = params.filters || {}
-      params.filters.user_id = user.id
-      params.cacheSafe = true  // User filter is session-bound, safe to cache
-    }
-    return super.list(params)
-  }
-
   async _enrichLoan(data) {
     if (data.book_id) {
       const book = await booksStorageInternal.get(data.book_id)
@@ -95,15 +71,7 @@ class LoansManager extends EntityManager {
     return data
   }
 
-  /**
-   * Create loan - auto-assign user_id for non-admin users
-   */
   async create(data) {
-    const user = this._getCurrentUser()
-    // Non-admin users can only create loans for themselves
-    if (user && !this.authAdapter?.isGranted?.('entity:loans:create-any')) {
-      data.user_id = user.id
-    }
     await this._enrichLoan(data)
     return super.create(data)
   }

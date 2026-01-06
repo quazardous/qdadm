@@ -5,6 +5,16 @@ All notable changes to qdadm will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.46.1] - 2026-01-06
+
+### Fixed
+- **FormInput DatePicker**: Handle string ↔ Date conversion for ISO date values
+- **UnsavedChangesDialog**: Pass `.value` of visible ref (fixes Vue type warning)
+
+### Changed
+- **Demo LoanForm**: Refactored to useFormPageBuilder pattern with auto-resolved references
+- **Demo LoansManager**: Simplified - removed custom list filtering logic
+
 ## [0.46.0] - 2026-01-06
 
 ### Added
