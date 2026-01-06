@@ -34,18 +34,6 @@ export const booksStorageInternal = new MockApiStorage({
   initialData: booksFixture
 })
 
-// ============================================================================
-// ENTITY CONFIG
-// ============================================================================
-
-const genreOptions = [
-  { label: 'Fiction', value: 'fiction' },
-  { label: 'Non-Fiction', value: 'non-fiction' },
-  { label: 'Science Fiction', value: 'sci-fi' },
-  { label: 'Fantasy', value: 'fantasy' },
-  { label: 'Mystery', value: 'mystery' }
-]
-
 // Books permissions are handled by the SecurityChecker:
 // - entity:books:* for admin access
 // - entity:books:read, entity:books:list, entity:books:create, entity:books:update for regular users
@@ -74,7 +62,7 @@ export class BooksModule extends Module {
         title: { type: 'text', label: 'Title', required: true, default: '' },
         author: { type: 'text', label: 'Author', required: true, default: '' },
         year: { type: 'number', label: 'Year', default: () => new Date().getFullYear() },
-        genre: { type: 'select', label: 'Genre', options: genreOptions, default: 'fiction' }
+        genre: { type: 'select', label: 'Genre', reference: { entity: 'genres' }, default: 'fiction' }
       },
       children: {
         loans: { entity: 'loans', foreignKey: 'book_id', label: 'Loans' }

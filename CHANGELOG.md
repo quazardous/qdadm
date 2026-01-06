@@ -5,6 +5,15 @@ All notable changes to qdadm will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.46.0] - 2026-01-06
+
+### Added
+- **Auto-resolve reference options in forms**: `generateFields()` now auto-loads options for reference fields
+  - Fields with `reference: { entity: 'x' }` get their dropdown options resolved automatically
+  - Uses `EntityManager.resolveReferenceOptions()` for async loading
+  - Enables replacing hardcoded `options` arrays with entity references in field configs
+  - Demo BooksModule now uses `reference: { entity: 'genres' }` instead of hardcoded genre options
+
 ## [0.45.1] - 2026-01-06
 
 ### Added

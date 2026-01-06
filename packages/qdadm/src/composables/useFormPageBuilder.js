@@ -495,7 +495,34 @@ export function useFormPageBuilder(config = {}) {
       fieldOrder.value.push(name)
     }
 
+    // Auto-resolve reference options (async, non-blocking)
+    resolveReferences()
+
     return builderApi
+  }
+
+  /**
+   * Resolve reference options for all fields with reference config
+   *
+   * Called automatically by generateFields(). Loads options from
+   * referenced entities and updates field configs reactively.
+   *
+   * @returns {Promise<void>}
+   */
+  async function resolveReferences() {
+    for (const [name, config] of fieldsMap.value.entries()) {
+      // Skip if field has static options or no reference
+      if (config.options || !config.reference) continue
+
+      try {
+        const options = await manager.resolveReferenceOptions(name)
+        // Update field config reactively
+        const updatedConfig = { ...config, options }
+        fieldsMap.value.set(name, updatedConfig)
+      } catch (error) {
+        console.warn(`[useFormPageBuilder] Failed to resolve options for field '${name}':`, error)
+      }
+    }
   }
 
   /**
@@ -1108,6 +1135,7 @@ export function useFormPageBuilder(config = {}) {
     // Field management
     fields,
     generateFields,
+    resolveReferences,
     addField,
     removeField,
     excludeField,
