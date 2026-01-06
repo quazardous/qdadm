@@ -243,14 +243,17 @@ function getCapabilityLabel(cap) {
             {{ entity.fields.required.length }} required
           </span>
         </div>
-        <div v-if="entity.relations.parents.length > 0 || entity.relations.children.length > 0" class="entity-row">
+        <div v-if="entity.relations.parents.length > 0 || entity.relations.children.length > 0 || entity.relations.references?.length > 0" class="entity-row">
           <span class="entity-key">Relations:</span>
           <span class="entity-value">
-            <span v-for="p in entity.relations.parents" :key="p.key" class="entity-relation">
+            <span v-for="p in entity.relations.parents" :key="p.key" class="entity-relation" title="Parent relation">
               <i class="pi pi-arrow-up" />{{ p.key }}→{{ p.entity }}
             </span>
-            <span v-for="c in entity.relations.children" :key="c.key" class="entity-relation">
+            <span v-for="c in entity.relations.children" :key="c.key" class="entity-relation" title="Child relation">
               <i class="pi pi-arrow-down" />{{ c.key }}→{{ c.entity }}
+            </span>
+            <span v-for="r in entity.relations.references" :key="r.field" class="entity-relation entity-reference" title="Field reference">
+              <i class="pi pi-link" />{{ r.field }}→{{ r.entity }}
             </span>
           </span>
         </div>
@@ -622,6 +625,10 @@ function getCapabilityLabel(cap) {
 }
 .entity-relation .pi {
   font-size: 8px;
+}
+.entity-reference {
+  background: #1e3a5f;
+  color: #93c5fd;
 }
 /* Stats */
 .entity-stats {

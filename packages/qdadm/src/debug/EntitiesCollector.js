@@ -299,7 +299,14 @@ export class EntitiesCollector extends Collector {
           key,
           entity: config.entity,
           endpoint: config.endpoint || null
-        }))
+        })),
+        // Field references (reference: { entity: 'x' } in field config)
+        references: Object.entries(manager.fields || {})
+          .filter(([, field]) => field.reference?.entity)
+          .map(([fieldName, field]) => ({
+            field: fieldName,
+            entity: field.reference.entity
+          }))
       }
     }
   }

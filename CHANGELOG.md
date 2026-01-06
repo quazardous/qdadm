@@ -5,6 +5,14 @@ All notable changes to qdadm will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.44.0] - 2026-01-06
+
+### Added
+- **Field references in debug**: EntitiesPanel shows field references (e.g., users.role → roles)
+  - New `references` section in relations (alongside parents/children)
+  - Blue styling to distinguish from parent/child relations
+  - Detects `reference: { entity: 'x' }` in field configs
+
 ## [0.43.0] - 2026-01-06
 
 ### Added
