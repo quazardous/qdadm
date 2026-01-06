@@ -18,11 +18,11 @@ list.setSearch({
 
 // ============ FILTERS ============
 // Dynamic filter: options loaded from roles entity
-// roles entity uses 'name' as id field, 'label' for display
+// optionLabel can be a callback for custom display
 list.addFilter('role', {
   placeholder: 'All Roles',
   optionsEntity: 'roles',
-  optionLabel: 'label',
+  optionLabel: (role) => `${role.label} - ${role.name}`,
   optionValue: 'name'
 })
 

@@ -5,6 +5,14 @@ All notable changes to qdadm will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.45.1] - 2026-01-06
+
+### Added
+- **Callback support for `optionLabel`**: Filter dropdowns can now use callbacks for custom display
+  - Example: `optionLabel: (item) => \`${item.label} - ${item.name}\``
+  - Works with `optionsEntity` filters
+  - Demo UserList shows "User - ROLE_USER" format
+
 ## [0.45.0] - 2026-01-06
 
 ### Fixed
