@@ -145,8 +145,8 @@ export class LoansModule extends Module {
         ? `${loan.book_title} - ${loan.username}`
         : `Loan #${loan.id?.slice(-6) || 'new'}`,
       fields: {
-        book_id: { type: 'text', label: 'Book', required: true, default: '' },
-        user_id: { type: 'text', label: 'User', required: true, default: '' },
+        book_id: { type: 'select', label: 'Book', required: true, default: '', reference: { entity: 'books', labelField: 'title' } },
+        user_id: { type: 'select', label: 'Borrower', required: true, default: '', reference: { entity: 'users', labelField: 'username' } },
         borrowed_at: { type: 'datetime', label: 'Borrowed At', default: () => new Date().toISOString() },
         returned_at: { type: 'datetime', label: 'Returned At', default: null },
         read: { type: 'boolean', label: 'Read?', default: false }

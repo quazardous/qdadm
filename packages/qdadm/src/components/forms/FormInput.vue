@@ -31,7 +31,22 @@ const value = computed({
 })
 
 // Resolve component type: field.type > hint > 'text'
-const inputType = computed(() => props.field.type || props.hint || 'text')
+const inputType = computed(() => props.field?.type || props.hint || 'text')
+
+// Date value with string ↔ Date conversion for DatePicker
+const dateValue = computed({
+  get: () => {
+    const v = props.modelValue
+    if (!v) return null
+    if (v instanceof Date) return v
+    // Convert ISO string to Date
+    return new Date(v)
+  },
+  set: (v) => {
+    // Convert Date back to ISO string for storage
+    emit('update:modelValue', v ? v.toISOString() : null)
+  }
+})
 </script>
 
 <template>
@@ -88,7 +103,7 @@ const inputType = computed(() => props.field.type || props.hint || 'text')
   />
   <DatePicker
     v-else-if="inputType === 'date' || inputType === 'datetime'"
-    v-model="value"
+    v-model="dateValue"
     :placeholder="field.placeholder"
     :disabled="field.disabled"
     :showTime="inputType === 'datetime'"
