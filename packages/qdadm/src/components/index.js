@@ -22,6 +22,7 @@ export { default as DefaultToaster } from './layout/defaults/DefaultToaster.vue'
 // Forms
 export { default as FormPage } from './forms/FormPage.vue'
 export { default as FormField } from './forms/FormField.vue'
+export { default as FormInput } from './forms/FormInput.vue'
 export { default as FormActions } from './forms/FormActions.vue'
 export { default as FormTabs } from './forms/FormTabs.vue'
 export { default as FormTab } from './forms/FormTab.vue'

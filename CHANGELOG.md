@@ -13,6 +13,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   - Uses `EntityManager.resolveReferenceOptions()` for async loading
   - Enables replacing hardcoded `options` arrays with entity references in field configs
   - Demo BooksModule now uses `reference: { entity: 'genres' }` instead of hardcoded genre options
+- **FormInput component**: Auto-renders appropriate input based on field type
+  - Takes `field` config and renders matching PrimeVue component
+  - Supports: text, password, number, textarea, select, boolean, date, datetime
+  - Default `optionLabel`/`optionValue` in field config for cleaner templates
+  - Demo forms simplified to use `<FormInput :field="f" v-model="..." />`
 
 ## [0.45.1] - 2026-01-06
 
