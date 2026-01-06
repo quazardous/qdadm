@@ -5,6 +5,16 @@ All notable changes to qdadm will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.47.0] - 2026-01-06
+
+### Added
+- **MockApiStorage QueryExecutor support**: Filters now use MongoDB-like operators
+  - Supports `{ field: null }`, `{ field: { $ne: null } }`, `$eq`, `$gt`, `$lt`, etc.
+  - Enables virtual filters with `toQuery()` like loans status filter
+
+### Fixed
+- **FormPage test**: Use ref for guardDialog.visible
+
 ## [0.46.1] - 2026-01-06
 
 ### Fixed

@@ -5,7 +5,7 @@
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { mount } from '@vue/test-utils'
-import { h } from 'vue'
+import { h, ref } from 'vue'
 import FormPage from '../../src/components/forms/FormPage.vue'
 
 // Mock PrimeVue components
@@ -337,7 +337,7 @@ describe('FormPage', () => {
   describe('guard dialog', () => {
     it('renders UnsavedChangesDialog when guardDialog is provided', () => {
       const guardDialog = {
-        visible: true,
+        visible: ref(true),  // Must be a ref for .value access in FormPage
         onSave: vi.fn(),
         onLeave: vi.fn(),
         onStay: vi.fn()

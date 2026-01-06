@@ -1,4 +1,5 @@
 import { IStorage } from './IStorage.js'
+import { QueryExecutor } from '../../query/index.js'
 
 /**
  * MockApiStorage - In-memory storage with localStorage persistence
@@ -191,16 +192,9 @@ export class MockApiStorage extends IStorage {
 
     let items = this._getAll()
 
-    // Apply filters (substring match for strings, exact match for others)
-    for (const [key, value] of Object.entries(filters)) {
-      if (value === null || value === undefined || value === '') continue
-      items = items.filter(item => {
-        const itemValue = item[key]
-        if (typeof value === 'string' && typeof itemValue === 'string') {
-          return itemValue.toLowerCase().includes(value.toLowerCase())
-        }
-        return itemValue === value
-      })
+    // Apply filters using QueryExecutor (supports MongoDB-like operators)
+    if (Object.keys(filters).length > 0) {
+      items = QueryExecutor.execute(items, filters).items
     }
 
     // Apply search (substring match on all string fields)

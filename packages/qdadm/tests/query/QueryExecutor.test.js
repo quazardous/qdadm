@@ -309,6 +309,25 @@ describe('comparison operators (T258)', () => {
       expect(result.items).toHaveLength(1)
       expect(result.items[0].value).toBeUndefined()
     })
+
+    it('$ne null matches non-null values (loans returned filter)', () => {
+      // Simulates loans filter: active = returned_at is null, returned = returned_at is not null
+      const loans = [
+        { id: 1, returned_at: '2024-03-01T14:30:00.000Z' },  // returned
+        { id: 2, returned_at: null },                         // active
+        { id: 3, returned_at: null }                          // active
+      ]
+
+      // Filter for "returned" loans (returned_at is NOT null)
+      const returned = QueryExecutor.execute(loans, { returned_at: { $ne: null } })
+      expect(returned.items).toHaveLength(1)
+      expect(returned.items[0].id).toBe(1)
+
+      // Filter for "active" loans (returned_at IS null)
+      const active = QueryExecutor.execute(loans, { returned_at: null })
+      expect(active.items).toHaveLength(2)
+      expect(active.items.map(l => l.id)).toEqual([2, 3])
+    })
   })
 
   describe('$gt operator', () => {
