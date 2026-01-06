@@ -234,7 +234,7 @@ function onGuardStay() {
     <!-- Unsaved Changes Dialog -->
     <UnsavedChangesDialog
       v-if="guardDialog"
-      v-model:visible="guardDialog.visible"
+      :visible="guardDialog.visible.value"
       :saving="saving"
       :hasOnSave="!!guardDialog.onSave"
       @saveAndLeave="onGuardSaveAndLeave"
