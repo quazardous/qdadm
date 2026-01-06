@@ -116,7 +116,7 @@ export class EntityRoleGranterAdapter extends RoleGranterAdapter {
     }
 
     try {
-      const { data: roles } = await manager.list({ limit: 1000 })
+      const { items: roles } = await manager.list({ page_size: 1000 })
 
       // Build cache
       const permissions = {}

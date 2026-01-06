@@ -3,7 +3,7 @@
 > Navigation index for AI agents. Read code directly for details.
 > Philosophy: see [QDADM_CREDO.md](../packages/qdadm/QDADM_CREDO.md)
 >
-> **Versions:** qdadm 0.37.0 | demo 0.16.0
+> **Versions:** qdadm 0.45.0 | demo 0.17.3
 
 ## Dev Commands
 
@@ -87,6 +87,69 @@ export class BooksModule extends Module {
   }
 }
 ```
+
+## Entity Relations
+
+Three ways to link entities:
+
+| Type | Declared On | Purpose | Strength |
+|------|-------------|---------|----------|
+| `reference` | Field config | UI dropdown populated by another entity | Weak |
+| `parent` | Entity config | Hierarchical routing `/books/:id/loans` | Strong |
+| `children` | Entity config | Inverse of parent (optional) | Strong |
+
+### reference (weak link)
+
+Populates a select/dropdown from another entity. Can enable auto-filtering but no routing.
+
+```js
+// In fields config
+role: {
+  type: 'select',
+  label: 'Role',
+  reference: { entity: 'roles' }  // Dropdown options from roles entity
+}
+
+// In list page - filter by reference field
+list.addFilter('genre_id', {
+  label: 'Genre',
+  optionsEntity: 'genres'  // Auto-populated from genres entity
+})
+```
+
+### parent (strong link)
+
+Creates hierarchical navigation. Entity "lives under" parent.
+
+```js
+// loans belongs to books
+ctx.entity('loans', new EntityManager({
+  parents: {
+    book: { entity: 'books', foreignKey: 'book_id' }
+  }
+}))
+// Result: /books/:bookId/loans route, auto-filtered by book_id
+```
+
+### children (inverse of parent)
+
+Declared on parent to enable child routes. Optional if parent already declares.
+
+```js
+// books has loans
+ctx.entity('books', new EntityManager({
+  children: {
+    loans: { entity: 'loans', endpoint: 'loans' }
+  }
+}))
+```
+
+### Debug Bar
+
+EntitiesPanel shows all relations:
+- `↑` = parent (arrow up)
+- `↓` = children (arrow down)
+- `🔗` = reference (link icon, blue)
 
 ## Demo App Examples
 

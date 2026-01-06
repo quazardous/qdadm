@@ -754,7 +754,7 @@ export class EntityManager {
 
     try {
       // Fetch all items from referenced entity
-      const { items } = await refManager.list({ limit: 1000 })
+      const { items } = await refManager.list({ page_size: 1000 })
 
       // Build options array
       const refLabelField = labelField || refManager.labelField || 'label'

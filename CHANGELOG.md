@@ -5,6 +5,16 @@ All notable changes to qdadm will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.45.0] - 2026-01-06
+
+### Fixed
+- **Reference dropdown pagination**: `resolveReferenceOptions()` now uses `page_size` instead of `limit`
+  - Fixes dropdowns showing only 20 items instead of all available options
+  - Affected all `reference: { entity: 'x' }` fields in forms
+- **EntityRoleGranterAdapter pagination**: Same fix + correct destructuring (`items` not `data`)
+- **Demo UserList filter**: Changed hardcoded role options to dynamic `optionsEntity: 'roles'`
+  - Added `optionLabel: 'label'` and `optionValue: 'name'` for proper field mapping
+
 ## [0.44.0] - 2026-01-06
 
 ### Added

@@ -17,13 +17,13 @@ list.setSearch({
 })
 
 // ============ FILTERS ============
+// Dynamic filter: options loaded from roles entity
+// roles entity uses 'name' as id field, 'label' for display
 list.addFilter('role', {
   placeholder: 'All Roles',
-  options: [
-    { label: 'All', value: null },
-    { label: 'Admin', value: 'admin' },
-    { label: 'User', value: 'user' }
-  ]
+  optionsEntity: 'roles',
+  optionLabel: 'label',
+  optionValue: 'name'
 })
 
 // ============ HEADER ACTIONS ============
