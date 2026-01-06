@@ -1,102 +1,45 @@
 <script setup>
 /**
  * UserForm - Create/Edit user page
+ *
+ * Uses useFormPageBuilder with generateFields() for auto-resolved reference options.
  */
 
-import { ref, onMounted } from 'vue'
-import { useRoute } from 'vue-router'
-import { useForm, PageLayout, FormField, FormActions } from 'qdadm'
-import Card from 'primevue/card'
+import { useFormPageBuilder, FormPage, FormField } from 'qdadm'
 import InputText from 'primevue/inputtext'
 import Password from 'primevue/password'
 import Select from 'primevue/select'
 
-const route = useRoute()
-
-// ============ FORM SETUP ============
-// useForm returns:
-//   - manager: EntityManager instance for 'users'
-//   - form: Reactive object with form data (auto-initialized from manager.fields defaults)
-//   - loading: true while fetching entity in EDIT mode (always false in CREATE mode)
-//   - saving: true during submit (create or update)
-//   - dirty: true if form has unsaved changes (compared to last snapshot)
-//   - isEdit: true if editing existing entity (getId returns truthy value)
-//   - submit(andClose): Save form, optionally navigate back
-//   - cancel(): Navigate back (with unsaved changes warning if dirty)
-const {
-  manager,
-  form,
-  loading,
-  saving,
-  dirty,
-  isEdit,
-  submit,
-  cancel
-} = useForm({
-  entity: 'users',
-  getId: () => route.params.id
-})
-
-// Role options - loaded from roles entity via reference
-const roleOptions = ref([])
-
-onMounted(async () => {
-  // Resolve reference options for role field
-  roleOptions.value = await manager.resolveReferenceOptions('role')
-})
+// ============ FORM BUILDER ============
+const form = useFormPageBuilder({ entity: 'users' })
+form.generateFields()
+form.addSaveAction({ andClose: true })
+form.addDeleteAction()
 </script>
 
 <template>
-  <PageLayout>
-    <Card v-if="!loading">
-      <template #content>
-        <div class="form-grid">
-          <FormField name="username" label="Username *">
-            <InputText v-model="form.username" id="username" class="w-full" />
-          </FormField>
-
-          <FormField name="password" label="Password *">
-            <Password
-              v-model="form.password"
-              id="password"
-              class="w-full"
-              :feedback="false"
-              toggleMask
-            />
-          </FormField>
-
-          <FormField name="role" label="Role">
-            <Select
-              v-model="form.role"
-              :options="roleOptions"
-              optionLabel="label"
-              optionValue="value"
-              class="w-full"
-            />
-          </FormField>
-        </div>
-
-        <FormActions
-          :isEdit="isEdit"
-          :saving="saving"
-          :dirty="dirty"
-          @save="submit(false)"
-          @saveAndClose="submit(true)"
-          @cancel="cancel"
-        />
-      </template>
-    </Card>
-
-    <div v-else class="loading-state">
-      <i class="pi pi-spin pi-spinner" style="font-size: 2rem"></i>
-    </div>
-  </PageLayout>
+  <FormPage v-bind="form.props.value" v-on="form.events">
+    <template #fields>
+      <div class="form-grid">
+        <FormField v-for="f in form.fields.value" :key="f.name" :name="f.name" :label="f.label">
+          <InputText v-if="f.type === 'text'" v-model="form.data.value[f.name]" class="w-full" />
+          <Password
+            v-else-if="f.type === 'password'"
+            v-model="form.data.value[f.name]"
+            class="w-full"
+            :feedback="false"
+            toggleMask
+          />
+          <Select
+            v-else-if="f.type === 'select'"
+            v-model="form.data.value[f.name]"
+            :options="f.options"
+            optionLabel="label"
+            optionValue="value"
+            class="w-full"
+          />
+        </FormField>
+      </div>
+    </template>
+  </FormPage>
 </template>
-
-<style scoped>
-.loading-state {
-  display: flex;
-  justify-content: center;
-  padding: 3rem;
-}
-</style>
