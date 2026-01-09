@@ -7,7 +7,7 @@
  *   <InputText v-model="form.username" />
  * </FormField>
  *
- * The parent form (useFormPageBuilder) provides:
+ * The parent form (useEntityItemFormPage) provides:
  * - isFieldDirty: function to check if field is dirty
  * - getFieldError: function to get field error message
  * - handleFieldBlur: function to trigger validation on blur
@@ -44,7 +44,7 @@ const props = defineProps({
   }
 })
 
-// Inject from parent form (provided by useFormPageBuilder)
+// Inject from parent form (provided by useEntityItemFormPage)
 const isFieldDirty = inject('isFieldDirty', () => false)
 const getFieldError = inject('getFieldError', () => null)
 const handleFieldBlur = inject('handleFieldBlur', () => {})

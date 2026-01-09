@@ -3,14 +3,14 @@
  * {{EntityName}}Form - Unified Create/Edit form template
  *
  * Single Form Pattern: handles both create and edit modes.
- * Mode detection is automatic via useFormPageBuilder.
+ * Mode detection is automatic via useEntityItemFormPage.
  *
  * Replace {{EntityName}} and {{entity_name}} with your entity names.
  */
-import { useFormPageBuilder, FormPage, FormField } from 'qdadm'
+import { useEntityItemFormPage, FormPage, FormField } from 'qdadm'
 import InputText from 'primevue/inputtext'
 
-const form = useFormPageBuilder({ entity: '{{entity_name}}' })
+const form = useEntityItemFormPage({ entity: '{{entity_name}}' })
 form.generateFields()
 form.addSaveAction({ andClose: true })
 form.addDeleteAction()  // Only shown in edit mode

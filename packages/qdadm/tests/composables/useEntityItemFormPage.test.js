@@ -1,12 +1,12 @@
 /**
- * Unit tests for useFormPageBuilder composable
+ * Unit tests for useEntityItemFormPage composable
  *
  * Run: npm test
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { ref, nextTick, computed } from 'vue'
 import { mount, flushPromises } from '@vue/test-utils'
-import { useFormPageBuilder } from '../../src/composables/useFormPageBuilder.js'
+import { useEntityItemFormPage } from '../../src/composables/useEntityItemFormPage.js'
 
 // Mock route state that can be changed per test
 let mockRouteState = { name: 'book-create', params: {}, query: {} }
@@ -85,7 +85,7 @@ function createWrapper(composableFactory) {
   return { wrapper, result }
 }
 
-describe('useFormPageBuilder', () => {
+describe('useEntityItemFormPage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockRouteState = { name: 'book-create', params: {}, query: {} }
@@ -102,7 +102,7 @@ describe('useFormPageBuilder', () => {
       const TestComponent = {
         template: '<div></div>',
         setup() {
-          return useFormPageBuilder({ entity: 'books' })
+          return useEntityItemFormPage({ entity: 'books' })
         }
       }
 
@@ -112,12 +112,12 @@ describe('useFormPageBuilder', () => {
     })
 
     it('gets manager from orchestrator', () => {
-      createWrapper(() => useFormPageBuilder({ entity: 'books' }))
+      createWrapper(() => useEntityItemFormPage({ entity: 'books' }))
       expect(mockOrchestrator.get).toHaveBeenCalledWith('books')
     })
 
     it('returns expected API surface', () => {
-      const { result } = createWrapper(() => useFormPageBuilder({ entity: 'books' }))
+      const { result } = createWrapper(() => useEntityItemFormPage({ entity: 'books' }))
 
       // Mode detection
       expect(result).toHaveProperty('mode')
@@ -146,7 +146,7 @@ describe('useFormPageBuilder', () => {
   describe('mode detection', () => {
     it('detects create mode from route name', async () => {
       mockRouteState = { name: 'book-create', params: {} }
-      const { result } = createWrapper(() => useFormPageBuilder({ entity: 'books' }))
+      const { result } = createWrapper(() => useEntityItemFormPage({ entity: 'books' }))
 
       expect(result.mode.value).toBe('create')
       expect(result.isCreate.value).toBe(true)
@@ -155,7 +155,7 @@ describe('useFormPageBuilder', () => {
 
     it('detects edit mode from route params', async () => {
       mockRouteState = { name: 'book-edit', params: { id: '123' } }
-      const { result } = createWrapper(() => useFormPageBuilder({ entity: 'books' }))
+      const { result } = createWrapper(() => useEntityItemFormPage({ entity: 'books' }))
 
       expect(result.mode.value).toBe('edit')
       expect(result.isEdit.value).toBe(true)
@@ -166,7 +166,7 @@ describe('useFormPageBuilder', () => {
     it('uses custom getId function when provided', async () => {
       mockRouteState = { name: 'book-edit', params: { bookId: '456' } }
       const { result } = createWrapper(() =>
-        useFormPageBuilder({
+        useEntityItemFormPage({
           entity: 'books',
           getId: () => '456'
         })
@@ -179,7 +179,7 @@ describe('useFormPageBuilder', () => {
   describe('data loading', () => {
     it('initializes with empty data in create mode', async () => {
       mockRouteState = { name: 'book-create', params: {} }
-      const { result } = createWrapper(() => useFormPageBuilder({ entity: 'books' }))
+      const { result } = createWrapper(() => useEntityItemFormPage({ entity: 'books' }))
 
       await flushPromises()
 
@@ -189,7 +189,7 @@ describe('useFormPageBuilder', () => {
 
     it('loads entity data in edit mode', async () => {
       mockRouteState = { name: 'book-edit', params: { id: '1' } }
-      const { result } = createWrapper(() => useFormPageBuilder({ entity: 'books' }))
+      const { result } = createWrapper(() => useEntityItemFormPage({ entity: 'books' }))
 
       await flushPromises()
 
@@ -200,7 +200,7 @@ describe('useFormPageBuilder', () => {
     it('applies transformLoad hook', async () => {
       mockRouteState = { name: 'book-edit', params: { id: '1' } }
       const { result } = createWrapper(() =>
-        useFormPageBuilder({
+        useEntityItemFormPage({
           entity: 'books',
           transformLoad: (data) => ({ ...data, title: data.title.toUpperCase() })
         })
@@ -215,7 +215,7 @@ describe('useFormPageBuilder', () => {
       mockRouteState = { name: 'book-edit', params: { id: '1' } }
       mockManager.get.mockRejectedValueOnce(new Error('Not found'))
 
-      createWrapper(() => useFormPageBuilder({ entity: 'books' }))
+      createWrapper(() => useEntityItemFormPage({ entity: 'books' }))
 
       await flushPromises()
 
@@ -228,7 +228,7 @@ describe('useFormPageBuilder', () => {
   describe('dirty state tracking', () => {
     it('starts as not dirty', async () => {
       mockRouteState = { name: 'book-create', params: {} }
-      const { result } = createWrapper(() => useFormPageBuilder({ entity: 'books' }))
+      const { result } = createWrapper(() => useEntityItemFormPage({ entity: 'books' }))
 
       await flushPromises()
       await nextTick()
@@ -238,7 +238,7 @@ describe('useFormPageBuilder', () => {
 
     it('becomes dirty when data changes', async () => {
       mockRouteState = { name: 'book-create', params: {} }
-      const { result } = createWrapper(() => useFormPageBuilder({ entity: 'books' }))
+      const { result } = createWrapper(() => useEntityItemFormPage({ entity: 'books' }))
 
       await flushPromises()
       // Wait for snapshot to be ready
@@ -255,7 +255,7 @@ describe('useFormPageBuilder', () => {
   describe('submit', () => {
     it('creates entity in create mode', async () => {
       mockRouteState = { name: 'book-create', params: {} }
-      const { result } = createWrapper(() => useFormPageBuilder({ entity: 'books' }))
+      const { result } = createWrapper(() => useEntityItemFormPage({ entity: 'books' }))
 
       await flushPromises()
 
@@ -275,7 +275,7 @@ describe('useFormPageBuilder', () => {
 
     it('updates entity in edit mode', async () => {
       mockRouteState = { name: 'book-edit', params: { id: '1' } }
-      const { result } = createWrapper(() => useFormPageBuilder({ entity: 'books' }))
+      const { result } = createWrapper(() => useEntityItemFormPage({ entity: 'books' }))
 
       await flushPromises()
 
@@ -289,7 +289,7 @@ describe('useFormPageBuilder', () => {
     it('uses PATCH when usePatch option is true', async () => {
       mockRouteState = { name: 'book-edit', params: { id: '1' } }
       const { result } = createWrapper(() =>
-        useFormPageBuilder({ entity: 'books', usePatch: true })
+        useEntityItemFormPage({ entity: 'books', usePatch: true })
       )
 
       await flushPromises()
@@ -302,7 +302,7 @@ describe('useFormPageBuilder', () => {
     it('applies transformSave hook', async () => {
       mockRouteState = { name: 'book-create', params: {} }
       const { result } = createWrapper(() =>
-        useFormPageBuilder({
+        useEntityItemFormPage({
           entity: 'books',
           transformSave: (data) => ({ ...data, slug: data.title.toLowerCase() })
         })
@@ -320,7 +320,7 @@ describe('useFormPageBuilder', () => {
 
     it('redirects to list when andClose is true', async () => {
       mockRouteState = { name: 'book-create', params: {} }
-      const { result } = createWrapper(() => useFormPageBuilder({ entity: 'books' }))
+      const { result } = createWrapper(() => useEntityItemFormPage({ entity: 'books' }))
 
       await flushPromises()
       await result.submit(true)
@@ -331,7 +331,7 @@ describe('useFormPageBuilder', () => {
     it('redirects to edit mode after create when redirectOnCreate is true', async () => {
       mockRouteState = { name: 'book-create', params: {} }
       const { result } = createWrapper(() =>
-        useFormPageBuilder({ entity: 'books', redirectOnCreate: true })
+        useEntityItemFormPage({ entity: 'books', redirectOnCreate: true })
       )
 
       await flushPromises()
@@ -347,7 +347,7 @@ describe('useFormPageBuilder', () => {
   describe('delete', () => {
     it('deletes entity and redirects to list', async () => {
       mockRouteState = { name: 'book-edit', params: { id: '1' } }
-      const { result } = createWrapper(() => useFormPageBuilder({ entity: 'books' }))
+      const { result } = createWrapper(() => useEntityItemFormPage({ entity: 'books' }))
 
       await flushPromises()
       await result.remove()
@@ -358,7 +358,7 @@ describe('useFormPageBuilder', () => {
 
     it('confirmDelete shows confirmation dialog', async () => {
       mockRouteState = { name: 'book-edit', params: { id: '1' } }
-      const { result } = createWrapper(() => useFormPageBuilder({ entity: 'books' }))
+      const { result } = createWrapper(() => useEntityItemFormPage({ entity: 'books' }))
 
       await flushPromises()
       result.confirmDelete()
@@ -373,7 +373,7 @@ describe('useFormPageBuilder', () => {
 
     it('does nothing when not in edit mode', async () => {
       mockRouteState = { name: 'book-create', params: {} }
-      const { result } = createWrapper(() => useFormPageBuilder({ entity: 'books' }))
+      const { result } = createWrapper(() => useEntityItemFormPage({ entity: 'books' }))
 
       await flushPromises()
       await result.remove()
@@ -385,7 +385,7 @@ describe('useFormPageBuilder', () => {
   describe('actions', () => {
     it('addSaveAction creates a save action', async () => {
       mockRouteState = { name: 'book-create', params: {} }
-      const { result } = createWrapper(() => useFormPageBuilder({ entity: 'books' }))
+      const { result } = createWrapper(() => useEntityItemFormPage({ entity: 'books' }))
 
       result.addSaveAction()
 
@@ -397,7 +397,7 @@ describe('useFormPageBuilder', () => {
 
     it('addDeleteAction creates a delete action in edit mode', async () => {
       mockRouteState = { name: 'book-edit', params: { id: '1' } }
-      const { result } = createWrapper(() => useFormPageBuilder({ entity: 'books' }))
+      const { result } = createWrapper(() => useEntityItemFormPage({ entity: 'books' }))
 
       await flushPromises()
       result.addDeleteAction()
@@ -410,7 +410,7 @@ describe('useFormPageBuilder', () => {
 
     it('delete action is hidden in create mode', async () => {
       mockRouteState = { name: 'book-create', params: {} }
-      const { result } = createWrapper(() => useFormPageBuilder({ entity: 'books' }))
+      const { result } = createWrapper(() => useEntityItemFormPage({ entity: 'books' }))
 
       result.addDeleteAction()
 
@@ -422,7 +422,7 @@ describe('useFormPageBuilder', () => {
       mockRouteState = { name: 'book-create', params: {} }
       mockManager = createMockManager({ canCreate: () => false })
 
-      const { result } = createWrapper(() => useFormPageBuilder({ entity: 'books' }))
+      const { result } = createWrapper(() => useEntityItemFormPage({ entity: 'books' }))
 
       result.addSaveAction()
 
@@ -434,7 +434,7 @@ describe('useFormPageBuilder', () => {
       mockRouteState = { name: 'book-edit', params: { id: '1' } }
       mockManager = createMockManager({ canUpdate: () => false })
 
-      const { result } = createWrapper(() => useFormPageBuilder({ entity: 'books' }))
+      const { result } = createWrapper(() => useEntityItemFormPage({ entity: 'books' }))
 
       await flushPromises()
       result.addSaveAction()
@@ -447,7 +447,7 @@ describe('useFormPageBuilder', () => {
       mockRouteState = { name: 'book-edit', params: { id: '1' } }
       mockManager = createMockManager({ canUpdate: () => true })
 
-      const { result } = createWrapper(() => useFormPageBuilder({ entity: 'books' }))
+      const { result } = createWrapper(() => useEntityItemFormPage({ entity: 'books' }))
 
       await flushPromises()
       result.addSaveAction()
@@ -460,7 +460,7 @@ describe('useFormPageBuilder', () => {
       mockRouteState = { name: 'book-edit', params: { id: '1' } }
       mockManager = createMockManager({ canDelete: () => false })
 
-      const { result } = createWrapper(() => useFormPageBuilder({ entity: 'books' }))
+      const { result } = createWrapper(() => useEntityItemFormPage({ entity: 'books' }))
 
       await flushPromises()
       result.addDeleteAction()
@@ -473,7 +473,7 @@ describe('useFormPageBuilder', () => {
       mockRouteState = { name: 'book-edit', params: { id: '1' } }
       mockManager = createMockManager({ canDelete: () => true })
 
-      const { result } = createWrapper(() => useFormPageBuilder({ entity: 'books' }))
+      const { result } = createWrapper(() => useEntityItemFormPage({ entity: 'books' }))
 
       await flushPromises()
       result.addDeleteAction()
@@ -484,7 +484,7 @@ describe('useFormPageBuilder', () => {
 
     it('save action is disabled when form is not dirty', async () => {
       mockRouteState = { name: 'book-edit', params: { id: '1' } }
-      const { result } = createWrapper(() => useFormPageBuilder({ entity: 'books' }))
+      const { result } = createWrapper(() => useEntityItemFormPage({ entity: 'books' }))
 
       await flushPromises()
       await nextTick()
@@ -497,7 +497,7 @@ describe('useFormPageBuilder', () => {
 
     it('save action is enabled when form is dirty', async () => {
       mockRouteState = { name: 'book-edit', params: { id: '1' } }
-      const { result } = createWrapper(() => useFormPageBuilder({ entity: 'books' }))
+      const { result } = createWrapper(() => useEntityItemFormPage({ entity: 'books' }))
 
       await flushPromises()
       await nextTick()
@@ -516,7 +516,7 @@ describe('useFormPageBuilder', () => {
 
   describe('permission state', () => {
     it('returns canSave and canDeleteRecord computed properties', () => {
-      const { result } = createWrapper(() => useFormPageBuilder({ entity: 'books' }))
+      const { result } = createWrapper(() => useEntityItemFormPage({ entity: 'books' }))
 
       expect(result).toHaveProperty('canSave')
       expect(result).toHaveProperty('canDeleteRecord')
@@ -526,7 +526,7 @@ describe('useFormPageBuilder', () => {
       mockRouteState = { name: 'book-create', params: {} }
       mockManager = createMockManager({ canCreate: () => false })
 
-      const { result } = createWrapper(() => useFormPageBuilder({ entity: 'books' }))
+      const { result } = createWrapper(() => useEntityItemFormPage({ entity: 'books' }))
 
       expect(result.canSave.value).toBe(false)
     })
@@ -535,7 +535,7 @@ describe('useFormPageBuilder', () => {
       mockRouteState = { name: 'book-create', params: {} }
       mockManager = createMockManager({ canCreate: () => true })
 
-      const { result } = createWrapper(() => useFormPageBuilder({ entity: 'books' }))
+      const { result } = createWrapper(() => useEntityItemFormPage({ entity: 'books' }))
 
       expect(result.canSave.value).toBe(true)
     })
@@ -544,7 +544,7 @@ describe('useFormPageBuilder', () => {
       mockRouteState = { name: 'book-edit', params: { id: '1' } }
       mockManager = createMockManager({ canUpdate: () => false })
 
-      const { result } = createWrapper(() => useFormPageBuilder({ entity: 'books' }))
+      const { result } = createWrapper(() => useEntityItemFormPage({ entity: 'books' }))
 
       await flushPromises()
 
@@ -555,7 +555,7 @@ describe('useFormPageBuilder', () => {
       mockRouteState = { name: 'book-edit', params: { id: '1' } }
       mockManager = createMockManager({ canUpdate: () => true })
 
-      const { result } = createWrapper(() => useFormPageBuilder({ entity: 'books' }))
+      const { result } = createWrapper(() => useEntityItemFormPage({ entity: 'books' }))
 
       await flushPromises()
 
@@ -566,7 +566,7 @@ describe('useFormPageBuilder', () => {
       mockRouteState = { name: 'book-create', params: {} }
       mockManager = createMockManager({ canDelete: () => true })
 
-      const { result } = createWrapper(() => useFormPageBuilder({ entity: 'books' }))
+      const { result } = createWrapper(() => useEntityItemFormPage({ entity: 'books' }))
 
       expect(result.canDeleteRecord.value).toBe(false)
     })
@@ -575,7 +575,7 @@ describe('useFormPageBuilder', () => {
       mockRouteState = { name: 'book-edit', params: { id: '1' } }
       mockManager = createMockManager({ canDelete: () => false })
 
-      const { result } = createWrapper(() => useFormPageBuilder({ entity: 'books' }))
+      const { result } = createWrapper(() => useEntityItemFormPage({ entity: 'books' }))
 
       await flushPromises()
 
@@ -586,7 +586,7 @@ describe('useFormPageBuilder', () => {
       mockRouteState = { name: 'book-edit', params: { id: '1' } }
       mockManager = createMockManager({ canDelete: () => true })
 
-      const { result } = createWrapper(() => useFormPageBuilder({ entity: 'books' }))
+      const { result } = createWrapper(() => useEntityItemFormPage({ entity: 'books' }))
 
       await flushPromises()
 
@@ -600,7 +600,7 @@ describe('useFormPageBuilder', () => {
         canDelete: () => false
       })
 
-      const { result } = createWrapper(() => useFormPageBuilder({ entity: 'books' }))
+      const { result } = createWrapper(() => useEntityItemFormPage({ entity: 'books' }))
 
       await flushPromises()
 
@@ -612,7 +612,7 @@ describe('useFormPageBuilder', () => {
   describe('FormPage props/events', () => {
     it('props contains required FormPage properties', async () => {
       mockRouteState = { name: 'book-edit', params: { id: '1' } }
-      const { result } = createWrapper(() => useFormPageBuilder({ entity: 'books' }))
+      const { result } = createWrapper(() => useEntityItemFormPage({ entity: 'books' }))
 
       await flushPromises()
 
@@ -627,7 +627,7 @@ describe('useFormPageBuilder', () => {
     })
 
     it('events contains form event handlers', () => {
-      const { result } = createWrapper(() => useFormPageBuilder({ entity: 'books' }))
+      const { result } = createWrapper(() => useEntityItemFormPage({ entity: 'books' }))
 
       expect(result.events).toHaveProperty('save')
       expect(result.events).toHaveProperty('saveAndClose')
@@ -637,7 +637,7 @@ describe('useFormPageBuilder', () => {
 
     it('pageTitle reflects mode and entity label in edit mode', async () => {
       mockRouteState = { name: 'book-edit', params: { id: '1' } }
-      const { result } = createWrapper(() => useFormPageBuilder({ entity: 'books' }))
+      const { result } = createWrapper(() => useEntityItemFormPage({ entity: 'books' }))
 
       await flushPromises()
 
@@ -647,7 +647,7 @@ describe('useFormPageBuilder', () => {
 
     it('pageTitle shows Create in create mode', async () => {
       mockRouteState = { name: 'book-create', params: {} }
-      const { result } = createWrapper(() => useFormPageBuilder({ entity: 'books' }))
+      const { result } = createWrapper(() => useEntityItemFormPage({ entity: 'books' }))
 
       await flushPromises()
 
@@ -658,7 +658,7 @@ describe('useFormPageBuilder', () => {
   describe('reset', () => {
     it('resets data to original in edit mode', async () => {
       mockRouteState = { name: 'book-edit', params: { id: '1' } }
-      const { result } = createWrapper(() => useFormPageBuilder({ entity: 'books' }))
+      const { result } = createWrapper(() => useEntityItemFormPage({ entity: 'books' }))
 
       await flushPromises()
 
@@ -670,7 +670,7 @@ describe('useFormPageBuilder', () => {
 
     it('resets data to initial in create mode', async () => {
       mockRouteState = { name: 'book-create', params: {} }
-      const { result } = createWrapper(() => useFormPageBuilder({ entity: 'books' }))
+      const { result } = createWrapper(() => useEntityItemFormPage({ entity: 'books' }))
 
       await flushPromises()
 
@@ -708,7 +708,7 @@ describe('useFormPageBuilder', () => {
     })
 
     it('generateFields creates fields from EntityManager.fields', () => {
-      const { result } = createWrapper(() => useFormPageBuilder({ entity: 'books' }))
+      const { result } = createWrapper(() => useEntityItemFormPage({ entity: 'books' }))
 
       result.generateFields()
 
@@ -719,7 +719,7 @@ describe('useFormPageBuilder', () => {
     })
 
     it('generateFields maps schema types to input types', () => {
-      const { result } = createWrapper(() => useFormPageBuilder({ entity: 'books' }))
+      const { result } = createWrapper(() => useEntityItemFormPage({ entity: 'books' }))
 
       result.generateFields()
 
@@ -735,7 +735,7 @@ describe('useFormPageBuilder', () => {
     })
 
     it('generateFields preserves field options', () => {
-      const { result } = createWrapper(() => useFormPageBuilder({ entity: 'books' }))
+      const { result } = createWrapper(() => useEntityItemFormPage({ entity: 'books' }))
 
       result.generateFields()
 
@@ -744,7 +744,7 @@ describe('useFormPageBuilder', () => {
     })
 
     it('excludeField removes field from generation', () => {
-      const { result } = createWrapper(() => useFormPageBuilder({ entity: 'books' }))
+      const { result } = createWrapper(() => useEntityItemFormPage({ entity: 'books' }))
 
       result.excludeField('internal_id')
       result.generateFields()
@@ -754,7 +754,7 @@ describe('useFormPageBuilder', () => {
     })
 
     it('generateFields respects exclude option', () => {
-      const { result } = createWrapper(() => useFormPageBuilder({ entity: 'books' }))
+      const { result } = createWrapper(() => useEntityItemFormPage({ entity: 'books' }))
 
       result.generateFields({ exclude: ['internal_id', 'year'] })
 
@@ -764,7 +764,7 @@ describe('useFormPageBuilder', () => {
     })
 
     it('generateFields respects only option', () => {
-      const { result } = createWrapper(() => useFormPageBuilder({ entity: 'books' }))
+      const { result } = createWrapper(() => useEntityItemFormPage({ entity: 'books' }))
 
       result.generateFields({ only: ['title', 'author'] })
 
@@ -774,7 +774,7 @@ describe('useFormPageBuilder', () => {
     })
 
     it('addField adds manual field configuration', () => {
-      const { result } = createWrapper(() => useFormPageBuilder({ entity: 'books' }))
+      const { result } = createWrapper(() => useEntityItemFormPage({ entity: 'books' }))
 
       result.addField('custom', { type: 'textarea', label: 'Custom Field' })
 
@@ -784,7 +784,7 @@ describe('useFormPageBuilder', () => {
     })
 
     it('addField overrides generated field', () => {
-      const { result } = createWrapper(() => useFormPageBuilder({ entity: 'books' }))
+      const { result } = createWrapper(() => useEntityItemFormPage({ entity: 'books' }))
 
       result.generateFields()
       result.addField('title', { type: 'textarea', label: 'Book Title' })
@@ -795,7 +795,7 @@ describe('useFormPageBuilder', () => {
     })
 
     it('addField with after option positions field correctly', () => {
-      const { result } = createWrapper(() => useFormPageBuilder({ entity: 'books' }))
+      const { result } = createWrapper(() => useEntityItemFormPage({ entity: 'books' }))
 
       result.generateFields()
       result.addField('custom', { type: 'text', label: 'Custom' }, { after: 'title' })
@@ -805,7 +805,7 @@ describe('useFormPageBuilder', () => {
     })
 
     it('addField with before option positions field correctly', () => {
-      const { result } = createWrapper(() => useFormPageBuilder({ entity: 'books' }))
+      const { result } = createWrapper(() => useEntityItemFormPage({ entity: 'books' }))
 
       result.generateFields()
       result.addField('custom', { type: 'text', label: 'Custom' }, { before: 'author' })
@@ -815,7 +815,7 @@ describe('useFormPageBuilder', () => {
     })
 
     it('removeField removes a field', () => {
-      const { result } = createWrapper(() => useFormPageBuilder({ entity: 'books' }))
+      const { result } = createWrapper(() => useEntityItemFormPage({ entity: 'books' }))
 
       result.generateFields()
       result.removeField('year')
@@ -825,7 +825,7 @@ describe('useFormPageBuilder', () => {
     })
 
     it('setFieldOrder reorders fields', () => {
-      const { result } = createWrapper(() => useFormPageBuilder({ entity: 'books' }))
+      const { result } = createWrapper(() => useEntityItemFormPage({ entity: 'books' }))
 
       result.generateFields()
       result.setFieldOrder(['genre', 'title', 'author'])
@@ -837,7 +837,7 @@ describe('useFormPageBuilder', () => {
     })
 
     it('moveField moves field to new position', () => {
-      const { result } = createWrapper(() => useFormPageBuilder({ entity: 'books' }))
+      const { result } = createWrapper(() => useEntityItemFormPage({ entity: 'books' }))
 
       result.generateFields()
       result.moveField('genre', { after: 'title' })
@@ -847,7 +847,7 @@ describe('useFormPageBuilder', () => {
     })
 
     it('getFieldConfig returns field configuration', () => {
-      const { result } = createWrapper(() => useFormPageBuilder({ entity: 'books' }))
+      const { result } = createWrapper(() => useEntityItemFormPage({ entity: 'books' }))
 
       result.generateFields()
 
@@ -859,7 +859,7 @@ describe('useFormPageBuilder', () => {
     })
 
     it('fields are included in props', () => {
-      const { result } = createWrapper(() => useFormPageBuilder({ entity: 'books' }))
+      const { result } = createWrapper(() => useEntityItemFormPage({ entity: 'books' }))
 
       result.generateFields()
 
@@ -867,7 +867,7 @@ describe('useFormPageBuilder', () => {
     })
 
     it('manual addField before generateFields takes precedence', () => {
-      const { result } = createWrapper(() => useFormPageBuilder({ entity: 'books' }))
+      const { result } = createWrapper(() => useEntityItemFormPage({ entity: 'books' }))
 
       // Add manual field first
       result.addField('title', { type: 'textarea', label: 'Custom Title' })
@@ -879,7 +879,7 @@ describe('useFormPageBuilder', () => {
     })
 
     it('supports method chaining', () => {
-      const { result } = createWrapper(() => useFormPageBuilder({ entity: 'books' }))
+      const { result } = createWrapper(() => useEntityItemFormPage({ entity: 'books' }))
 
       // All field methods should return builderApi for chaining
       const chainResult = result
@@ -901,7 +901,7 @@ describe('useFormPageBuilder', () => {
         getFieldConfig: () => null
       })
 
-      const { result } = createWrapper(() => useFormPageBuilder({ entity: 'books' }))
+      const { result } = createWrapper(() => useEntityItemFormPage({ entity: 'books' }))
 
       result.generateFields()
 
@@ -921,7 +921,7 @@ describe('useFormPageBuilder', () => {
         }
       })
 
-      const { result } = createWrapper(() => useFormPageBuilder({ entity: 'books' }))
+      const { result } = createWrapper(() => useEntityItemFormPage({ entity: 'books' }))
 
       result.generateFields()
 
@@ -954,7 +954,7 @@ describe('useFormPageBuilder', () => {
     })
 
     it('returns expected validation API surface', () => {
-      const { result } = createWrapper(() => useFormPageBuilder({ entity: 'books' }))
+      const { result } = createWrapper(() => useEntityItemFormPage({ entity: 'books' }))
 
       expect(result).toHaveProperty('errors')
       expect(result).toHaveProperty('hasErrors')
@@ -968,7 +968,7 @@ describe('useFormPageBuilder', () => {
     })
 
     it('validate() returns true when all fields are valid', () => {
-      const { result } = createWrapper(() => useFormPageBuilder({ entity: 'books' }))
+      const { result } = createWrapper(() => useEntityItemFormPage({ entity: 'books' }))
 
       result.generateFields()
       result.data.value.title = 'Test Book'
@@ -980,7 +980,7 @@ describe('useFormPageBuilder', () => {
     })
 
     it('validate() returns false when required field is empty', () => {
-      const { result } = createWrapper(() => useFormPageBuilder({ entity: 'books' }))
+      const { result } = createWrapper(() => useEntityItemFormPage({ entity: 'books' }))
 
       result.generateFields()
       result.data.value.title = ''
@@ -991,7 +991,7 @@ describe('useFormPageBuilder', () => {
     })
 
     it('validate() checks email format', () => {
-      const { result } = createWrapper(() => useFormPageBuilder({ entity: 'books' }))
+      const { result } = createWrapper(() => useEntityItemFormPage({ entity: 'books' }))
 
       result.generateFields()
       result.data.value.title = 'Test'
@@ -1002,7 +1002,7 @@ describe('useFormPageBuilder', () => {
     })
 
     it('validate() checks integer type', () => {
-      const { result } = createWrapper(() => useFormPageBuilder({ entity: 'books' }))
+      const { result } = createWrapper(() => useEntityItemFormPage({ entity: 'books' }))
 
       result.generateFields()
       result.data.value.title = 'Test'
@@ -1013,7 +1013,7 @@ describe('useFormPageBuilder', () => {
     })
 
     it('validate() checks URL format', () => {
-      const { result } = createWrapper(() => useFormPageBuilder({ entity: 'books' }))
+      const { result } = createWrapper(() => useEntityItemFormPage({ entity: 'books' }))
 
       result.generateFields()
       result.data.value.title = 'Test'
@@ -1024,7 +1024,7 @@ describe('useFormPageBuilder', () => {
     })
 
     it('validate() accepts valid URL', () => {
-      const { result } = createWrapper(() => useFormPageBuilder({ entity: 'books' }))
+      const { result } = createWrapper(() => useEntityItemFormPage({ entity: 'books' }))
 
       result.generateFields()
       result.data.value.title = 'Test'
@@ -1034,7 +1034,7 @@ describe('useFormPageBuilder', () => {
     })
 
     it('validateField() validates single field', () => {
-      const { result } = createWrapper(() => useFormPageBuilder({ entity: 'books' }))
+      const { result } = createWrapper(() => useEntityItemFormPage({ entity: 'books' }))
 
       result.generateFields()
       result.data.value.title = ''
@@ -1046,7 +1046,7 @@ describe('useFormPageBuilder', () => {
     })
 
     it('validateField() clears error when field becomes valid', () => {
-      const { result } = createWrapper(() => useFormPageBuilder({ entity: 'books' }))
+      const { result } = createWrapper(() => useEntityItemFormPage({ entity: 'books' }))
 
       result.generateFields()
       result.data.value.title = ''
@@ -1065,7 +1065,7 @@ describe('useFormPageBuilder', () => {
         return value.length >= 5 || 'Must be at least 5 characters'
       })
 
-      const { result } = createWrapper(() => useFormPageBuilder({ entity: 'books' }))
+      const { result } = createWrapper(() => useEntityItemFormPage({ entity: 'books' }))
 
       result.addField('title', { type: 'text', label: 'Title', validate: customValidator })
       result.data.value.title = 'Hi'
@@ -1077,7 +1077,7 @@ describe('useFormPageBuilder', () => {
     })
 
     it('custom validator returning true clears error', () => {
-      const { result } = createWrapper(() => useFormPageBuilder({ entity: 'books' }))
+      const { result } = createWrapper(() => useEntityItemFormPage({ entity: 'books' }))
 
       result.addField('title', {
         type: 'text',
@@ -1092,7 +1092,7 @@ describe('useFormPageBuilder', () => {
     })
 
     it('clearErrors() removes all errors', () => {
-      const { result } = createWrapper(() => useFormPageBuilder({ entity: 'books' }))
+      const { result } = createWrapper(() => useEntityItemFormPage({ entity: 'books' }))
 
       result.generateFields()
       result.data.value.title = ''
@@ -1108,7 +1108,7 @@ describe('useFormPageBuilder', () => {
     })
 
     it('clearFieldError() removes specific field error', () => {
-      const { result } = createWrapper(() => useFormPageBuilder({ entity: 'books' }))
+      const { result } = createWrapper(() => useEntityItemFormPage({ entity: 'books' }))
 
       result.generateFields()
       result.data.value.title = ''
@@ -1125,7 +1125,7 @@ describe('useFormPageBuilder', () => {
     })
 
     it('getFieldError() returns error message for field', () => {
-      const { result } = createWrapper(() => useFormPageBuilder({ entity: 'books' }))
+      const { result } = createWrapper(() => useEntityItemFormPage({ entity: 'books' }))
 
       result.generateFields()
       result.data.value.title = ''
@@ -1136,7 +1136,7 @@ describe('useFormPageBuilder', () => {
     })
 
     it('errorSummary provides field label with error', () => {
-      const { result } = createWrapper(() => useFormPageBuilder({ entity: 'books' }))
+      const { result } = createWrapper(() => useEntityItemFormPage({ entity: 'books' }))
 
       result.generateFields()
       result.data.value.title = ''
@@ -1151,7 +1151,7 @@ describe('useFormPageBuilder', () => {
 
     it('submit() validates before saving when validateOnSubmit is true', async () => {
       mockRouteState = { name: 'book-create', params: {} }
-      const { result } = createWrapper(() => useFormPageBuilder({ entity: 'books' }))
+      const { result } = createWrapper(() => useEntityItemFormPage({ entity: 'books' }))
 
       result.generateFields()
       result.data.value.title = ''
@@ -1165,7 +1165,7 @@ describe('useFormPageBuilder', () => {
 
     it('submit() proceeds when validation passes', async () => {
       mockRouteState = { name: 'book-create', params: {} }
-      const { result } = createWrapper(() => useFormPageBuilder({ entity: 'books' }))
+      const { result } = createWrapper(() => useEntityItemFormPage({ entity: 'books' }))
 
       result.generateFields()
       result.data.value.title = 'Valid Title'
@@ -1178,7 +1178,7 @@ describe('useFormPageBuilder', () => {
 
     it('reset() clears validation errors', async () => {
       mockRouteState = { name: 'book-create', params: {} }
-      const { result } = createWrapper(() => useFormPageBuilder({ entity: 'books' }))
+      const { result } = createWrapper(() => useEntityItemFormPage({ entity: 'books' }))
 
       result.generateFields()
       result.data.value.title = ''
@@ -1193,7 +1193,7 @@ describe('useFormPageBuilder', () => {
     })
 
     it('errors are included in props', () => {
-      const { result } = createWrapper(() => useFormPageBuilder({ entity: 'books' }))
+      const { result } = createWrapper(() => useEntityItemFormPage({ entity: 'books' }))
 
       result.generateFields()
       result.data.value.title = ''
@@ -1205,7 +1205,7 @@ describe('useFormPageBuilder', () => {
     })
 
     it('empty strings are considered empty for required validation', () => {
-      const { result } = createWrapper(() => useFormPageBuilder({ entity: 'books' }))
+      const { result } = createWrapper(() => useEntityItemFormPage({ entity: 'books' }))
 
       result.generateFields()
       result.data.value.title = '   '  // whitespace only
@@ -1215,7 +1215,7 @@ describe('useFormPageBuilder', () => {
     })
 
     it('null and undefined are considered empty for required validation', () => {
-      const { result } = createWrapper(() => useFormPageBuilder({ entity: 'books' }))
+      const { result } = createWrapper(() => useEntityItemFormPage({ entity: 'books' }))
 
       result.generateFields()
       result.data.value.title = null
@@ -1228,7 +1228,7 @@ describe('useFormPageBuilder', () => {
     })
 
     it('skips type validation for empty values', () => {
-      const { result } = createWrapper(() => useFormPageBuilder({ entity: 'books' }))
+      const { result } = createWrapper(() => useEntityItemFormPage({ entity: 'books' }))
 
       result.generateFields()
       result.data.value.title = 'Test'

@@ -11,29 +11,19 @@
  * - Read-only view (DummyJSON doesn't persist changes)
  */
 
-import { ref, computed, onMounted } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import { PageLayout, usePageTitle, useOrchestrator, useCurrentEntity } from 'qdadm'
+import { computed } from 'vue'
+import { useRouter } from 'vue-router'
+import { PageLayout, usePageTitle, useEntityItemPage } from 'qdadm'
 import Card from 'primevue/card'
 import Button from 'primevue/button'
 import Message from 'primevue/message'
 import Tag from 'primevue/tag'
 import Rating from 'primevue/rating'
 
-const route = useRoute()
 const router = useRouter()
 
-// Get manager from orchestrator
-const { getManager } = useOrchestrator()
-const productsManager = getManager('products')
-
-// Share entity with navigation context (avoids double fetch for breadcrumb)
-const { setCurrentEntity } = useCurrentEntity()
-
-// State
-const product = ref(null)
-const loading = ref(false)
-const error = ref(null)
+// Use useEntityItemPage for product loading + breadcrumb
+const { data: product, loading, error } = useEntityItemPage({ entity: 'products' })
 
 // Page title
 const pageTitle = computed(() => {
@@ -44,34 +34,6 @@ const pageTitle = computed(() => {
 })
 
 usePageTitle(pageTitle)
-
-// Load product data
-async function loadProduct() {
-  const productId = route.params.id
-  if (!productId) {
-    error.value = 'No product ID provided'
-    return
-  }
-
-  loading.value = true
-  error.value = null
-
-  try {
-    product.value = await productsManager.get(productId)
-    if (!product.value) {
-      error.value = 'Product not found'
-      return
-    }
-    // Share with navigation context for breadcrumb (avoids double fetch)
-    setCurrentEntity(product.value)
-  } catch (err) {
-    console.error('Failed to load product:', err)
-    error.value = err.message || 'Failed to load product'
-    product.value = null
-  } finally {
-    loading.value = false
-  }
-}
 
 function goBack() {
   router.push({ name: 'product' })
@@ -96,10 +58,6 @@ function getStockSeverity(stock) {
   if (stock < 10) return 'warn'
   return 'success'
 }
-
-onMounted(() => {
-  loadProduct()
-})
 </script>
 
 <template>

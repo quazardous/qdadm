@@ -3,15 +3,15 @@
  * GenreForm - Simplest qdadm form pattern demo
  *
  * Pattern: ~10 lines for reference/lookup data form
- * - Entity config via useFormPageBuilder
+ * - Entity config via useEntityItemFormPage
  * - Auto-generate fields from EntityManager schema
  * - FormPage handles loading, actions, dirty state
  */
-import { useFormPageBuilder, FormPage, FormField } from 'qdadm'
+import { useEntityItemFormPage, FormPage, FormField } from 'qdadm'
 import InputText from 'primevue/inputtext'
 import Textarea from 'primevue/textarea'
 
-const form = useFormPageBuilder({ entity: 'genres' })
+const form = useEntityItemFormPage({ entity: 'genres' })
 form.generateFields()
 </script>
 

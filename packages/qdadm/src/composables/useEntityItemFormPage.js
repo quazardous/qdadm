@@ -1,5 +1,5 @@
 /**
- * useFormPageBuilder - Unified procedural builder for CRUD form pages
+ * useEntityItemFormPage - Unified procedural builder for CRUD form pages
  *
  * Provides a declarative/procedural API to build form pages with:
  * - Mode detection (create vs edit from route params)
@@ -13,7 +13,7 @@
  * ## Basic Usage
  *
  * ```js
- * const form = useFormPageBuilder({ entity: 'books' })
+ * const form = useEntityItemFormPage({ entity: 'books' })
  * form.addSaveAction()
  * form.addDeleteAction()
  *
@@ -27,7 +27,7 @@
  * ## Auto-generated Fields
  *
  * ```js
- * const form = useFormPageBuilder({ entity: 'books' })
+ * const form = useEntityItemFormPage({ entity: 'books' })
  * form.generateFields()  // Auto-generate from manager.fields
  * form.excludeField('internal_id')  // Exclude specific fields
  * form.addField('custom', { type: 'text', label: 'Custom' })  // Manual override
@@ -40,7 +40,7 @@
  * ## Validation
  *
  * ```js
- * const form = useFormPageBuilder({ entity: 'books' })
+ * const form = useEntityItemFormPage({ entity: 'books' })
  * form.generateFields()
  *
  * // Add custom validator
@@ -77,19 +77,18 @@
  * - Unsaved changes guard modal
  * - Permission-aware save/delete actions via EntityManager.canUpdate/canDelete
  */
-import { ref, computed, watch, onMounted, inject, provide } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted, provide } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useToast } from 'primevue/usetoast'
 import { useConfirm } from 'primevue/useconfirm'
 import { useDirtyState } from './useDirtyState'
 import { useUnsavedChangesGuard } from './useUnsavedChangesGuard'
 import { useBreadcrumb } from './useBreadcrumb'
-import { useCurrentEntity } from './useCurrentEntity'
+import { useEntityItemPage } from './useEntityItemPage'
 import { registerGuardDialog, unregisterGuardDialog } from './useGuardStore'
 import { deepClone } from '../utils/transformers'
-import { onUnmounted } from 'vue'
 
-export function useFormPageBuilder(config = {}) {
+export function useEntityItemFormPage(config = {}) {
   const {
     entity,
     // Mode detection
@@ -118,40 +117,21 @@ export function useFormPageBuilder(config = {}) {
   const toast = useToast()
   const confirm = useConfirm()
 
-  // Get EntityManager via orchestrator
-  const orchestrator = inject('qdadmOrchestrator')
-  if (!orchestrator) {
-    throw new Error(
-      '[qdadm] Orchestrator not provided.\n' +
-      'Possible causes:\n' +
-      '1. Kernel not initialized - ensure createKernel().createApp() is called before mounting\n' +
-      '2. Component used outside of qdadm app context\n' +
-      '3. Missing entityFactory in Kernel options'
-    )
-  }
-  const manager = orchestrator.get(entity)
+  // Use useEntityItemPage for common infrastructure
+  // (orchestrator, manager, entityId, provide('mainEntity'), breadcrumb)
+  const itemPage = useEntityItemPage({
+    entity,
+    loadOnMount: false,  // Form controls its own loading
+    breadcrumb: false,   // Form calls setBreadcrumbEntity manually after transform
+    getId
+  })
 
-  // Provide entity context for child components (e.g., SeverityTag auto-discovery)
-  provide('mainEntity', entity)
-
-  // Share entity data with navigation context (for breadcrumb)
-  const { setCurrentEntity } = useCurrentEntity()
+  const { manager, orchestrator, entityId, setBreadcrumbEntity } = itemPage
 
   // Read config from manager with option overrides
   const entityName = config.entityName ?? manager.label
   const routePrefix = config.routePrefix ?? manager.routePrefix
   const initialData = config.initialData ?? manager.getInitialData()
-
-  // ============ MODE DETECTION ============
-
-  /**
-   * Extract entity ID from route params
-   * Supports: /books/:id/edit, /books/:id, /books/new
-   */
-  const entityId = computed(() => {
-    if (getId) return getId()
-    return route.params.id || route.params.key || null
-  })
 
   /**
    * Detect form mode: 'create' or 'edit'
@@ -263,7 +243,7 @@ export function useFormPageBuilder(config = {}) {
       takeSnapshot()
 
       // Share with navigation context for breadcrumb
-      setCurrentEntity(transformed)
+      setBreadcrumbEntity(transformed)
 
       if (onLoadSuccess) {
         await onLoadSuccess(transformed)
@@ -520,7 +500,7 @@ export function useFormPageBuilder(config = {}) {
         const updatedConfig = { ...config, options }
         fieldsMap.value.set(name, updatedConfig)
       } catch (error) {
-        console.warn(`[useFormPageBuilder] Failed to resolve options for field '${name}':`, error)
+        console.warn(`[useEntityItemFormPage] Failed to resolve options for field '${name}':`, error)
       }
     }
   }

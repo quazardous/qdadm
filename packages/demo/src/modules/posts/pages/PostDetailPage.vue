@@ -9,26 +9,36 @@
  * - Read-only view (JSONPlaceholder doesn't persist changes)
  */
 
-import { ref, computed, onMounted, inject } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import { PageLayout, usePageTitle, useOrchestrator } from 'qdadm'
+import { ref, computed, watch } from 'vue'
+import { useRouter } from 'vue-router'
+import { PageLayout, usePageTitle, useOrchestrator, useEntityItemPage } from 'qdadm'
 import Card from 'primevue/card'
 import Button from 'primevue/button'
 import Message from 'primevue/message'
 
-const route = useRoute()
 const router = useRouter()
 
-// Get managers from orchestrator
+// Use useEntityItemPage for post loading + breadcrumb
+const { data: post, loading, error } = useEntityItemPage({ entity: 'posts' })
+
+// Get users manager for author lookup
 const { getManager } = useOrchestrator()
-const postsManager = getManager('posts')
 const usersManager = getManager('jp_users')
 
-// State
-const post = ref(null)
+// Author state (loaded after post)
 const author = ref(null)
-const loading = ref(false)
-const error = ref(null)
+
+// Load author when post changes
+watch(post, async (newPost) => {
+  if (newPost?.userId) {
+    try {
+      author.value = await usersManager.get(newPost.userId)
+    } catch (err) {
+      console.warn('Failed to load author:', err)
+      author.value = null
+    }
+  }
+}, { immediate: true })
 
 // Page title
 const pageTitle = computed(() => {
@@ -40,37 +50,6 @@ const pageTitle = computed(() => {
 
 usePageTitle(pageTitle)
 
-// Load post data
-async function loadPost() {
-  const postId = route.params.id
-  if (!postId) {
-    error.value = 'No post ID provided'
-    return
-  }
-
-  loading.value = true
-  error.value = null
-
-  try {
-    post.value = await postsManager.get(postId)
-    if (!post.value) {
-      error.value = 'Post not found'
-      return
-    }
-
-    // Load author info
-    if (post.value.userId) {
-      author.value = await usersManager.get(post.value.userId)
-    }
-  } catch (err) {
-    console.error('Failed to load post:', err)
-    error.value = err.message || 'Failed to load post'
-    post.value = null
-  } finally {
-    loading.value = false
-  }
-}
-
 function goBack() {
   router.push({ name: 'post' })
 }
@@ -80,10 +59,6 @@ function goToAuthor() {
     router.push({ name: 'jp_user-show', params: { id: post.value.userId } })
   }
 }
-
-onMounted(() => {
-  loadPost()
-})
 </script>
 
 <template>

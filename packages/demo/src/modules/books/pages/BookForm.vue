@@ -3,7 +3,7 @@
  * BookForm - Unified Create/Edit form
  *
  * Single Form Pattern: one component handles both create and edit modes.
- * Mode detection is automatic via useFormPageBuilder.
+ * Mode detection is automatic via useEntityItemFormPage.
  *
  * ZONE EXTENSIBILITY DEMO
  * =======================
@@ -13,9 +13,9 @@
  *
  * See: modules/loans/components/LoansZoneSetup.vue for wrap operation
  */
-import { useFormPageBuilder, FormPage, FormField, FormInput, Zone } from 'qdadm'
+import { useEntityItemFormPage, FormPage, FormField, FormInput, Zone } from 'qdadm'
 
-const form = useFormPageBuilder({ entity: 'books' })
+const form = useEntityItemFormPage({ entity: 'books' })
 form.generateFields()
 form.addSaveAction({ andClose: true })
 form.addDeleteAction()

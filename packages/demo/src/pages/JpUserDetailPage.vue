@@ -6,9 +6,9 @@
  * Read-only view since JSONPlaceholder doesn't persist changes.
  */
 
-import { ref, computed, onMounted } from 'vue'
+import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { PageLayout, usePageTitle, useOrchestrator } from 'qdadm'
+import { PageLayout, usePageTitle, useEntityItemPage } from 'qdadm'
 import Card from 'primevue/card'
 import Button from 'primevue/button'
 import Message from 'primevue/message'
@@ -16,14 +16,8 @@ import Message from 'primevue/message'
 const route = useRoute()
 const router = useRouter()
 
-// Get the users manager from orchestrator
-const orchestrator = useOrchestrator()
-const manager = orchestrator.get('jp_users')
-
-// State
-const user = ref(null)
-const loading = ref(false)
-const error = ref(null)
+// Use useEntityItemPage for user loading + breadcrumb
+const { data: user, loading, error } = useEntityItemPage({ entity: 'jp_users' })
 
 // Page title
 const pageTitle = computed(() => {
@@ -35,31 +29,6 @@ const pageTitle = computed(() => {
 
 usePageTitle(pageTitle)
 
-// Load user data
-async function loadUser() {
-  const userId = route.params.id
-  if (!userId) {
-    error.value = 'No user ID provided'
-    return
-  }
-
-  loading.value = true
-  error.value = null
-
-  try {
-    user.value = await manager.get(userId)
-    if (!user.value) {
-      error.value = 'User not found'
-    }
-  } catch (err) {
-    console.error('Failed to load user:', err)
-    error.value = err.message || 'Failed to load user'
-    user.value = null
-  } finally {
-    loading.value = false
-  }
-}
-
 function goBack() {
   router.push({ name: 'jp_user' })
 }
@@ -67,10 +36,6 @@ function goBack() {
 function viewPosts() {
   router.push({ name: 'post', query: { userId: route.params.id } })
 }
-
-onMounted(() => {
-  loadUser()
-})
 </script>
 
 <template>

@@ -5,6 +5,30 @@ All notable changes to qdadm will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.48.0] - 2026-01-09
+
+### Added
+- **useEntityItemPage composable**: Base composable for single entity item pages
+  - Handles entity loading by ID from route params
+  - Automatic breadcrumb integration via `setBreadcrumbEntity`
+  - Loading/error state management
+  - Used as base for show pages and `useEntityItemFormPage`
+- **pluralize library**: Proper English singular/plural handling for entity names
+  - `countries` → `country`, `indices` → `index`, `children` → `child`
+  - Used in `label`, `labelPlural`, and `routePrefix` getters
+
+### Changed
+- **useFormPageBuilder renamed to useEntityItemFormPage**: For naming consistency
+  - Backward-compatible alias `useFormPageBuilder` still exported
+  - Now uses `useEntityItemPage` internally for loading logic
+- **Demo detail pages migrated to useEntityItemPage**:
+  - PostDetailPage, CountryDetailPage, ProductDetailPage, JpUserDetailPage
+
+### Fixed
+- **getDefaultItemRoute for readOnly entities**: Returns `-show` suffix instead of hardcoded `-edit`
+  - Fixed in `useNavContext.js` and `PageNav.vue`
+- **Singularization edge cases**: `countries` no longer becomes `countrie`
+
 ## [0.47.0] - 2026-01-06
 
 ### Added

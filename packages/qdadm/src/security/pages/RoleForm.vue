@@ -4,13 +4,13 @@
  */
 
 import { ref, computed, inject } from 'vue'
-import { useFormPageBuilder, FormPage, useOrchestrator, PermissionEditor } from '../../index.js'
+import { useEntityItemFormPage, FormPage, useOrchestrator, PermissionEditor } from '../../index.js'
 import InputText from 'primevue/inputtext'
 import AutoComplete from 'primevue/autocomplete'
 import Chip from 'primevue/chip'
 
 // ============ FORM BUILDER ============
-const form = useFormPageBuilder({ entity: 'roles' })
+const form = useEntityItemFormPage({ entity: 'roles' })
 
 // ============ HELPERS ============
 const { getManager } = useOrchestrator()

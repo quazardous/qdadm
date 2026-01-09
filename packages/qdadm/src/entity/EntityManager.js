@@ -1,6 +1,7 @@
 import { PermissiveAuthAdapter } from './auth/PermissiveAdapter.js'
 import { AuthActions } from './auth/EntityAuthAdapter.js'
 import { QueryExecutor } from '../query/QueryExecutor.js'
+import pluralize from 'pluralize'
 
 /**
  * EntityManager - Base class for entity CRUD operations
@@ -307,36 +308,34 @@ export class EntityManager {
 
   /**
    * Get entity label (singular)
-   * Default: capitalize name (e.g., 'users' → 'User')
+   * Default: capitalize name (e.g., 'users' → 'User', 'countries' → 'Country')
    */
   get label() {
     if (this._label) return this._label
     if (!this.name) return 'Item'
-    // users → User, book → Book
-    const singular = this.name.endsWith('s') ? this.name.slice(0, -1) : this.name
+    const singular = pluralize.singular(this.name)
     return singular.charAt(0).toUpperCase() + singular.slice(1)
   }
 
   /**
    * Get entity label (plural)
-   * Default: capitalize name or add 's' (e.g., 'user' → 'Users')
+   * Default: capitalize name (e.g., 'user' → 'Users', 'country' → 'Countries')
    */
   get labelPlural() {
     if (this._labelPlural) return this._labelPlural
     if (!this.name) return 'Items'
-    // users → Users, book → Books
-    const plural = this.name.endsWith('s') ? this.name : this.name + 's'
+    const plural = pluralize.plural(this.name)
     return plural.charAt(0).toUpperCase() + plural.slice(1)
   }
 
   /**
    * Get route prefix for this entity
-   * Default: singular form of name (e.g., 'books' → 'book')
+   * Default: singular form of name (e.g., 'books' → 'book', 'countries' → 'country')
    */
   get routePrefix() {
     if (this._routePrefix) return this._routePrefix
     if (!this.name) return 'item'
-    return this.name.endsWith('s') ? this.name.slice(0, -1) : this.name
+    return pluralize.singular(this.name)
   }
 
   /**

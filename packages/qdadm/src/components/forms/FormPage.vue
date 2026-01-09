@@ -9,10 +9,10 @@
  * - FormActions footer
  * - UnsavedChangesDialog integration
  *
- * Props come from useFormPageBuilder composable:
+ * Props come from useEntityItemFormPage composable:
  *
  * ```vue
- * const form = useFormPageBuilder({ entity: 'books' })
+ * const form = useEntityItemFormPage({ entity: 'books' })
  * form.generateFields()
  * form.addSaveAction()
  *

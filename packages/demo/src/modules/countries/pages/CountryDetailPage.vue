@@ -11,25 +11,18 @@
  * - Read-only view
  */
 
-import { ref, computed, onMounted } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import { PageLayout, usePageTitle, useOrchestrator } from 'qdadm'
+import { computed } from 'vue'
+import { useRouter } from 'vue-router'
+import { PageLayout, usePageTitle, useEntityItemPage } from 'qdadm'
 import Card from 'primevue/card'
 import Button from 'primevue/button'
 import Message from 'primevue/message'
 import Tag from 'primevue/tag'
 
-const route = useRoute()
 const router = useRouter()
 
-// Get manager from orchestrator
-const { getManager } = useOrchestrator()
-const countriesManager = getManager('countries')
-
-// State
-const country = ref(null)
-const loading = ref(false)
-const error = ref(null)
+// Use useEntityItemPage for country loading + breadcrumb
+const { data: country, loading, error } = useEntityItemPage({ entity: 'countries' })
 
 // Page title
 const pageTitle = computed(() => {
@@ -40,32 +33,6 @@ const pageTitle = computed(() => {
 })
 
 usePageTitle(pageTitle)
-
-// Load country data
-async function loadCountry() {
-  const countryId = route.params.id
-  if (!countryId) {
-    error.value = 'No country code provided'
-    return
-  }
-
-  loading.value = true
-  error.value = null
-
-  try {
-    country.value = await countriesManager.get(countryId)
-    if (!country.value) {
-      error.value = 'Country not found'
-      return
-    }
-  } catch (err) {
-    console.error('Failed to load country:', err)
-    error.value = err.message || 'Failed to load country'
-    country.value = null
-  } finally {
-    loading.value = false
-  }
-}
 
 function goBack() {
   router.push({ name: 'country' })
@@ -92,10 +59,6 @@ function getRegionSeverity(region) {
   }
   return severities[region] || 'secondary'
 }
-
-onMounted(() => {
-  loadCountry()
-})
 </script>
 
 <template>

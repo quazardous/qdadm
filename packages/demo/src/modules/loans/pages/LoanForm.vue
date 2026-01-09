@@ -7,13 +7,13 @@
  * - Non-admin: user_id is auto-set to current user (locked field)
  */
 import { computed } from 'vue'
-import { useFormPageBuilder, FormPage, FormField, FormInput, useAuth } from 'qdadm'
+import { useEntityItemFormPage, FormPage, FormField, FormInput, useAuth } from 'qdadm'
 import InputText from 'primevue/inputtext'
 
 const { user } = useAuth()
 const isAdmin = computed(() => user.value?.role === 'ROLE_ADMIN')
 
-const form = useFormPageBuilder({ entity: 'loans' })
+const form = useEntityItemFormPage({ entity: 'loans' })
 form.generateFields()
 form.addSaveAction({ andClose: true })
 form.addDeleteAction()

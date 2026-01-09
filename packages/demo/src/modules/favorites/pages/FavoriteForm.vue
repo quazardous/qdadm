@@ -6,11 +6,11 @@
  * Uses LocalStorage for persistence.
  */
 
-import { useFormPageBuilder, FormPage, FormField } from 'qdadm'
+import { useEntityItemFormPage, FormPage, FormField } from 'qdadm'
 import InputText from 'primevue/inputtext'
 import Select from 'primevue/select'
 
-const form = useFormPageBuilder({ entity: 'favorites' })
+const form = useEntityItemFormPage({ entity: 'favorites' })
 form.generateFields()
 form.addSaveAction({ andClose: true })
 
