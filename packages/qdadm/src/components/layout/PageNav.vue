@@ -26,6 +26,8 @@ import { useOrchestrator } from '../../orchestrator/useOrchestrator.js'
 const breadcrumbOverride = inject('qdadmBreadcrumbOverride', null)
 const navlinksOverride = inject('qdadmNavlinksOverride', null)
 const homeRouteName = inject('qdadmHomeRoute', null)
+// Entity data set by useEntityItemPage via setBreadcrumbEntity
+const breadcrumbEntities = inject('qdadmBreadcrumbEntities', null)
 
 const props = defineProps({
   entity: { type: Object, default: null },
@@ -85,10 +87,22 @@ const breadcrumbItems = computed(() => {
     if (entityName) {
       const manager = getManager(entityName)
       if (manager) {
+        // Entity list link
         items.push({
           label: manager.labelPlural || manager.name,
           to: { name: manager.routePrefix }
         })
+
+        // If on detail page (has :id param), add current entity item
+        const entityId = route.params.id
+        if (entityId) {
+          // Get entity data from props or from breadcrumbEntities (set by useEntityItemPage)
+          const entityData = props.entity || breadcrumbEntities?.value?.get(1)
+          const entityLabel = entityData
+            ? manager.getEntityLabel(entityData)
+            : '...'
+          items.push({ label: entityLabel })
+        }
       }
     }
     return items
@@ -216,12 +230,12 @@ const allNavlinks = computed(() => {
 })
 
 // Sync breadcrumb and navlinks to AppLayout via provide/inject
-// Watch computed values + route changes to ensure updates after navigation
-watch([breadcrumbItems, () => route.fullPath], ([items]) => {
+// Watch computed values + route changes + entity data to ensure updates
+watch([breadcrumbItems, () => route.fullPath, breadcrumbEntities], ([items]) => {
   if (breadcrumbOverride) {
     breadcrumbOverride.value = items
   }
-}, { immediate: true })
+}, { immediate: true, deep: true })
 
 watch([allNavlinks, () => route.fullPath], ([links]) => {
   if (navlinksOverride) {

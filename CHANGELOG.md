@@ -5,6 +5,16 @@ All notable changes to qdadm will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.49.1] - 2026-01-09
+
+### Fixed
+- **Breadcrumb entity label on detail pages**: PageNav now includes the entity label (e.g., "T1000 Scraper") in breadcrumb for detail pages without parent config
+  - Injects `breadcrumbEntities` to access entity data set by `useEntityItemPage`
+  - Breadcrumb shows: Dashboard > Bots > "T1000 Scraper" instead of just Dashboard > Bots
+- **Stale breadcrumb/navlinks on list pages**: AppLayout now clears overrides on route change
+  - Navigating from detail page back to list page now shows correct breadcrumb
+  - List pages use default breadcrumb from `useNavContext` instead of stale PageNav overrides
+
 ## [0.49.0] - 2026-01-09
 
 ### Added

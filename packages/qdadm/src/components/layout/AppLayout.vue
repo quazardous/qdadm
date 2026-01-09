@@ -177,9 +177,12 @@ function setBreadcrumbEntity(data, level = 1) {
 provide('qdadmSetBreadcrumbEntity', setBreadcrumbEntity)
 provide('qdadmBreadcrumbEntities', breadcrumbEntities)
 
-// Clear entity data on route change (before new page mounts)
+// Clear entity data and overrides on route change (before new page mounts)
+// This ensures list pages get default breadcrumb, detail pages can override via PageNav
 watch(() => route.fullPath, () => {
   breadcrumbEntities.value = new Map()
+  breadcrumbOverride.value = null
+  navlinksOverride.value = null
 })
 
 // Navigation context (breadcrumb + navlinks from route config)
