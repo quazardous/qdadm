@@ -47,6 +47,19 @@ export function useNavContext(options = {}) {
   }
 
   /**
+   * Get default item route for an entity manager
+   * - Read-only entities: use -show suffix
+   * - Editable entities: use -edit suffix
+   * @param {EntityManager} manager
+   * @returns {string} Route name
+   */
+  function getDefaultItemRoute(manager) {
+    if (!manager) return null
+    const suffix = manager.readOnly ? '-show' : '-edit'
+    return `${manager.routePrefix}${suffix}`
+  }
+
+  /**
    * Convert semantic breadcrumb to navigation chain format
    * Maps semantic kinds to chain types for compatibility
    */
@@ -71,7 +84,7 @@ export function useNavContext(options = {}) {
           entity: item.entity,
           manager,
           id: item.id,
-          routeName: manager ? `${manager.routePrefix}-edit` : null
+          routeName: getDefaultItemRoute(manager)
         })
       } else if (item.kind === 'entity-create') {
         // Create page - treat as special list
@@ -246,7 +259,7 @@ export function useNavContext(options = {}) {
     const parentManager = getManager(parentEntity)
     if (!parentManager) return []
 
-    const parentRouteName = itemRoute || `${parentManager.routePrefix}-edit`
+    const parentRouteName = itemRoute || getDefaultItemRoute(parentManager)
     const isOnParent = route.name === parentRouteName
 
     // Details link

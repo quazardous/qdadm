@@ -110,7 +110,8 @@ const breadcrumbItems = computed(() => {
     const parentLabel = parentData.value
       ? parentManager.getEntityLabel(parentData.value)
       : '...'
-    const parentRouteName = itemRoute || `${parentManager.routePrefix}-edit`
+    const defaultSuffix = parentManager.readOnly ? '-show' : '-edit'
+    const parentRouteName = itemRoute || `${parentManager.routePrefix}${defaultSuffix}`
 
     items.push({
       label: parentLabel,
@@ -157,10 +158,11 @@ const allNavlinks = computed(() => {
 
   if (!parentManager) return navlinks.value
 
-  const parentRouteName = itemRoute || `${parentManager.routePrefix}-edit`
+  const defaultSuffix = parentManager.readOnly ? '-show' : '-edit'
+  const parentRouteName = itemRoute || `${parentManager.routePrefix}${defaultSuffix}`
   const isOnParentRoute = route.name === parentRouteName
 
-  // Details link to parent edit form
+  // Details link to parent item page
   const detailsLink = {
     label: 'Details',
     to: { name: parentRouteName, params: { id: parentId } },
