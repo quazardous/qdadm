@@ -5,6 +5,25 @@ All notable changes to qdadm will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.49.0] - 2026-01-09
+
+### Added
+- **Child navlinks on parent detail pages**: When viewing an entity detail page (e.g., BotShow), navlinks automatically show links to child entities (e.g., "Details | Commands")
+  - `getChildRoutes(entityName)` function in moduleRegistry to find routes with a given parent entity
+  - PageNav builds `childNavlinks` and displays "Details" (active) + child links when on parent page
+  - When on child page, shows "Details" link back to parent + sibling navlinks
+- **Convention documentation**: Added comments clarifying that entity item routes MUST use `:id` as param name
+  - This is a qdadm convention required for PageNav, breadcrumbs, and navigation to work correctly
+  - Child routes use `parent.param = 'id'` to reference parent entity
+
+### Fixed
+- **Race condition in PageNav navigation**: Navlinks no longer disappear when navigating between parent and child routes
+  - Removed `onUnmounted` clearing logic that caused race condition (old PageNav cleared values AFTER new PageNav set them)
+  - Added `route.fullPath` to watch dependencies to ensure updates after navigation
+
+### Demo (0.17.6)
+- **BotsModule**: Updated to use `:id` param convention for routes (was using `:botUuid`)
+
 ## [0.48.0] - 2026-01-09
 
 ### Added

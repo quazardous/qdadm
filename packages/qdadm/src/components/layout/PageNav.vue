@@ -17,9 +17,9 @@
  * - entity: Current entity data (for dynamic labels in breadcrumb)
  * - parentEntity: Parent entity data (for parent label in breadcrumb)
  */
-import { computed, ref, watch, onMounted, onUnmounted, inject } from 'vue'
+import { computed, ref, watch, inject } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { getSiblingRoutes } from '../../module/moduleRegistry.js'
+import { getSiblingRoutes, getChildRoutes } from '../../module/moduleRegistry.js'
 import { useOrchestrator } from '../../orchestrator/useOrchestrator.js'
 
 // Inject override refs from AppLayout
@@ -129,7 +129,7 @@ const breadcrumbItems = computed(() => {
 })
 
 // Sibling navlinks (routes with same parent)
-const navlinks = computed(() => {
+const siblingNavlinks = computed(() => {
   if (!parentConfig.value) return []
 
   const { entity: parentEntityName, param } = parentConfig.value
@@ -148,52 +148,91 @@ const navlinks = computed(() => {
   })
 })
 
-// Also include parent "Details" link
+// Child navlinks (when on parent detail page, show links to children)
+const childNavlinks = computed(() => {
+  // Only when NOT on a child route (no parentConfig)
+  if (parentConfig.value) return []
+
+  const entityName = route.meta?.entity
+  if (!entityName) return []
+
+  const children = getChildRoutes(entityName)
+  if (children.length === 0) return []
+
+  const entityId = route.params.id
+
+  // Build navlinks to child routes
+  return children.map(childRoute => {
+    const childManager = childRoute.meta?.entity ? getManager(childRoute.meta.entity) : null
+    const label = childRoute.meta?.navLabel || childManager?.labelPlural || childRoute.name
+    const parentParam = childRoute.meta?.parent?.param || 'id'
+
+    return {
+      label,
+      to: { name: childRoute.name, params: { [parentParam]: entityId } },
+      active: false
+    }
+  })
+})
+
+// Combined navlinks with "Details" link
 const allNavlinks = computed(() => {
-  if (!parentConfig.value) return []
+  // Case 1: On a child route - show siblings + Details link to parent
+  if (parentConfig.value) {
+    const { entity: parentEntityName, param, itemRoute } = parentConfig.value
+    const parentId = route.params[param]
+    const parentManager = getManager(parentEntityName)
 
-  const { entity: parentEntityName, param, itemRoute } = parentConfig.value
-  const parentId = route.params[param]
-  const parentManager = getManager(parentEntityName)
+    if (!parentManager) return siblingNavlinks.value
 
-  if (!parentManager) return navlinks.value
+    const defaultSuffix = parentManager.readOnly ? '-show' : '-edit'
+    const parentRouteName = itemRoute || `${parentManager.routePrefix}${defaultSuffix}`
+    const isOnParentRoute = route.name === parentRouteName
 
-  const defaultSuffix = parentManager.readOnly ? '-show' : '-edit'
-  const parentRouteName = itemRoute || `${parentManager.routePrefix}${defaultSuffix}`
-  const isOnParentRoute = route.name === parentRouteName
+    // Details link to parent item page
+    // CONVENTION: Entity item routes MUST use :id as param name (e.g., /books/:id)
+    // This is a qdadm convention - all entity detail/edit routes expect 'id' param
+    const detailsLink = {
+      label: 'Details',
+      to: { name: parentRouteName, params: { id: parentId } },
+      active: isOnParentRoute
+    }
 
-  // Details link to parent item page
-  const detailsLink = {
-    label: 'Details',
-    to: { name: parentRouteName, params: { id: parentId } },
-    active: isOnParentRoute
+    return [detailsLink, ...siblingNavlinks.value]
   }
 
-  return [detailsLink, ...navlinks.value]
+  // Case 2: On parent detail page - show children + Details (active)
+  if (childNavlinks.value.length > 0) {
+    const detailsLink = {
+      label: 'Details',
+      to: { name: route.name, params: route.params },
+      active: true
+    }
+
+    return [detailsLink, ...childNavlinks.value]
+  }
+
+  return []
 })
 
 // Sync breadcrumb and navlinks to AppLayout via provide/inject
-watch(breadcrumbItems, (items) => {
+// Watch computed values + route changes to ensure updates after navigation
+watch([breadcrumbItems, () => route.fullPath], ([items]) => {
   if (breadcrumbOverride) {
     breadcrumbOverride.value = items
   }
 }, { immediate: true })
 
-watch(allNavlinks, (links) => {
+watch([allNavlinks, () => route.fullPath], ([links]) => {
   if (navlinksOverride) {
     navlinksOverride.value = links
   }
 }, { immediate: true })
 
-// Clear overrides when component unmounts (so other pages get default breadcrumb)
-onUnmounted(() => {
-  if (breadcrumbOverride) {
-    breadcrumbOverride.value = null
-  }
-  if (navlinksOverride) {
-    navlinksOverride.value = null
-  }
-})
+// Note: We intentionally do NOT clear overrides in onUnmounted.
+// When navigating between routes, the new PageNav's watch will overwrite the values.
+// Clearing in onUnmounted causes a race condition where the old PageNav clears
+// AFTER the new PageNav has already set its values.
 </script>
 
 <template>

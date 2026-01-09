@@ -49,13 +49,21 @@ let alterationPromise = null
 const registry = {
   /**
    * Add routes for this module
-   * @param {string} prefix - Path prefix for all routes (e.g., 'agents')
+   *
+   * CONVENTION: Entity item routes MUST use :id as param name
+   * - List route: 'books' → /books
+   * - Item route: 'books/:id' → /books/:id (MUST be :id, not :bookId or :uuid)
+   * - Child route: 'books/:id/reviews' → parent.param = 'id'
+   *
+   * This convention is required for PageNav, breadcrumbs, and navigation to work correctly.
+   *
+   * @param {string} prefix - Path prefix for all routes (e.g., 'books' or 'books/:id/reviews')
    * @param {Array} moduleRoutes - Route definitions with relative paths
    * @param {object} options - Route options
    * @param {string} [options.entity] - Entity name for permission checking
    * @param {object} [options.parent] - Parent entity config for child routes
    * @param {string} options.parent.entity - Parent entity name (e.g., 'books')
-   * @param {string} options.parent.param - Route param for parent ID (e.g., 'bookId')
+   * @param {string} options.parent.param - Route param for parent ID (MUST be 'id')
    * @param {string} options.parent.foreignKey - Foreign key field (e.g., 'book_id')
    * @param {string} [options.parent.itemRoute] - Override parent item route (auto: parentEntity.routePrefix + '-edit')
    * @param {string} [options.label] - Label for navlinks (defaults to entity labelPlural)
@@ -338,6 +346,18 @@ export function getSiblingRoutes(parentEntity, parentParam) {
   return routes.filter(route => {
     const parent = route.meta?.parent
     return parent?.entity === parentEntity && parent?.param === parentParam
+  })
+}
+
+/**
+ * Get child routes (routes that have this entity as parent)
+ * @param {string} entityName - Entity name to find children for
+ * @returns {Array} Routes with this entity as parent
+ */
+export function getChildRoutes(entityName) {
+  return routes.filter(route => {
+    const parent = route.meta?.parent
+    return parent?.entity === entityName
   })
 }
 

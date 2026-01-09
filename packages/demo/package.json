@@ -1,6 +1,6 @@
 {
   "name": "qdadm-demo",
-  "version": "0.17.5",
+  "version": "0.17.6",
   "private": true,
   "description": "Demo application for qdadm framework",
   "author": "quazardous",
