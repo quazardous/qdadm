@@ -5,6 +5,17 @@ All notable changes to qdadm will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.53.2] - 2026-01-11
+
+### Added
+- **OpenAPI idField detection**: Extract idField from path parameters (e.g., `/bots/{uuid}` → `idField: 'uuid'`)
+- **generateManagers classMode**: Generate extendable base classes instead of instances
+  - `classMode: true` generates `GeneratedXxxManager` class for extension pattern
+
+### Fixed
+- **useListPage entityContext**: Use route.params directly instead of async parentPage.entityId
+  - Fixes timing issue where list() was called before parent data loaded
+
 ## [0.53.1] - 2026-01-11
 
 ### Added
