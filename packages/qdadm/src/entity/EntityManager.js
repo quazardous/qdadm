@@ -916,7 +916,7 @@ export class EntityManager {
    * @returns {Promise<{ items: Array, total: number, fromCache: boolean }>}
    */
   async list(params = {}, context) {
-    const { storage } = this.resolveStorage('list', context)
+    const { storage, path } = this.resolveStorage('list', context)
     if (!storage) {
       throw new Error(`[EntityManager:${this.name}] list() not implemented`)
     }
@@ -949,8 +949,22 @@ export class EntityManager {
 
     if (!_internal) this._stats.cacheMisses++
 
-    // 2. Fetch from API (storage normalizes response to { items, total })
-    const response = await storage.list(queryParams)
+    // 2. Fetch from API
+    let response
+    if (path && storage.request) {
+      // Use request() with path for multi-storage routing
+      // Build query params for GET request
+      const apiResponse = await storage.request('GET', path, { params: queryParams })
+      // Normalize response: handle both { data: [...], pagination: {...} } and { items, total }
+      const data = apiResponse.data ?? apiResponse
+      response = {
+        items: Array.isArray(data) ? data : (data.items || data.data || []),
+        total: data.total ?? data.pagination?.total ?? (Array.isArray(data) ? data.length : 0)
+      }
+    } else {
+      // Standard storage.list() (normalizes response to { items, total })
+      response = await storage.list(queryParams)
+    }
     const items = response.items || []
     const total = response.total ?? items.length
 
@@ -998,7 +1012,7 @@ export class EntityManager {
    * @returns {Promise<object>}
    */
   async get(id, context) {
-    const { storage } = this.resolveStorage('get', context)
+    const { storage, path } = this.resolveStorage('get', context)
     this._stats.get++
 
     // Try cache first if valid and complete
@@ -1014,6 +1028,11 @@ export class EntityManager {
     // Fallback to storage
     this._stats.cacheMisses++
     if (storage) {
+      // Use request() with path for multi-storage routing, otherwise use get()
+      if (path && storage.request) {
+        const response = await storage.request('GET', `${path}/${id}`)
+        return response.data ?? response
+      }
       return storage.get(id)
     }
     throw new Error(`[EntityManager:${this.name}] get() not implemented`)
@@ -1069,15 +1088,21 @@ export class EntityManager {
    * @returns {Promise<object>} - The created entity
    */
   async create(data, context) {
-    const { storage } = this.resolveStorage('create', context)
+    const { storage, path } = this.resolveStorage('create', context)
     this._stats.create++
     if (storage) {
       // Invoke presave hooks (can modify data or throw to abort)
       const presaveContext = this._buildPresaveContext(data, true)
       await this._invokeHook('presave', presaveContext)
 
-      // Use potentially modified data from context
-      const result = await storage.create(presaveContext.record)
+      // Use request() with path for multi-storage routing, otherwise use create()
+      let result
+      if (path && storage.request) {
+        const response = await storage.request('POST', path, { data: presaveContext.record })
+        result = response.data ?? response
+      } else {
+        result = await storage.create(presaveContext.record)
+      }
       this.invalidateCache()
 
       // Invoke postsave hooks (for side effects)
@@ -1108,15 +1133,21 @@ export class EntityManager {
    * @returns {Promise<object>}
    */
   async update(id, data, context) {
-    const { storage } = this.resolveStorage('update', context)
+    const { storage, path } = this.resolveStorage('update', context)
     this._stats.update++
     if (storage) {
       // Invoke presave hooks (can modify data or throw to abort)
       const presaveContext = this._buildPresaveContext(data, false, id)
       await this._invokeHook('presave', presaveContext)
 
-      // Use potentially modified data from context
-      const result = await storage.update(id, presaveContext.record)
+      // Use request() with path for multi-storage routing, otherwise use update()
+      let result
+      if (path && storage.request) {
+        const response = await storage.request('PUT', `${path}/${id}`, { data: presaveContext.record })
+        result = response.data ?? response
+      } else {
+        result = await storage.update(id, presaveContext.record)
+      }
       this.invalidateCache()
 
       // Invoke postsave hooks (for side effects)
@@ -1143,17 +1174,25 @@ export class EntityManager {
    *
    * @param {string|number} id
    * @param {object} data
+   * @param {object} [context] - Routing context for multi-storage
    * @returns {Promise<object>}
    */
-  async patch(id, data) {
+  async patch(id, data, context) {
+    const { storage, path } = this.resolveStorage('patch', context)
     this._stats.update++  // patch counts as update
-    if (this.storage) {
+    if (storage) {
       // Invoke presave hooks (can modify data or throw to abort)
       const presaveContext = this._buildPresaveContext(data, false, id)
       await this._invokeHook('presave', presaveContext)
 
-      // Use potentially modified data from context
-      const result = await this.storage.patch(id, presaveContext.record)
+      // Use request() with path for multi-storage routing, otherwise use patch()
+      let result
+      if (path && storage.request) {
+        const response = await storage.request('PATCH', `${path}/${id}`, { data: presaveContext.record })
+        result = response.data ?? response
+      } else {
+        result = await storage.patch(id, presaveContext.record)
+      }
       this.invalidateCache()
 
       // Invoke postsave hooks (for side effects)
@@ -1182,14 +1221,20 @@ export class EntityManager {
    * @returns {Promise<void>}
    */
   async delete(id, context) {
-    const { storage } = this.resolveStorage('delete', context)
+    const { storage, path } = this.resolveStorage('delete', context)
     this._stats.delete++
     if (storage) {
       // Invoke predelete hooks (can throw to abort, e.g., for cascade checks)
       const predeleteContext = this._buildPredeleteContext(id)
       await this._invokeHook('predelete', predeleteContext)
 
-      const result = await storage.delete(id)
+      // Use request() with path for multi-storage routing, otherwise use delete()
+      let result
+      if (path && storage.request) {
+        result = await storage.request('DELETE', `${path}/${id}`)
+      } else {
+        result = await storage.delete(id)
+      }
       this.invalidateCache()
       this._emitSignal('deleted', {
         manager: this.name,
@@ -1653,11 +1698,9 @@ export class EntityManager {
 
     // If overflow or cache disabled, use API for accurate filtered results
     if (this.overflow || !this.isCacheEnabled) {
-      console.log('[cache] API call for entity:', this.name, '(total > threshold)', 'isCacheEnabled:', this.isCacheEnabled, 'overflow:', this.overflow)
       result = await this.list(params, routingContext)
     } else {
       // Full cache available - filter locally
-      console.log('[cache] Using local cache for entity:', this.name)
       const filtered = this._filterLocally(this._cache.items, params)
       result = { ...filtered, fromCache: true }
     }

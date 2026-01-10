@@ -5,6 +5,17 @@ All notable changes to qdadm will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.51.6] - 2026-01-10
+
+### Added
+- **ApiStorage paramMapping (WIP)**: Restored filter parameter mapping support with `_applyParamMapping()` method
+  - Allows mapping filter names before sending to API (e.g., `{ bot_uuid: 'botUuid' }`)
+  - Marked as WIP for future improvements
+
+### Fixed
+- **Multi-storage path routing**: Improved response normalization in EntityManager.list() for path-based routing
+  - Handles both `{ data: [...], pagination: {...} }` and `{ items, total }` formats
+
 ## [0.51.5] - 2026-01-10
 
 ### Fixed

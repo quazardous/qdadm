@@ -298,7 +298,11 @@ export function useEntityItemFormPage(config = {}) {
           responseData = await manager.update(entityId.value, payload)
         }
       } else {
-        responseData = await manager.create(payload)
+        // Build context with parent chain for multi-storage routing
+        const context = parentConfig.value && parentId.value
+          ? { parentChain: [{ entity: parentConfig.value.entity, id: parentId.value }] }
+          : undefined
+        responseData = await manager.create(payload, context)
       }
 
       toast.add({

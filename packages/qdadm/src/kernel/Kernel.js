@@ -48,6 +48,7 @@ import { createQdadm } from '../plugin.js'
 import { initModules, getRoutes, setSectionOrder, alterMenuSections, registry } from '../module/moduleRegistry.js'
 import { createModuleLoader } from './ModuleLoader.js'
 import { createKernelContext } from './KernelContext.js'
+import { ToastBridgeModule } from '../toast/ToastBridgeModule.js'
 import { Orchestrator } from '../orchestrator/Orchestrator.js'
 import { createSignalBus } from './SignalBus.js'
 import { createZoneRegistry } from '../zones/ZoneRegistry.js'
@@ -98,6 +99,7 @@ export class Kernel {
    * @param {object} options.eventRouter - EventRouter config { 'source:signal': ['target:signal', ...] }
    * @param {object} options.sse - SSEBridge config { url, reconnectDelay, signalPrefix, autoConnect, events }
    * @param {object} options.debugBar - Debug bar config { module: DebugModule, component: QdadmDebugBar, ...options }
+   * @param {boolean} options.toast - Enable ToastBridgeModule (default: true). Set to false to disable.
    */
   constructor(options) {
     // Auto-inject DebugModule if debugBar.module is provided
@@ -122,6 +124,15 @@ export class Kernel {
         options.debug = true
       }
     }
+
+    // Auto-inject ToastBridgeModule unless toast: false
+    // Handles toast:* signals from useSignalToast() composable
+    if (options.toast !== false) {
+      options.moduleDefs = options.moduleDefs || []
+      // Add at beginning for high priority (loads early)
+      options.moduleDefs.unshift(new ToastBridgeModule())
+    }
+
     this.options = options
     this.vueApp = null
     this.router = null

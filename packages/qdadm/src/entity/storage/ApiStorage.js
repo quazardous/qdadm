@@ -21,16 +21,6 @@ import { IStorage } from './IStorage.js'
  *   getClient: () => inject('apiClient')
  * })
  *
- * // With parameter mapping (transform filter names for API)
- * const storage = new ApiStorage({
- *   endpoint: '/commands',
- *   client: apiClient,
- *   paramMapping: {
- *     bot_uuid: 'botUuid',  // filters.bot_uuid → ?botUuid=xxx
- *     page_size: 'limit'    // page_size → ?limit=xxx
- *   }
- * })
- *
  * // With data normalization (different API format)
  * const storage = new ApiStorage({
  *   endpoint: '/api/projects/:id/tasks',
@@ -84,8 +74,8 @@ export class ApiStorage extends IStorage {
       // Response format configuration
       responseItemsKey = 'items',
       responseTotalKey = 'total',
-      // Parameter mapping: { clientName: apiName }
-      // Transforms filter and query param names before sending to API
+      // WIP: Parameter mapping for filters { clientName: apiName }
+      // Transforms filter param names before sending to API
       paramMapping = {},
       // Data normalization
       // normalize: (apiData) => internalData - transform API response
@@ -102,6 +92,23 @@ export class ApiStorage extends IStorage {
     this.paramMapping = paramMapping
     this._normalize = normalize
     this._denormalize = denormalize
+  }
+
+  /**
+   * WIP: Apply parameter mapping to transform filter names
+   * @param {object} params - Original params
+   * @returns {object} - Params with mapped names
+   */
+  _applyParamMapping(params) {
+    if (!this.paramMapping || Object.keys(this.paramMapping).length === 0) {
+      return params
+    }
+    const mapped = {}
+    for (const [key, value] of Object.entries(params)) {
+      const mappedKey = this.paramMapping[key] || key
+      mapped[mappedKey] = value
+    }
+    return mapped
   }
 
   /**
@@ -125,24 +132,6 @@ export class ApiStorage extends IStorage {
   _denormalizeData(data) {
     if (!this._denormalize) return data
     return this._denormalize(data)
-  }
-
-  /**
-   * Apply parameter mapping to transform names
-   * @param {object} params - Original params
-   * @returns {object} - Params with mapped names
-   */
-  _applyParamMapping(params) {
-    if (!this.paramMapping || Object.keys(this.paramMapping).length === 0) {
-      return params
-    }
-
-    const mapped = {}
-    for (const [key, value] of Object.entries(params)) {
-      const mappedKey = this.paramMapping[key] || key
-      mapped[mappedKey] = value
-    }
-    return mapped
   }
 
   get client() {
@@ -169,7 +158,7 @@ export class ApiStorage extends IStorage {
   async list(params = {}) {
     const { page = 1, page_size = 20, sort_by, sort_order, filters = {} } = params
 
-    // Apply param mapping to filters
+    // WIP: Apply param mapping to filters
     const mappedFilters = this._applyParamMapping(filters)
 
     const response = await this.client.get(this.endpoint, {

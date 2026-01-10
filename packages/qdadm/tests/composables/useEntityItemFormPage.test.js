@@ -283,10 +283,13 @@ describe('useEntityItemFormPage', () => {
 
       await result.submit(true)
 
-      expect(mockManager.create).toHaveBeenCalledWith({
-        title: 'New Book',
-        author: 'New Author'
-      })
+      expect(mockManager.create).toHaveBeenCalledWith(
+        {
+          title: 'New Book',
+          author: 'New Author'
+        },
+        undefined  // No parent context in this test
+      )
       expect(mockToast.add).toHaveBeenCalledWith(
         expect.objectContaining({ severity: 'success' })
       )
@@ -333,7 +336,8 @@ describe('useEntityItemFormPage', () => {
       await result.submit(true)
 
       expect(mockManager.create).toHaveBeenCalledWith(
-        expect.objectContaining({ slug: 'new book' })
+        expect.objectContaining({ slug: 'new book' }),
+        undefined  // No parent context in this test
       )
     })
 
