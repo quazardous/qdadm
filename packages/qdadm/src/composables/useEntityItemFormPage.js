@@ -327,18 +327,17 @@ export function useEntityItemFormPage(config = {}) {
         const listRoute = findListRoute()
         router.push(listRoute)
       } else if (!isEdit.value) {
-        // "Create" without close: reset form for new entry, stay on route
-        data.value = deepClone(initialData)
-        originalData.value = null
-        takeSnapshot()
-        errors.value = {}
-        submitted.value = false
-        toast.add({
-          severity: 'info',
-          summary: 'Ready',
-          detail: 'Form reset for new entry',
-          life: 2000
-        })
+        // "Create" without close: navigate to edit route for the created entity
+        const createdId = responseData?.id || responseData?.uuid
+        if (createdId) {
+          // Build edit route: replace 'create' suffix with ':id/edit'
+          const currentRouteName = route.name || ''
+          const editRouteName = currentRouteName.replace(/(-create|-new)$/, '-edit')
+          router.push({
+            name: editRouteName,
+            params: { ...route.params, id: createdId }
+          })
+        }
       }
       // Edit mode without close: just stay on page (data already updated)
 

@@ -369,7 +369,8 @@ describe('Kernel', () => {
         root: MockApp,
         pages: { login: MockLogin, layout: MockLayout },
         homeRoute: { name: 'home', component: MockHome },
-        authAdapter: mockAuthAdapter
+        authAdapter: mockAuthAdapter,
+        toast: false  // Disable auto-injected ToastBridgeModule
       })
 
       kernel._createSignalBus()

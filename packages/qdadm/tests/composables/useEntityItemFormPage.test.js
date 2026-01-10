@@ -351,7 +351,7 @@ describe('useEntityItemFormPage', () => {
       expect(mockRouter.push).toHaveBeenCalledWith({ name: 'book' })
     })
 
-    it('resets form after create when andClose is false', async () => {
+    it('navigates to edit route after create when andClose is false', async () => {
       mockRouteState = { name: 'book-create', params: {} }
       const { result } = createWrapper(() =>
         useEntityItemFormPage({ entity: 'books', validateOnSubmit: false })
@@ -361,15 +361,11 @@ describe('useEntityItemFormPage', () => {
       result.data.value.title = 'New Book'
       await result.submit(false)
 
-      // Form should be reset to initial data (empty)
-      expect(result.data.value.title).toBe('')
-      // Toast shown for "ready for new entry"
-      expect(mockToast.add).toHaveBeenCalledWith(
-        expect.objectContaining({ severity: 'info', summary: 'Ready' })
-      )
-      // No navigation
-      expect(mockRouter.push).not.toHaveBeenCalled()
-      expect(mockRouter.replace).not.toHaveBeenCalled()
+      // Should navigate to edit route with created entity ID
+      expect(mockRouter.push).toHaveBeenCalledWith({
+        name: 'book-edit',
+        params: { id: 2 }  // ID returned by mock manager.create
+      })
     })
   })
 

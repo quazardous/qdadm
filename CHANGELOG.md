@@ -5,6 +5,14 @@ All notable changes to qdadm will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.51.7] - 2026-01-10
+
+### Changed
+- **Create form behavior**: After creating an entity with "Save" button, navigates to edit route instead of resetting form
+  - "Create" → navigates to `/edit/:id` of created entity
+  - "Create & Close" → navigates back to list (unchanged)
+  - Allows immediate editing of the created entity
+
 ## [0.51.6] - 2026-01-10
 
 ### Added
