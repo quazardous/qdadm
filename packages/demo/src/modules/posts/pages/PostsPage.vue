@@ -13,7 +13,7 @@
 
 import { ref, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { useListPageBuilder, ListPage, useOrchestrator } from 'qdadm'
+import { useListPage, ListPage, useOrchestrator } from 'qdadm'
 import Column from 'primevue/column'
 import Button from 'primevue/button'
 
@@ -22,7 +22,7 @@ const router = useRouter()
 const { getManager } = useOrchestrator()
 
 // ============ LIST BUILDER ============
-const list = useListPageBuilder({ entity: 'posts' })
+const list = useListPage({ entity: 'posts' })
 
 // ============ LOOKUPS ============
 // Load users for displaying names instead of IDs

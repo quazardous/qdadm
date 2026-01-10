@@ -11,7 +11,7 @@
  */
 
 import { ref, onMounted } from 'vue'
-import { useListPageBuilder, ListPage, useOrchestrator, useSignalToast } from 'qdadm'
+import { useListPage, ListPage, useOrchestrator, useSignalToast } from 'qdadm'
 import Column from 'primevue/column'
 import Checkbox from 'primevue/checkbox'
 
@@ -19,7 +19,7 @@ const { getManager } = useOrchestrator()
 const toast = useSignalToast('TodosPage')
 
 // ============ LIST BUILDER ============
-const list = useListPageBuilder({ entity: 'todos' })
+const list = useListPage({ entity: 'todos' })
 
 // ============ LOOKUPS ============
 // Load users for displaying names instead of IDs

@@ -3,17 +3,17 @@
  * JpUsersPage - JSONPlaceholder Users list page
  *
  * Displays users fetched from JSONPlaceholder API.
- * Uses useListPageBuilder with simplified v-bind/v-on pattern.
+ * Uses useListPage with simplified v-bind/v-on pattern.
  *
  * Note: JSONPlaceholder is read-only, so no create/edit/delete actions.
  */
 
-import { useListPageBuilder, ListPage } from 'qdadm'
+import { useListPage, ListPage } from 'qdadm'
 import Column from 'primevue/column'
 
 // ============ LIST BUILDER ============
 // Uses jp_users entity (JSONPlaceholder users via orchestrator)
-const list = useListPageBuilder({ entity: 'jp_users' })
+const list = useListPage({ entity: 'jp_users' })
 
 // ============ SEARCH ============
 list.setSearch({

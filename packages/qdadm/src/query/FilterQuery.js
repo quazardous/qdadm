@@ -102,7 +102,7 @@ export class FilterQuery {
   }
 
   /**
-   * Set the parent manager (called by useListPageBuilder for field source)
+   * Set the parent manager (called by useListPage for field source)
    *
    * @param {EntityManager} manager
    * @returns {FilterQuery} this for chaining

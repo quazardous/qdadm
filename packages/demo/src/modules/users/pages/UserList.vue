@@ -3,12 +3,12 @@
  * UserList - User listing page
  */
 
-import { useListPageBuilder, ListPage } from 'qdadm'
+import { useListPage, ListPage } from 'qdadm'
 import Tag from 'primevue/tag'
 import Column from 'primevue/column'
 
 // ============ LIST BUILDER ============
-const list = useListPageBuilder({ entity: 'users' })
+const list = useListPage({ entity: 'users' })
 
 // ============ SEARCH ============
 list.setSearch({

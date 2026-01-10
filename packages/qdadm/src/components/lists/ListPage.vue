@@ -8,7 +8,7 @@
  * - FilterBar with search and custom filters
  * - DataTable with actions column
  *
- * Props come from useListPageBuilder composable
+ * Props come from useListPage composable
  *
  * Filter types:
  * - 'select' (default): Standard dropdown

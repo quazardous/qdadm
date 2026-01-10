@@ -3,14 +3,14 @@
  * RoleList - Role listing page (standard ListPage pattern)
  */
 
-import { useListPageBuilder, ListPage, useOrchestrator } from '../../index.js'
+import { useListPage, ListPage, useOrchestrator } from '../../index.js'
 import Column from 'primevue/column'
 import Tag from 'primevue/tag'
 import Chip from 'primevue/chip'
 import Message from 'primevue/message'
 
 // ============ LIST BUILDER ============
-const list = useListPageBuilder({ entity: 'roles' })
+const list = useListPage({ entity: 'roles' })
 
 // ============ SEARCH ============
 list.setSearch({

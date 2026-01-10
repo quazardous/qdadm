@@ -1,5 +1,5 @@
 /**
- * Unit tests for useListPageBuilder composable - Permission features
+ * Unit tests for useListPage composable - Permission features
  *
  * Tests for permission-aware UI rendering via AuthAdapter
  *
@@ -8,7 +8,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { ref, nextTick } from 'vue'
 import { mount, flushPromises } from '@vue/test-utils'
-import { useListPageBuilder } from '../../src/composables/useListPageBuilder.js'
+import { useListPage } from '../../src/composables/useListPage.js'
 
 // Mock route state that can be changed per test
 let mockRouteState = { name: 'book', params: {}, query: {}, meta: {} }
@@ -108,7 +108,7 @@ function createWrapper(composableFactory) {
   return { wrapper, result }
 }
 
-describe('useListPageBuilder - Permission features', () => {
+describe('useListPage - Permission features', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockRouteState = { name: 'book', params: {}, query: {}, meta: {} }
@@ -122,7 +122,7 @@ describe('useListPageBuilder - Permission features', () => {
 
   describe('permission state properties', () => {
     it('returns canCreate, canDelete, canEditRow, canDeleteRow', () => {
-      const { result } = createWrapper(() => useListPageBuilder({ entity: 'books' }))
+      const { result } = createWrapper(() => useListPage({ entity: 'books' }))
 
       expect(result).toHaveProperty('canCreate')
       expect(result).toHaveProperty('canDelete')
@@ -134,7 +134,7 @@ describe('useListPageBuilder - Permission features', () => {
     it('canCreate is reactive computed from manager.canCreate()', () => {
       mockManager = createMockManager({ canCreate: () => false })
 
-      const { result } = createWrapper(() => useListPageBuilder({ entity: 'books' }))
+      const { result } = createWrapper(() => useListPage({ entity: 'books' }))
 
       expect(result.canCreate.value).toBe(false)
     })
@@ -142,7 +142,7 @@ describe('useListPageBuilder - Permission features', () => {
     it('canCreate returns true when manager.canCreate() returns true', () => {
       mockManager = createMockManager({ canCreate: () => true })
 
-      const { result } = createWrapper(() => useListPageBuilder({ entity: 'books' }))
+      const { result } = createWrapper(() => useListPage({ entity: 'books' }))
 
       expect(result.canCreate.value).toBe(true)
     })
@@ -150,7 +150,7 @@ describe('useListPageBuilder - Permission features', () => {
     it('canDelete is reactive computed from manager.canDelete()', () => {
       mockManager = createMockManager({ canDelete: () => false })
 
-      const { result } = createWrapper(() => useListPageBuilder({ entity: 'books' }))
+      const { result } = createWrapper(() => useListPage({ entity: 'books' }))
 
       expect(result.canDelete.value).toBe(false)
     })
@@ -160,7 +160,7 @@ describe('useListPageBuilder - Permission features', () => {
         canUpdate: (row) => row?.id === 1
       })
 
-      const { result } = createWrapper(() => useListPageBuilder({ entity: 'books' }))
+      const { result } = createWrapper(() => useListPage({ entity: 'books' }))
 
       expect(result.canEditRow({ id: 1 })).toBe(true)
       expect(result.canEditRow({ id: 2 })).toBe(false)
@@ -171,7 +171,7 @@ describe('useListPageBuilder - Permission features', () => {
         canDelete: (row) => row?.id === 1
       })
 
-      const { result } = createWrapper(() => useListPageBuilder({ entity: 'books' }))
+      const { result } = createWrapper(() => useListPage({ entity: 'books' }))
 
       expect(result.canDeleteRow({ id: 1 })).toBe(true)
       expect(result.canDeleteRow({ id: 2 })).toBe(false)
@@ -182,7 +182,7 @@ describe('useListPageBuilder - Permission features', () => {
     it('hides create action when canCreate returns false', () => {
       mockManager = createMockManager({ canCreate: () => false })
 
-      const { result } = createWrapper(() => useListPageBuilder({ entity: 'books' }))
+      const { result } = createWrapper(() => useListPage({ entity: 'books' }))
 
       result.addCreateAction()
 
@@ -193,7 +193,7 @@ describe('useListPageBuilder - Permission features', () => {
     it('shows create action when canCreate returns true', () => {
       mockManager = createMockManager({ canCreate: () => true })
 
-      const { result } = createWrapper(() => useListPageBuilder({ entity: 'books' }))
+      const { result } = createWrapper(() => useListPage({ entity: 'books' }))
 
       result.addCreateAction()
 
@@ -208,7 +208,7 @@ describe('useListPageBuilder - Permission features', () => {
         canUpdate: () => false
       })
 
-      const { result } = createWrapper(() => useListPageBuilder({ entity: 'books' }))
+      const { result } = createWrapper(() => useListPage({ entity: 'books' }))
 
       result.addEditAction()
 
@@ -222,7 +222,7 @@ describe('useListPageBuilder - Permission features', () => {
         canUpdate: () => true
       })
 
-      const { result } = createWrapper(() => useListPageBuilder({ entity: 'books' }))
+      const { result } = createWrapper(() => useListPage({ entity: 'books' }))
 
       result.addEditAction()
 
@@ -236,7 +236,7 @@ describe('useListPageBuilder - Permission features', () => {
         canUpdate: (row) => row?.id === 1  // Only row 1 is editable
       })
 
-      const { result } = createWrapper(() => useListPageBuilder({ entity: 'books' }))
+      const { result } = createWrapper(() => useListPage({ entity: 'books' }))
 
       result.addEditAction()
 
@@ -256,7 +256,7 @@ describe('useListPageBuilder - Permission features', () => {
         canDelete: () => false
       })
 
-      const { result } = createWrapper(() => useListPageBuilder({ entity: 'books' }))
+      const { result } = createWrapper(() => useListPage({ entity: 'books' }))
 
       result.addDeleteAction()
 
@@ -270,7 +270,7 @@ describe('useListPageBuilder - Permission features', () => {
         canDelete: () => true
       })
 
-      const { result } = createWrapper(() => useListPageBuilder({ entity: 'books' }))
+      const { result } = createWrapper(() => useListPage({ entity: 'books' }))
 
       result.addDeleteAction()
 
@@ -284,7 +284,7 @@ describe('useListPageBuilder - Permission features', () => {
         canDelete: (row) => row?.id === 1  // Only row 1 is deletable
       })
 
-      const { result } = createWrapper(() => useListPageBuilder({ entity: 'books' }))
+      const { result } = createWrapper(() => useListPage({ entity: 'books' }))
 
       result.addDeleteAction()
 
@@ -304,7 +304,7 @@ describe('useListPageBuilder - Permission features', () => {
         canDelete: () => false
       })
 
-      const { result } = createWrapper(() => useListPageBuilder({ entity: 'books' }))
+      const { result } = createWrapper(() => useListPage({ entity: 'books' }))
 
       result.addBulkDeleteAction()
       result.selected.value = [{ id: 1 }]  // Simulate selection
@@ -320,7 +320,7 @@ describe('useListPageBuilder - Permission features', () => {
         canDelete: () => true
       })
 
-      const { result } = createWrapper(() => useListPageBuilder({ entity: 'books' }))
+      const { result } = createWrapper(() => useListPage({ entity: 'books' }))
 
       result.addBulkDeleteAction()
       result.selected.value = [{ id: 1 }]  // Simulate selection
@@ -334,7 +334,7 @@ describe('useListPageBuilder - Permission features', () => {
 
   describe('getRowActions', () => {
     it('getRowActions returns same actions as getActions', () => {
-      const { result } = createWrapper(() => useListPageBuilder({ entity: 'books' }))
+      const { result } = createWrapper(() => useListPage({ entity: 'books' }))
 
       result.addEditAction()
       result.addDeleteAction()
@@ -354,7 +354,7 @@ describe('useListPageBuilder - Permission features', () => {
         canDelete: () => false
       })
 
-      const { result } = createWrapper(() => useListPageBuilder({ entity: 'books' }))
+      const { result } = createWrapper(() => useListPage({ entity: 'books' }))
 
       result.addEditAction()
       result.addDeleteAction()
@@ -373,7 +373,7 @@ describe('useListPageBuilder - Permission features', () => {
 
   describe('column management', () => {
     it('exports columns, addColumn, removeColumn, updateColumn', () => {
-      const { result } = createWrapper(() => useListPageBuilder({ entity: 'books' }))
+      const { result } = createWrapper(() => useListPage({ entity: 'books' }))
 
       expect(result).toHaveProperty('columns')
       expect(result).toHaveProperty('addColumn')
@@ -382,7 +382,7 @@ describe('useListPageBuilder - Permission features', () => {
     })
 
     it('addColumn adds a column to the list', () => {
-      const { result } = createWrapper(() => useListPageBuilder({ entity: 'books' }))
+      const { result } = createWrapper(() => useListPage({ entity: 'books' }))
 
       result.addColumn('title', { header: 'Title', sortable: true })
       result.addColumn('author', { header: 'Author' })
@@ -395,7 +395,7 @@ describe('useListPageBuilder - Permission features', () => {
     })
 
     it('removeColumn removes a column', () => {
-      const { result } = createWrapper(() => useListPageBuilder({ entity: 'books' }))
+      const { result } = createWrapper(() => useListPage({ entity: 'books' }))
 
       result.addColumn('title', { header: 'Title' })
       result.addColumn('author', { header: 'Author' })
@@ -406,7 +406,7 @@ describe('useListPageBuilder - Permission features', () => {
     })
 
     it('updateColumn updates column config', () => {
-      const { result } = createWrapper(() => useListPageBuilder({ entity: 'books' }))
+      const { result } = createWrapper(() => useListPage({ entity: 'books' }))
 
       result.addColumn('title', { header: 'Title', sortable: false })
       result.updateColumn('title', { sortable: true, style: 'width: 200px' })
@@ -417,7 +417,7 @@ describe('useListPageBuilder - Permission features', () => {
     })
 
     it('columns are included in listProps', () => {
-      const { result } = createWrapper(() => useListPageBuilder({ entity: 'books' }))
+      const { result } = createWrapper(() => useListPage({ entity: 'books' }))
 
       result.addColumn('title', { header: 'Title' })
 
@@ -427,7 +427,7 @@ describe('useListPageBuilder - Permission features', () => {
   })
 })
 
-describe('useListPageBuilder - list:alter hook', () => {
+describe('useListPage - list:alter hook', () => {
   // Import HookRegistry for these tests
   const { createHookRegistry } = require('../../src/hooks/HookRegistry.js')
 
@@ -476,7 +476,7 @@ describe('useListPageBuilder - list:alter hook', () => {
     mockHookRegistry.register('list:alter', hookHandler)
 
     const { result, wrapper } = createWrapperWithHooks(
-      () => useListPageBuilder({ entity: 'books', loadOnMount: false }),
+      () => useListPage({ entity: 'books', loadOnMount: false }),
       mockHookRegistry
     )
 
@@ -503,7 +503,7 @@ describe('useListPageBuilder - list:alter hook', () => {
     })
 
     const { result, wrapper } = createWrapperWithHooks(
-      () => useListPageBuilder({ entity: 'books', loadOnMount: false }),
+      () => useListPage({ entity: 'books', loadOnMount: false }),
       mockHookRegistry
     )
 
@@ -523,7 +523,7 @@ describe('useListPageBuilder - list:alter hook', () => {
     })
 
     const { result, wrapper } = createWrapperWithHooks(
-      () => useListPageBuilder({ entity: 'books', loadOnMount: false }),
+      () => useListPage({ entity: 'books', loadOnMount: false }),
       mockHookRegistry
     )
 
@@ -545,7 +545,7 @@ describe('useListPageBuilder - list:alter hook', () => {
     })
 
     const { result, wrapper } = createWrapperWithHooks(
-      () => useListPageBuilder({ entity: 'books', loadOnMount: false }),
+      () => useListPage({ entity: 'books', loadOnMount: false }),
       mockHookRegistry
     )
 
@@ -568,7 +568,7 @@ describe('useListPageBuilder - list:alter hook', () => {
     })
 
     const { result, wrapper } = createWrapperWithHooks(
-      () => useListPageBuilder({ entity: 'books', loadOnMount: false }),
+      () => useListPage({ entity: 'books', loadOnMount: false }),
       mockHookRegistry
     )
 
@@ -594,7 +594,7 @@ describe('useListPageBuilder - list:alter hook', () => {
     })
 
     const { result, wrapper } = createWrapperWithHooks(
-      () => useListPageBuilder({ entity: 'books', loadOnMount: false }),
+      () => useListPage({ entity: 'books', loadOnMount: false }),
       mockHookRegistry
     )
 
@@ -617,7 +617,7 @@ describe('useListPageBuilder - list:alter hook', () => {
     }, { priority: 50 })
 
     const { result, wrapper } = createWrapperWithHooks(
-      () => useListPageBuilder({ entity: 'books', loadOnMount: false }),
+      () => useListPage({ entity: 'books', loadOnMount: false }),
       mockHookRegistry
     )
 
@@ -637,7 +637,7 @@ describe('useListPageBuilder - list:alter hook', () => {
     })
 
     const { result, wrapper } = createWrapperWithHooks(
-      () => useListPageBuilder({ entity: 'books', loadOnMount: false }),
+      () => useListPage({ entity: 'books', loadOnMount: false }),
       mockHookRegistry
     )
 
@@ -661,7 +661,7 @@ describe('useListPageBuilder - list:alter hook', () => {
     })
 
     const { result, wrapper } = createWrapperWithHooks(
-      () => useListPageBuilder({ entity: 'books', loadOnMount: false }),
+      () => useListPage({ entity: 'books', loadOnMount: false }),
       mockHookRegistry
     )
 
@@ -674,7 +674,7 @@ describe('useListPageBuilder - list:alter hook', () => {
   })
 })
 
-describe('useListPageBuilder - filter:alter hook', () => {
+describe('useListPage - filter:alter hook', () => {
   // Import HookRegistry for these tests
   const { createHookRegistry } = require('../../src/hooks/HookRegistry.js')
 
@@ -723,7 +723,7 @@ describe('useListPageBuilder - filter:alter hook', () => {
     mockHookRegistry.register('filter:alter', hookHandler)
 
     const { result, wrapper } = createWrapperWithHooks(
-      () => useListPageBuilder({ entity: 'books', loadOnMount: false }),
+      () => useListPage({ entity: 'books', loadOnMount: false }),
       mockHookRegistry
     )
 
@@ -760,7 +760,7 @@ describe('useListPageBuilder - filter:alter hook', () => {
     let builderResult
     const { result, wrapper } = createWrapperWithHooks(
       () => {
-        builderResult = useListPageBuilder({ entity: 'books', loadOnMount: false })
+        builderResult = useListPage({ entity: 'books', loadOnMount: false })
         // Add filter immediately during setup, before onMounted
         builderResult.addFilter('status', {
           type: 'select',
@@ -793,7 +793,7 @@ describe('useListPageBuilder - filter:alter hook', () => {
 
     const { result, wrapper } = createWrapperWithHooks(
       () => {
-        const builder = useListPageBuilder({ entity: 'books', loadOnMount: false })
+        const builder = useListPage({ entity: 'books', loadOnMount: false })
         builder.addFilter('status', {
           type: 'select',
           options: [
@@ -826,7 +826,7 @@ describe('useListPageBuilder - filter:alter hook', () => {
 
     const { result, wrapper } = createWrapperWithHooks(
       () => {
-        const builder = useListPageBuilder({ entity: 'books', loadOnMount: false })
+        const builder = useListPage({ entity: 'books', loadOnMount: false })
         builder.addFilter('status', { type: 'select', options: [] })
         return builder
       },
@@ -863,7 +863,7 @@ describe('useListPageBuilder - filter:alter hook', () => {
 
     const { result, wrapper } = createWrapperWithHooks(
       () => {
-        const builder = useListPageBuilder({ entity: 'books', loadOnMount: false })
+        const builder = useListPage({ entity: 'books', loadOnMount: false })
         builder.addFilter('status', {
           type: 'select',
           options: [{ label: 'All', value: null }]
@@ -898,7 +898,7 @@ describe('useListPageBuilder - filter:alter hook', () => {
     })
 
     const { result, wrapper } = createWrapperWithHooks(
-      () => useListPageBuilder({ entity: 'books', loadOnMount: false }),
+      () => useListPage({ entity: 'books', loadOnMount: false }),
       mockHookRegistry
     )
 
@@ -918,7 +918,7 @@ describe('useListPageBuilder - filter:alter hook', () => {
 
     const { result, wrapper } = createWrapperWithHooks(
       () => {
-        const builder = useListPageBuilder({ entity: 'books', loadOnMount: false })
+        const builder = useListPage({ entity: 'books', loadOnMount: false })
         builder.addFilter('status', { type: 'select', options: [] })
         builder.addFilter('category', { type: 'select', options: [] })
         return builder
@@ -944,7 +944,7 @@ describe('useListPageBuilder - filter:alter hook', () => {
     }, { priority: 50 })
 
     const { result, wrapper } = createWrapperWithHooks(
-      () => useListPageBuilder({ entity: 'books', loadOnMount: false }),
+      () => useListPage({ entity: 'books', loadOnMount: false }),
       mockHookRegistry
     )
 
@@ -965,7 +965,7 @@ describe('useListPageBuilder - filter:alter hook', () => {
     })
 
     const { result, wrapper } = createWrapperWithHooks(
-      () => useListPageBuilder({ entity: 'books', loadOnMount: false }),
+      () => useListPage({ entity: 'books', loadOnMount: false }),
       mockHookRegistry
     )
 
@@ -988,7 +988,7 @@ describe('useListPageBuilder - filter:alter hook', () => {
 
     const { result, wrapper } = createWrapperWithHooks(
       () => {
-        const builder = useListPageBuilder({ entity: 'books', loadOnMount: false })
+        const builder = useListPage({ entity: 'books', loadOnMount: false })
         builder.addFilter('status', {
           type: 'select',
           options: [{ label: 'All', value: null }, { label: 'Active', value: 'active' }],
@@ -1008,7 +1008,7 @@ describe('useListPageBuilder - filter:alter hook', () => {
   })
 })
 
-describe('useListPageBuilder - FilterQuery integration (T279)', () => {
+describe('useListPage - FilterQuery integration (T279)', () => {
   let genreManager
 
   // Create a genre manager that returns mock genre data
@@ -1054,7 +1054,7 @@ describe('useListPageBuilder - FilterQuery integration (T279)', () => {
 
   it('creates FilterQuery from optionsEntity config', async () => {
     const { result } = createWrapper(() => {
-      const builder = useListPageBuilder({ entity: 'books', loadOnMount: false })
+      const builder = useListPage({ entity: 'books', loadOnMount: false })
       builder.addFilter('genre_id', {
         optionsEntity: 'genres',
         placeholder: 'All Genres'
@@ -1078,7 +1078,7 @@ describe('useListPageBuilder - FilterQuery integration (T279)', () => {
 
   it('maps optionLabel to FilterQuery label', async () => {
     const { result } = createWrapper(() => {
-      const builder = useListPageBuilder({ entity: 'books', loadOnMount: false })
+      const builder = useListPage({ entity: 'books', loadOnMount: false })
       builder.addFilter('genre_id', {
         optionsEntity: 'genres',
         optionLabel: 'code',  // Use 'code' instead of 'name'
@@ -1097,7 +1097,7 @@ describe('useListPageBuilder - FilterQuery integration (T279)', () => {
 
   it('maps optionValue to FilterQuery value', async () => {
     const { result } = createWrapper(() => {
-      const builder = useListPageBuilder({ entity: 'books', loadOnMount: false })
+      const builder = useListPage({ entity: 'books', loadOnMount: false })
       builder.addFilter('genre_code', {
         optionsEntity: 'genres',
         optionLabel: 'name',
@@ -1122,7 +1122,7 @@ describe('useListPageBuilder - FilterQuery integration (T279)', () => {
     })
 
     const { result } = createWrapper(() => {
-      const builder = useListPageBuilder({ entity: 'books', loadOnMount: false })
+      const builder = useListPage({ entity: 'books', loadOnMount: false })
       builder.addFilter('genre_id', {
         optionsEntity: 'genres',
         processor,
@@ -1147,7 +1147,7 @@ describe('useListPageBuilder - FilterQuery integration (T279)', () => {
 
   it('stores FilterQuery instance on filterDef for cache invalidation', async () => {
     const { result } = createWrapper(() => {
-      const builder = useListPageBuilder({ entity: 'books', loadOnMount: false })
+      const builder = useListPage({ entity: 'books', loadOnMount: false })
       builder.addFilter('genre_id', {
         optionsEntity: 'genres',
         placeholder: 'All Genres'
@@ -1165,7 +1165,7 @@ describe('useListPageBuilder - FilterQuery integration (T279)', () => {
 
   it('calls genre manager list() via FilterQuery', async () => {
     const { result } = createWrapper(() => {
-      const builder = useListPageBuilder({ entity: 'books', loadOnMount: false })
+      const builder = useListPage({ entity: 'books', loadOnMount: false })
       builder.addFilter('genre_id', {
         optionsEntity: 'genres',
         placeholder: 'All Genres'
@@ -1182,7 +1182,7 @@ describe('useListPageBuilder - FilterQuery integration (T279)', () => {
 
   it('skips FilterQuery for filters with explicit options', async () => {
     const { result } = createWrapper(() => {
-      const builder = useListPageBuilder({ entity: 'books', loadOnMount: false })
+      const builder = useListPage({ entity: 'books', loadOnMount: false })
       builder.addFilter('status', {
         options: [
           { label: 'All', value: null },
@@ -1208,7 +1208,7 @@ describe('useListPageBuilder - FilterQuery integration (T279)', () => {
   it('backward compatibility: existing optionsEntity filters produce same results', async () => {
     // This test ensures the FilterQuery integration doesn't change behavior
     const { result } = createWrapper(() => {
-      const builder = useListPageBuilder({ entity: 'books', loadOnMount: false })
+      const builder = useListPage({ entity: 'books', loadOnMount: false })
       builder.addFilter('genre_id', {
         optionsEntity: 'genres',
         optionLabel: 'name',
@@ -1238,7 +1238,7 @@ describe('useListPageBuilder - FilterQuery integration (T279)', () => {
 
 // ============ T281: FilterQuery + optionsFromCache Integration ============
 
-describe('useListPageBuilder - optionsFromCache with FilterQuery (T281)', () => {
+describe('useListPage - optionsFromCache with FilterQuery (T281)', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockRouteState = { name: 'book', params: {}, query: {}, meta: {} }
@@ -1264,7 +1264,7 @@ describe('useListPageBuilder - optionsFromCache with FilterQuery (T281)', () => 
 
   it('extracts unique values from items using FilterQuery internally', async () => {
     const { result, wrapper } = createWrapper(() => {
-      const list = useListPageBuilder({ entity: 'books' })
+      const list = useListPage({ entity: 'books' })
       // Add optionsFromCache filter
       list.addFilter('status', {
         placeholder: 'All Status',
@@ -1294,7 +1294,7 @@ describe('useListPageBuilder - optionsFromCache with FilterQuery (T281)', () => 
 
   it('uses filter name as field when optionsFromCache is true', async () => {
     const { result } = createWrapper(() => {
-      const list = useListPageBuilder({ entity: 'books' })
+      const list = useListPage({ entity: 'books' })
       list.addFilter('status', {
         optionsFromCache: true
       })
@@ -1324,7 +1324,7 @@ describe('useListPageBuilder - optionsFromCache with FilterQuery (T281)', () => 
     })
 
     const { result } = createWrapper(() => {
-      const list = useListPageBuilder({ entity: 'books' })
+      const list = useListPage({ entity: 'books' })
       // Filter name is 'status' but field is 'book_status'
       list.addFilter('status', {
         optionsFromCache: 'book_status'
@@ -1346,7 +1346,7 @@ describe('useListPageBuilder - optionsFromCache with FilterQuery (T281)', () => 
 
   it('applies processor callback after building options', async () => {
     const { result } = createWrapper(() => {
-      const list = useListPageBuilder({ entity: 'books' })
+      const list = useListPage({ entity: 'books' })
       list.addFilter('status', {
         optionsFromCache: true,
         // Processor should receive options with snakeToTitle labels and "All X" option
@@ -1374,7 +1374,7 @@ describe('useListPageBuilder - optionsFromCache with FilterQuery (T281)', () => 
 
   it('stores FilterQuery instance on filterDef for cache invalidation', async () => {
     const { result } = createWrapper(() => {
-      const list = useListPageBuilder({ entity: 'books' })
+      const list = useListPage({ entity: 'books' })
       list.addFilter('status', {
         optionsFromCache: true
       })
@@ -1395,7 +1395,7 @@ describe('useListPageBuilder - optionsFromCache with FilterQuery (T281)', () => 
 
   it('skips filters with explicit query property (advanced usage)', async () => {
     const { result } = createWrapper(() => {
-      const list = useListPageBuilder({ entity: 'books' })
+      const list = useListPage({ entity: 'books' })
       // This filter has both optionsFromCache AND a query property
       // The query property should take precedence
       const mockQuery = { source: 'entity', entity: 'statuses' }
@@ -1434,7 +1434,7 @@ describe('useListPageBuilder - optionsFromCache with FilterQuery (T281)', () => 
     })
 
     const { result } = createWrapper(() => {
-      const list = useListPageBuilder({ entity: 'books' })
+      const list = useListPage({ entity: 'books' })
       list.addFilter('status', {
         placeholder: 'All Status',
         optionsFromCache: true

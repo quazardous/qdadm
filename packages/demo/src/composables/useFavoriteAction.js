@@ -2,7 +2,7 @@
  * useFavoriteAction - DRY composable for adding favorite action to list pages
  *
  * Usage:
- *   const list = useListPageBuilder({ entity: 'books' })
+ *   const list = useListPage({ entity: 'books' })
  *   useFavoriteAction(list, 'book')
  *
  * This adds a star icon action that toggles favorites for each row.
@@ -13,7 +13,7 @@ import { useOrchestrator, useSignalToast } from 'qdadm'
 
 /**
  * Add favorite toggle action to a list builder
- * @param {object} listBuilder - useListPageBuilder instance
+ * @param {object} listBuilder - useListPage instance
  * @param {string} entityType - Entity type for favorites (e.g., 'book', 'product')
  * @param {object} options - Optional config
  * @param {string} options.labelField - Field to use as favorite name (default: 'title' or 'name')

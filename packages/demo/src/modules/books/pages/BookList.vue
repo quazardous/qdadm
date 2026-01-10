@@ -2,7 +2,7 @@
 /**
  * BookList - Book listing page
  *
- * Uses useListPageBuilder with simplified v-bind/v-on pattern
+ * Uses useListPage with simplified v-bind/v-on pattern
  * Genre filter uses SMART FILTER mode: optionsEntity
  *
  * ZONE EXTENSIBILITY DEMO
@@ -14,13 +14,13 @@
  * See: modules/loans/components/LoansZoneSetup.vue for extension code
  */
 
-import { useListPageBuilder, ListPage, Zone } from 'qdadm'
+import { useListPage, ListPage, Zone } from 'qdadm'
 import Tag from 'primevue/tag'
 import Column from 'primevue/column'
 import { useFavoriteAction } from '@/composables/useFavoriteAction'
 
 // ============ LIST BUILDER ============
-const list = useListPageBuilder({ entity: 'books' })
+const list = useListPage({ entity: 'books' })
 
 // ============ FAVORITE ACTION ============
 useFavoriteAction(list, 'book', { labelField: 'title' })

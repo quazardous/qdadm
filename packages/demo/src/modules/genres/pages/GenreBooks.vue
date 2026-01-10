@@ -7,7 +7,7 @@
  * PageNav shows: Genres > "Fiction" > Books (with Details | Books links)
  */
 
-import { useListPageBuilder, ListPage, PageNav, useOrchestrator } from 'qdadm'
+import { useListPage, ListPage, PageNav, useOrchestrator } from 'qdadm'
 import Column from 'primevue/column'
 import Tag from 'primevue/tag'
 
@@ -16,7 +16,7 @@ const booksManager = getManager('books')
 
 // ============ LIST BUILDER ============
 // Parent filter (genre) is auto-applied from route.meta.parent
-const list = useListPageBuilder({ entity: 'books' })
+const list = useListPage({ entity: 'books' })
 
 // ============ SEARCH ============
 list.setSearch({

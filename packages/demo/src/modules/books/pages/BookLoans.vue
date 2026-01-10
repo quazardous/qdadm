@@ -8,7 +8,7 @@
  */
 
 import { ref, onMounted } from 'vue'
-import { useListPageBuilder, ListPage, PageNav, useOrchestrator, BoolCell } from 'qdadm'
+import { useListPage, ListPage, PageNav, useOrchestrator, BoolCell } from 'qdadm'
 import Column from 'primevue/column'
 import Tag from 'primevue/tag'
 
@@ -16,7 +16,7 @@ const { getManager } = useOrchestrator()
 
 // ============ LIST BUILDER ============
 // Parent filter (book_id) is auto-applied from route.meta.parent
-const list = useListPageBuilder({ entity: 'loans' })
+const list = useListPage({ entity: 'loans' })
 
 // ============ HEADER ACTIONS ============
 // Create action auto-detects child route (book-loan-create)

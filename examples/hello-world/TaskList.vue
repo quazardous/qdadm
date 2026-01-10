@@ -1,8 +1,8 @@
 <script setup>
-import { useListPageBuilder, ListPage } from 'qdadm'
+import { useListPage, ListPage } from 'qdadm'
 import Column from 'primevue/column'
 
-const list = useListPageBuilder({ entity: 'tasks' })
+const list = useListPage({ entity: 'tasks' })
 </script>
 
 <template>

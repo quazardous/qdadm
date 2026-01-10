@@ -4,9 +4,9 @@
  *
  * Replace {{EntityName}} and {{entity_name}} with your entity names.
  */
-import { useListPageBuilder, ListPage } from 'qdadm'
+import { useListPage, ListPage } from 'qdadm'
 
-const list = useListPageBuilder({ entity: '{{entity_name}}' })
+const list = useListPage({ entity: '{{entity_name}}' })
 list.generateColumns()
 list.addCreateAction()
 list.addEditAction()

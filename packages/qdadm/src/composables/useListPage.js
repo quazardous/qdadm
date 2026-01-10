@@ -58,7 +58,7 @@ function setSessionFilters(key, filters) {
 }
 
 /**
- * useListPageBuilder - Unified procedural builder for CRUD list pages
+ * useListPage - Unified procedural builder for CRUD list pages
  *
  * Provides a declarative/procedural API to build list pages with:
  * - Cards zone (stats, custom content)
@@ -102,14 +102,14 @@ function setSessionFilters(key, filters) {
  * ## Basic Usage
  *
  * ```js
- * const list = useListPageBuilder({ entity: 'domains' })
+ * const list = useListPage({ entity: 'domains' })
  * list.addFilter('status', { options: [...] })
  * list.setSearch({ fields: ['name', 'email'] })
  * list.addCreateAction()
  * list.addEditAction()
  * ```
  */
-export function useListPageBuilder(config = {}) {
+export function useListPage(config = {}) {
   const {
     entity,
     dataKey,

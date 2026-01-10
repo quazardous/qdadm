@@ -13,13 +13,13 @@
  * Note: REST Countries API is read-only.
  */
 
-import { useListPageBuilder, ListPage } from 'qdadm'
+import { useListPage, ListPage } from 'qdadm'
 import Column from 'primevue/column'
 import Tag from 'primevue/tag'
 import { useFavoriteAction } from '@/composables/useFavoriteAction'
 
 // ============ LIST BUILDER ============
-const list = useListPageBuilder({ entity: 'countries' })
+const list = useListPage({ entity: 'countries' })
 
 // ============ FAVORITE ACTION ============
 useFavoriteAction(list, 'country', { labelField: (c) => c.name?.common || c.cca3 })

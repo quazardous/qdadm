@@ -46,7 +46,7 @@ const props = defineProps({
 })
 
 const orchestrator = inject('qdadmOrchestrator')
-// Auto-discover entity from page context (provided by useListPageBuilder, useBareForm, etc.)
+// Auto-discover entity from page context (provided by useListPage, useBareForm, etc.)
 const mainEntity = inject('mainEntity', null)
 
 const resolvedEntity = computed(() => props.entity || mainEntity)

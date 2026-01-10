@@ -3,14 +3,14 @@
  * GenreList - Simplest qdadm pattern demo
  *
  * Pattern: ~10 lines for reference/lookup data
- * - Entity config via useListPageBuilder
+ * - Entity config via useListPage
  * - Search + edit action via builder methods
  * - Columns via #columns slot (pure declarative)
  */
-import { useListPageBuilder, ListPage } from 'qdadm'
+import { useListPage, ListPage } from 'qdadm'
 import Column from 'primevue/column'
 
-const list = useListPageBuilder({ entity: 'genres' })
+const list = useListPage({ entity: 'genres' })
 list.setSearch({ placeholder: 'Search genres...', fields: ['name', 'description'] })
 list.addCreateAction()
 list.addEditAction()

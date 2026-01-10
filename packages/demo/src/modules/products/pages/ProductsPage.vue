@@ -12,12 +12,12 @@
  * Note: DummyJSON is read-only.
  */
 
-import { useListPageBuilder, ListPage } from 'qdadm'
+import { useListPage, ListPage } from 'qdadm'
 import Column from 'primevue/column'
 import { useFavoriteAction } from '@/composables/useFavoriteAction'
 
 // ============ LIST BUILDER ============
-const list = useListPageBuilder({ entity: 'products' })
+const list = useListPage({ entity: 'products' })
 
 // ============ FAVORITE ACTION ============
 useFavoriteAction(list, 'product', { labelField: 'title' })
