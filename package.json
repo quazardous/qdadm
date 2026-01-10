@@ -9,5 +9,6 @@
     "dev": "npm run dev -w packages/demo",
     "build": "npm run build -w packages/demo",
     "preview": "npm run preview -w packages/demo"
-  }
+  },
+  "version": "0.0.1"
 }
