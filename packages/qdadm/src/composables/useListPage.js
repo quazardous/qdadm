@@ -3,6 +3,7 @@ import { useRouter, useRoute } from 'vue-router'
 import { useToast } from 'primevue/usetoast'
 import { useConfirm } from 'primevue/useconfirm'
 import { useHooks } from './useHooks.js'
+import { useEntityItemPage } from './useEntityItemPage.js'
 import { FilterQuery } from '../query/FilterQuery.js'
 
 // Cookie utilities for pagination persistence
@@ -155,6 +156,35 @@ export function useListPage(config = {}) {
 
   // Provide entity context for child components (e.g., SeverityTag auto-discovery)
   provide('mainEntity', entity)
+
+  // ============ PARENT CHAIN SUPPORT ============
+  // When list is a child of a parent entity (e.g., /bots/:id/commands),
+  // we use useEntityItemPage for the PARENT to:
+  // - Load parent entity data
+  // - Set breadcrumbs for parent
+  // - Provide parent context to the list
+
+  const parentConfig = computed(() => route.meta?.parent || null)
+
+  // Create useEntityItemPage for PARENT entity (not for list's own entity)
+  // Only when parentConfig exists
+  let parentPage = null
+  if (route.meta?.parent) {
+    const parentMeta = route.meta.parent
+    parentPage = useEntityItemPage({
+      entity: parentMeta.entity,
+      loadOnMount: true,  // Auto-load parent on mount
+      breadcrumb: true,   // Parent sets its breadcrumb
+      idParam: parentMeta.param,  // Use parent's param (e.g., 'id' for /bots/:id)
+      autoLoadParent: true  // Support grandparent chain
+    })
+  }
+
+  // Parent data and loading state (null if no parent)
+  const parentData = computed(() => parentPage?.data.value || null)
+  const parentId = computed(() => parentPage?.entityId.value || null)
+  const parentLoading = computed(() => parentPage?.loading.value || false)
+  const parentChain = computed(() => parentPage?.parentChain.value || new Map())
 
   // Read config from manager with option overrides
   const entityName = config.entityName ?? manager.label
@@ -1079,13 +1109,9 @@ export function useListPage(config = {}) {
         }
       }
 
-      // Auto-add parent filter from route config
-      const parentConfig = route.meta?.parent
-      if (parentConfig?.foreignKey && parentConfig?.param) {
-        const parentId = route.params[parentConfig.param]
-        if (parentId) {
-          filters[parentConfig.foreignKey] = parentId
-        }
+      // Auto-add parent filter from route config (uses parentPage from useEntityItemPage)
+      if (parentConfig.value?.foreignKey && parentId.value) {
+        filters[parentConfig.value.foreignKey] = parentId.value
       }
 
       if (Object.keys(filters).length > 0) {
@@ -1644,6 +1670,14 @@ export function useListPage(config = {}) {
   return {
     // Manager access
     manager,
+
+    // Parent chain (when list is child of parent entity)
+    parentConfig,
+    parentId,
+    parentData,
+    parentLoading,
+    parentChain,
+    parentPage,  // Full useEntityItemPage instance for parent (or null)
 
     // State
     items,

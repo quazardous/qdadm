@@ -20,6 +20,34 @@ import { IStorage } from './IStorage.js'
  *   endpoint: '/users',
  *   getClient: () => inject('apiClient')
  * })
+ *
+ * // With parameter mapping (transform filter names for API)
+ * const storage = new ApiStorage({
+ *   endpoint: '/commands',
+ *   client: apiClient,
+ *   paramMapping: {
+ *     bot_uuid: 'botUuid',  // filters.bot_uuid → ?botUuid=xxx
+ *     page_size: 'limit'    // page_size → ?limit=xxx
+ *   }
+ * })
+ *
+ * // With data normalization (different API format)
+ * const storage = new ApiStorage({
+ *   endpoint: '/api/projects/:id/tasks',
+ *   client: apiClient,
+ *   // API → internal format
+ *   normalize: (apiData) => ({
+ *     id: apiData.task_id,
+ *     title: apiData.name,
+ *     status: apiData.state
+ *   }),
+ *   // Internal → API format
+ *   denormalize: (data) => ({
+ *     task_id: data.id,
+ *     name: data.title,
+ *     state: data.status
+ *   })
+ * })
  * ```
  */
 export class ApiStorage extends IStorage {
@@ -55,7 +83,15 @@ export class ApiStorage extends IStorage {
       getClient = null,
       // Response format configuration
       responseItemsKey = 'items',
-      responseTotalKey = 'total'
+      responseTotalKey = 'total',
+      // Parameter mapping: { clientName: apiName }
+      // Transforms filter and query param names before sending to API
+      paramMapping = {},
+      // Data normalization
+      // normalize: (apiData) => internalData - transform API response
+      // denormalize: (internalData) => apiData - transform before sending
+      normalize = null,
+      denormalize = null
     } = options
 
     this.endpoint = endpoint
@@ -63,6 +99,50 @@ export class ApiStorage extends IStorage {
     this._getClient = getClient
     this.responseItemsKey = responseItemsKey
     this.responseTotalKey = responseTotalKey
+    this.paramMapping = paramMapping
+    this._normalize = normalize
+    this._denormalize = denormalize
+  }
+
+  /**
+   * Normalize API response data to internal format
+   * @param {object|Array} data - API response data
+   * @returns {object|Array} - Normalized data
+   */
+  _normalizeData(data) {
+    if (!this._normalize) return data
+    if (Array.isArray(data)) {
+      return data.map(item => this._normalize(item))
+    }
+    return this._normalize(data)
+  }
+
+  /**
+   * Denormalize internal data to API format
+   * @param {object} data - Internal data
+   * @returns {object} - API format data
+   */
+  _denormalizeData(data) {
+    if (!this._denormalize) return data
+    return this._denormalize(data)
+  }
+
+  /**
+   * Apply parameter mapping to transform names
+   * @param {object} params - Original params
+   * @returns {object} - Params with mapped names
+   */
+  _applyParamMapping(params) {
+    if (!this.paramMapping || Object.keys(this.paramMapping).length === 0) {
+      return params
+    }
+
+    const mapped = {}
+    for (const [key, value] of Object.entries(params)) {
+      const mappedKey = this.paramMapping[key] || key
+      mapped[mappedKey] = value
+    }
+    return mapped
   }
 
   get client() {
@@ -88,13 +168,18 @@ export class ApiStorage extends IStorage {
    */
   async list(params = {}) {
     const { page = 1, page_size = 20, sort_by, sort_order, filters = {} } = params
+
+    // Apply param mapping to filters
+    const mappedFilters = this._applyParamMapping(filters)
+
     const response = await this.client.get(this.endpoint, {
-      params: { page, page_size, sort_by, sort_order, ...filters }
+      params: { page, page_size, sort_by, sort_order, ...mappedFilters }
     })
 
     const data = response.data
+    const items = data[this.responseItemsKey] || data.items || data
     return {
-      items: data[this.responseItemsKey] || data.items || data,
+      items: this._normalizeData(items),
       total: data[this.responseTotalKey] || data.total || (Array.isArray(data) ? data.length : 0)
     }
   }
@@ -106,7 +191,7 @@ export class ApiStorage extends IStorage {
    */
   async get(id) {
     const response = await this.client.get(`${this.endpoint}/${id}`)
-    return response.data
+    return this._normalizeData(response.data)
   }
 
   /**
@@ -115,8 +200,9 @@ export class ApiStorage extends IStorage {
    * @returns {Promise<object>}
    */
   async create(data) {
-    const response = await this.client.post(this.endpoint, data)
-    return response.data
+    const apiData = this._denormalizeData(data)
+    const response = await this.client.post(this.endpoint, apiData)
+    return this._normalizeData(response.data)
   }
 
   /**
@@ -126,8 +212,9 @@ export class ApiStorage extends IStorage {
    * @returns {Promise<object>}
    */
   async update(id, data) {
-    const response = await this.client.put(`${this.endpoint}/${id}`, data)
-    return response.data
+    const apiData = this._denormalizeData(data)
+    const response = await this.client.put(`${this.endpoint}/${id}`, apiData)
+    return this._normalizeData(response.data)
   }
 
   /**
@@ -137,8 +224,9 @@ export class ApiStorage extends IStorage {
    * @returns {Promise<object>}
    */
   async patch(id, data) {
-    const response = await this.client.patch(`${this.endpoint}/${id}`, data)
-    return response.data
+    const apiData = this._denormalizeData(data)
+    const response = await this.client.patch(`${this.endpoint}/${id}`, apiData)
+    return this._normalizeData(response.data)
   }
 
   /**

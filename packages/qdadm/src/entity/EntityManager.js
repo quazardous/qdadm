@@ -304,6 +304,61 @@ export class EntityManager {
     }
   }
 
+  // ============ STORAGE RESOLUTION ============
+
+  /**
+   * Resolve which storage to use for an operation
+   *
+   * Override in subclass to route to different storages based on context.
+   * This enables multi-endpoint patterns like:
+   * - /api/commands (global)
+   * - /api/bots/:id/commands (scoped to bot)
+   *
+   * The default implementation returns the single configured storage.
+   *
+   * @param {string} method - Operation: 'list', 'get', 'create', 'update', 'delete'
+   * @param {object} [context] - Routing context
+   * @param {Array<{entity: string, id: string|number}>} [context.parentChain] - Parent chain from root to direct parent
+   * @returns {{ storage: IStorage, path?: string, mappingKey?: string }}
+   *
+   * @example
+   * // Single storage (default, no change needed)
+   * manager.resolveStorage('list') // { storage: this.storage }
+   *
+   * @example
+   * // Access direct parent (last in chain)
+   * const parent = context?.parentChain?.at(-1)
+   *
+   * @example
+   * // Multi-storage routing in subclass
+   * resolveStorage(method, context) {
+   *   const parent = context?.parentChain?.at(-1)
+   *   if (parent?.entity === 'bots') {
+   *     return {
+   *       storage: this.botStorage,
+   *       path: `/${parent.id}/commands`
+   *     }
+   *   }
+   *   return { storage: this.storage }
+   * }
+   *
+   * @example
+   * // Nested parents: /users/:userId/posts/:postId/comments
+   * resolveStorage(method, context) {
+   *   const chain = context?.parentChain || []
+   *   if (chain.length === 2 && chain[0].entity === 'users' && chain[1].entity === 'posts') {
+   *     return {
+   *       storage: this.nestedStorage,
+   *       path: `/${chain[0].id}/posts/${chain[1].id}/comments`
+   *     }
+   *   }
+   *   return { storage: this.storage }
+   * }
+   */
+  resolveStorage(method, context) {
+    return { storage: this.storage }
+  }
+
   // ============ METADATA ACCESSORS ============
 
   /**
@@ -857,10 +912,12 @@ export class EntityManager {
    * @param {string} [params.sort_by] - Sort field
    * @param {string} [params.sort_order] - 'asc' or 'desc'
    * @param {boolean} [params.cacheSafe] - If true, allow caching even with filters
+   * @param {object} [context] - Routing context for multi-storage
    * @returns {Promise<{ items: Array, total: number, fromCache: boolean }>}
    */
-  async list(params = {}) {
-    if (!this.storage) {
+  async list(params = {}, context) {
+    const { storage } = this.resolveStorage('list', context)
+    if (!storage) {
       throw new Error(`[EntityManager:${this.name}] list() not implemented`)
     }
 
@@ -893,7 +950,7 @@ export class EntityManager {
     if (!_internal) this._stats.cacheMisses++
 
     // 2. Fetch from API (storage normalizes response to { items, total })
-    const response = await this.storage.list(queryParams)
+    const response = await storage.list(queryParams)
     const items = response.items || []
     const total = response.total ?? items.length
 
@@ -937,9 +994,11 @@ export class EntityManager {
    * Otherwise fetches from storage.
    *
    * @param {string|number} id
+   * @param {object} [context] - Routing context for multi-storage
    * @returns {Promise<object>}
    */
-  async get(id) {
+  async get(id, context) {
+    const { storage } = this.resolveStorage('get', context)
     this._stats.get++
 
     // Try cache first if valid and complete
@@ -954,8 +1013,8 @@ export class EntityManager {
 
     // Fallback to storage
     this._stats.cacheMisses++
-    if (this.storage) {
-      return this.storage.get(id)
+    if (storage) {
+      return storage.get(id)
     }
     throw new Error(`[EntityManager:${this.name}] get() not implemented`)
   }
@@ -1006,17 +1065,19 @@ export class EntityManager {
    * - postsave: After successful storage.create(), for side effects
    *
    * @param {object} data
+   * @param {object} [context] - Routing context for multi-storage
    * @returns {Promise<object>} - The created entity
    */
-  async create(data) {
+  async create(data, context) {
+    const { storage } = this.resolveStorage('create', context)
     this._stats.create++
-    if (this.storage) {
+    if (storage) {
       // Invoke presave hooks (can modify data or throw to abort)
       const presaveContext = this._buildPresaveContext(data, true)
       await this._invokeHook('presave', presaveContext)
 
       // Use potentially modified data from context
-      const result = await this.storage.create(presaveContext.record)
+      const result = await storage.create(presaveContext.record)
       this.invalidateCache()
 
       // Invoke postsave hooks (for side effects)
@@ -1043,17 +1104,19 @@ export class EntityManager {
    *
    * @param {string|number} id
    * @param {object} data
+   * @param {object} [context] - Routing context for multi-storage
    * @returns {Promise<object>}
    */
-  async update(id, data) {
+  async update(id, data, context) {
+    const { storage } = this.resolveStorage('update', context)
     this._stats.update++
-    if (this.storage) {
+    if (storage) {
       // Invoke presave hooks (can modify data or throw to abort)
       const presaveContext = this._buildPresaveContext(data, false, id)
       await this._invokeHook('presave', presaveContext)
 
       // Use potentially modified data from context
-      const result = await this.storage.update(id, presaveContext.record)
+      const result = await storage.update(id, presaveContext.record)
       this.invalidateCache()
 
       // Invoke postsave hooks (for side effects)
@@ -1115,16 +1178,18 @@ export class EntityManager {
    * - predelete: Before storage.delete(), can throw to abort (for cascade checks)
    *
    * @param {string|number} id
+   * @param {object} [context] - Routing context for multi-storage
    * @returns {Promise<void>}
    */
-  async delete(id) {
+  async delete(id, context) {
+    const { storage } = this.resolveStorage('delete', context)
     this._stats.delete++
-    if (this.storage) {
+    if (storage) {
       // Invoke predelete hooks (can throw to abort, e.g., for cascade checks)
       const predeleteContext = this._buildPredeleteContext(id)
       await this._invokeHook('predelete', predeleteContext)
 
-      const result = await this.storage.delete(id)
+      const result = await storage.delete(id)
       this.invalidateCache()
       this._emitSignal('deleted', {
         manager: this.name,

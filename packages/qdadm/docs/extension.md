@@ -4,7 +4,7 @@ How to extend qdadm without modifying core code.
 
 ## Overview
 
-qdadm provides six extension mechanisms:
+qdadm provides seven extension mechanisms:
 
 | Mechanism | Purpose | Coupling | Scope |
 |-----------|---------|----------|-------|
@@ -14,6 +14,7 @@ qdadm provides six extension mechanisms:
 | [Hooks](./hooks.md) | Intercept & modify | Low | Global behavior |
 | [Deferred](./deferred.md) | Async coordination | None | Service loading |
 | [Decorators](#decorators) | Wrap operations | Medium | Per-manager |
+| [Multi-Storage](#multi-storage--multi-endpoint) | Context-aware routing | Low | Per-manager |
 
 ## Quick Comparison
 
@@ -27,6 +28,7 @@ qdadm provides six extension mechanisms:
 | Validate/transform all entities | Hooks |
 | Await service/cache readiness | Deferred |
 | Add behavior to one manager | Decorators |
+| Entity via multiple API endpoints | Multi-Storage |
 
 ### Example: Adding audit logging
 
@@ -184,6 +186,174 @@ const withSlugGeneration = createHookBundle('slugGeneration', (register, context
       entity[slugField] = slugify(entity[sourceField])
     }
   }, { priority: HOOK_PRIORITY.NORMAL })
+})
+```
+
+---
+
+## Multi-Storage / Multi-Endpoint
+
+Route CRUD operations to different API endpoints based on context.
+
+### Use Case
+
+A single entity accessed via multiple endpoints:
+
+```
+GET /api/tasks              → All tasks (admin view)
+GET /api/projects/42/tasks  → Tasks scoped to project 42
+GET /api/users/7/tasks      → Tasks assigned to user 7
+```
+
+### Implementation
+
+Override `resolveStorage()` to route based on `parentChain`:
+
+```js
+class TasksManager extends EntityManager {
+  constructor() {
+    // Default storage (global endpoint)
+    super({
+      name: 'tasks',
+      storage: new ApiStorage({ endpoint: '/api/tasks' })
+    })
+    // Additional storage for project-scoped access
+    this.projectStorage = new ApiStorage({ endpoint: '/api/projects' })
+  }
+
+  resolveStorage(method, context) {
+    const parent = context?.parentChain?.at(-1)
+
+    if (parent?.entity === 'projects') {
+      return {
+        storage: this.projectStorage,
+        path: `/${parent.id}/tasks`
+      }
+    }
+
+    return { storage: this.storage }
+  }
+}
+```
+
+### Parent Chain Structure
+
+The `parentChain` is an array from root ancestor to direct parent:
+
+```js
+// Route: /organizations/1/projects/42/tasks
+context = {
+  parentChain: [
+    { entity: 'organizations', id: '1' },   // root
+    { entity: 'projects', id: '42' }        // direct parent
+  ]
+}
+
+// Access helpers
+const parent = context?.parentChain?.at(-1)      // { entity: 'projects', id: '42' }
+const root = context?.parentChain?.at(0)         // { entity: 'organizations', id: '1' }
+const depth = context?.parentChain?.length || 0  // 2
+```
+
+### Nested Parents Example
+
+```js
+class TasksManager extends EntityManager {
+  resolveStorage(method, context) {
+    const chain = context?.parentChain || []
+
+    // /organizations/:orgId/projects/:projId/tasks
+    if (chain.length === 2
+        && chain[0].entity === 'organizations'
+        && chain[1].entity === 'projects') {
+      return {
+        storage: this.orgProjectStorage,
+        path: `/${chain[0].id}/projects/${chain[1].id}/tasks`
+      }
+    }
+
+    // /projects/:projId/tasks
+    const parent = chain.at(-1)
+    if (parent?.entity === 'projects') {
+      return {
+        storage: this.projectStorage,
+        path: `/${parent.id}/tasks`
+      }
+    }
+
+    // /tasks (global)
+    return { storage: this.storage }
+  }
+}
+```
+
+### Different Param Mappings
+
+Each storage can use different API conventions:
+
+```js
+resolveStorage(method, context) {
+  const parent = context?.parentChain?.at(-1)
+
+  if (parent?.entity === 'projects') {
+    return {
+      storage: this.projectStorage,
+      path: `/${parent.id}/tasks`,
+      mappingKey: 'project'  // Use project-specific param mapping
+    }
+  }
+
+  return {
+    storage: this.storage,
+    mappingKey: 'global'
+  }
+}
+```
+
+### Data Normalization
+
+When endpoints return different field names, use storage-level normalization:
+
+```js
+// Project-scoped API uses different field names
+this.projectStorage = new ApiStorage({
+  endpoint: '/api/projects',
+  // API → internal format
+  normalize: (apiData) => ({
+    id: apiData.task_id,
+    title: apiData.name,
+    status: apiData.state,
+    projectId: apiData.project_id
+  }),
+  // Internal → API format
+  denormalize: (data) => ({
+    task_id: data.id,
+    name: data.title,
+    state: data.status
+  })
+})
+```
+
+### Normalization Layers
+
+Two levels of data transformation:
+
+| Layer | Responsibility | Example |
+|-------|----------------|---------|
+| **Storage** | Technical format (API ↔ internal) | `task_id` → `id`, `name` → `title` |
+| **EntityManager** | Business logic | Computed fields, validation, defaults |
+
+Storage normalization is transparent - EntityManager always sees consistent field names.
+
+### Backward Compatibility
+
+Single-storage managers require **no changes**. The default `resolveStorage()` returns the configured storage:
+
+```js
+// No override needed for single-endpoint entities
+const booksManager = new EntityManager({
+  name: 'books',
+  storage: new ApiStorage({ endpoint: '/api/books' })
 })
 ```
 
