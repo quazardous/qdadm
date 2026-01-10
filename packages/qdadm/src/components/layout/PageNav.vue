@@ -31,7 +31,9 @@ const breadcrumbEntities = inject('qdadmBreadcrumbEntities', null)
 
 const props = defineProps({
   entity: { type: Object, default: null },
-  parentEntity: { type: Object, default: null }
+  parentEntity: { type: Object, default: null },
+  // Show "Details" link in navlinks (default: false since breadcrumb shows current page)
+  showDetailsLink: { type: Boolean, default: false }
 })
 
 const route = useRoute()
@@ -121,8 +123,10 @@ const breadcrumbItems = computed(() => {
     })
 
     // Parent item (with label from data)
-    const parentLabel = parentData.value
-      ? parentManager.getEntityLabel(parentData.value)
+    // Prefer breadcrumbEntities (set by useEntityItemPage) over local parentData
+    const parentEntityData = breadcrumbEntities?.value?.get(1) || parentData.value
+    const parentLabel = parentEntityData
+      ? parentManager.getEntityLabel(parentEntityData)
       : '...'
     const defaultSuffix = parentManager.readOnly ? '-show' : '-edit'
     const parentRouteName = itemRoute || `${parentManager.routePrefix}${defaultSuffix}`
@@ -149,8 +153,16 @@ const siblingNavlinks = computed(() => {
   const { entity: parentEntityName, param } = parentConfig.value
   const siblings = getSiblingRoutes(parentEntityName, param)
 
+  // Filter out action routes (create, edit) - they're not navigation tabs
+  const navRoutes = siblings.filter(r => {
+    const name = r.name || ''
+    const path = r.path || ''
+    // Exclude routes ending with -create, -edit, -new or paths with /create, /edit, /new
+    return !name.match(/-(create|edit|new)$/) && !path.match(/\/(create|edit|new)$/)
+  })
+
   // Build navlinks with current route params
-  return siblings.map(siblingRoute => {
+  return navRoutes.map(siblingRoute => {
     const manager = siblingRoute.meta?.entity ? getManager(siblingRoute.meta.entity) : null
     const label = siblingRoute.meta?.navLabel || manager?.labelPlural || siblingRoute.name
 
@@ -173,10 +185,19 @@ const childNavlinks = computed(() => {
   const children = getChildRoutes(entityName)
   if (children.length === 0) return []
 
+  // Filter out action routes (create, edit) - they're not navigation tabs
+  const navRoutes = children.filter(r => {
+    const name = r.name || ''
+    const path = r.path || ''
+    return !name.match(/-(create|edit|new)$/) && !path.match(/\/(create|edit|new)$/)
+  })
+
+  if (navRoutes.length === 0) return []
+
   const entityId = route.params.id
 
   // Build navlinks to child routes
-  return children.map(childRoute => {
+  return navRoutes.map(childRoute => {
     const childManager = childRoute.meta?.entity ? getManager(childRoute.meta.entity) : null
     const label = childRoute.meta?.navLabel || childManager?.labelPlural || childRoute.name
     const parentParam = childRoute.meta?.parent?.param || 'id'
@@ -191,7 +212,7 @@ const childNavlinks = computed(() => {
 
 // Combined navlinks with "Details" link
 const allNavlinks = computed(() => {
-  // Case 1: On a child route - show siblings + Details link to parent
+  // Case 1: On a child route - show siblings + optional Details link to parent
   if (parentConfig.value) {
     const { entity: parentEntityName, param, itemRoute } = parentConfig.value
     const parentId = route.params[param]
@@ -199,31 +220,38 @@ const allNavlinks = computed(() => {
 
     if (!parentManager) return siblingNavlinks.value
 
-    const defaultSuffix = parentManager.readOnly ? '-show' : '-edit'
-    const parentRouteName = itemRoute || `${parentManager.routePrefix}${defaultSuffix}`
-    const isOnParentRoute = route.name === parentRouteName
+    // Details link is optional since breadcrumb already shows parent
+    if (props.showDetailsLink) {
+      const defaultSuffix = parentManager.readOnly ? '-show' : '-edit'
+      const parentRouteName = itemRoute || `${parentManager.routePrefix}${defaultSuffix}`
+      const isOnParentRoute = route.name === parentRouteName
 
-    // Details link to parent item page
-    // CONVENTION: Entity item routes MUST use :id as param name (e.g., /books/:id)
-    // This is a qdadm convention - all entity detail/edit routes expect 'id' param
-    const detailsLink = {
-      label: 'Details',
-      to: { name: parentRouteName, params: { id: parentId } },
-      active: isOnParentRoute
+      // Details link to parent item page
+      // CONVENTION: Entity item routes MUST use :id as param name (e.g., /books/:id)
+      const detailsLink = {
+        label: 'Details',
+        to: { name: parentRouteName, params: { id: parentId } },
+        active: isOnParentRoute
+      }
+
+      return [detailsLink, ...siblingNavlinks.value]
     }
 
-    return [detailsLink, ...siblingNavlinks.value]
+    return siblingNavlinks.value
   }
 
-  // Case 2: On parent detail page - show children + Details (active)
+  // Case 2: On parent detail page - show children + optional Details (active)
   if (childNavlinks.value.length > 0) {
-    const detailsLink = {
-      label: 'Details',
-      to: { name: route.name, params: route.params },
-      active: true
+    // Details link is optional since breadcrumb already shows current page
+    if (props.showDetailsLink) {
+      const detailsLink = {
+        label: 'Details',
+        to: { name: route.name, params: route.params },
+        active: true
+      }
+      return [detailsLink, ...childNavlinks.value]
     }
-
-    return [detailsLink, ...childNavlinks.value]
+    return childNavlinks.value
   }
 
   return []

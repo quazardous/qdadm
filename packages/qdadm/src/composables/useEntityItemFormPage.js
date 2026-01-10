@@ -126,12 +126,18 @@ export function useEntityItemFormPage(config = {}) {
     getId
   })
 
-  const { manager, orchestrator, entityId, setBreadcrumbEntity } = itemPage
+  const { manager, orchestrator, entityId, setBreadcrumbEntity, getInitialDataWithParent, parentConfig, parentId, parentData, parentChain, getChainDepth } = itemPage
 
   // Read config from manager with option overrides
   const entityName = config.entityName ?? manager.label
   const routePrefix = config.routePrefix ?? manager.routePrefix
-  const initialData = config.initialData ?? manager.getInitialData()
+
+  // Initial data: merge user-provided with auto-populated parent foreignKey
+  // getInitialDataWithParent() adds the foreignKey from route.meta.parent
+  const baseInitialData = getInitialDataWithParent()
+  const initialData = config.initialData
+    ? { ...baseInitialData, ...config.initialData }
+    : baseInitialData
 
   /**
    * Detect form mode: 'create' or 'edit'
@@ -1093,6 +1099,13 @@ export function useEntityItemFormPage(config = {}) {
     isEdit,
     isCreate,
     entityId,
+
+    // Parent chain (from route.meta.parent, supports N-level nesting)
+    parentConfig,
+    parentId,
+    parentData,        // Immediate parent (level 1)
+    parentChain,       // All parents: Map(level -> data)
+    getChainDepth,
 
     // State
     data,

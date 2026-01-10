@@ -13,7 +13,7 @@
  *
  * See: modules/loans/components/LoansZoneSetup.vue for wrap operation
  */
-import { useEntityItemFormPage, FormPage, FormField, FormInput, Zone } from 'qdadm'
+import { useEntityItemFormPage, FormPage, FormField, FormInput, Zone, PageNav } from 'qdadm'
 
 const form = useEntityItemFormPage({ entity: 'books' })
 form.generateFields()
@@ -23,6 +23,10 @@ form.addDeleteAction()
 
 <template>
   <FormPage v-bind="form.props.value" v-on="form.events">
+    <template #nav>
+      <PageNav />
+    </template>
+
     <template #fields>
       <Zone name="books-detail-content">
         <div class="form-grid">

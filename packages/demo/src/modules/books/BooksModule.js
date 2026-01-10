@@ -129,11 +129,19 @@ export class BooksModule extends Module {
     })
 
     // Child route: loans for a specific book
+    // DEMONSTRATES: Parent chain auto-detection
+    // - BookLoans list auto-filters by book_id
+    // - BookLoanForm auto-fills book_id from parent config
     ctx.routes('books/:bookId/loans', [
       {
         path: '',
         name: 'book-loans',
         component: () => import('./pages/BookLoans.vue')
+      },
+      {
+        path: 'create',
+        name: 'book-loan-create',
+        component: () => import('./pages/BookLoanForm.vue')
       }
     ], {
       entity: 'loans',

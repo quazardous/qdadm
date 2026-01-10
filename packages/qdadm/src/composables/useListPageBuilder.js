@@ -321,13 +321,37 @@ export function useListPageBuilder(config = {}) {
   /**
    * Add standard "Create" header action
    * Respects manager.canCreate() for visibility
+   *
+   * @param {string|object} labelOrOptions - Label string or options object
+   * @param {string} labelOrOptions.label - Button label
+   * @param {string} labelOrOptions.routeName - Custom route name (overrides auto-detection)
+   * @param {object} labelOrOptions.params - Custom route params (merged with current params)
+   *
+   * @example
+   * // Simple usage
+   * list.addCreateAction('New Book')
+   *
+   * // With custom route (for child entities or special cases)
+   * list.addCreateAction({ label: 'New Command', routeName: 'bot-command-create' })
    */
-  function addCreateAction(label = null) {
-    const createLabel = label || `Create ${entityName.charAt(0).toUpperCase() + entityName.slice(1)}`
+  function addCreateAction(labelOrOptions = null) {
+    const options = typeof labelOrOptions === 'string'
+      ? { label: labelOrOptions }
+      : (labelOrOptions || {})
+
+    const createLabel = options.label || `Create ${entityName.charAt(0).toUpperCase() + entityName.slice(1)}`
+
+    const onClick = options.routeName
+      ? () => router.push({
+          name: options.routeName,
+          params: { ...route.params, ...options.params }
+        })
+      : goToCreate
+
     addHeaderAction('create', {
       label: createLabel,
       icon: 'pi pi-plus',
-      onClick: goToCreate,
+      onClick,
       visible: () => manager.canCreate()
     })
   }
@@ -1128,8 +1152,45 @@ export function useListPageBuilder(config = {}) {
   }
 
   // ============ NAVIGATION ============
+
+  /**
+   * Find create route for current context
+   * For child routes (with parent config), looks for sibling create route
+   * Falls back to standard {routePrefix}-create
+   */
+  function findCreateRoute() {
+    const parentConfig = route.meta?.parent
+
+    if (parentConfig) {
+      // Child route: find create route by path pattern
+      // Current matched route path: /bots/:id/commands → look for /bots/:id/commands/create
+      const currentMatched = route.matched[route.matched.length - 1]
+      if (currentMatched) {
+        const createPath = `${currentMatched.path}/create`
+        const createRoute = router.getRoutes().find(r => r.path === createPath)
+        if (createRoute?.name) {
+          return { name: createRoute.name, params: route.params }
+        }
+      }
+
+      // Fallback: try common naming pattern (list-name → singular-create)
+      // e.g., bot-commands → bot-command-create
+      const currentName = route.name
+      if (currentName && currentName.endsWith('s')) {
+        const singularName = currentName.slice(0, -1)
+        const createRouteName = `${singularName}-create`
+        if (router.hasRoute(createRouteName)) {
+          return { name: createRouteName, params: route.params }
+        }
+      }
+    }
+
+    // Default: standard entity route
+    return { name: `${routePrefix}-create` }
+  }
+
   function goToCreate() {
-    router.push({ name: `${routePrefix}-create` })
+    router.push(findCreateRoute())
   }
 
   function goToEdit(item) {
