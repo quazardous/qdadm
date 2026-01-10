@@ -843,6 +843,40 @@ describe('useEntityItemFormPage', () => {
       expect(result.getFieldConfig('year')).toBeUndefined()
     })
 
+    it('updateField merges with existing field config', () => {
+      const { result } = createWrapper(() => useEntityItemFormPage({ entity: 'books' }))
+
+      // Title field has: type: 'text', label: 'Title', required: true
+      const originalConfig = result.getFieldConfig('title')
+      expect(originalConfig.required).toBe(true)
+
+      // Update only disabled, keep other properties
+      result.updateField('title', { disabled: true })
+
+      const updatedConfig = result.getFieldConfig('title')
+      expect(updatedConfig.disabled).toBe(true)
+      expect(updatedConfig.required).toBe(true)  // Preserved from original
+      expect(updatedConfig.label).toBe('Title')  // Preserved from original
+    })
+
+    it('updateField throws error for non-existent field', () => {
+      const { result } = createWrapper(() => useEntityItemFormPage({ entity: 'books' }))
+
+      expect(() => result.updateField('nonexistent', { disabled: true }))
+        .toThrowError("Field 'nonexistent' does not exist")
+    })
+
+    it('updateField preserves field position', () => {
+      const { result } = createWrapper(() => useEntityItemFormPage({ entity: 'books' }))
+
+      const originalIndex = result.fields.value.findIndex(f => f.name === 'title')
+
+      result.updateField('title', { disabled: true })
+
+      const newIndex = result.fields.value.findIndex(f => f.name === 'title')
+      expect(newIndex).toBe(originalIndex)
+    })
+
     it('setFieldOrder reorders fields', () => {
       const { result } = createWrapper(() => useEntityItemFormPage({ entity: 'books' }))
 

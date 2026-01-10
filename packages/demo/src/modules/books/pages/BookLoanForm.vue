@@ -20,8 +20,9 @@ const form = useEntityItemFormPage({ entity: 'loans' })
 // Access parent data (the book) for display
 const parentBook = form.parentData
 
-// Exclude auto-filled parent field from form display
-form.excludeField('book_id')
+// Mark parent foreignKey field as readonly (auto-filled from route)
+// The field keeps its reference config so it shows the book title, not just the ID
+form.updateField('book_id', { disabled: true })
 
 // Standard save action - redirect is auto-detected
 form.addSaveAction()
@@ -44,13 +45,6 @@ form.addSaveAction()
 
     <template #fields>
       <div class="form-grid">
-        <!-- Debug: show that book_id is auto-filled -->
-        <div v-if="form.data.value.book_id" class="col-12 mb-3">
-          <small class="text-500">
-            Book ID (auto-filled): {{ form.data.value.book_id }}
-          </small>
-        </div>
-
         <FormField
           v-for="f in form.fields.value"
           :key="f.name"

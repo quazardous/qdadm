@@ -659,6 +659,33 @@ export function useEntityItemFormPage(config = {}) {
   }
 
   /**
+   * Update an existing field configuration
+   *
+   * Use this to modify properties of auto-generated fields.
+   * Throws error if field doesn't exist (use addField for new fields).
+   *
+   * @param {string} name - Field name to update
+   * @param {object} fieldConfig - Properties to merge with existing config
+   * @returns {object} - The builder instance for chaining
+   *
+   * @example
+   * form.updateField('book_id', { disabled: true })
+   * form.updateField('email', { validate: v => v.includes('@') || 'Invalid' })
+   */
+  function updateField(name, fieldConfig) {
+    if (!fieldsMap.value.has(name)) {
+      throw new Error(`Field '${name}' does not exist. Use addField() to create new fields.`)
+    }
+
+    // Merge with existing config (keeps position)
+    const existingConfig = fieldsMap.value.get(name)
+    const mergedConfig = { ...existingConfig, ...fieldConfig }
+    fieldsMap.value.set(name, mergedConfig)
+
+    return builderApi
+  }
+
+  /**
    * Exclude a field from generation
    * Call before generateFields() or use exclude option
    *
@@ -1190,6 +1217,7 @@ export function useEntityItemFormPage(config = {}) {
     generateFields,
     resolveReferences,
     addField,
+    updateField,
     removeField,
     excludeField,
     getFieldConfig,
