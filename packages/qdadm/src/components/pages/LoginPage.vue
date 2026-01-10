@@ -203,7 +203,7 @@ async function handleLogin() {
             <label for="qdadm-password">{{ passwordLabel }}</label>
             <Password
               v-model="password"
-              id="qdadm-password"
+              inputId="qdadm-password"
               class="w-full"
               :feedback="false"
               toggleMask
