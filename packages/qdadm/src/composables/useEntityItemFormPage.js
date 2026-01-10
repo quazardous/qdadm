@@ -323,9 +323,15 @@ export function useEntityItemFormPage(config = {}) {
         const listRoute = findListRoute()
         router.push(listRoute)
       } else if (!isEdit.value && redirectOnCreate) {
-        // Redirect to edit mode after create
-        const newId = responseData[manager.idField] || responseData.id || responseData.key
-        router.replace({ name: `${routePrefix}-${editRouteSuffix}`, params: { id: newId } })
+        // Redirect to edit mode after create (only for top-level entities)
+        // Child entities with parent config go to list instead (edit route may not exist)
+        if (parentConfig.value) {
+          const listRoute = findListRoute()
+          router.replace(listRoute)
+        } else {
+          const newId = responseData[manager.idField] || responseData.id || responseData.key
+          router.replace({ name: `${routePrefix}-${editRouteSuffix}`, params: { id: newId } })
+        }
       }
 
       return responseData
