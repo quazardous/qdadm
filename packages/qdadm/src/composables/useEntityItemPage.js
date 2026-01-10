@@ -4,7 +4,7 @@
  * Provides common functionality for pages that display a single entity:
  * - Entity loading by ID from route params
  * - Loading/error state management
- * - Breadcrumb integration (auto-calls setBreadcrumbEntity)
+ * - Active stack integration (auto-updates navigation context)
  * - Manager access for child composables
  * - **Parent chain auto-detection** from route.meta.parent
  *
@@ -53,19 +53,17 @@
  */
 import { ref, computed, onMounted, inject, provide } from 'vue'
 import { useRoute } from 'vue-router'
-import { useCurrentEntity } from './useCurrentEntity.js'
+import { useActiveStack } from '../chain/useActiveStack.js'
 
 export function useEntityItemPage(config = {}) {
   const {
     entity,
     // Loading options
     loadOnMount = true,
-    breadcrumb = true,
     // Parent chain options
     autoLoadParent = true,  // Auto-load parent entity from route.meta.parent
-    // ID extraction
+    // ID extraction (custom function for special cases, otherwise uses manager.idField)
     getId = null,
-    idParam = 'id',
     // Transform hook
     transformLoad = (data) => data,
     // Callbacks
@@ -91,8 +89,8 @@ export function useEntityItemPage(config = {}) {
   // Provide entity context for child components
   provide('mainEntity', entity)
 
-  // Breadcrumb integration
-  const { setBreadcrumbEntity } = useCurrentEntity()
+  // Active stack integration (unified navigation context)
+  const stack = useActiveStack()
 
   // ============ STATE ============
 
@@ -186,14 +184,8 @@ export function useEntityItemPage(config = {}) {
         if (data) {
           newChain.set(level, data)
 
-          // Set breadcrumb at correct level
-          // breadcrumbLevel = totalDepth - level (so immediate parent is totalDepth-1, grandparent is totalDepth-2, etc.)
-          // Actually we want: root ancestor = 1, next = 2, ..., immediate parent = totalDepth-1, current = totalDepth
-          // So breadcrumbLevel = totalDepth - level
-          if (breadcrumb) {
-            const breadcrumbLevel = totalDepth - level
-            setBreadcrumbEntity(data, breadcrumbLevel)
-          }
+          // Update active stack
+          stack.setEntityData(currentConfig.entity, data)
         }
 
         currentConfig = currentConfig.parent
@@ -233,11 +225,13 @@ export function useEntityItemPage(config = {}) {
 
   /**
    * Extract entity ID from route params
-   * Supports custom getId function or param name
+   * Uses manager.idField as route param name (single source of truth)
+   * Supports custom getId function for special cases
    */
   const entityId = computed(() => {
     if (getId) return getId()
-    return route.params[idParam] || route.params.id || route.params.key || null
+    // Use manager.idField as route param name, with fallbacks for common patterns
+    return route.params[manager.idField] || route.params.id || route.params.key || null
   })
 
   // ============ LOADING ============
@@ -267,12 +261,8 @@ export function useEntityItemPage(config = {}) {
       const transformed = transformLoad(responseData)
       data.value = transformed
 
-      // Share with navigation context for breadcrumb
-      // Level = depth of chain (1 if no parent, 2 if 1 parent, 3 if 2 parents, etc.)
-      if (breadcrumb) {
-        const level = getChainDepth()
-        setBreadcrumbEntity(transformed, level)
-      }
+      // Update active stack
+      stack.setCurrentData(transformed)
 
       if (onLoadSuccess) {
         await onLoadSuccess(transformed)
@@ -361,6 +351,8 @@ export function useEntityItemPage(config = {}) {
     // References (for parent composables)
     manager,
     orchestrator,
-    setBreadcrumbEntity
+
+    // Active navigation stack (unified context)
+    stack
   }
 }

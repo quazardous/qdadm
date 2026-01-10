@@ -1,45 +1,40 @@
 /**
- * useCurrentEntity - Share page entity data with navigation context (breadcrumb)
+ * @deprecated Use useActiveStack() instead
  *
- * When a page loads an entity, it calls setBreadcrumbEntity() to share
- * the data with AppLayout for breadcrumb display.
+ * Legacy composable for setting breadcrumb entity data.
+ * This has been replaced by the activeStack system.
  *
- * Usage in a detail page:
+ * Migration:
  * ```js
+ * // Before (deprecated)
  * const { setBreadcrumbEntity } = useCurrentEntity()
+ * setBreadcrumbEntity(data)
  *
- * async function loadProduct() {
- *   product.value = await productsManager.get(productId)
- *   setBreadcrumbEntity(product.value)  // Level 1 (main entity)
- * }
- * ```
- *
- * For nested routes with parent/child entities:
- * ```js
- * // Parent page loaded first
- * setBreadcrumbEntity(book, 1)  // Level 1: the book
- *
- * // Child page
- * setBreadcrumbEntity(loan, 2)  // Level 2: the loan under the book
+ * // After
+ * const stack = useActiveStack()
+ * stack.setCurrentData(data)
  * ```
  */
-import { inject } from 'vue'
+import { useActiveStack } from '../chain/useActiveStack.js'
 
 /**
- * Composable to share page entity data with breadcrumb
- * @returns {{ setBreadcrumbEntity: (data: object, level?: number) => void }}
+ * @deprecated Use useActiveStack() instead
  */
 export function useCurrentEntity() {
-  const setBreadcrumbEntityFn = inject('qdadmSetBreadcrumbEntity', null)
+  console.warn('[qdadm] useCurrentEntity is deprecated. Use useActiveStack() instead.')
+
+  const stack = useActiveStack()
 
   /**
-   * Set entity data for breadcrumb at a specific level
-   * @param {object} data - Entity data
-   * @param {number} level - Breadcrumb level (1 = main entity, 2 = child, etc.)
+   * @deprecated Use stack.setCurrentData() instead
    */
   function setBreadcrumbEntity(data, level = 1) {
-    if (setBreadcrumbEntityFn) {
-      setBreadcrumbEntityFn(data, level)
+    if (level === 1) {
+      stack.setCurrentData(data)
+    } else {
+      // For parent levels, use setEntityData with entity name
+      // But we don't have entity name here - just set current
+      stack.setCurrentData(data)
     }
   }
 
@@ -48,6 +43,6 @@ export function useCurrentEntity() {
 
   return {
     setBreadcrumbEntity,
-    setCurrentEntity  // deprecated alias
+    setCurrentEntity
   }
 }

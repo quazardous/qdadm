@@ -65,7 +65,7 @@
 import { ref, computed, watch, onMounted, inject, provide } from 'vue'
 import { useBareForm } from './useBareForm'
 import { useHooks } from './useHooks'
-import { useCurrentEntity } from './useCurrentEntity'
+import { useActiveStack } from '../chain/useActiveStack.js'
 import { deepClone } from '../utils/transformers'
 
 export function useForm(options = {}) {
@@ -94,8 +94,8 @@ export function useForm(options = {}) {
   // Get HookRegistry for form:alter hook (optional, may not exist in tests)
   const hooks = useHooks()
 
-  // Share entity data with navigation context (for breadcrumb)
-  const { setCurrentEntity } = useCurrentEntity()
+  // Active stack for navigation context
+  const stack = useActiveStack()
 
   // Read config from manager with option overrides
   const routePrefix = options.routePrefix ?? manager.routePrefix
@@ -245,8 +245,8 @@ export function useForm(options = {}) {
       originalData.value = deepClone(data)
       takeSnapshot()
 
-      // Share with navigation context for breadcrumb
-      setCurrentEntity(data)
+      // Update active stack
+      stack.setCurrentData(data)
 
       // Invoke form:alter hooks after data is loaded
       await invokeFormAlterHook()
@@ -305,7 +305,7 @@ export function useForm(options = {}) {
         router.push({ name: routePrefix })
       } else if (!isEdit.value && redirectOnCreate) {
         // Redirect to edit mode after create
-        const newId = responseData.id || responseData.key
+        const newId = responseData[manager.idField]
         router.replace({ name: `${routePrefix}-edit`, params: { id: newId } })
       }
 

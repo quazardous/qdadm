@@ -121,15 +121,14 @@ export function useEntityItemFormPage(config = {}) {
   const confirm = useConfirm()
 
   // Use useEntityItemPage for common infrastructure
-  // (orchestrator, manager, entityId, provide('mainEntity'), breadcrumb)
+  // (orchestrator, manager, entityId, provide('mainEntity'), stack)
   const itemPage = useEntityItemPage({
     entity,
     loadOnMount: false,  // Form controls its own loading
-    breadcrumb: false,   // Form calls setBreadcrumbEntity manually after transform
     getId
   })
 
-  const { manager, orchestrator, entityId, setBreadcrumbEntity, getInitialDataWithParent, parentConfig, parentId, parentData, parentChain, getChainDepth } = itemPage
+  const { manager, orchestrator, entityId, getInitialDataWithParent, parentConfig, parentId, parentData, parentChain, getChainDepth, stack } = itemPage
 
   // Read config from manager with option overrides
   const entityName = config.entityName ?? manager.label
@@ -251,8 +250,8 @@ export function useEntityItemFormPage(config = {}) {
       originalData.value = deepClone(transformed)
       takeSnapshot()
 
-      // Share with navigation context for breadcrumb
-      setBreadcrumbEntity(transformed)
+      // Update active stack
+      stack.setCurrentData(transformed)
 
       if (onLoadSuccess) {
         await onLoadSuccess(transformed)
@@ -328,14 +327,14 @@ export function useEntityItemFormPage(config = {}) {
         router.push(listRoute)
       } else if (!isEdit.value) {
         // "Create" without close: navigate to edit route for the created entity
-        const createdId = responseData?.id || responseData?.uuid
+        const createdId = responseData?.[manager.idField]
         if (createdId) {
-          // Build edit route: replace 'create' suffix with ':id/edit'
+          // Build edit route: replace 'create' suffix with 'edit'
           const currentRouteName = route.name || ''
           const editRouteName = currentRouteName.replace(/(-create|-new)$/, '-edit')
           router.push({
             name: editRouteName,
-            params: { ...route.params, id: createdId }
+            params: { ...route.params, [manager.idField]: createdId }
           })
         }
       }
@@ -1290,7 +1289,10 @@ export function useEntityItemFormPage(config = {}) {
 
     // FormPage integration
     props: formProps,
-    events: formEvents
+    events: formEvents,
+
+    // Active navigation stack (unified context)
+    stack
   }
 
   // Auto-generate fields from manager schema if enabled

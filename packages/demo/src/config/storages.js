@@ -10,7 +10,7 @@ import { authAdapter } from '../adapters/authAdapter'
 // ============================================================================
 // FIXTURES VERSIONING
 // ============================================================================
-const FIXTURES_VERSION = 1
+const FIXTURES_VERSION = 2  // Bump: books now uses bookId instead of id
 const FIXTURES_VERSION_KEY = 'qdadm_demo_fixtures_version'
 
 const storedVersion = localStorage.getItem(FIXTURES_VERSION_KEY)

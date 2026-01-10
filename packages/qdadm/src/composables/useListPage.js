@@ -1249,11 +1249,11 @@ export function useListPage(config = {}) {
   }
 
   function goToEdit(item) {
-    router.push({ name: `${routePrefix}-edit`, params: { id: item[resolvedDataKey] } })
+    router.push({ name: `${routePrefix}-edit`, params: { [manager.idField]: item[resolvedDataKey] } })
   }
 
   function goToShow(item) {
-    router.push({ name: `${routePrefix}-show`, params: { id: item[resolvedDataKey] } })
+    router.push({ name: `${routePrefix}-show`, params: { [manager.idField]: item[resolvedDataKey] } })
   }
 
   // ============ DELETE ============

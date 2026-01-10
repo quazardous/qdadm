@@ -2,7 +2,7 @@
  * useNavContext - Route-aware navigation context for breadcrumb and navlinks
  *
  * Uses semantic breadcrumb as the source of truth for navigation structure.
- * Semantic breadcrumb is computed from route path and registered routes.
+ * Entity data comes from activeStack (set by useEntityItemPage/useForm).
  *
  * Semantic breadcrumb kinds:
  *   - entity-list: Entity collection (e.g., /books)
@@ -20,6 +20,7 @@ import { ref, computed, watch, inject } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { getSiblingRoutes } from '../module/moduleRegistry.js'
 import { useSemanticBreadcrumb } from './useSemanticBreadcrumb.js'
+import { useActiveStack } from '../chain/useActiveStack.js'
 
 export function useNavContext(options = {}) {
   const route = useRoute()
@@ -32,11 +33,8 @@ export function useNavContext(options = {}) {
   const orchestrator = inject('qdadmOrchestrator', null)
   const homeRouteName = inject('qdadmHomeRoute', null)
 
-  // Breadcrumb entity data - multi-level Map from AppLayout
-  // Updated by pages via setBreadcrumbEntity(data, level)
-  // Can be passed directly (for layout component that provides AND uses breadcrumb)
-  // or injected from parent (for child pages)
-  const breadcrumbEntities = options.breadcrumbEntities ?? inject('qdadmBreadcrumbEntities', null)
+  // Active stack for entity data (replaces legacy breadcrumbEntities)
+  const stack = useActiveStack()
 
   function getManager(entityName) {
     return orchestrator?.get(entityName)
@@ -124,57 +122,35 @@ export function useNavContext(options = {}) {
   })
 
   // ============================================================================
-  // ENTITY DATA FETCHING
+  // ENTITY DATA FROM ACTIVESTACK
   // ============================================================================
 
   const chainData = ref(new Map())  // Map: chainIndex -> entityData
 
   /**
-   * Fetch entity data for all 'item' segments in the chain
+   * Build chainData from activeStack levels
    *
-   * For the LAST item (current entity):
-   * - Uses entityData if provided by the page via setCurrentEntity()
-   * - Does NOT fetch automatically - page is responsible for providing data
-   * - Breadcrumb shows "..." until page provides the data
-   *
-   * For PARENT items: always fetches from manager
+   * ActiveStack is populated by useEntityItemPage/useForm when pages load.
+   * Each level in the stack corresponds to an entity in the navigation chain.
    */
-  // Watch navChain and breadcrumbEntities to populate chainData
-  // breadcrumbEntities is a ref to Map: level -> entityData (set by pages via setBreadcrumbEntity)
-  // Note: watch ref directly, not () => ref.value, for proper reactivity tracking
-  watch([navChain, breadcrumbEntities], async ([chain, entitiesMap]) => {
-    // Build new Map (reassignment triggers Vue reactivity, Map.set() doesn't)
+  watch([navChain, stack.levels], ([chain, levels]) => {
+    // Build new Map (reassignment triggers Vue reactivity)
     const newChainData = new Map()
 
-    // Count item segments to determine their level (1-based)
-    let itemLevel = 0
+    // Count item segments to match with stack levels
+    let itemIndex = 0
 
     for (let i = 0; i < chain.length; i++) {
       const segment = chain[i]
       if (segment.type !== 'item') continue
 
-      itemLevel++
-      const isLastItem = !chain.slice(i + 1).some(s => s.type === 'item')
-
-      // Check if page provided data for this level via setBreadcrumbEntity
-      const providedData = entitiesMap?.get(itemLevel)
-      if (providedData) {
-        newChainData.set(i, providedData)
-        continue
+      // Find matching data in activeStack by entity name
+      const stackLevel = levels.find(l => l.entity === segment.entity && String(l.id) === String(segment.id))
+      if (stackLevel?.data) {
+        newChainData.set(i, stackLevel.data)
       }
 
-      // For items without provided data:
-      // - Last item: show "..." (page should call setBreadcrumbEntity)
-      // - Parent items: fetch from manager
-      if (!isLastItem) {
-        try {
-          const data = await segment.manager.get(segment.id)
-          newChainData.set(i, data)
-        } catch (e) {
-          console.warn(`[useNavContext] Failed to fetch ${segment.entity}:${segment.id}`, e)
-        }
-      }
-      // Last item without data will show "..." in breadcrumb
+      itemIndex++
     }
 
     // Assign new Map to trigger reactivity
@@ -216,10 +192,11 @@ export function useNavContext(options = {}) {
       } else if (segment.type === 'item') {
         const data = chainData.value.get(i)
         const label = data && segment.manager ? segment.manager.getEntityLabel(data) : '...'
+        const idField = segment.manager?.idField || 'id'
 
         items.push({
           label,
-          to: isLast ? null : (segment.routeName && routeExists(segment.routeName) ? { name: segment.routeName, params: { id: segment.id } } : null)
+          to: isLast ? null : (segment.routeName && routeExists(segment.routeName) ? { name: segment.routeName, params: { [idField]: segment.id } } : null)
         })
       } else if (segment.type === 'create') {
         items.push({
@@ -262,10 +239,10 @@ export function useNavContext(options = {}) {
     const parentRouteName = itemRoute || getDefaultItemRoute(parentManager)
     const isOnParent = route.name === parentRouteName
 
-    // Details link
+    // Details link - use manager's idField for param name
     const links = [{
       label: 'Details',
-      to: { name: parentRouteName, params: { id: parentId.value } },
+      to: { name: parentRouteName, params: { [parentManager.idField]: parentId.value } },
       active: isOnParent
     }]
 

@@ -63,6 +63,7 @@ import { defaultStorageResolver } from '../entity/storage/factory.js'
 import { createDeferredRegistry } from '../deferred/DeferredRegistry.js'
 import { createEventRouter } from './EventRouter.js'
 import { createSSEBridge } from './SSEBridge.js'
+import { ActiveStack } from '../chain/ActiveStack.js'
 
 // Debug imports are dynamic to enable tree-shaking in production
 // When debugBar: false/undefined, no debug code is bundled
@@ -198,6 +199,7 @@ export class Kernel {
     this._createSignalBus()
     this._createHookRegistry()
     this._createZoneRegistry()
+    this._createActiveStack()
     this._createDeferredRegistry()
     // 2. Create orchestrator early (modules need it for ctx.entity())
     this._createOrchestrator()
@@ -248,6 +250,7 @@ export class Kernel {
     this._createSignalBus()
     this._createHookRegistry()
     this._createZoneRegistry()
+    this._createActiveStack()
     this._createDeferredRegistry()
     // 2. Create orchestrator early (modules need it for ctx.entity())
     this._createOrchestrator()
@@ -869,6 +872,14 @@ export class Kernel {
   }
 
   /**
+   * Create active stack for navigation state
+   * Holds the current stack of active items (entity, id, data, label).
+   */
+  _createActiveStack() {
+    this.activeStack = new ActiveStack()
+  }
+
+  /**
    * Create deferred registry for async service loading
    * Enables loose coupling between services and components via named promises.
    */
@@ -1040,6 +1051,9 @@ export class Kernel {
     // Zone registry injection
     app.provide('qdadmZoneRegistry', this.zoneRegistry)
 
+    // Active stack injection (for navigation context)
+    app.provide('qdadmActiveStack', this.activeStack)
+
     // Dev mode: expose qdadm services on window for DevTools inspection
     if (this.options.debug && typeof window !== 'undefined') {
       window.__qdadm = {
@@ -1048,6 +1062,7 @@ export class Kernel {
         signals: this.signals,
         hooks: this.hookRegistry,
         zones: this.zoneRegistry,
+        activeStack: this.activeStack,
         deferred: this.deferred,
         router: this.router,
         // Helper to get a manager quickly

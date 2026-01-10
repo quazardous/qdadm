@@ -5,6 +5,40 @@ All notable changes to qdadm will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.52.0] - 2026-01-10
+
+### Added
+- **ActiveStack system**: New centralized navigation stack management
+  - `ActiveStack` class: Simple reactive container for navigation stack
+  - `useActiveStack` composable: Builds stack from route, provides data setters
+  - Route is single source of truth: `meta.entity`, `meta.parent`, `params`
+  - Stack rebuilt on every route change with structure + IDs
+  - Data populated by pages via `setCurrentData()` and `setEntityData()`
+
+### Changed
+- **Breadcrumb data source**: Now uses `activeStack` instead of legacy `breadcrumbEntities`
+  - `useNavContext` watches `stack.levels` for entity data
+  - Breadcrumb shows "..." until page loads and sets data
+- **PageNav simplified**: Only provides navlinks, breadcrumb handled by `useNavContext`
+  - Removed breadcrumb computation from PageNav
+  - Kept sibling/child navlinks logic
+- **useEntityItemPage**: Uses `stack.setCurrentData()` and `stack.setEntityData()`
+- **useForm**: Uses `stack.setCurrentData()` for breadcrumb updates
+
+### Deprecated
+- **useCurrentEntity**: Replaced by `useActiveStack().setCurrentData()`
+  - Shows console warning, redirects to activeStack internally
+  - Will be removed in future version
+
+### Removed
+- **setBreadcrumbEntity system**: Legacy breadcrumb entity management removed from AppLayout
+  - No more `qdadmSetBreadcrumbEntity` / `qdadmBreadcrumbEntities` provides
+  - Pages should use `useActiveStack` instead
+
+### Fixed
+- **Parent chain traversal**: Fixed bug where `parentConfig.parent` was incorrectly read from manager instead of route config
+- **Router param names**: Use `manager.idField` dynamically instead of hardcoded `id` in navlinks and breadcrumb
+
 ## [0.51.8] - 2026-01-10
 
 ### Fixed

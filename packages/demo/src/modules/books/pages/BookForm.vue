@@ -15,6 +15,7 @@
  */
 import { useEntityItemFormPage, FormPage, FormField, FormInput, Zone, PageNav } from 'qdadm'
 
+// Route param uses manager.idField ('bookId') automatically
 const form = useEntityItemFormPage({ entity: 'books' })
 form.generateFields()
 form.addSaveAction({ andClose: true })

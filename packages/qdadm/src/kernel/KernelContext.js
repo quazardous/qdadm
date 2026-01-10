@@ -25,7 +25,7 @@
  */
 
 import { managerFactory } from '../entity/factory.js'
-import { registry } from '../module/moduleRegistry.js'
+import { registry, getRoutes } from '../module/moduleRegistry.js'
 import { UsersManager } from '../security/UsersManager.js'
 
 export class KernelContext {
@@ -320,6 +320,7 @@ export class KernelContext {
    * Generates routes following qdadm conventions:
    * - Entity 'books' → route prefix 'book'
    * - List: /books → name 'book'
+   * - Show: /books/:id → name 'book-show' (optional)
    * - Create: /books/create → name 'book-create'
    * - Edit: /books/:id/edit → name 'book-edit'
    *
@@ -328,6 +329,7 @@ export class KernelContext {
    * @param {string} entity - Entity name (plural, e.g., 'books', 'users')
    * @param {object} pages - Page components (lazy imports)
    * @param {Function} pages.list - List page: () => import('./pages/List.vue')
+   * @param {Function} [pages.show] - Show page (read-only detail view)
    * @param {Function} [pages.form] - Single form for create+edit (recommended)
    * @param {Function} [pages.create] - Separate create page (alternative to form)
    * @param {Function} [pages.edit] - Separate edit page (alternative to form)
@@ -336,12 +338,22 @@ export class KernelContext {
    * @param {string} options.nav.section - Nav section (e.g., 'Library')
    * @param {string} [options.nav.icon] - Icon class (e.g., 'pi pi-book')
    * @param {string} [options.nav.label] - Display label (default: capitalized entity)
-   * @param {string} [options.routePrefix] - Override route prefix (default: singularized entity)
+   * @param {string} [options.routePrefix] - Override route prefix (default: singularized entity, or parentPrefix-singularized for children)
+   * @param {string} [options.parentRoute] - Parent route name for child entities (e.g., 'book' to mount under books/:bookId)
+   * @param {string} [options.foreignKey] - Foreign key field linking to parent (e.g., 'book_id')
+   * @param {string} [options.label] - Label for navlinks (defaults to entity labelPlural from manager)
    * @returns {this}
    *
    * @example
    * // Minimal - list only (read-only entity)
    * ctx.crud('countries', { list: () => import('./pages/CountriesList.vue') })
+   *
+   * @example
+   * // List + show (read-only with detail view)
+   * ctx.crud('countries', {
+   *   list: () => import('./pages/CountriesList.vue'),
+   *   show: () => import('./pages/CountryShow.vue')
+   * })
    *
    * @example
    * // Single form pattern (recommended)
@@ -350,6 +362,17 @@ export class KernelContext {
    *   form: () => import('./pages/BookForm.vue')
    * }, {
    *   nav: { section: 'Library', icon: 'pi pi-book' }
+   * })
+   *
+   * @example
+   * // Child entity mounted under parent route
+   * ctx.crud('loans', {
+   *   list: () => import('./pages/BookLoans.vue'),
+   *   form: () => import('./pages/BookLoanForm.vue')
+   * }, {
+   *   parentRoute: 'book',
+   *   foreignKey: 'book_id',
+   *   routePrefix: 'book-loan'  // Optional: defaults to 'book-loan'
    * })
    *
    * @example
@@ -363,24 +386,76 @@ export class KernelContext {
    * })
    */
   crud(entity, pages, options = {}) {
-    // Derive route prefix: 'books' → 'book', 'countries' → 'country'
-    const routePrefix = options.routePrefix || this._singularize(entity)
+    // Entity name is always used for permission binding
+    // Manager may not be registered yet (child entity before parent module loads)
+    const entityBinding = entity
+    const manager = this._kernel.orchestrator?.isRegistered(entity)
+      ? this._kernel.orchestrator.get(entity)
+      : null
+    const idParam = manager?.idField || 'id'
 
-    // Check if entity is actually registered in orchestrator (for permission binding)
-    // If not registered, don't bind entity to routes/nav (allows pure route registration)
-    const hasEntity = this._kernel.orchestrator?.isRegistered(entity) ?? false
-    const entityBinding = hasEntity ? entity : undefined
+    // Handle parent route configuration
+    let basePath = entity
+    let parentConfig = null
+    let parentRoutePrefix = null
+
+    if (options.parentRoute) {
+      // Find parent route info from registered routes
+      const parentRouteName = options.parentRoute
+      const allRoutes = getRoutes()
+      const parentRoute = allRoutes.find(r => r.name === parentRouteName)
+
+      if (parentRoute) {
+        // Get parent entity from route meta
+        const parentEntityName = parentRoute.meta?.entity
+        const parentManager = parentEntityName
+          ? this._kernel.orchestrator?.get(parentEntityName)
+          : null
+        const parentIdParam = parentManager?.idField || 'id'
+
+        // Build base path: parentPath/:parentId/entity
+        // e.g., books/:bookId/loans
+        const parentBasePath = parentRoute.path.replace(/\/(create|:.*)?$/, '') || parentEntityName
+        basePath = `${parentBasePath}/:${parentIdParam}/${entity}`
+
+        // Build parent config for route meta
+        parentConfig = {
+          entity: parentEntityName,
+          param: parentIdParam,
+          foreignKey: options.foreignKey || `${this._singularize(parentEntityName)}_id`
+        }
+
+        // Store parent route prefix for derived naming
+        parentRoutePrefix = parentRouteName
+      }
+    }
+
+    // Derive route prefix
+    // - With parent: 'book' + '-loan' → 'book-loan'
+    // - Without parent: 'books' → 'book'
+    const routePrefix = options.routePrefix
+      || (parentRoutePrefix ? `${parentRoutePrefix}-${this._singularize(entity)}` : this._singularize(entity))
 
     // Build routes array
     const routes = []
 
-    // List route (always required)
+    // List route
     if (pages.list) {
       routes.push({
         path: '',
         name: routePrefix,
         component: pages.list,
         meta: { layout: 'list' }
+      })
+    }
+
+    // Show route (read-only detail view)
+    if (pages.show) {
+      routes.push({
+        path: `:${idParam}`,
+        name: `${routePrefix}-show`,
+        component: pages.show,
+        meta: { layout: 'show' }
       })
     }
 
@@ -393,7 +468,7 @@ export class KernelContext {
         component: pages.form
       })
       routes.push({
-        path: ':id/edit',
+        path: `:${idParam}/edit`,
         name: `${routePrefix}-edit`,
         component: pages.form
       })
@@ -408,21 +483,35 @@ export class KernelContext {
       }
       if (pages.edit) {
         routes.push({
-          path: ':id/edit',
+          path: `:${idParam}/edit`,
           name: `${routePrefix}-edit`,
           component: pages.edit
         })
       }
     }
 
-    // Register routes (with entity binding only if entity exists)
-    const routeOpts = entityBinding ? { entity: entityBinding } : {}
-    this.routes(entity, routes, routeOpts)
+    // Build route options
+    const routeOpts = {}
+    // Set entity if:
+    // 1. Entity is registered (manager exists), OR
+    // 2. This is a child route (parentConfig) - needs entity binding for permission checks
+    if (manager || parentConfig) {
+      routeOpts.entity = entityBinding
+    }
+    if (parentConfig) {
+      routeOpts.parent = parentConfig
+    }
+    if (options.label) {
+      routeOpts.label = options.label
+    }
+
+    // Register routes
+    this.routes(basePath, routes, routeOpts)
 
     // Register route family for active state detection
     this.routeFamily(routePrefix, [`${routePrefix}-`])
 
-    // Register nav item if provided
+    // Register nav item if provided (typically not for child entities)
     if (options.nav) {
       const label = options.nav.label || this._capitalize(entity)
       const navItem = {
@@ -431,7 +520,9 @@ export class KernelContext {
         icon: options.nav.icon,
         label
       }
-      if (entityBinding) {
+      // Only set entity on nav item if registered (to avoid permission check failure)
+      // Routes always get entity binding, but nav items need it to be resolvable
+      if (manager) {
         navItem.entity = entityBinding
       }
       this.navItem(navItem)

@@ -1,150 +1,49 @@
 <script setup>
 /**
- * PageNav - Route-aware navigation provider for breadcrumb + navlinks
+ * PageNav - Navigation provider for navlinks (child/sibling routes)
  *
- * This component doesn't render anything visible. Instead, it provides
- * breadcrumb items and navlinks to AppLayout via provide/inject.
+ * This component provides navlinks to AppLayout via provide/inject.
+ * Breadcrumb is now handled automatically by useNavContext + activeStack.
  *
  * Layout (rendered in AppLayout):
  *   Books > "Dune"                    Details | Loans | Reviews
- *     ↑ breadcrumb (left)                   ↑ navlinks (right)
+ *     ↑ breadcrumb (from useNavContext)      ↑ navlinks (from PageNav)
  *
  * Auto-detects from current route:
- * - Breadcrumb: parent chain from route.meta.parent
- * - Navlinks: sibling routes (same parent entity + param)
+ * - Navlinks: sibling routes (same parent entity + param) or children routes
  *
  * Props:
- * - entity: Current entity data (for dynamic labels in breadcrumb)
- * - parentEntity: Parent entity data (for parent label in breadcrumb)
+ * - showDetailsLink: Show "Details" link in navlinks (default: false)
  */
-import { computed, ref, watch, inject } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { computed, watch, inject } from 'vue'
+import { useRoute } from 'vue-router'
 import { getSiblingRoutes, getChildRoutes } from '../../module/moduleRegistry.js'
 import { useOrchestrator } from '../../orchestrator/useOrchestrator.js'
 
-// Inject override refs from AppLayout
-const breadcrumbOverride = inject('qdadmBreadcrumbOverride', null)
+// Inject override ref from AppLayout
 const navlinksOverride = inject('qdadmNavlinksOverride', null)
-const homeRouteName = inject('qdadmHomeRoute', null)
-// Entity data set by useEntityItemPage via setBreadcrumbEntity
-const breadcrumbEntities = inject('qdadmBreadcrumbEntities', null)
 
 const props = defineProps({
-  entity: { type: Object, default: null },
-  parentEntity: { type: Object, default: null },
   // Show "Details" link in navlinks (default: false since breadcrumb shows current page)
   showDetailsLink: { type: Boolean, default: false }
 })
 
 const route = useRoute()
-const router = useRouter()
 const { getManager } = useOrchestrator()
 
 // Parent config from route meta
 const parentConfig = computed(() => route.meta?.parent)
 
-// Parent entity data (loaded if not provided via prop)
-const parentData = ref(props.parentEntity)
-
-// Load parent entity if needed
-watch(() => [parentConfig.value, route.params], async () => {
-  if (!parentConfig.value || props.parentEntity) return
-
-  const { entity: parentEntityName, param } = parentConfig.value
-  const parentId = route.params[param]
-
-  if (parentEntityName && parentId) {
-    try {
-      const manager = getManager(parentEntityName)
-      if (manager) {
-        parentData.value = await manager.get(parentId)
-      }
-    } catch (e) {
-      console.warn('[PageNav] Failed to load parent entity:', e)
-    }
-  }
-}, { immediate: true })
-
-// Home breadcrumb item
-const homeItem = computed(() => {
-  if (!homeRouteName) return null
-  const routes = router.getRoutes()
-  if (!routes.some(r => r.name === homeRouteName)) return null
-  const label = homeRouteName === 'dashboard' ? 'Dashboard' : 'Home'
-  return { label, to: { name: homeRouteName }, icon: 'pi pi-home' }
-})
-
-// Build breadcrumb items
-const breadcrumbItems = computed(() => {
-  const items = []
-
-  // Always start with Home if configured
-  if (homeItem.value) {
-    items.push(homeItem.value)
-  }
-
-  if (!parentConfig.value) {
-    // No parent - use simple breadcrumb from entity
-    const entityName = route.meta?.entity
-    if (entityName) {
-      const manager = getManager(entityName)
-      if (manager) {
-        // Entity list link
-        items.push({
-          label: manager.labelPlural || manager.name,
-          to: { name: manager.routePrefix }
-        })
-
-        // If on detail page (has :id param), add current entity item
-        const entityId = route.params.id
-        if (entityId) {
-          // Get entity data from props or from breadcrumbEntities (set by useEntityItemPage)
-          const entityData = props.entity || breadcrumbEntities?.value?.get(1)
-          const entityLabel = entityData
-            ? manager.getEntityLabel(entityData)
-            : '...'
-          items.push({ label: entityLabel })
-        }
-      }
-    }
-    return items
-  }
-
-  // Has parent - build parent chain
-  const { entity: parentEntityName, param, itemRoute } = parentConfig.value
-  const parentId = route.params[param]
-  const parentManager = getManager(parentEntityName)
-
-  if (parentManager) {
-    // Parent list
-    items.push({
-      label: parentManager.labelPlural || parentManager.name,
-      to: { name: parentManager.routePrefix }
-    })
-
-    // Parent item (with label from data)
-    // Prefer breadcrumbEntities (set by useEntityItemPage) over local parentData
-    const parentEntityData = breadcrumbEntities?.value?.get(1) || parentData.value
-    const parentLabel = parentEntityData
-      ? parentManager.getEntityLabel(parentEntityData)
-      : '...'
-    const defaultSuffix = parentManager.readOnly ? '-show' : '-edit'
-    const parentRouteName = itemRoute || `${parentManager.routePrefix}${defaultSuffix}`
-
-    items.push({
-      label: parentLabel,
-      to: { name: parentRouteName, params: { id: parentId } }
-    })
-  }
-
-  // Current entity (last item, no link)
-  const currentLabel = route.meta?.navLabel
-  if (currentLabel) {
-    items.push({ label: currentLabel })
-  }
-
-  return items
-})
+/**
+ * Get default item route for an entity manager
+ * - Read-only entities: use -show suffix
+ * - Editable entities: use -edit suffix
+ */
+function getDefaultItemRoute(manager) {
+  if (!manager) return null
+  const suffix = manager.readOnly ? '-show' : '-edit'
+  return `${manager.routePrefix}${suffix}`
+}
 
 // Sibling navlinks (routes with same parent)
 const siblingNavlinks = computed(() => {
@@ -194,13 +93,15 @@ const childNavlinks = computed(() => {
 
   if (navRoutes.length === 0) return []
 
-  const entityId = route.params.id
+  // Get current entity's manager to determine idField
+  const currentManager = getManager(entityName)
+  const entityId = route.params[currentManager?.idField || 'id']
 
   // Build navlinks to child routes
   return navRoutes.map(childRoute => {
     const childManager = childRoute.meta?.entity ? getManager(childRoute.meta.entity) : null
     const label = childRoute.meta?.navLabel || childManager?.labelPlural || childRoute.name
-    const parentParam = childRoute.meta?.parent?.param || 'id'
+    const parentParam = childRoute.meta?.parent?.param || currentManager?.idField || 'id'
 
     return {
       label,
@@ -210,7 +111,7 @@ const childNavlinks = computed(() => {
   })
 })
 
-// Combined navlinks with "Details" link
+// Combined navlinks with optional "Details" link
 const allNavlinks = computed(() => {
   // Case 1: On a child route - show siblings + optional Details link to parent
   if (parentConfig.value) {
@@ -218,19 +119,18 @@ const allNavlinks = computed(() => {
     const parentId = route.params[param]
     const parentManager = getManager(parentEntityName)
 
-    if (!parentManager) return siblingNavlinks.value
+    // Guard: need valid manager and parentId to build links
+    if (!parentManager || !parentId) return []
 
     // Details link is optional since breadcrumb already shows parent
     if (props.showDetailsLink) {
-      const defaultSuffix = parentManager.readOnly ? '-show' : '-edit'
-      const parentRouteName = itemRoute || `${parentManager.routePrefix}${defaultSuffix}`
+      const parentRouteName = itemRoute || getDefaultItemRoute(parentManager)
       const isOnParentRoute = route.name === parentRouteName
 
       // Details link to parent item page
-      // CONVENTION: Entity item routes MUST use :id as param name (e.g., /books/:id)
       const detailsLink = {
         label: 'Details',
-        to: { name: parentRouteName, params: { id: parentId } },
+        to: { name: parentRouteName, params: { [parentManager.idField]: parentId } },
         active: isOnParentRoute
       }
 
@@ -257,26 +157,14 @@ const allNavlinks = computed(() => {
   return []
 })
 
-// Sync breadcrumb and navlinks to AppLayout via provide/inject
-// Watch computed values + route changes + entity data to ensure updates
-watch([breadcrumbItems, () => route.fullPath, breadcrumbEntities], ([items]) => {
-  if (breadcrumbOverride) {
-    breadcrumbOverride.value = items
-  }
-}, { immediate: true, deep: true })
-
+// Sync navlinks to AppLayout via provide/inject
 watch([allNavlinks, () => route.fullPath], ([links]) => {
   if (navlinksOverride) {
     navlinksOverride.value = links
   }
 }, { immediate: true })
-
-// Note: We intentionally do NOT clear overrides in onUnmounted.
-// When navigating between routes, the new PageNav's watch will overwrite the values.
-// Clearing in onUnmounted causes a race condition where the old PageNav clears
-// AFTER the new PageNav has already set its values.
 </script>
 
 <template>
-  <!-- PageNav provides data to AppLayout via inject, renders nothing -->
+  <!-- PageNav provides navlinks to AppLayout via inject, renders nothing -->
 </template>

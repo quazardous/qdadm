@@ -38,6 +38,9 @@ export * from './module/index.js'
 // Zones
 export * from './zones/index.js'
 
+// Chain (active navigation stack)
+export * from './chain/index.js'
+
 // Hooks
 export * from './hooks/index.js'
 

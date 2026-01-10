@@ -2,9 +2,9 @@
  * Module definitions for demo app
  *
  * Module System v2 - Class-based modules
+ * Note: ToastBridgeModule is auto-injected by Kernel, don't add it here
  */
 
-import { ToastBridgeModule } from 'qdadm'
 import { SecurityModule } from 'qdadm/security'
 import { BooksModule } from '../modules/books/BooksModule'
 import { UsersModule } from '../modules/users/UsersModule'
@@ -17,7 +17,6 @@ import { FavoritesModule } from '../modules/favorites/FavoritesModule'
 import { JsonPlaceholderModule } from '../modules/jsonplaceholder/JsonPlaceholderModule'
 
 export const moduleDefs = [
-  ToastBridgeModule,
   SecurityModule,
   BooksModule,
   UsersModule,

@@ -159,35 +159,16 @@ function handleLogout() {
 const slots = useSlots()
 const hasSlotContent = computed(() => !!slots.default)
 
-// Breadcrumb entity data - multi-level support for parent/child entities
-// Map: level -> entityData (level 1 = parent, level 2 = child, etc.)
-const breadcrumbEntities = ref(new Map())
-
-/**
- * Set entity data for breadcrumb at a specific level
- * @param {object} data - Entity data
- * @param {number} level - Breadcrumb level (1 = main entity, 2 = child, etc.)
- */
-function setBreadcrumbEntity(data, level = 1) {
-  const newMap = new Map(breadcrumbEntities.value)
-  newMap.set(level, data)
-  breadcrumbEntities.value = newMap
-}
-
-provide('qdadmSetBreadcrumbEntity', setBreadcrumbEntity)
-provide('qdadmBreadcrumbEntities', breadcrumbEntities)
-
-// Clear entity data and overrides on route change (before new page mounts)
+// Clear overrides on route change (before new page mounts)
 // This ensures list pages get default breadcrumb, detail pages can override via PageNav
 watch(() => route.fullPath, () => {
-  breadcrumbEntities.value = new Map()
   breadcrumbOverride.value = null
   navlinksOverride.value = null
 })
 
 // Navigation context (breadcrumb + navlinks from route config)
-// Pass breadcrumbEntities directly since we're in the same component that provides it
-const { breadcrumb: defaultBreadcrumb, navlinks: defaultNavlinks } = useNavContext({ breadcrumbEntities })
+// Entity data comes from activeStack (populated by useEntityItemPage/useForm)
+const { breadcrumb: defaultBreadcrumb, navlinks: defaultNavlinks } = useNavContext()
 
 // Allow child pages to override breadcrumb/navlinks via provide/inject
 const breadcrumbOverride = ref(null)

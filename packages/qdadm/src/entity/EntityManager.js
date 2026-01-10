@@ -72,7 +72,9 @@ export class EntityManager {
       parents = {},       // { book: { entity: 'books', foreignKey: 'book_id' } } - multi-parent support
       relations = {},     // { groups: { entity: 'groups', through: 'user_groups' } }
       // Auth adapter (for permission checks)
-      authAdapter = null  // AuthAdapter instance or null (uses PermissiveAuthAdapter)
+      authAdapter = null,  // AuthAdapter instance or null (uses PermissiveAuthAdapter)
+      // Navigation config (for auto-generated menus)
+      nav = {}  // { icon, section, weight, visible }
     } = options
 
     this.name = name
@@ -109,6 +111,9 @@ export class EntityManager {
 
     // Auth adapter (fallback to permissive if not provided)
     this._authAdapter = authAdapter
+
+    // Navigation config (for auto-generated menus via ChainRegistry)
+    this._nav = nav
 
     // HookRegistry reference for lifecycle hooks (set by Orchestrator)
     this._hooks = null
@@ -413,6 +418,16 @@ export class EntityManager {
       return this._labelField(entity)
     }
     return entity[this._labelField] || null
+  }
+
+  /**
+   * Get navigation config for auto-generated menus
+   * Used by ChainRegistry to build nav sections
+   *
+   * @returns {object} Nav config { icon, section, weight, visible }
+   */
+  get nav() {
+    return this._nav || {}
   }
 
   // ============ PERMISSIONS ============

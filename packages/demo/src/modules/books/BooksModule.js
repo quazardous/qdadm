@@ -24,6 +24,7 @@ import { authCheck } from '../../config/storages'
 
 const booksStorage = new MockApiStorage({
   entityName: 'books',
+  idField: 'bookId',
   initialData: booksFixture,
   authCheck
 })
@@ -31,6 +32,7 @@ const booksStorage = new MockApiStorage({
 // Internal storage (no auth check) for other modules to enrich data
 export const booksStorageInternal = new MockApiStorage({
   entityName: 'books',
+  idField: 'bookId',
   initialData: booksFixture
 })
 
@@ -57,6 +59,7 @@ export class BooksModule extends Module {
     // ════════════════════════════════════════════════════════════════════════
     ctx.entity('books', new EntityManager({
       name: 'books',
+      idField: 'bookId',  // Custom ID field name (also used as route param)
       labelField: 'title',
       fields: {
         title: { type: 'text', label: 'Title', required: true, default: '' },
@@ -97,6 +100,7 @@ export class BooksModule extends Module {
     // ROUTES (using ctx.crud helper)
     // ════════════════════════════════════════════════════════════════════════
     // Single form pattern: same component for create & edit
+    // Route param uses manager.idField ('bookId') automatically
     ctx.crud('books', {
       list: () => import('./pages/BookList.vue'),
       form: () => import('./pages/BookForm.vue')  // Handles both create & edit
@@ -128,29 +132,18 @@ export class BooksModule extends Module {
       label: 'Stats'
     })
 
-    // Child route: loans for a specific book
-    // DEMONSTRATES: Parent chain auto-detection
-    // - BookLoans list auto-filters by book_id
-    // - BookLoanForm auto-fills book_id from parent config
-    ctx.routes('books/:bookId/loans', [
-      {
-        path: '',
-        name: 'book-loans',
-        component: () => import('./pages/BookLoans.vue')
-      },
-      {
-        path: 'create',
-        name: 'book-loan-create',
-        component: () => import('./pages/BookLoanForm.vue')
-      }
-    ], {
-      entity: 'loans',
-      parent: {
-        entity: 'books',
-        param: 'bookId',
-        foreignKey: 'book_id'
-      },
-      label: 'Loans'
+    // Child CRUD: loans for a specific book
+    // DEMONSTRATES: ctx.crud() with parentRoute for child entities
+    // - Auto-generates list, create, edit routes under books/:bookId/loans
+    // - Auto-configures parent meta for breadcrumb and foreign key injection
+    ctx.crud('loans', {
+      list: () => import('./pages/BookLoans.vue'),
+      form: () => import('./pages/BookLoanForm.vue')
+    }, {
+      parentRoute: 'book',      // Mount under the 'book' route
+      foreignKey: 'book_id',    // FK field in loans pointing to books
+      label: 'Loans'            // Label for navlinks
+      // routePrefix defaults to 'book-loan' (parentRoute + singular entity)
     })
   }
 }
