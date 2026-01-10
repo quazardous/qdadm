@@ -569,11 +569,12 @@ export class Kernel {
     }
 
     // Build home route
+    // Note: Must have a name to avoid Vue Router warning when parent (_layout) has a name
     let homeRouteConfig
     if (typeof homeRoute === 'object' && homeRoute.component) {
-      homeRouteConfig = { path: '', ...homeRoute }
+      homeRouteConfig = { path: '', name: homeRoute.name || '_home', ...homeRoute }
     } else {
-      homeRouteConfig = { path: '', redirect: { name: homeRoute || 'home' } }
+      homeRouteConfig = { path: '', name: '_home', redirect: { name: homeRoute || 'home' } }
     }
 
     // Collect all module routes

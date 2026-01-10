@@ -186,6 +186,34 @@ export function useListPage(config = {}) {
   const parentLoading = computed(() => parentPage?.loading.value || false)
   const parentChain = computed(() => parentPage?.parentChain.value || new Map())
 
+  /**
+   * Build entity context with parentChain array for multi-storage routing
+   * Format: { parentChain: [{ entity: 'grandparent', id: '1' }, { entity: 'parent', id: '42' }] }
+   * Array is ordered from root ancestor to immediate parent
+   */
+  const entityContext = computed(() => {
+    if (!parentConfig.value || !parentId.value) {
+      return null
+    }
+
+    // Build chain from config (traversing from immediate parent to root)
+    const chain = []
+    let currentConfig = parentConfig.value
+
+    while (currentConfig) {
+      const entityId = route.params[currentConfig.param]
+      if (!entityId) break
+
+      chain.unshift({
+        entity: currentConfig.entity,
+        id: entityId
+      })
+      currentConfig = currentConfig.parent
+    }
+
+    return chain.length > 0 ? { parentChain: chain } : null
+  })
+
   // Read config from manager with option overrides
   const entityName = config.entityName ?? manager.label
   const entityNamePlural = config.entityNamePlural ?? manager.labelPlural
@@ -1124,9 +1152,10 @@ export function useListPage(config = {}) {
       }
 
       // Use manager.query() for automatic cache handling
+      // Pass entityContext for multi-storage routing
       const response = manager.query
-        ? await manager.query(params)
-        : await manager.list(params)
+        ? await manager.query(params, { routingContext: entityContext.value })
+        : await manager.list(params, entityContext.value)
 
       // Track if response came from cache
       fromCache.value = response.fromCache || false

@@ -1638,14 +1638,15 @@ export class EntityManager {
    * @param {object} params - Query params (search, filters, sort_by, sort_order, page, page_size)
    * @param {object} [options] - Query options
    * @param {object} [options.context] - Context info (module, form, field, scope, bypassPermissions, reason)
+   * @param {object} [options.routingContext] - Multi-storage routing context with parentChain
    * @returns {Promise<{ items: Array, total: number, fromCache: boolean }>}
    */
   async query(params = {}, options = {}) {
-    const { context = {} } = options
+    const { context = {}, routingContext = null } = options
 
     // Ensure cache is filled (via list)
     if (!this._cache.valid && this.isCacheEnabled) {
-      await this.list({ page_size: this.effectiveThreshold })
+      await this.list({ page_size: this.effectiveThreshold }, routingContext)
     }
 
     let result
@@ -1653,7 +1654,7 @@ export class EntityManager {
     // If overflow or cache disabled, use API for accurate filtered results
     if (this.overflow || !this.isCacheEnabled) {
       console.log('[cache] API call for entity:', this.name, '(total > threshold)', 'isCacheEnabled:', this.isCacheEnabled, 'overflow:', this.overflow)
-      result = await this.list(params)
+      result = await this.list(params, routingContext)
     } else {
       // Full cache available - filter locally
       console.log('[cache] Using local cache for entity:', this.name)

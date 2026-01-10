@@ -345,6 +345,20 @@ Two levels of data transformation:
 
 Storage normalization is transparent - EntityManager always sees consistent field names.
 
+### Limitations
+
+Multi-storage routes CRUD operations but some EntityManager features only work with the **primary storage**:
+
+| Feature | Multi-storage support |
+|---------|----------------------|
+| CRUD operations | ✓ Routed per context |
+| Data normalization | ✓ Per storage |
+| Cache (`ensureCache`) | ✗ Primary storage only |
+| Stats (`getStats`) | ✗ Entity-level only |
+| Warmup | ✗ Primary storage only |
+
+The cache limitation exists because `ensureCache()` calls `list()` without context, so it always uses the default storage. A future version may support per-storage caching.
+
 ### Backward Compatibility
 
 Single-storage managers require **no changes**. The default `resolveStorage()` returns the configured storage:

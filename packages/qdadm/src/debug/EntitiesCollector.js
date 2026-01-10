@@ -345,7 +345,8 @@ export class EntitiesCollector extends Collector {
         type: s.storage?.constructor?.storageName || s.storage?.constructor?.name || 'Unknown',
         endpoint: s.storage?.endpoint || null,
         hasNormalize: !!(s.storage?._normalize),
-        hasDenormalize: !!(s.storage?._denormalize)
+        hasDenormalize: !!(s.storage?._denormalize),
+        capabilities: s.storage?.capabilities || s.storage?.constructor?.capabilities || {}
       }))
     }
   }
@@ -477,6 +478,36 @@ export class EntitiesCollector extends Collector {
     try {
       const manager = this._orchestrator.get(entityName)
       const result = await manager.storage.list({ page: 1, page_size: 1 })
+      return {
+        success: true,
+        count: result.total ?? result.items?.length ?? 0
+      }
+    } catch (e) {
+      return {
+        success: false,
+        error: e.message,
+        status: e.status
+      }
+    }
+  }
+
+  /**
+   * Test fetch data from a specific storage of an entity
+   * @param {string} entityName - Entity name
+   * @param {string} storageName - Storage property name ('storage' for primary)
+   * @returns {Promise<{success: boolean, count?: number, error?: string, status?: number}>}
+   */
+  async testStorageFetch(entityName, storageName) {
+    if (!this._orchestrator) {
+      return { success: false, error: 'No orchestrator' }
+    }
+    try {
+      const manager = this._orchestrator.get(entityName)
+      const storage = storageName === 'storage' ? manager.storage : manager[storageName]
+      if (!storage) {
+        return { success: false, error: `Storage '${storageName}' not found` }
+      }
+      const result = await storage.list({ page: 1, page_size: 1 })
       return {
         success: true,
         count: result.total ?? result.items?.length ?? 0

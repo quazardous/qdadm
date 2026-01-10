@@ -21,6 +21,8 @@ const expandedEntities = ref(new Set())
 const loadingCache = ref(new Set())
 const testingFetch = ref(new Set())
 const testResults = ref(new Map()) // entityName -> { success, count, error, status }
+const testingStorages = ref(new Set()) // "entityName:storageName"
+const storageTestResults = ref(new Map()) // "entityName:storageName" -> { success, count, error, status }
 
 function toggleExpand(name) {
   if (expandedEntities.value.has(name)) {
@@ -79,6 +81,31 @@ async function testFetch(entityName) {
   } finally {
     testingFetch.value.delete(entityName)
     testingFetch.value = new Set(testingFetch.value)
+  }
+}
+
+function isTestingStorage(entityName, storageName) {
+  return testingStorages.value.has(`${entityName}:${storageName}`)
+}
+
+function getStorageTestResult(entityName, storageName) {
+  return storageTestResults.value.get(`${entityName}:${storageName}`)
+}
+
+async function testStorageFetch(entityName, storageName) {
+  const key = `${entityName}:${storageName}`
+  if (testingStorages.value.has(key)) return
+  testingStorages.value.add(key)
+  testingStorages.value = new Set(testingStorages.value)
+  storageTestResults.value.delete(key)
+  storageTestResults.value = new Map(storageTestResults.value)
+  try {
+    const result = await props.collector.testStorageFetch(entityName, storageName)
+    storageTestResults.value.set(key, result)
+    storageTestResults.value = new Map(storageTestResults.value)
+  } finally {
+    testingStorages.value.delete(key)
+    testingStorages.value = new Set(testingStorages.value)
   }
 }
 
@@ -164,41 +191,101 @@ function getCapabilityLabel(cap) {
 
       <!-- Expanded details -->
       <div v-else class="entity-details">
-        <div class="entity-row">
-          <span class="entity-key">Storage:</span>
-          <span class="entity-value">{{ entity.storage.type }}</span>
-          <span v-if="entity.storage.endpoint" class="entity-endpoint">{{ entity.storage.endpoint }}</span>
-          <span v-if="entity.storage.hasNormalize || entity.storage.hasDenormalize" class="entity-normalize-badge" title="Has normalize/denormalize">
-            <i class="pi pi-arrows-h" />
-          </span>
-          <span v-if="entity.multiStorage?.enabled" class="entity-multi-badge" title="Multi-storage routing">
-            <i class="pi pi-sitemap" />
-            +{{ entity.multiStorage.storages.length }}
-          </span>
-        </div>
-        <!-- Multi-storage details -->
-        <div v-if="entity.multiStorage?.enabled && entity.multiStorage.storages.length > 0" class="entity-multi-storages">
-          <div v-for="s in entity.multiStorage.storages" :key="s.name" class="entity-multi-storage">
-            <span class="entity-storage-name">{{ s.name }}</span>
-            <span class="entity-storage-type">{{ s.type }}</span>
-            <span v-if="s.endpoint" class="entity-endpoint">{{ s.endpoint }}</span>
-            <span v-if="s.hasNormalize || s.hasDenormalize" class="entity-normalize-badge" title="Has normalize/denormalize">
-              <i class="pi pi-arrows-h" />
+        <!-- Storages section -->
+        <div class="entity-storages-section">
+          <div class="entity-storages-header">
+            <i class="pi pi-database" />
+            <span>Storages</span>
+            <span v-if="entity.multiStorage?.enabled" class="entity-multi-badge" title="Multi-storage routing">
+              <i class="pi pi-sitemap" />
+              {{ 1 + entity.multiStorage.storages.length }}
             </span>
           </div>
-        </div>
-        <div v-if="entity.storage.capabilities && Object.keys(entity.storage.capabilities).length > 0" class="entity-row">
-          <span class="entity-key">Caps:</span>
-          <div class="entity-capabilities">
-            <span
-              v-for="(enabled, cap) in entity.storage.capabilities"
-              :key="cap"
-              class="entity-cap"
-              :class="[cap === 'requiresAuth' && enabled ? 'entity-cap-auth' : (enabled ? 'entity-cap-enabled' : 'entity-cap-disabled')]"
-              :title="getCapabilityLabel(cap) + (enabled ? ' ✓' : ' ✗')"
-            >
-              <i :class="['pi', getCapabilityIcon(cap)]" />
-            </span>
+
+          <!-- Primary storage -->
+          <div class="entity-storage-card">
+            <div class="entity-storage-header">
+              <span class="entity-storage-name">storage</span>
+              <span class="entity-storage-type">{{ entity.storage.type }}</span>
+              <span v-if="entity.storage.hasNormalize || entity.storage.hasDenormalize" class="entity-normalize-badge" title="Has normalize/denormalize">
+                <i class="pi pi-arrows-h" />
+              </span>
+              <button
+                class="entity-storage-fetch-btn"
+                :disabled="isTestingStorage(entity.name, 'storage')"
+                @click.stop="testStorageFetch(entity.name, 'storage')"
+                title="Test fetch on this storage"
+              >
+                <i :class="['pi', isTestingStorage(entity.name, 'storage') ? 'pi-spin pi-spinner' : 'pi-download']" />
+              </button>
+            </div>
+            <div v-if="entity.storage.endpoint" class="entity-storage-endpoint">
+              {{ entity.storage.endpoint }}
+            </div>
+            <div class="entity-storage-row">
+              <div v-if="entity.storage.capabilities && Object.keys(entity.storage.capabilities).length > 0" class="entity-storage-caps">
+                <span
+                  v-for="(enabled, cap) in entity.storage.capabilities"
+                  :key="cap"
+                  class="entity-cap"
+                  :class="[cap === 'requiresAuth' && enabled ? 'entity-cap-auth' : (enabled ? 'entity-cap-enabled' : 'entity-cap-disabled')]"
+                  :title="getCapabilityLabel(cap) + (enabled ? ' ✓' : ' ✗')"
+                >
+                  <i :class="['pi', getCapabilityIcon(cap)]" />
+                </span>
+              </div>
+              <span v-if="getStorageTestResult(entity.name, 'storage')" class="entity-storage-test-result" :class="getStorageTestResult(entity.name, 'storage').success ? 'test-success' : 'test-error'">
+                <template v-if="getStorageTestResult(entity.name, 'storage').success">
+                  <i class="pi pi-check-circle" /> {{ getStorageTestResult(entity.name, 'storage').count }}
+                </template>
+                <template v-else>
+                  <i class="pi pi-times-circle" /> {{ getStorageTestResult(entity.name, 'storage').status || 'ERR' }}
+                </template>
+              </span>
+            </div>
+          </div>
+
+          <!-- Additional storages -->
+          <div v-for="s in entity.multiStorage?.storages || []" :key="s.name" class="entity-storage-card entity-storage-alt">
+            <div class="entity-storage-header">
+              <span class="entity-storage-name">{{ s.name }}</span>
+              <span class="entity-storage-type">{{ s.type }}</span>
+              <span v-if="s.hasNormalize || s.hasDenormalize" class="entity-normalize-badge" title="Has normalize/denormalize">
+                <i class="pi pi-arrows-h" />
+              </span>
+              <button
+                class="entity-storage-fetch-btn"
+                :disabled="isTestingStorage(entity.name, s.name)"
+                @click.stop="testStorageFetch(entity.name, s.name)"
+                title="Test fetch on this storage"
+              >
+                <i :class="['pi', isTestingStorage(entity.name, s.name) ? 'pi-spin pi-spinner' : 'pi-download']" />
+              </button>
+            </div>
+            <div v-if="s.endpoint" class="entity-storage-endpoint">
+              {{ s.endpoint }}
+            </div>
+            <div class="entity-storage-row">
+              <div v-if="s.capabilities && Object.keys(s.capabilities).length > 0" class="entity-storage-caps">
+                <span
+                  v-for="(enabled, cap) in s.capabilities"
+                  :key="cap"
+                  class="entity-cap"
+                  :class="[cap === 'requiresAuth' && enabled ? 'entity-cap-auth' : (enabled ? 'entity-cap-enabled' : 'entity-cap-disabled')]"
+                  :title="getCapabilityLabel(cap) + (enabled ? ' ✓' : ' ✗')"
+                >
+                  <i :class="['pi', getCapabilityIcon(cap)]" />
+                </span>
+              </div>
+              <span v-if="getStorageTestResult(entity.name, s.name)" class="entity-storage-test-result" :class="getStorageTestResult(entity.name, s.name).success ? 'test-success' : 'test-error'">
+                <template v-if="getStorageTestResult(entity.name, s.name).success">
+                  <i class="pi pi-check-circle" /> {{ getStorageTestResult(entity.name, s.name).count }}
+                </template>
+                <template v-else>
+                  <i class="pi pi-times-circle" /> {{ getStorageTestResult(entity.name, s.name).status || 'ERR' }}
+                </template>
+              </span>
+            </div>
           </div>
         </div>
         <div v-if="entity.cache.enabled" class="entity-row">
@@ -230,29 +317,6 @@ function getCapabilityLabel(cap) {
         <div v-else class="entity-row">
           <span class="entity-key">Cache:</span>
           <span class="entity-value entity-cache-na">Disabled</span>
-        </div>
-        <!-- Test Fetch row - always visible for testing auth protection -->
-        <div class="entity-row">
-          <span class="entity-key">Test:</span>
-          <span v-if="getTestResult(entity.name)" class="entity-test-result" :class="getTestResult(entity.name).success ? 'test-success' : 'test-error'">
-            <template v-if="getTestResult(entity.name).success">
-              <i class="pi pi-check-circle" />
-              {{ getTestResult(entity.name).count }} items
-            </template>
-            <template v-else>
-              <i class="pi pi-times-circle" />
-              {{ getTestResult(entity.name).status || 'ERR' }}: {{ getTestResult(entity.name).error }}
-            </template>
-          </span>
-          <span v-else class="entity-value entity-test-na">-</span>
-          <button
-            class="entity-test-btn"
-            :disabled="isTesting(entity.name)"
-            @click.stop="testFetch(entity.name)"
-          >
-            <i :class="['pi', isTesting(entity.name) ? 'pi-spin pi-spinner' : 'pi-download']" />
-            {{ isTesting(entity.name) ? 'Testing...' : 'Fetch' }}
-          </button>
         </div>
         <div class="entity-row">
           <span class="entity-key">Fields:</span>
@@ -620,27 +684,97 @@ function getCapabilityLabel(cap) {
   font-size: 10px;
   font-weight: 600;
 }
-.entity-multi-storages {
-  margin-left: 66px;
-  margin-top: 4px;
-  margin-bottom: 6px;
-  padding-left: 8px;
-  border-left: 2px solid #3b82f6;
+/* Storages section */
+.entity-storages-section {
+  margin-bottom: 8px;
 }
-.entity-multi-storage {
+.entity-storages-header {
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: 3px 0;
+  color: #a1a1aa;
+  font-size: 11px;
+  margin-bottom: 6px;
+}
+.entity-storages-header .pi {
   font-size: 10px;
+}
+.entity-storage-card {
+  background: #1f1f23;
+  border-radius: 4px;
+  padding: 6px 8px;
+  margin-bottom: 4px;
+  border-left: 2px solid #3b82f6;
+}
+.entity-storage-alt {
+  border-left-color: #8b5cf6;
+}
+.entity-storage-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 .entity-storage-name {
   color: #60a5fa;
   font-weight: 500;
-  min-width: 80px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+}
+.entity-storage-alt .entity-storage-name {
+  color: #a78bfa;
 }
 .entity-storage-type {
   color: #a1a1aa;
+  font-size: 10px;
+}
+.entity-storage-endpoint {
+  color: #71717a;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  padding: 2px 0;
+  margin-top: 2px;
+}
+.entity-storage-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
+}
+.entity-storage-caps {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+.entity-storage-fetch-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  margin-left: auto;
+  background: #3b82f6;
+  border: none;
+  border-radius: 3px;
+  color: #fff;
+  cursor: pointer;
+  font-size: 10px;
+}
+.entity-storage-fetch-btn:hover {
+  background: #2563eb;
+}
+.entity-storage-fetch-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.entity-storage-test-result {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-size: 10px;
+  margin-left: auto;
 }
 .entity-capabilities {
   display: flex;
