@@ -1395,5 +1395,37 @@ describe('useEntityItemFormPage', () => {
       // No parent foreignKey in initial data
       expect(result.data.value).not.toHaveProperty('book_id')
     })
+
+    it('auto-disables foreignKey field from parent config', () => {
+      mockRouteState = {
+        name: 'book-loans-create',
+        params: { bookId: '123' },
+        meta: {
+          parent: {
+            entity: 'books',
+            param: 'bookId',
+            foreignKey: 'book_id'
+          }
+        }
+      }
+
+      // Mock manager with book_id field
+      mockManager = createMockManager({
+        formFields: [
+          { name: 'book_id', type: 'text', label: 'Book' },
+          { name: 'borrower', type: 'text', label: 'Borrower' }
+        ]
+      })
+
+      const { result } = createWrapper(() => useEntityItemFormPage({ entity: 'loans' }))
+
+      // book_id should be auto-disabled
+      const bookIdField = result.getFieldConfig('book_id')
+      expect(bookIdField.disabled).toBe(true)
+
+      // Other fields should not be disabled
+      const borrowerField = result.getFieldConfig('borrower')
+      expect(borrowerField.disabled).toBeFalsy()
+    })
   })
 })

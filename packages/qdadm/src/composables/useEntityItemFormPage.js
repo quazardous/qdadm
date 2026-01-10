@@ -1277,5 +1277,10 @@ export function useEntityItemFormPage(config = {}) {
     generateFields()
   }
 
+  // Auto-disable parent foreignKey field (it's auto-filled from route)
+  if (parentConfig.value?.foreignKey && fieldsMap.value.has(parentConfig.value.foreignKey)) {
+    updateField(parentConfig.value.foreignKey, { disabled: true })
+  }
+
   return builderApi
 }

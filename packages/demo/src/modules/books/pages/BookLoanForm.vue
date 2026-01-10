@@ -12,17 +12,13 @@
 import { useEntityItemFormPage, FormPage, FormField, FormInput, PageNav } from 'qdadm'
 
 // Create form - everything is auto-detected:
-// - Fields auto-generated from manager schema (generateFormFields: true by default)
-// - book_id auto-filled via route.meta.parent.foreignKey
+// - Fields auto-generated from manager schema
+// - book_id auto-filled and disabled (foreignKey from route.meta.parent)
 // - Redirect goes to sibling list route (book-loans)
 const form = useEntityItemFormPage({ entity: 'loans' })
 
 // Access parent data (the book) for display
 const parentBook = form.parentData
-
-// Mark parent foreignKey field as readonly (auto-filled from route)
-// The field keeps its reference config so it shows the book title, not just the ID
-form.updateField('book_id', { disabled: true })
 
 // Standard save action - redirect is auto-detected
 form.addSaveAction()
