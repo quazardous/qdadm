@@ -5,6 +5,13 @@ All notable changes to qdadm will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.51.8] - 2026-01-10
+
+### Fixed
+- **Create→Edit navigation reload**: Added watch on entityId to reload data when navigating from create to edit route
+  - Vue reuses component, so onMounted doesn't fire again
+  - Now properly loads created entity data after navigation
+
 ## [0.51.7] - 2026-01-10
 
 ### Changed

@@ -1132,6 +1132,14 @@ export function useEntityItemFormPage(config = {}) {
     }
   })
 
+  // Watch for route changes (e.g., create → edit navigation)
+  // Vue reuses the component, so onMounted won't fire again
+  watch(entityId, (newId, oldId) => {
+    if (newId !== oldId && loadOnMount) {
+      load()
+    }
+  })
+
   // ============ FORMPAGE PROPS/EVENTS ============
 
   /**
