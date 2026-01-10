@@ -250,8 +250,10 @@ export function useNavContext(options = {}) {
       active: isOnParent
     }]
 
-    // Sibling routes
+    // Sibling routes - only include list routes (not create/edit/show)
+    // List routes are navigable tabs, while create/edit/show are accessed via the list
     const siblings = getSiblingRoutes(parentEntity, param)
+      .filter(sibling => sibling.meta?.layout === 'list')
     for (const sibling of siblings) {
       const sibManager = sibling.meta?.entity ? getManager(sibling.meta.entity) : null
       links.push({

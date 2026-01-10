@@ -5,6 +5,13 @@ All notable changes to qdadm will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.52.2] - 2026-01-10
+
+### Fixed
+- **Navlinks filtering**: Only include list-layout routes as sibling navlinks
+  - Create/edit/show routes should not appear as navigation tabs
+  - Fixes "Missing required param" error when navlinks tried to link to edit routes that need additional params (e.g., `:id`)
+
 ## [0.52.1] - 2026-01-10
 
 ### Fixed
