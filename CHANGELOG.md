@@ -5,6 +5,19 @@ All notable changes to qdadm will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.53.1] - 2026-01-11
+
+### Added
+- **Field defaults with context**: `default` can be a function receiving routing context
+  - `default: (context) => context?.parentChain?.at(-1)?.id`
+  - `getInitialData(context)` passes context to default functions
+  - `applyDefaults(data, context)` merges defaults into provided data
+
+### Changed
+- **create() applies field defaults**: Defaults are applied before `presave` hooks
+- **getMany() uses resolveStorage()**: Now accepts context and uses storage resolution
+  - `getMany(ids, context)` for consistent multi-storage routing
+
 ## [0.53.0] - 2026-01-11
 
 ### Added

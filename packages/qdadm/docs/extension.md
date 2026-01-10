@@ -266,6 +266,35 @@ resolveStorage(method, context) {
 
 Request params override resolved params, so `list({ status: 'completed' })` would use `status: 'completed'` instead of `status: 'active'`.
 
+### Field Defaults with Context
+
+Field defaults can be functions that receive the routing context:
+
+```js
+class TasksManager extends EntityManager {
+  constructor() {
+    super({
+      name: 'tasks',
+      storage: new ApiStorage({ endpoint: '/api/tasks' }),
+      fields: {
+        title: { type: 'text', required: true },
+        // Static default
+        status: { type: 'text', default: 'pending' },
+        // Dynamic default from parent context
+        projectId: {
+          type: 'text',
+          default: (context) => context?.parentChain?.at(-1)?.id
+        }
+      }
+    })
+  }
+}
+```
+
+- `getInitialData(context)` - returns all field defaults for new entity forms
+- `applyDefaults(data, context)` - merges defaults into provided data (used by `create()`)
+- Defaults are applied before `presave` hooks in `create()`
+
 ### Dynamic Endpoint Builders
 
 Return a function when the endpoint depends on context. This marks the endpoint as "dynamic" for tools like debug panels that need to know the endpoint can't be used without context:

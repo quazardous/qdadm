@@ -776,14 +776,15 @@ export class EntityManager {
 
   /**
    * Get initial data for a new entity based on field defaults
+   * @param {object} [context] - Routing context passed to default functions
    * @returns {object}
    */
-  getInitialData() {
+  getInitialData(context = null) {
     const data = {}
     for (const [fieldName, fieldConfig] of Object.entries(this._fields)) {
       if (fieldConfig.default !== undefined) {
         data[fieldName] = typeof fieldConfig.default === 'function'
-          ? fieldConfig.default()
+          ? fieldConfig.default(context)
           : fieldConfig.default
       } else {
         // Type-based defaults
@@ -806,6 +807,26 @@ export class EntityManager {
       }
     }
     return data
+  }
+
+  /**
+   * Apply field defaults to data (for create operations)
+   * Only applies defaults for fields that are undefined in data.
+   * @param {object} data - Provided data
+   * @param {object} [context] - Routing context passed to default functions
+   * @returns {object} - Data with defaults applied
+   */
+  applyDefaults(data, context = null) {
+    const result = { ...data }
+    for (const [fieldName, fieldConfig] of Object.entries(this._fields)) {
+      // Only apply default if field is undefined in data
+      if (result[fieldName] === undefined && fieldConfig.default !== undefined) {
+        result[fieldName] = typeof fieldConfig.default === 'function'
+          ? fieldConfig.default(context)
+          : fieldConfig.default
+      }
+    }
+    return result
   }
 
   /**
@@ -1128,9 +1149,10 @@ export class EntityManager {
    * Otherwise fetches from storage (or parallel get() calls).
    *
    * @param {Array<string|number>} ids
+   * @param {object} [context] - Routing context for multi-storage
    * @returns {Promise<Array<object>>}
    */
-  async getMany(ids) {
+  async getMany(ids, context) {
     if (!ids || ids.length === 0) return []
 
     // Try cache first if valid and complete
@@ -1150,12 +1172,13 @@ export class EntityManager {
 
     this._stats.cacheMisses += ids.length
 
-    if (this.storage?.getMany) {
-      return this.storage.getMany(ids)
+    const { storage } = this._normalizeResolveResult(this.resolveStorage('getMany', context), context)
+    if (storage?.getMany) {
+      return storage.getMany(ids, context)
     }
     // Fallback: parallel get calls (get() handles its own stats)
     this._stats.cacheMisses -= ids.length  // Avoid double counting
-    return Promise.all(ids.map(id => this.get(id).catch(() => null)))
+    return Promise.all(ids.map(id => this.get(id, context).catch(() => null)))
       .then(results => results.filter(Boolean))
   }
 
@@ -1174,8 +1197,11 @@ export class EntityManager {
     const { storage, endpoint } = this._normalizeResolveResult(this.resolveStorage('create', context), context)
     this._stats.create++
     if (storage) {
+      // Apply field defaults before presave hooks
+      const dataWithDefaults = this.applyDefaults(data, context)
+
       // Invoke presave hooks (can modify data or throw to abort)
-      const presaveContext = this._buildPresaveContext(data, true)
+      const presaveContext = this._buildPresaveContext(dataWithDefaults, true)
       await this._invokeHook('presave', presaveContext)
 
       // Use request() with endpoint for multi-storage routing, otherwise use create()
