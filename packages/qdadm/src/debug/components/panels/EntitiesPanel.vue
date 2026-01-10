@@ -168,6 +168,24 @@ function getCapabilityLabel(cap) {
           <span class="entity-key">Storage:</span>
           <span class="entity-value">{{ entity.storage.type }}</span>
           <span v-if="entity.storage.endpoint" class="entity-endpoint">{{ entity.storage.endpoint }}</span>
+          <span v-if="entity.storage.hasNormalize || entity.storage.hasDenormalize" class="entity-normalize-badge" title="Has normalize/denormalize">
+            <i class="pi pi-arrows-h" />
+          </span>
+          <span v-if="entity.multiStorage?.enabled" class="entity-multi-badge" title="Multi-storage routing">
+            <i class="pi pi-sitemap" />
+            +{{ entity.multiStorage.storages.length }}
+          </span>
+        </div>
+        <!-- Multi-storage details -->
+        <div v-if="entity.multiStorage?.enabled && entity.multiStorage.storages.length > 0" class="entity-multi-storages">
+          <div v-for="s in entity.multiStorage.storages" :key="s.name" class="entity-multi-storage">
+            <span class="entity-storage-name">{{ s.name }}</span>
+            <span class="entity-storage-type">{{ s.type }}</span>
+            <span v-if="s.endpoint" class="entity-endpoint">{{ s.endpoint }}</span>
+            <span v-if="s.hasNormalize || s.hasDenormalize" class="entity-normalize-badge" title="Has normalize/denormalize">
+              <i class="pi pi-arrows-h" />
+            </span>
+          </div>
         </div>
         <div v-if="entity.storage.capabilities && Object.keys(entity.storage.capabilities).length > 0" class="entity-row">
           <span class="entity-key">Caps:</span>
@@ -579,6 +597,50 @@ function getCapabilityLabel(cap) {
   padding: 1px 4px;
   background: #3f3f46;
   border-radius: 2px;
+}
+.entity-normalize-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  background: rgba(139, 92, 246, 0.2);
+  color: #a78bfa;
+  border-radius: 3px;
+  font-size: 10px;
+}
+.entity-multi-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 6px;
+  background: rgba(59, 130, 246, 0.2);
+  color: #60a5fa;
+  border-radius: 3px;
+  font-size: 10px;
+  font-weight: 600;
+}
+.entity-multi-storages {
+  margin-left: 66px;
+  margin-top: 4px;
+  margin-bottom: 6px;
+  padding-left: 8px;
+  border-left: 2px solid #3b82f6;
+}
+.entity-multi-storage {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 0;
+  font-size: 10px;
+}
+.entity-storage-name {
+  color: #60a5fa;
+  font-weight: 500;
+  min-width: 80px;
+}
+.entity-storage-type {
+  color: #a1a1aa;
 }
 .entity-capabilities {
   display: flex;

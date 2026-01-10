@@ -231,8 +231,13 @@ export class EntitiesCollector extends Collector {
       storage: {
         type: storage?.constructor?.storageName || storage?.constructor?.name || 'None',
         endpoint: storage?.endpoint || storage?._endpoint || null,
-        capabilities: storage?.capabilities || storage?.constructor?.capabilities || {}
+        capabilities: storage?.capabilities || storage?.constructor?.capabilities || {},
+        hasNormalize: !!(storage?._normalize),
+        hasDenormalize: !!(storage?._denormalize)
       },
+
+      // Multi-storage info
+      multiStorage: this._detectMultiStorage(manager),
 
       // Cache info
       cache: {
@@ -309,6 +314,72 @@ export class EntitiesCollector extends Collector {
           }))
       }
     }
+  }
+
+  /**
+   * Detect if a manager uses multi-storage pattern
+   * @param {EntityManager} manager - Manager instance
+   * @returns {object|null} Multi-storage info or null
+   * @private
+   */
+  _detectMultiStorage(manager) {
+    // Check if resolveStorage is overridden (not the base implementation)
+    const hasCustomResolve = manager.resolveStorage &&
+      manager.resolveStorage.toString() !== 'resolveStorage(method, context) {\n    return { storage: this.storage };\n  }'
+
+    if (!hasCustomResolve) {
+      // Also check by looking for additional storage properties
+      const additionalStorages = this._findAdditionalStorages(manager)
+      if (additionalStorages.length === 0) {
+        return null
+      }
+    }
+
+    // Find all storage properties on the manager
+    const storages = this._findAdditionalStorages(manager)
+
+    return {
+      enabled: true,
+      storages: storages.map(s => ({
+        name: s.name,
+        type: s.storage?.constructor?.storageName || s.storage?.constructor?.name || 'Unknown',
+        endpoint: s.storage?.endpoint || null,
+        hasNormalize: !!(s.storage?._normalize),
+        hasDenormalize: !!(s.storage?._denormalize)
+      }))
+    }
+  }
+
+  /**
+   * Find additional storage instances on a manager
+   * @param {EntityManager} manager - Manager instance
+   * @returns {Array<{name: string, storage: object}>}
+   * @private
+   */
+  _findAdditionalStorages(manager) {
+    const storages = []
+    const mainStorage = manager.storage
+
+    // Look for properties that look like storages
+    for (const key of Object.keys(manager)) {
+      // Skip private and known non-storage properties
+      if (key.startsWith('_') || key === 'storage') continue
+
+      const value = manager[key]
+      if (!value || typeof value !== 'object') continue
+
+      // Check if it looks like a storage (has list, get, create methods or endpoint)
+      const isStorage = (
+        (typeof value.list === 'function' && typeof value.get === 'function') ||
+        (value.endpoint && typeof value.fetch === 'function')
+      )
+
+      if (isStorage && value !== mainStorage) {
+        storages.push({ name: key, storage: value })
+      }
+    }
+
+    return storages
   }
 
   /**
