@@ -734,4 +734,103 @@ describe('OpenAPIConnector', () => {
       expect(posts.fields.id).toBeDefined()
     })
   })
+
+  describe('idField detection', () => {
+    it('detects idField from path parameter', () => {
+      const spec = {
+        openapi: '3.0.0',
+        paths: {
+          '/api/bots': {
+            get: {
+              responses: {
+                '200': {
+                  content: {
+                    'application/json': {
+                      schema: {
+                        type: 'object',
+                        properties: {
+                          data: {
+                            type: 'array',
+                            items: {
+                              type: 'object',
+                              properties: {
+                                uuid: { type: 'string' },
+                                name: { type: 'string' }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          '/api/bots/{uuid}': {
+            get: {
+              responses: {
+                '200': {
+                  content: {
+                    'application/json': {
+                      schema: {
+                        type: 'object',
+                        properties: {
+                          data: {
+                            type: 'object',
+                            properties: {
+                              uuid: { type: 'string' },
+                              name: { type: 'string' }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+
+      const connector = new OpenAPIConnector()
+      const result = connector.parse(spec)
+
+      const bots = result.find(e => e.name === 'bots')
+      expect(bots.idField).toBe('uuid')
+    })
+
+    it('defaults to no idField when path has no parameter', () => {
+      const spec = {
+        openapi: '3.0.0',
+        paths: {
+          '/api/stats': {
+            get: {
+              responses: {
+                '200': {
+                  content: {
+                    'application/json': {
+                      schema: {
+                        type: 'object',
+                        properties: {
+                          data: { type: 'object' }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+
+      const connector = new OpenAPIConnector()
+      const result = connector.parse(spec)
+
+      const stats = result.find(e => e.name === 'stats')
+      expect(stats.idField).toBeUndefined()
+    })
+  })
 })

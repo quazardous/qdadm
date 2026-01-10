@@ -179,12 +179,19 @@ export class OpenAPIConnector extends BaseConnector {
         entityData.set(entityName, {
           name: entityName,
           endpoint: this._buildEndpoint(path),
+          idField: null,
           rawSchema: null,
           fields: new Map()
         })
       }
 
+      // Detect idField from path parameter (e.g., /users/{uuid} → 'uuid')
       const data = entityData.get(entityName)
+      const detectedIdField = this._extractIdField(path)
+      if (detectedIdField && !data.idField) {
+        data.idField = detectedIdField
+      }
+
       this._processPath(source, path, pathItem, data, warnings)
     }
 
@@ -219,6 +226,18 @@ export class OpenAPIConnector extends BaseConnector {
   _buildEndpoint(path) {
     // Remove path parameter suffix to get collection endpoint
     return path.replace(/\/\{[^}]+\}$/, '')
+  }
+
+  /**
+   * Extract idField from path parameter (e.g., /users/{uuid} → 'uuid')
+   *
+   * @private
+   * @param {string} path - API path
+   * @returns {string|null} - Parameter name or null
+   */
+  _extractIdField(path) {
+    const match = path.match(/\/\{([^}]+)\}$/)
+    return match ? match[1] : null
   }
 
   /**
@@ -543,6 +562,11 @@ export class OpenAPIConnector extends BaseConnector {
         fields: Object.fromEntries(data.fields)
       }
 
+      // Add idField if detected from path parameter
+      if (data.idField) {
+        schema.idField = data.idField
+      }
+
       // Add extensions if configured
       if (Object.keys(this.extensions).length > 0) {
         schema.extensions = { ...this.extensions }
@@ -561,6 +585,7 @@ export class OpenAPIConnector extends BaseConnector {
  * @typedef {object} EntityWorkingData
  * @property {string} name - Entity name
  * @property {string} endpoint - Collection endpoint
+ * @property {string|null} idField - Detected ID field from path parameter
  * @property {object|null} rawSchema - Merged raw JSON Schema
  * @property {Map<string, import('../schema.js').UnifiedFieldSchema>} fields - Extracted fields
  */
