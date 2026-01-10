@@ -194,9 +194,11 @@ export function useNavContext(options = {}) {
         const label = data && segment.manager ? segment.manager.getEntityLabel(data) : '...'
         const idField = segment.manager?.idField || 'id'
 
+        // Only create link if we have a valid id
+        const canLink = !isLast && segment.id && segment.routeName && routeExists(segment.routeName)
         items.push({
           label,
-          to: isLast ? null : (segment.routeName && routeExists(segment.routeName) ? { name: segment.routeName, params: { [idField]: segment.id } } : null)
+          to: canLink ? { name: segment.routeName, params: { [idField]: segment.id } } : null
         })
       } else if (segment.type === 'create') {
         items.push({
@@ -234,7 +236,9 @@ export function useNavContext(options = {}) {
 
     const { entity: parentEntity, param, itemRoute } = parentConfig.value
     const parentManager = getManager(parentEntity)
-    if (!parentManager) return []
+
+    // Guard: need valid manager and parentId to build links
+    if (!parentManager || !parentId.value) return []
 
     const parentRouteName = itemRoute || getDefaultItemRoute(parentManager)
     const isOnParent = route.name === parentRouteName

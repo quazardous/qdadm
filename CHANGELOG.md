@@ -5,6 +5,12 @@ All notable changes to qdadm will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.52.1] - 2026-01-10
+
+### Fixed
+- **Router param guard in navlinks**: Return empty array when `parentId` is null/undefined
+- **Router param guard in breadcrumb**: Only create link when `segment.id` is valid
+
 ## [0.52.0] - 2026-01-10
 
 ### Added
