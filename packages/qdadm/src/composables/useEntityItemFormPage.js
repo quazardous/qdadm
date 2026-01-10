@@ -99,7 +99,7 @@ export function useEntityItemFormPage(config = {}) {
     // Form options
     loadOnMount = true,
     enableGuard = true,
-    redirectOnCreate = true,  // Redirect to edit mode after create
+    // redirectOnCreate removed: "Create" now resets form, "Create & Close" navigates
     usePatch = false,         // Use PATCH instead of PUT for updates
     // Hooks for custom behavior
     transformLoad = (data) => data,
@@ -319,20 +319,24 @@ export function useEntityItemFormPage(config = {}) {
       }
 
       if (andClose) {
-        // For child entities, redirect to sibling list route with parent params
+        // Navigate to list route (or previous page)
         const listRoute = findListRoute()
         router.push(listRoute)
-      } else if (!isEdit.value && redirectOnCreate) {
-        // Redirect to edit mode after create (only for top-level entities)
-        // Child entities with parent config go to list instead (edit route may not exist)
-        if (parentConfig.value) {
-          const listRoute = findListRoute()
-          router.replace(listRoute)
-        } else {
-          const newId = responseData[manager.idField] || responseData.id || responseData.key
-          router.replace({ name: `${routePrefix}-${editRouteSuffix}`, params: { id: newId } })
-        }
+      } else if (!isEdit.value) {
+        // "Create" without close: reset form for new entry, stay on route
+        data.value = deepClone(initialData)
+        originalData.value = null
+        takeSnapshot()
+        errors.value = {}
+        submitted.value = false
+        toast.add({
+          severity: 'info',
+          summary: 'Ready',
+          detail: 'Form reset for new entry',
+          life: 2000
+        })
       }
+      // Edit mode without close: just stay on page (data already updated)
 
       return responseData
     } catch (error) {

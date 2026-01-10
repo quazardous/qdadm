@@ -347,19 +347,25 @@ describe('useEntityItemFormPage', () => {
       expect(mockRouter.push).toHaveBeenCalledWith({ name: 'book' })
     })
 
-    it('redirects to edit mode after create when redirectOnCreate is true', async () => {
+    it('resets form after create when andClose is false', async () => {
       mockRouteState = { name: 'book-create', params: {} }
       const { result } = createWrapper(() =>
-        useEntityItemFormPage({ entity: 'books', redirectOnCreate: true, validateOnSubmit: false })
+        useEntityItemFormPage({ entity: 'books', validateOnSubmit: false })
       )
 
       await flushPromises()
+      result.data.value.title = 'New Book'
       await result.submit(false)
 
-      expect(mockRouter.replace).toHaveBeenCalledWith({
-        name: 'book-edit',
-        params: { id: 2 }
-      })
+      // Form should be reset to initial data (empty)
+      expect(result.data.value.title).toBe('')
+      // Toast shown for "ready for new entry"
+      expect(mockToast.add).toHaveBeenCalledWith(
+        expect.objectContaining({ severity: 'info', summary: 'Ready' })
+      )
+      // No navigation
+      expect(mockRouter.push).not.toHaveBeenCalled()
+      expect(mockRouter.replace).not.toHaveBeenCalled()
     })
   })
 
