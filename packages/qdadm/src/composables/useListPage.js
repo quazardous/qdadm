@@ -4,6 +4,7 @@ import { useToast } from 'primevue/usetoast'
 import { useConfirm } from 'primevue/useconfirm'
 import { useHooks } from './useHooks.js'
 import { useEntityItemPage } from './useEntityItemPage.js'
+import { useActiveStack } from '../chain/useActiveStack.js'
 import { FilterQuery } from '../query/FilterQuery.js'
 
 // Cookie utilities for pagination persistence
@@ -166,8 +167,12 @@ export function useListPage(config = {}) {
 
   const parentConfig = computed(() => route.meta?.parent || null)
 
+  // Use ActiveStack for synchronous route-based context (no async dependency)
+  // This is the source of truth for entityContext/multi-storage routing
+  const activeStack = useActiveStack()
+
   // Create useEntityItemPage for PARENT entity (not for list's own entity)
-  // Only when parentConfig exists
+  // Only when parentConfig exists - used for data loading (breadcrumb labels, etc.)
   let parentPage = null
   if (route.meta?.parent) {
     const parentMeta = route.meta.parent
@@ -190,13 +195,17 @@ export function useListPage(config = {}) {
    * Build entity context with parentChain array for multi-storage routing
    * Format: { parentChain: [{ entity: 'grandparent', id: '1' }, { entity: 'parent', id: '42' }] }
    * Array is ordered from root ancestor to immediate parent
+   *
+   * Uses route.meta.parent + route.params directly (synchronous) instead of
+   * parentPage.entityId (async) to avoid timing issues where list() is called
+   * before parent data loads.
    */
   const entityContext = computed(() => {
-    if (!parentConfig.value || !parentId.value) {
+    if (!parentConfig.value) {
       return null
     }
 
-    // Build chain from config (traversing from immediate parent to root)
+    // Build chain from route.meta.parent config (traversing from immediate parent to root)
     const chain = []
     let currentConfig = parentConfig.value
 
@@ -1137,9 +1146,13 @@ export function useListPage(config = {}) {
         }
       }
 
-      // Auto-add parent filter from route config (uses parentPage from useEntityItemPage)
-      if (parentConfig.value?.foreignKey && parentId.value) {
-        filters[parentConfig.value.foreignKey] = parentId.value
+      // Auto-add parent filter from route params (sync, not async parentPage)
+      // Use immediate parent's ID directly from route.params to avoid timing issues
+      if (parentConfig.value?.foreignKey && parentConfig.value?.param) {
+        const parentIdFromRoute = route.params[parentConfig.value.param]
+        if (parentIdFromRoute) {
+          filters[parentConfig.value.foreignKey] = parentIdFromRoute
+        }
       }
 
       if (Object.keys(filters).length > 0) {
