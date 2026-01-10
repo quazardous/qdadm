@@ -324,44 +324,108 @@ export class EntityManager {
    * @param {string} method - Operation: 'list', 'get', 'create', 'update', 'delete'
    * @param {object} [context] - Routing context
    * @param {Array<{entity: string, id: string|number}>} [context.parentChain] - Parent chain from root to direct parent
-   * @returns {{ storage: IStorage, path?: string, mappingKey?: string }}
+   * @returns {string | function | { storage?: IStorage, endpoint?: string | function, params?: object }}
+   *   - `string`: Full endpoint URL (uses primary storage)
+   *   - `function`: Dynamic endpoint builder `(context) => string` (marks as dynamic)
+   *   - `{ endpoint }`: Full endpoint URL (uses primary storage)
+   *   - `{ endpoint: function }`: Dynamic endpoint builder (marks as dynamic)
+   *   - `{ endpoint, params }`: Endpoint with default query params (merged with request params)
+   *   - `{ storage, endpoint }`: Custom storage with full endpoint
+   *   - `{ storage }`: Custom storage with its default endpoint
+   *   - `undefined/null`: Use primary storage with its default endpoint
    *
    * @example
    * // Single storage (default, no change needed)
-   * manager.resolveStorage('list') // { storage: this.storage }
+   * manager.resolveStorage('list') // undefined = use default storage
    *
    * @example
-   * // Access direct parent (last in chain)
-   * const parent = context?.parentChain?.at(-1)
+   * // Endpoint override (simplest, recommended)
+   * resolveStorage(method, context) {
+   *   const parent = context?.parentChain?.at(-1)
+   *   if (parent?.entity === 'bots') {
+   *     return `/api/admin/bots/${parent.id}/commands`
+   *   }
+   * }
    *
    * @example
-   * // Multi-storage routing in subclass
+   * // Endpoint with default query params
    * resolveStorage(method, context) {
    *   const parent = context?.parentChain?.at(-1)
    *   if (parent?.entity === 'bots') {
    *     return {
-   *       storage: this.botStorage,
-   *       path: `/${parent.id}/commands`
+   *       endpoint: `/api/admin/bots/${parent.id}/commands`,
+   *       params: { include: 'bot', status: 'pending' }
    *     }
    *   }
-   *   return { storage: this.storage }
    * }
    *
    * @example
-   * // Nested parents: /users/:userId/posts/:postId/comments
+   * // Dynamic endpoint builder (marks endpoint as context-dependent for debug panel)
    * resolveStorage(method, context) {
-   *   const chain = context?.parentChain || []
-   *   if (chain.length === 2 && chain[0].entity === 'users' && chain[1].entity === 'posts') {
+   *   const parent = context?.parentChain?.at(-1)
+   *   if (parent?.entity === 'bots') {
+   *     return (ctx) => `/api/admin/bots/${ctx.parentChain.at(-1).id}/commands`
+   *   }
+   * }
+   *
+   * @example
+   * // Different storage with endpoint
+   * resolveStorage(method, context) {
+   *   if (context?.parentChain?.at(-1)?.entity === 'projects') {
    *     return {
-   *       storage: this.nestedStorage,
-   *       path: `/${chain[0].id}/posts/${chain[1].id}/comments`
+   *       storage: this.projectStorage,
+   *       endpoint: `/api/projects/${parent.id}/tasks`
    *     }
    *   }
-   *   return { storage: this.storage }
    * }
    */
   resolveStorage(method, context) {
     return { storage: this.storage }
+  }
+
+  /**
+   * Normalize resolveStorage() return value to standard format
+   * @param {string | function | object} result - Result from resolveStorage()
+   * @param {object} [context] - Context to pass to endpoint builder function
+   * @returns {{ storage: IStorage, endpoint?: string, params?: object, isDynamic?: boolean }}
+   * @private
+   */
+  _normalizeResolveResult(result, context) {
+    // Function = dynamic endpoint builder
+    if (typeof result === 'function') {
+      return {
+        storage: this.storage,
+        endpoint: result(context),
+        isDynamic: true
+      }
+    }
+
+    // String = endpoint with primary storage
+    if (typeof result === 'string') {
+      return { storage: this.storage, endpoint: result }
+    }
+
+    // Null/undefined = primary storage
+    if (!result) {
+      return { storage: this.storage }
+    }
+
+    // Object with endpoint function = dynamic endpoint builder
+    if (typeof result.endpoint === 'function') {
+      return {
+        storage: result.storage || this.storage,
+        endpoint: result.endpoint(context),
+        params: result.params,
+        isDynamic: true
+      }
+    }
+
+    // Object without storage = use primary storage
+    if (!result.storage) {
+      return { storage: this.storage, ...result }
+    }
+
+    return result
   }
 
   // ============ METADATA ACCESSORS ============
@@ -931,7 +995,8 @@ export class EntityManager {
    * @returns {Promise<{ items: Array, total: number, fromCache: boolean }>}
    */
   async list(params = {}, context) {
-    const { storage, path } = this.resolveStorage('list', context)
+    const resolved = this._normalizeResolveResult(this.resolveStorage('list', context), context)
+    const { storage, endpoint, params: resolvedParams } = resolved
     if (!storage) {
       throw new Error(`[EntityManager:${this.name}] list() not implemented`)
     }
@@ -939,19 +1004,22 @@ export class EntityManager {
     // Extract internal flag and cacheSafe flag
     const { _internal = false, cacheSafe = false, ...queryParams } = params
 
+    // Merge resolved params (defaults) with query params (overrides)
+    const mergedParams = resolvedParams ? { ...resolvedParams, ...queryParams } : queryParams
+
     // Only count stats for non-internal operations
     if (!_internal) {
       this._stats.list++
     }
 
-    const hasFilters = queryParams.search || Object.keys(queryParams.filters || {}).length > 0
+    const hasFilters = mergedParams.search || Object.keys(mergedParams.filters || {}).length > 0
     const canUseCache = !hasFilters || cacheSafe
 
     // 1. Cache valid + cacheable → use cache with local filtering
     if (this._cache.valid && canUseCache) {
       if (!_internal) this._stats.cacheHits++
       console.log('[cache] Using local cache for entity:', this.name)
-      const filtered = this._filterLocally(this._cache.items, queryParams)
+      const filtered = this._filterLocally(this._cache.items, mergedParams)
       // Update max stats
       if (filtered.items.length > this._stats.maxItemsSeen) {
         this._stats.maxItemsSeen = filtered.items.length
@@ -966,10 +1034,10 @@ export class EntityManager {
 
     // 2. Fetch from API
     let response
-    if (path && storage.request) {
-      // Use request() with path for multi-storage routing
-      // Build query params for GET request
-      const apiResponse = await storage.request('GET', path, { params: queryParams })
+    if (endpoint && storage.request) {
+      // Use request() with endpoint for multi-storage routing
+      // Build query params for GET request, pass context for normalize()
+      const apiResponse = await storage.request('GET', endpoint, { params: mergedParams, context })
       // Normalize response: handle both { data: [...], pagination: {...} } and { items, total }
       const data = apiResponse.data ?? apiResponse
       response = {
@@ -978,7 +1046,7 @@ export class EntityManager {
       }
     } else {
       // Standard storage.list() (normalizes response to { items, total })
-      response = await storage.list(queryParams)
+      response = await storage.list(mergedParams, context)
     }
     const items = response.items || []
     const total = response.total ?? items.length
@@ -1027,7 +1095,7 @@ export class EntityManager {
    * @returns {Promise<object>}
    */
   async get(id, context) {
-    const { storage, path } = this.resolveStorage('get', context)
+    const { storage, endpoint } = this._normalizeResolveResult(this.resolveStorage('get', context), context)
     this._stats.get++
 
     // Try cache first if valid and complete
@@ -1043,12 +1111,12 @@ export class EntityManager {
     // Fallback to storage
     this._stats.cacheMisses++
     if (storage) {
-      // Use request() with path for multi-storage routing, otherwise use get()
-      if (path && storage.request) {
-        const response = await storage.request('GET', `${path}/${id}`)
+      // Use request() with endpoint for multi-storage routing, otherwise use get()
+      if (endpoint && storage.request) {
+        const response = await storage.request('GET', `${endpoint}/${id}`, { context })
         return response.data ?? response
       }
-      return storage.get(id)
+      return storage.get(id, context)
     }
     throw new Error(`[EntityManager:${this.name}] get() not implemented`)
   }
@@ -1103,17 +1171,17 @@ export class EntityManager {
    * @returns {Promise<object>} - The created entity
    */
   async create(data, context) {
-    const { storage, path } = this.resolveStorage('create', context)
+    const { storage, endpoint } = this._normalizeResolveResult(this.resolveStorage('create', context), context)
     this._stats.create++
     if (storage) {
       // Invoke presave hooks (can modify data or throw to abort)
       const presaveContext = this._buildPresaveContext(data, true)
       await this._invokeHook('presave', presaveContext)
 
-      // Use request() with path for multi-storage routing, otherwise use create()
+      // Use request() with endpoint for multi-storage routing, otherwise use create()
       let result
-      if (path && storage.request) {
-        const response = await storage.request('POST', path, { data: presaveContext.record })
+      if (endpoint && storage.request) {
+        const response = await storage.request('POST', endpoint, { data: presaveContext.record, context })
         result = response.data ?? response
       } else {
         result = await storage.create(presaveContext.record)
@@ -1148,17 +1216,17 @@ export class EntityManager {
    * @returns {Promise<object>}
    */
   async update(id, data, context) {
-    const { storage, path } = this.resolveStorage('update', context)
+    const { storage, endpoint } = this._normalizeResolveResult(this.resolveStorage('update', context), context)
     this._stats.update++
     if (storage) {
       // Invoke presave hooks (can modify data or throw to abort)
       const presaveContext = this._buildPresaveContext(data, false, id)
       await this._invokeHook('presave', presaveContext)
 
-      // Use request() with path for multi-storage routing, otherwise use update()
+      // Use request() with endpoint for multi-storage routing, otherwise use update()
       let result
-      if (path && storage.request) {
-        const response = await storage.request('PUT', `${path}/${id}`, { data: presaveContext.record })
+      if (endpoint && storage.request) {
+        const response = await storage.request('PUT', `${endpoint}/${id}`, { data: presaveContext.record, context })
         result = response.data ?? response
       } else {
         result = await storage.update(id, presaveContext.record)
@@ -1193,17 +1261,17 @@ export class EntityManager {
    * @returns {Promise<object>}
    */
   async patch(id, data, context) {
-    const { storage, path } = this.resolveStorage('patch', context)
+    const { storage, endpoint } = this._normalizeResolveResult(this.resolveStorage('patch', context), context)
     this._stats.update++  // patch counts as update
     if (storage) {
       // Invoke presave hooks (can modify data or throw to abort)
       const presaveContext = this._buildPresaveContext(data, false, id)
       await this._invokeHook('presave', presaveContext)
 
-      // Use request() with path for multi-storage routing, otherwise use patch()
+      // Use request() with endpoint for multi-storage routing, otherwise use patch()
       let result
-      if (path && storage.request) {
-        const response = await storage.request('PATCH', `${path}/${id}`, { data: presaveContext.record })
+      if (endpoint && storage.request) {
+        const response = await storage.request('PATCH', `${endpoint}/${id}`, { data: presaveContext.record, context })
         result = response.data ?? response
       } else {
         result = await storage.patch(id, presaveContext.record)
@@ -1236,17 +1304,17 @@ export class EntityManager {
    * @returns {Promise<void>}
    */
   async delete(id, context) {
-    const { storage, path } = this.resolveStorage('delete', context)
+    const { storage, endpoint } = this._normalizeResolveResult(this.resolveStorage('delete', context), context)
     this._stats.delete++
     if (storage) {
       // Invoke predelete hooks (can throw to abort, e.g., for cascade checks)
       const predeleteContext = this._buildPredeleteContext(id)
       await this._invokeHook('predelete', predeleteContext)
 
-      // Use request() with path for multi-storage routing, otherwise use delete()
+      // Use request() with endpoint for multi-storage routing, otherwise use delete()
       let result
-      if (path && storage.request) {
-        result = await storage.request('DELETE', `${path}/${id}`)
+      if (endpoint && storage.request) {
+        result = await storage.request('DELETE', `${endpoint}/${id}`, { context })
       } else {
         result = await storage.delete(id)
       }

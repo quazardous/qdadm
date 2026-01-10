@@ -114,14 +114,17 @@ export class ApiStorage extends IStorage {
   /**
    * Normalize API response data to internal format
    * @param {object|Array} data - API response data
+   * @param {object} [context] - Routing context from EntityManager
+   * @param {Array<{entity: string, id: string}>} [context.parentChain] - Parent hierarchy
+   * @param {string} [context.path] - API path used for the request
    * @returns {object|Array} - Normalized data
    */
-  _normalizeData(data) {
+  _normalizeData(data, context = null) {
     if (!this._normalize) return data
     if (Array.isArray(data)) {
-      return data.map(item => this._normalize(item))
+      return data.map(item => this._normalize(item, context))
     }
-    return this._normalize(data)
+    return this._normalize(data, context)
   }
 
   /**
@@ -153,9 +156,11 @@ export class ApiStorage extends IStorage {
    * @param {string} [params.sort_by] - Field to sort by
    * @param {string} [params.sort_order='asc'] - Sort order ('asc' or 'desc')
    * @param {object} [params.filters] - Field filters { field: value }
+   * @param {object} [context] - Routing context for normalize()
+   * @param {Array<{entity: string, id: string}>} [context.parentChain] - Parent hierarchy
    * @returns {Promise<{ items: Array, total: number }>}
    */
-  async list(params = {}) {
+  async list(params = {}, context = null) {
     const { page = 1, page_size = 20, sort_by, sort_order, filters = {} } = params
 
     // WIP: Apply param mapping to filters
@@ -168,7 +173,7 @@ export class ApiStorage extends IStorage {
     const data = response.data
     const items = data[this.responseItemsKey] || data.items || data
     return {
-      items: this._normalizeData(items),
+      items: this._normalizeData(items, context),
       total: data[this.responseTotalKey] || data.total || (Array.isArray(data) ? data.length : 0)
     }
   }
@@ -176,11 +181,12 @@ export class ApiStorage extends IStorage {
   /**
    * Get a single entity by ID
    * @param {string|number} id
+   * @param {object} [context] - Routing context for normalize()
    * @returns {Promise<object>}
    */
-  async get(id) {
+  async get(id, context = null) {
     const response = await this.client.get(`${this.endpoint}/${id}`)
-    return this._normalizeData(response.data)
+    return this._normalizeData(response.data, context)
   }
 
   /**
@@ -230,20 +236,28 @@ export class ApiStorage extends IStorage {
   /**
    * Generic request for special operations
    * @param {string} method - 'GET', 'POST', 'PUT', 'PATCH', 'DELETE'
-   * @param {string} path - Relative path (appended to endpoint)
-   * @param {object} options - { data, params, headers }
+   * @param {string} endpoint - Full endpoint URL (starts with /) or relative path
+   *   - Full endpoint (/api/...): used as-is
+   *   - Relative path (no leading /): appended to this.endpoint
+   * @param {object} options - Request options
+   * @param {object} [options.data] - Request body
+   * @param {object} [options.params] - Query parameters
+   * @param {object} [options.headers] - Additional headers
+   * @param {object} [options.context] - Routing context for normalize()
+   * @param {Array<{entity: string, id: string}>} [options.context.parentChain] - Parent hierarchy
    * @returns {Promise<any>}
    */
-  async request(method, path, options = {}) {
-    const url = path.startsWith('/') ? path : `${this.endpoint}/${path}`
+  async request(method, endpoint, options = {}) {
+    const { context, ...requestOptions } = options
+    const url = endpoint.startsWith('/') ? endpoint : `${this.endpoint}/${endpoint}`
     const response = await this.client.request({
       method,
       url,
-      data: options.data,
-      params: options.params,
-      headers: options.headers
+      data: requestOptions.data,
+      params: requestOptions.params,
+      headers: requestOptions.headers
     })
-    return response.data
+    return this._normalizeData(response.data, context)
   }
 }
 

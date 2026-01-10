@@ -217,24 +217,71 @@ class TasksManager extends EntityManager {
       name: 'tasks',
       storage: new ApiStorage({ endpoint: '/api/tasks' })
     })
-    // Additional storage for project-scoped access
-    this.projectStorage = new ApiStorage({ endpoint: '/api/projects' })
   }
 
   resolveStorage(method, context) {
     const parent = context?.parentChain?.at(-1)
 
     if (parent?.entity === 'projects') {
-      return {
-        storage: this.projectStorage,
-        path: `/${parent.id}/tasks`
-      }
+      // Return full endpoint - uses primary storage
+      return `/api/projects/${parent.id}/tasks`
     }
 
-    return { storage: this.storage }
+    // undefined = use default storage.endpoint
   }
 }
 ```
+
+### Return Value Options
+
+`resolveStorage()` can return:
+
+| Return Value | Behavior |
+|--------------|----------|
+| `undefined` / `null` | Use default `storage.endpoint` |
+| `string` | Full endpoint URL, use primary storage |
+| `function` | Dynamic endpoint builder `(context) => string` |
+| `{ endpoint: string }` | Full endpoint URL, use primary storage |
+| `{ endpoint: function }` | Dynamic endpoint builder |
+| `{ endpoint, params }` | Endpoint with default query params |
+| `{ storage, endpoint }` | Custom storage with endpoint |
+
+### Default Query Params
+
+Return `params` to add default query parameters that get merged with request params:
+
+```js
+resolveStorage(method, context) {
+  const parent = context?.parentChain?.at(-1)
+
+  if (parent?.entity === 'projects') {
+    return {
+      endpoint: `/api/projects/${parent.id}/tasks`,
+      // These params are merged with request params (request params override)
+      params: { include: 'project', status: 'active' }
+    }
+  }
+}
+```
+
+Request params override resolved params, so `list({ status: 'completed' })` would use `status: 'completed'` instead of `status: 'active'`.
+
+### Dynamic Endpoint Builders
+
+Return a function when the endpoint depends on context. This marks the endpoint as "dynamic" for tools like debug panels that need to know the endpoint can't be used without context:
+
+```js
+resolveStorage(method, context) {
+  const parent = context?.parentChain?.at(-1)
+
+  if (parent?.entity === 'projects') {
+    // Return a builder function - marks endpoint as context-dependent
+    return (ctx) => `/api/projects/${ctx.parentChain.at(-1).id}/tasks`
+  }
+}
+```
+
+The `isDynamic` flag in the resolved result indicates the endpoint was built from a function.
 
 ### Parent Chain Structure
 
@@ -262,50 +309,58 @@ class TasksManager extends EntityManager {
   resolveStorage(method, context) {
     const chain = context?.parentChain || []
 
-    // /organizations/:orgId/projects/:projId/tasks
+    // /api/organizations/:orgId/projects/:projId/tasks
     if (chain.length === 2
         && chain[0].entity === 'organizations'
         && chain[1].entity === 'projects') {
-      return {
-        storage: this.orgProjectStorage,
-        path: `/${chain[0].id}/projects/${chain[1].id}/tasks`
-      }
+      return `/api/organizations/${chain[0].id}/projects/${chain[1].id}/tasks`
     }
 
-    // /projects/:projId/tasks
+    // /api/projects/:projId/tasks
     const parent = chain.at(-1)
     if (parent?.entity === 'projects') {
-      return {
-        storage: this.projectStorage,
-        path: `/${parent.id}/tasks`
-      }
+      return `/api/projects/${parent.id}/tasks`
     }
 
-    // /tasks (global)
-    return { storage: this.storage }
+    // /api/tasks (global) - use default storage.endpoint
   }
 }
 ```
 
-### Different Param Mappings
+### Using Different Storages
 
-Each storage can use different API conventions:
+When you need different API conventions (param mapping, normalization), use separate storages:
 
 ```js
-resolveStorage(method, context) {
-  const parent = context?.parentChain?.at(-1)
+class TasksManager extends EntityManager {
+  constructor() {
+    // Global tasks endpoint
+    super({
+      name: 'tasks',
+      storage: new ApiStorage({ endpoint: '/api/tasks' })
+    })
 
-  if (parent?.entity === 'projects') {
-    return {
-      storage: this.projectStorage,
-      path: `/${parent.id}/tasks`,
-      mappingKey: 'project'  // Use project-specific param mapping
-    }
+    // Legacy API with different field names
+    this.legacyStorage = new ApiStorage({
+      endpoint: '/api/v1/legacy',
+      normalize: (apiData) => ({
+        id: apiData.task_id,
+        title: apiData.name,
+        status: apiData.state
+      }),
+      denormalize: (data) => ({
+        task_id: data.id,
+        name: data.title,
+        state: data.status
+      })
+    })
   }
 
-  return {
-    storage: this.storage,
-    mappingKey: 'global'
+  resolveStorage(method, context) {
+    if (context?.useLegacy) {
+      return { storage: this.legacyStorage, endpoint: '/api/v1/legacy/tasks' }
+    }
+    // Default: use primary storage
   }
 }
 ```
@@ -315,15 +370,15 @@ resolveStorage(method, context) {
 When endpoints return different field names, use storage-level normalization:
 
 ```js
-// Project-scoped API uses different field names
-this.projectStorage = new ApiStorage({
-  endpoint: '/api/projects',
+const storage = new ApiStorage({
+  endpoint: '/api/tasks',
   // API → internal format
-  normalize: (apiData) => ({
+  normalize: (apiData, context) => ({
     id: apiData.task_id,
     title: apiData.name,
     status: apiData.state,
-    projectId: apiData.project_id
+    // Use context to inject parent ID if missing from API response
+    projectId: apiData.project_id ?? context?.parentChain?.at(-1)?.id
   }),
   // Internal → API format
   denormalize: (data) => ({
@@ -344,6 +399,78 @@ Two levels of data transformation:
 | **EntityManager** | Business logic | Computed fields, validation, defaults |
 
 Storage normalization is transparent - EntityManager always sees consistent field names.
+
+### Important: Consistent Internal Schema
+
+**The internal schema must be consistent** across all endpoints, including parent reference fields.
+
+This can be achieved by:
+1. **API-level**: All endpoints return the same fields
+2. **Storage-level**: Use `normalize()` to add missing fields
+3. **EntityManager-level**: Transform in `onQueryResult` or custom methods
+
+```
+API returns different schemas:
+  GET /api/tasks            → { id, title, project_id }
+  GET /api/projects/42/tasks → { id, title }  ← Missing project_id
+
+Option A: API-level - ensure all endpoints return same fields (recommended)
+
+Option B: Storage-level - normalize with context:
+  this.projectStorage = new ApiStorage({
+    endpoint: '/api/projects',
+    normalize: (item, context) => ({
+      id: item.id,
+      title: item.title,
+      projectId: item.project_id ?? context?.parentChain?.at(-1)?.id
+    })
+  })
+
+Option C: EntityManager-level - normalize after fetch:
+  async list(params, context) {
+    const result = await super.list(params, context)
+    const parentId = context?.parentChain?.at(-1)?.id
+    if (parentId) {
+      result.items = result.items.map(item => ({
+        ...item,
+        projectId: item.projectId ?? parentId
+      }))
+    }
+    return result
+  }
+
+Result: EntityManager always sees { id, title, projectId }
+```
+
+### Normalize Context
+
+The `context` object passed to `normalize(item, context)` contains:
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `parentChain` | `Array<{entity, id}>` | Parent hierarchy from root to direct parent |
+
+```js
+// Example context for /organizations/1/projects/42/tasks
+context = {
+  parentChain: [
+    { entity: 'organizations', id: '1' },
+    { entity: 'projects', id: '42' }
+  ]
+}
+
+// Access helpers in normalize()
+normalize: (item, ctx) => ({
+  ...item,
+  projectId: item.projectId ?? ctx?.parentChain?.at(-1)?.id,      // '42'
+  orgId: item.orgId ?? ctx?.parentChain?.at(0)?.id                 // '1'
+})
+```
+
+Why this matters:
+- **Local filtering**: `useListPage` adds parent filters (e.g., `projectId=42`) for cache filtering
+- **Cache consistency**: Items must be filterable regardless of how they were fetched
+- **Predictable behavior**: Same entity shape everywhere avoids subtle bugs
 
 ### Limitations
 

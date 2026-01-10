@@ -5,6 +5,33 @@ All notable changes to qdadm will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.53.0] - 2026-01-11
+
+### Added
+- **resolveStorage() params support**: Return `{ endpoint, params }` to add default query params
+  - Resolved params are merged with request params (request overrides)
+  - Example: `return { endpoint: '/api/tasks', params: { status: 'active' } }`
+- **Dynamic endpoint builders**: Return a function `(context) => string` for context-dependent endpoints
+  - Marks endpoint as `isDynamic: true` for debug panel awareness
+  - Supports both direct function return and `{ endpoint: function }` syntax
+- **Normalize context**: `normalize(item, context)` now receives routing context with `parentChain`
+  - Allows storage-level data transformation based on parent route
+
+### Changed
+- **resolveStorage() refactored**: Simplified return value options
+  - `string`: Full endpoint URL (recommended)
+  - `function`: Dynamic endpoint builder
+  - `{ endpoint }`: Full endpoint with primary storage
+  - `{ endpoint, params }`: With default query params
+  - `{ storage, endpoint }`: Custom storage with endpoint
+  - `undefined/null`: Use default storage.endpoint
+- **CRUD methods unified**: All methods now use `_normalizeResolveResult()` helper
+  - Consistent handling of storage resolution across list/get/create/update/patch/delete
+  - Context passed to storage.request() for normalize functions
+
+### Deprecated
+- **path in resolveStorage()**: Use full `endpoint` instead of `storage.endpoint + path`
+
 ## [0.52.2] - 2026-01-10
 
 ### Fixed
