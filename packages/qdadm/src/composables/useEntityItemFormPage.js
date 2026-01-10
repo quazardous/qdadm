@@ -110,7 +110,9 @@ export function useEntityItemFormPage(config = {}) {
     // Validation options
     validateOnBlur = true,         // Validate field on blur
     validateOnSubmit = true,       // Validate all fields before submit
-    showErrorSummary = false       // Show error summary at top of form
+    showErrorSummary = false,      // Show error summary at top of form
+    // Field generation
+    generateFormFields = true      // Auto-generate fields from manager schema
   } = config
 
   const router = useRouter()
@@ -648,6 +650,9 @@ export function useEntityItemFormPage(config = {}) {
     } else if (currentIndex === -1) {
       // New field, add at end
       fieldOrder.value.push(name)
+    } else {
+      // Existing field without repositioning, restore at original position
+      fieldOrder.value.splice(currentIndex, 0, name)
     }
 
     return builderApi
@@ -1237,6 +1242,11 @@ export function useEntityItemFormPage(config = {}) {
     // FormPage integration
     props: formProps,
     events: formEvents
+  }
+
+  // Auto-generate fields from manager schema if enabled
+  if (generateFormFields) {
+    generateFields()
   }
 
   return builderApi

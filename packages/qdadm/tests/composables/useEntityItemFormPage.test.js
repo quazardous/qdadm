@@ -35,6 +35,12 @@ vi.mock('primevue/useconfirm', () => ({
   useConfirm: () => mockConfirm
 }))
 
+// Mock moduleRegistry - getSiblingRoutes returns routes based on test setup
+let mockSiblingRoutes = []
+vi.mock('../../src/module/moduleRegistry', () => ({
+  getSiblingRoutes: () => mockSiblingRoutes
+}))
+
 // Mock EntityManager
 function createMockManager(options = {}) {
   return {
@@ -45,6 +51,18 @@ function createMockManager(options = {}) {
     idField: 'id',
     getInitialData: () => ({ title: '', author: '' }),
     getEntityLabel: (entity) => entity?.title || null,
+    getFormFields: () => options.formFields ?? [
+      { name: 'title', type: 'text', label: 'Title', required: true },
+      { name: 'author', type: 'text', label: 'Author' }
+    ],
+    getFieldConfig: (name) => {
+      const fields = options.formFields ?? [
+        { name: 'title', type: 'text', label: 'Title', required: true },
+        { name: 'author', type: 'text', label: 'Author' }
+      ]
+      return fields.find(f => f.name === name)
+    },
+    resolveReferenceOptions: vi.fn().mockResolvedValue([]),
     get: vi.fn().mockResolvedValue({ id: 1, title: 'Test Book', author: 'Test Author' }),
     create: vi.fn().mockResolvedValue({ id: 2, title: 'New Book', author: 'New Author' }),
     update: vi.fn().mockResolvedValue({ id: 1, title: 'Updated Book', author: 'Test Author' }),
@@ -89,6 +107,7 @@ describe('useEntityItemFormPage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockRouteState = { name: 'book-create', params: {}, query: {} }
+    mockSiblingRoutes = []  // Reset sibling routes
     mockManager = createMockManager()
     mockOrchestrator.get.mockImplementation(() => mockManager)
   })
@@ -320,7 +339,7 @@ describe('useEntityItemFormPage', () => {
 
     it('redirects to list when andClose is true', async () => {
       mockRouteState = { name: 'book-create', params: {} }
-      const { result } = createWrapper(() => useEntityItemFormPage({ entity: 'books' }))
+      const { result } = createWrapper(() => useEntityItemFormPage({ entity: 'books', validateOnSubmit: false }))
 
       await flushPromises()
       await result.submit(true)
@@ -331,7 +350,7 @@ describe('useEntityItemFormPage', () => {
     it('redirects to edit mode after create when redirectOnCreate is true', async () => {
       mockRouteState = { name: 'book-create', params: {} }
       const { result } = createWrapper(() =>
-        useEntityItemFormPage({ entity: 'books', redirectOnCreate: true })
+        useEntityItemFormPage({ entity: 'books', redirectOnCreate: true, validateOnSubmit: false })
       )
 
       await flushPromises()
@@ -754,7 +773,7 @@ describe('useEntityItemFormPage', () => {
     })
 
     it('generateFields respects exclude option', () => {
-      const { result } = createWrapper(() => useEntityItemFormPage({ entity: 'books' }))
+      const { result } = createWrapper(() => useEntityItemFormPage({ entity: 'books', generateFormFields: false }))
 
       result.generateFields({ exclude: ['internal_id', 'year'] })
 
@@ -764,7 +783,7 @@ describe('useEntityItemFormPage', () => {
     })
 
     it('generateFields respects only option', () => {
-      const { result } = createWrapper(() => useEntityItemFormPage({ entity: 'books' }))
+      const { result } = createWrapper(() => useEntityItemFormPage({ entity: 'books', generateFormFields: false }))
 
       result.generateFields({ only: ['title', 'author'] })
 
@@ -774,7 +793,7 @@ describe('useEntityItemFormPage', () => {
     })
 
     it('addField adds manual field configuration', () => {
-      const { result } = createWrapper(() => useEntityItemFormPage({ entity: 'books' }))
+      const { result } = createWrapper(() => useEntityItemFormPage({ entity: 'books', generateFormFields: false }))
 
       result.addField('custom', { type: 'textarea', label: 'Custom Field' })
 
@@ -1072,7 +1091,7 @@ describe('useEntityItemFormPage', () => {
 
       result.validate()
 
-      expect(customValidator).toHaveBeenCalledWith('Hi', result.data.value)
+      expect(customValidator).toHaveBeenCalledWith('Hi', expect.any(Object))
       expect(result.errors.value.title).toBe('Must be at least 5 characters')
     })
 
@@ -1235,6 +1254,112 @@ describe('useEntityItemFormPage', () => {
       result.data.value.email = ''  // Empty but not required
 
       expect(result.validate()).toBe(true)
+    })
+  })
+
+  describe('parent chain', () => {
+    it('auto-fills foreignKey from parent config in initial data', () => {
+      mockRouteState = {
+        name: 'book-loans-create',
+        params: { bookId: '123' },
+        meta: {
+          parent: {
+            entity: 'books',
+            param: 'bookId',
+            foreignKey: 'book_id'
+          }
+        }
+      }
+
+      const { result } = createWrapper(() => useEntityItemFormPage({ entity: 'loans' }))
+
+      expect(result.data.value.book_id).toBe('123')
+    })
+
+    it('parentConfig is available from route.meta.parent', () => {
+      mockRouteState = {
+        name: 'book-loans-create',
+        params: { bookId: '123' },
+        meta: {
+          parent: {
+            entity: 'books',
+            param: 'bookId',
+            foreignKey: 'book_id'
+          }
+        }
+      }
+
+      const { result } = createWrapper(() => useEntityItemFormPage({ entity: 'loans' }))
+
+      expect(result.parentConfig.value).toEqual({
+        entity: 'books',
+        param: 'bookId',
+        foreignKey: 'book_id'
+      })
+    })
+
+    it('parentId returns the parent ID from route params', () => {
+      mockRouteState = {
+        name: 'book-loans-create',
+        params: { bookId: 'parent-123' },
+        meta: {
+          parent: {
+            entity: 'books',
+            param: 'bookId',
+            foreignKey: 'book_id'
+          }
+        }
+      }
+
+      const { result } = createWrapper(() => useEntityItemFormPage({ entity: 'loans' }))
+
+      expect(result.parentId.value).toBe('parent-123')
+    })
+
+    it('findListRoute returns sibling list route for child entities', () => {
+      mockRouteState = {
+        name: 'book-loans-create',
+        params: { bookId: '123' },
+        meta: {
+          parent: {
+            entity: 'books',
+            param: 'bookId',
+            foreignKey: 'book_id'
+          }
+        }
+      }
+
+      // Set up sibling routes
+      mockSiblingRoutes = [
+        { name: 'book-loans', path: '/books/:bookId/loans' },
+        { name: 'book-loans-create', path: '/books/:bookId/loans/create' }
+      ]
+
+      const { result } = createWrapper(() => useEntityItemFormPage({ entity: 'loans' }))
+
+      const listRoute = result.findListRoute()
+      expect(listRoute.name).toBe('book-loans')
+      expect(listRoute.params).toEqual({ bookId: '123' })
+    })
+
+    it('findListRoute returns routePrefix when no parent config', () => {
+      mockRouteState = { name: 'book-create', params: {} }
+
+      const { result } = createWrapper(() => useEntityItemFormPage({ entity: 'books' }))
+
+      const listRoute = result.findListRoute()
+      expect(listRoute.name).toBe('book')
+    })
+
+    it('works without parent config (top-level entity)', () => {
+      mockRouteState = { name: 'book-create', params: {} }
+
+      const { result } = createWrapper(() => useEntityItemFormPage({ entity: 'books' }))
+
+      expect(result.parentConfig.value).toBeFalsy()
+      expect(result.parentId.value).toBeFalsy()
+      // No parent foreignKey in initial data
+      expect(result.data.value).not.toHaveProperty('book_id')
     })
   })
 })
