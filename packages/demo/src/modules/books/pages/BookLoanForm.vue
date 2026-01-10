@@ -6,47 +6,25 @@
  *
  * DEMONSTRATES: Parent chain auto-detection
  * - book_id is auto-filled from route.meta.parent.foreignKey
- * - No manual extraction of route.params needed
+ * - Redirect after save auto-detects sibling list route (book-loans)
  * - parentData available for display (book title in header)
  */
-import { useRouter } from 'vue-router'
 import { useEntityItemFormPage, FormPage, FormField, FormInput, PageNav } from 'qdadm'
 
-const router = useRouter()
-
-// Create form - book_id is auto-populated from route.meta.parent!
-// No need to manually extract route.params.bookId
+// Create form - everything is auto-detected from route.meta.parent:
+// - book_id auto-filled via foreignKey
+// - Redirect goes to sibling list route (book-loans)
 const form = useEntityItemFormPage({ entity: 'loans' })
 
 // Access parent data (the book) for display
-// Loaded automatically by useEntityItemPage
 const parentBook = form.parentData
 
-// Generate form fields from LoansManager
+// Generate form fields and exclude auto-filled parent field
 form.generateFields()
-
-// Hide book_id field (auto-filled, not editable)
 form.excludeField('book_id')
 
-// Custom save action that redirects to parent loans list
-form.addAction('save', {
-  label: 'Save & Close',
-  icon: 'pi pi-check-circle',
-  severity: 'success',
-  onClick: async () => {
-    const result = await form.submit(false)  // Don't auto-redirect
-    if (result) {
-      // Redirect to loans list using parent param
-      router.push({
-        name: 'book-loans',
-        params: { bookId: form.parentId.value }
-      })
-    }
-  },
-  visible: () => form.manager.canCreate(),
-  disabled: ({ dirty, saving }) => !dirty || saving,
-  loading: () => form.saving.value
-})
+// Standard save action - redirect is auto-detected
+form.addSaveAction()
 </script>
 
 <template>

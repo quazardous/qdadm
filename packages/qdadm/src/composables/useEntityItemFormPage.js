@@ -87,6 +87,7 @@ import { useBreadcrumb } from './useBreadcrumb'
 import { useEntityItemPage } from './useEntityItemPage'
 import { registerGuardDialog, unregisterGuardDialog } from './useGuardStore'
 import { deepClone } from '../utils/transformers'
+import { getSiblingRoutes } from '../module/moduleRegistry'
 
 export function useEntityItemFormPage(config = {}) {
   const {
@@ -316,7 +317,9 @@ export function useEntityItemFormPage(config = {}) {
       }
 
       if (andClose) {
-        router.push({ name: routePrefix })
+        // For child entities, redirect to sibling list route with parent params
+        const listRoute = findListRoute()
+        router.push(listRoute)
       } else if (!isEdit.value && redirectOnCreate) {
         // Redirect to edit mode after create
         const newId = responseData[manager.idField] || responseData.id || responseData.key
@@ -393,12 +396,59 @@ export function useEntityItemFormPage(config = {}) {
 
   // ============ NAVIGATION ============
 
+  /**
+   * Find the list route for redirects after save/cancel
+   * For child entities: finds sibling list route with parent params
+   * For top-level entities: uses routePrefix
+   *
+   * When parent has multiple child entity types (e.g., bots → commands AND bots → logs),
+   * we find the list route matching the current entity's route prefix.
+   */
+  function findListRoute() {
+    // If has parent config, find sibling list route
+    if (parentConfig.value) {
+      const { entity: parentEntityName, param } = parentConfig.value
+      const siblings = getSiblingRoutes(parentEntityName, param)
+
+      // Extract base route name from current route (e.g., 'bot-commands-create' → 'bot-commands')
+      const currentRouteName = route.name || ''
+      const baseRouteName = currentRouteName.replace(/-(create|edit|new)$/, '')
+
+      // Find list routes among siblings (exclude create/edit/new routes)
+      const listRoutes = siblings.filter(r => {
+        const name = r.name || ''
+        const path = r.path || ''
+        return !name.match(/-(create|edit|new)$/) && !path.match(/\/(create|edit|new)$/)
+      })
+
+      // Prefer route matching current entity's base name
+      let listRoute = listRoutes.find(r => r.name === baseRouteName)
+
+      // Fallback: try route containing routePrefix (e.g., 'bot-commands' contains 'command')
+      if (!listRoute && routePrefix) {
+        listRoute = listRoutes.find(r => r.name?.includes(routePrefix))
+      }
+
+      // Last fallback: first list route
+      if (!listRoute && listRoutes.length > 0) {
+        listRoute = listRoutes[0]
+      }
+
+      if (listRoute?.name) {
+        return { name: listRoute.name, params: route.params }
+      }
+    }
+
+    // Default: top-level entity list
+    return { name: routePrefix }
+  }
+
   function cancel() {
-    router.push({ name: routePrefix })
+    router.push(findListRoute())
   }
 
   function goToList() {
-    router.push({ name: routePrefix })
+    router.push(findListRoute())
   }
 
   // ============ FIELDS ============
@@ -1123,6 +1173,7 @@ export function useEntityItemFormPage(config = {}) {
     confirmDelete,
     reset,
     goToList,
+    findListRoute,
 
     // Dirty tracking
     takeSnapshot,
