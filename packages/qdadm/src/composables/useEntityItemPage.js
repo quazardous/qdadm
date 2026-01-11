@@ -53,7 +53,7 @@
  */
 import { ref, computed, onMounted, inject, provide } from 'vue'
 import { useRoute } from 'vue-router'
-import { useActiveStack } from '../chain/useActiveStack.js'
+import { useStackHydrator } from '../chain/useStackHydrator.js'
 
 export function useEntityItemPage(config = {}) {
   const {
@@ -89,8 +89,8 @@ export function useEntityItemPage(config = {}) {
   // Provide entity context for child components
   provide('mainEntity', entity)
 
-  // Active stack integration (unified navigation context)
-  const stack = useActiveStack()
+  // Stack hydrator for setting entity data on navigation context
+  const hydrator = useStackHydrator()
 
   // ============ STATE ============
 
@@ -185,7 +185,7 @@ export function useEntityItemPage(config = {}) {
           newChain.set(level, data)
 
           // Update active stack
-          stack.setEntityData(currentConfig.entity, data)
+          hydrator.setEntityData(currentConfig.entity, data)
         }
 
         currentConfig = currentConfig.parent
@@ -262,7 +262,7 @@ export function useEntityItemPage(config = {}) {
       data.value = transformed
 
       // Update active stack
-      stack.setCurrentData(transformed)
+      hydrator.setCurrentData(transformed)
 
       if (onLoadSuccess) {
         await onLoadSuccess(transformed)
@@ -352,7 +352,7 @@ export function useEntityItemPage(config = {}) {
     manager,
     orchestrator,
 
-    // Active navigation stack (unified context)
-    stack
+    // Stack hydrator (for setting entity data on navigation context)
+    hydrator
   }
 }

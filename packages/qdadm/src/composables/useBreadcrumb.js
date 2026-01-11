@@ -1,6 +1,7 @@
 import { computed, inject } from 'vue'
 import { useRouter } from 'vue-router'
 import { useSemanticBreadcrumb } from './useSemanticBreadcrumb'
+import { useStackHydrator } from '../chain/useStackHydrator.js'
 
 /**
  * useBreadcrumb - Generate display-ready breadcrumb from semantic breadcrumb
@@ -26,6 +27,9 @@ export function useBreadcrumb(options = {}) {
 
   // Get semantic breadcrumb
   const { breadcrumb: semanticBreadcrumb } = useSemanticBreadcrumb()
+
+  // Get hydrator for parent entity labels
+  const hydrator = useStackHydrator()
 
   // Default label mapping
   const defaultLabelMap = {
@@ -113,8 +117,11 @@ export function useBreadcrumb(options = {}) {
         displayItem.to = isLast ? null : (routeExists(routeName) ? { name: routeName } : null)
       } else if (item.id) {
         // Entity instance (show/edit/delete)
-        // Try to get label from entity data or use ID
-        if (entity && options.getEntityLabel) {
+        // Try to get label from hydrator first (works for all levels)
+        const hydratedLevel = hydrator.getLevelByEntity(entityName)
+        if (hydratedLevel?.label) {
+          displayItem.label = hydratedLevel.label
+        } else if (entity && options.getEntityLabel) {
           displayItem.label = options.getEntityLabel(entity)
         } else if (entity?.name) {
           displayItem.label = entity.name
@@ -158,6 +165,12 @@ export function useBreadcrumb(options = {}) {
   const breadcrumbItems = computed(() => {
     const entity = options.entity?.value || options.entity
     const items = []
+
+    // Access hydrator levels deeply to create Vue dependencies
+    // This ensures breadcrumb recomputes when hydration completes
+    // We need to touch each level's label to track changes
+    const _hydratorLevels = hydrator.levels.value
+    const _labelsDep = _hydratorLevels.map(l => l.label).join()
 
     // Add home first (display concern, not in semantic breadcrumb)
     const homeItem = getHomeItem()

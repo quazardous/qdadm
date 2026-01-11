@@ -64,6 +64,7 @@ import { createDeferredRegistry } from '../deferred/DeferredRegistry.js'
 import { createEventRouter } from './EventRouter.js'
 import { createSSEBridge } from './SSEBridge.js'
 import { ActiveStack } from '../chain/ActiveStack.js'
+import { StackHydrator } from '../chain/StackHydrator.js'
 
 // Debug imports are dynamic to enable tree-shaking in production
 // When debugBar: false/undefined, no debug code is bundled
@@ -203,6 +204,8 @@ export class Kernel {
     this._createDeferredRegistry()
     // 2. Create orchestrator early (modules need it for ctx.entity())
     this._createOrchestrator()
+    // 2.1. Create stack hydrator (needs activeStack + orchestrator)
+    this._createStackHydrator()
     // 2.5. Create PermissionRegistry early (modules register permissions via ctx.entity())
     this._createPermissionRegistry()
     // 2.6. Setup security early (SecurityModule needs ctx.security)
@@ -215,7 +218,9 @@ export class Kernel {
     this._loadModulesSync()
     // 5. Create router (needs routes from modules)
     this._createRouter()
-    // 5.5. Setup auth guard (if authAdapter provided)
+    // 5.5. Setup stack sync (rebuild activeStack on route change)
+    this._setupStackSync()
+    // 5.6. Setup auth guard (if authAdapter provided)
     this._setupAuthGuard()
     // 6. Setup auth:expired handler (needs router + authAdapter)
     this._setupAuthExpiredHandler()
@@ -254,6 +259,8 @@ export class Kernel {
     this._createDeferredRegistry()
     // 2. Create orchestrator early (modules need it for ctx.entity())
     this._createOrchestrator()
+    // 2.1. Create stack hydrator (needs activeStack + orchestrator)
+    this._createStackHydrator()
     // 2.5. Create PermissionRegistry early (modules register permissions via ctx.entity())
     this._createPermissionRegistry()
     // 2.6. Setup security early (SecurityModule needs ctx.security)
@@ -266,7 +273,9 @@ export class Kernel {
     await this._loadModules()
     // 5. Create router (needs routes from modules)
     this._createRouter()
-    // 5.5. Setup auth guard (if authAdapter provided)
+    // 5.5. Setup stack sync (rebuild activeStack on route change)
+    this._setupStackSync()
+    // 5.6. Setup auth guard (if authAdapter provided)
     this._setupAuthGuard()
     // 6. Setup auth:expired handler (needs router + authAdapter)
     this._setupAuthExpiredHandler()
@@ -718,6 +727,61 @@ export class Kernel {
   }
 
   /**
+   * Setup activeStack synchronization with router
+   * Rebuilds the stack on every route change (single source of truth)
+   */
+  _setupStackSync() {
+    this.router.afterEach((to) => {
+      this._rebuildActiveStack(to)
+    })
+  }
+
+  /**
+   * Rebuild activeStack from route
+   * @param {object} route - Vue Router route object
+   * @private
+   */
+  _rebuildActiveStack(route) {
+    const entityConfig = route.meta?.entity
+    if (!entityConfig) {
+      this.activeStack.clear()
+      return
+    }
+
+    const levels = []
+
+    // Build parent chain from route.meta.parent
+    let parentConfig = route.meta?.parent
+    while (parentConfig) {
+      const id = route.params[parentConfig.param] ?? null
+      levels.unshift({
+        entity: parentConfig.entity,
+        param: parentConfig.param,
+        foreignKey: null,
+        id,
+      })
+      parentConfig = parentConfig.parent ?? null
+    }
+
+    // Add current entity ONLY if it has an ID
+    const manager = this.orchestrator?.get(entityConfig)
+    const idField = manager?.idField ?? 'id'
+    const currentId = route.params[idField] ?? null
+    const currentForeignKey = route.meta?.parent?.foreignKey ?? null
+
+    if (currentId) {
+      levels.push({
+        entity: entityConfig,
+        param: idField,
+        foreignKey: currentForeignKey,
+        id: currentId,
+      })
+    }
+
+    this.activeStack.set(levels)
+  }
+
+  /**
    * Create signal bus for event-driven communication
    */
   _createSignalBus() {
@@ -873,10 +937,19 @@ export class Kernel {
 
   /**
    * Create active stack for navigation state
-   * Holds the current stack of active items (entity, id, data, label).
+   * Holds the sync stack of levels (entity, param, foreignKey, id).
    */
   _createActiveStack() {
-    this.activeStack = new ActiveStack()
+    this.activeStack = new ActiveStack(this.signals)
+  }
+
+  /**
+   * Create stack hydrator for async data loading
+   * Hydrates stack levels with entity data and labels.
+   * Must be called after activeStack and orchestrator are created.
+   */
+  _createStackHydrator() {
+    this.stackHydrator = new StackHydrator(this.activeStack, this.orchestrator, this.signals)
   }
 
   /**
@@ -1054,6 +1127,9 @@ export class Kernel {
     // Active stack injection (for navigation context)
     app.provide('qdadmActiveStack', this.activeStack)
 
+    // Stack hydrator injection (for async data loading)
+    app.provide('qdadmStackHydrator', this.stackHydrator)
+
     // Dev mode: expose qdadm services on window for DevTools inspection
     if (this.options.debug && typeof window !== 'undefined') {
       window.__qdadm = {
@@ -1063,6 +1139,7 @@ export class Kernel {
         hooks: this.hookRegistry,
         zones: this.zoneRegistry,
         activeStack: this.activeStack,
+        stackHydrator: this.stackHydrator,
         deferred: this.deferred,
         router: this.router,
         // Helper to get a manager quickly

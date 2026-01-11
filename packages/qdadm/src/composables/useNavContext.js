@@ -20,7 +20,7 @@ import { ref, computed, watch, inject } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { getSiblingRoutes } from '../module/moduleRegistry.js'
 import { useSemanticBreadcrumb } from './useSemanticBreadcrumb.js'
-import { useActiveStack } from '../chain/useActiveStack.js'
+import { useStackHydrator } from '../chain/useStackHydrator.js'
 
 export function useNavContext(options = {}) {
   const route = useRoute()
@@ -33,8 +33,8 @@ export function useNavContext(options = {}) {
   const orchestrator = inject('qdadmOrchestrator', null)
   const homeRouteName = inject('qdadmHomeRoute', null)
 
-  // Active stack for entity data (replaces legacy breadcrumbEntities)
-  const stack = useActiveStack()
+  // Stack hydrator for entity data (has async-loaded data and labels)
+  const hydrator = useStackHydrator()
 
   function getManager(entityName) {
     return orchestrator?.get(entityName)
@@ -67,12 +67,15 @@ export function useNavContext(options = {}) {
     for (const item of semantic) {
       if (item.kind === 'entity-list') {
         const manager = getManager(item.entity)
+        // For child routes, prefer route's navLabel over manager's labelPlural
+        const routeRecord = item.route ? router.getRoutes().find(r => r.name === item.route) : null
+        const label = routeRecord?.meta?.navLabel || manager?.labelPlural || item.entity
         chain.push({
           type: 'list',
           entity: item.entity,
           manager,
-          label: manager?.labelPlural || item.entity,
-          routeName: manager?.routePrefix || item.entity.slice(0, -1)
+          label,
+          routeName: item.route || manager?.routePrefix || item.entity.slice(0, -1)
         })
       } else if (item.kind.startsWith('entity-') && item.id) {
         // entity-show, entity-edit, entity-delete
@@ -128,29 +131,24 @@ export function useNavContext(options = {}) {
   const chainData = ref(new Map())  // Map: chainIndex -> entityData
 
   /**
-   * Build chainData from activeStack levels
+   * Build chainData from stackHydrator levels
    *
-   * ActiveStack is populated by useEntityItemPage/useForm when pages load.
-   * Each level in the stack corresponds to an entity in the navigation chain.
+   * StackHydrator fetches entity data asynchronously and provides labels.
+   * Each hydrated level has .data and .label fields when loaded.
    */
-  watch([navChain, stack.levels], ([chain, levels]) => {
+  watch([navChain, hydrator.levels], ([chain, levels]) => {
     // Build new Map (reassignment triggers Vue reactivity)
     const newChainData = new Map()
-
-    // Count item segments to match with stack levels
-    let itemIndex = 0
 
     for (let i = 0; i < chain.length; i++) {
       const segment = chain[i]
       if (segment.type !== 'item') continue
 
-      // Find matching data in activeStack by entity name
-      const stackLevel = levels.find(l => l.entity === segment.entity && String(l.id) === String(segment.id))
-      if (stackLevel?.data) {
-        newChainData.set(i, stackLevel.data)
+      // Find matching data in hydrator by entity name and id
+      const hydratedLevel = levels.find(l => l.entity === segment.entity && String(l.id) === String(segment.id))
+      if (hydratedLevel?.data) {
+        newChainData.set(i, hydratedLevel.data)
       }
-
-      itemIndex++
     }
 
     // Assign new Map to trigger reactivity

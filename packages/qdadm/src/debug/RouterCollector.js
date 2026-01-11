@@ -37,6 +37,7 @@ export class RouterCollector extends Collector {
     this._maxHistory = options.maxHistory ?? 20
     this._removeGuard = null
     this._guardInstalled = false
+    this._activeStack = null
   }
 
   /**
@@ -55,6 +56,8 @@ export class RouterCollector extends Collector {
    */
   _doInstall(ctx) {
     this._ctx = ctx
+    this._activeStack = ctx.activeStack ?? null
+    this._stackHydrator = ctx.stackHydrator ?? null
     // Router guard will be installed lazily when router becomes available
   }
 
@@ -120,7 +123,12 @@ export class RouterCollector extends Collector {
       query: { ...route.query },
       hash: route.hash,
       meta: { ...route.meta },
-      matched: route.matched?.length || 0
+      // Matched routes with their individual metas
+      matched: route.matched?.map(m => ({
+        name: m.name || null,
+        path: m.path,
+        meta: { ...m.meta }
+      })) ?? []
     }
   }
 
@@ -231,5 +239,48 @@ export class RouterCollector extends Collector {
   clear() {
     this._history = []
     this.notifyChange()
+  }
+
+  /**
+   * Get activeStack state for debugging
+   * Combines sync stack (config) with hydrator (async data)
+   * @returns {object|null}
+   */
+  getActiveStack() {
+    if (!this._activeStack) return null
+
+    const syncLevels = this._activeStack.getLevels()
+    const hydratorLevels = this._stackHydrator?.getLevels() ?? []
+
+    return {
+      levels: syncLevels.map((level, idx) => {
+        const hydrated = hydratorLevels[idx]
+        return {
+          // Sync (from ActiveStack)
+          entity: level.entity,
+          param: level.param,
+          foreignKey: level.foreignKey,
+          id: level.id,
+          // Async (from StackHydrator)
+          hydrated: hydrated?.hydrated ?? false,
+          loading: hydrated?.loading ?? false,
+          label: hydrated?.label ?? null,
+          hasData: !!hydrated?.data,
+        }
+      }),
+      depth: syncLevels.length,
+      current: this._activeStack.getCurrent(),
+      parent: this._activeStack.getParent(),
+    }
+  }
+
+  /**
+   * Navigate to a path
+   * @param {string} path - Path to navigate to
+   * @returns {Promise<void>}
+   */
+  async navigate(path) {
+    if (!this._router) return
+    await this._router.push(path)
   }
 }

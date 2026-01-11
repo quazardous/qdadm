@@ -27,6 +27,22 @@ const tabs = [
 // Route filter for routes tab
 const routeFilter = ref('')
 
+// Address bar for navigation
+const addressInput = ref('')
+
+async function navigateTo() {
+  const path = addressInput.value.trim()
+  if (!path) return
+  await props.collector.navigate(path)
+  addressInput.value = ''
+}
+
+// ActiveStack state
+const activeStack = computed(() => {
+  props.entries.length // trigger reactivity
+  return props.collector.getActiveStack()
+})
+
 // Max history - persisted in localStorage
 const STORAGE_KEY_MAX = 'qdadm-router-max'
 const maxHistory = ref(parseInt(localStorage.getItem(STORAGE_KEY_MAX)) || 20)
@@ -46,6 +62,12 @@ const currentRoute = computed(() => {
 const breadcrumb = computed(() => {
   props.entries.length
   return props.collector.getBreadcrumb()
+})
+
+// Matched routes with their individual metas
+const matchedRoutes = computed(() => {
+  props.entries.length
+  return currentRoute.value?.matched ?? []
 })
 
 // Navigation history (already newest-first from collector, apply max limit)
@@ -84,10 +106,45 @@ function formatTime(ts) {
 function hasParams(obj) {
   return obj && Object.keys(obj).length > 0
 }
+
+// Hydration state helpers
+function getHydrationIcon(level) {
+  if (level.loading) return '⏳'
+  if (level.hydrated) return level.hasData ? '✓' : '○'
+  return '…'
+}
+
+function getHydrationClass(level) {
+  if (level.loading) return 'hydration-badge-loading'
+  if (level.hydrated) return level.hasData ? 'hydration-badge-data' : 'hydration-badge-ready'
+  return 'hydration-badge-pending'
+}
+
+function getHydrationTitle(level) {
+  if (level.loading) return 'Loading entity data...'
+  if (level.hydrated && level.hasData) return 'Hydrated with data'
+  if (level.hydrated) return 'Hydrated (no data to fetch)'
+  return 'Pending hydration'
+}
 </script>
 
 <template>
   <div class="router-panel">
+    <!-- Address Bar -->
+    <div class="address-bar">
+      <i class="pi pi-compass" />
+      <input
+        v-model="addressInput"
+        type="text"
+        placeholder="Navigate to path..."
+        class="address-input"
+        @keyup.enter="navigateTo"
+      />
+      <button class="address-go" @click="navigateTo" :disabled="!addressInput.trim()">
+        <i class="pi pi-arrow-right" />
+      </button>
+    </div>
+
     <!-- Tabs -->
     <div class="router-tabs">
       <button
@@ -115,6 +172,47 @@ function hasParams(obj) {
         <div class="route-header">
           <span class="route-name">{{ currentRoute.name }}</span>
           <span class="route-path">{{ currentRoute.fullPath }}</span>
+        </div>
+
+        <!-- ActiveStack -->
+        <div v-if="activeStack" class="route-section">
+          <div class="section-label">Active Stack (depth: {{ activeStack.depth }})</div>
+          <div v-if="activeStack.levels.length === 0" class="stack-empty">
+            <i class="pi pi-inbox" />
+            <span>Stack empty (no entity with ID in route)</span>
+          </div>
+          <div v-else class="stack-list">
+            <div
+              v-for="(level, idx) in activeStack.levels"
+              :key="idx"
+              class="stack-entry"
+              :class="{
+                'stack-current': idx === activeStack.levels.length - 1,
+                'stack-loading': level.loading
+              }"
+            >
+              <div class="stack-entry-header">
+                <span class="stack-index">{{ idx }}</span>
+                <span class="stack-entity">{{ level.entity }}</span>
+                <span class="stack-hydration-badge" :class="getHydrationClass(level)" :title="getHydrationTitle(level)">
+                  {{ getHydrationIcon(level) }}
+                </span>
+              </div>
+              <div class="stack-entry-props">
+                <span class="stack-prop">param: <code>{{ level.param }}</code></span>
+                <span class="stack-prop">id: <code>{{ level.id || '—' }}</code></span>
+                <span v-if="level.foreignKey" class="stack-prop">fk: <code>{{ level.foreignKey }}</code></span>
+              </div>
+              <div class="stack-entry-hydration">
+                <span v-if="level.loading" class="hydration-loading">⏳ loading...</span>
+                <span v-else-if="level.hydrated" class="hydration-ready">
+                  <span class="hydration-label">{{ level.label || '(no label)' }}</span>
+                  <span v-if="level.hasData" class="hydration-data">📦</span>
+                </span>
+                <span v-else class="hydration-pending">⏸ pending</span>
+              </div>
+            </div>
+          </div>
         </div>
 
         <!-- Breadcrumb -->
@@ -151,10 +249,21 @@ function hasParams(obj) {
           <ObjectTree :data="currentRoute.query" :expanded="true" />
         </div>
 
-        <!-- Meta -->
-        <div v-if="hasParams(currentRoute.meta)" class="route-section">
-          <div class="section-label">Meta</div>
-          <ObjectTree :data="currentRoute.meta" :expanded="false" />
+        <!-- Matched Routes -->
+        <div v-if="matchedRoutes.length > 0" class="route-section">
+          <div class="section-label">Matched Routes ({{ matchedRoutes.length }})</div>
+          <div class="matched-list">
+            <div v-for="(match, idx) in matchedRoutes" :key="idx" class="matched-entry">
+              <div class="matched-header">
+                <span class="matched-index">{{ idx }}</span>
+                <span class="matched-name">{{ match.name || '(unnamed)' }}</span>
+              </div>
+              <div class="matched-path">{{ match.path }}</div>
+              <div v-if="hasParams(match.meta)" class="matched-meta">
+                <ObjectTree :data="match.meta" :expanded="false" />
+              </div>
+            </div>
+          </div>
         </div>
 
         <!-- Hash -->
@@ -205,6 +314,13 @@ function hasParams(obj) {
               </template>
               {{ nav.to.name }}
             </span>
+            <button
+              class="history-nav-btn"
+              title="Navigate to this route"
+              @click="collector.navigate(nav.to.fullPath)"
+            >
+              <i class="pi pi-external-link" />
+            </button>
           </div>
           <div class="history-path">{{ nav.to.fullPath }}</div>
         </div>
@@ -255,6 +371,201 @@ function hasParams(obj) {
   display: flex;
   flex-direction: column;
   height: 100%;
+}
+
+/* Address Bar */
+.address-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: #18181b;
+  border-bottom: 1px solid #3f3f46;
+}
+
+.address-bar .pi {
+  color: #71717a;
+  font-size: 12px;
+}
+
+.address-input {
+  flex: 1;
+  font-size: 12px;
+  padding: 6px 10px;
+  background: #27272a;
+  border: 1px solid #3f3f46;
+  border-radius: 4px;
+  color: #f4f4f5;
+  font-family: monospace;
+}
+
+.address-input:focus {
+  border-color: #3b82f6;
+  outline: none;
+}
+
+.address-go {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  background: #3b82f6;
+  border: none;
+  border-radius: 4px;
+  color: white;
+  cursor: pointer;
+}
+
+.address-go:hover:not(:disabled) {
+  background: #2563eb;
+}
+
+.address-go:disabled {
+  background: #3f3f46;
+  color: #71717a;
+  cursor: not-allowed;
+}
+
+.address-go .pi {
+  font-size: 12px;
+  color: inherit;
+}
+
+/* ActiveStack */
+.stack-empty {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px;
+  background: #27272a;
+  border-radius: 4px;
+  color: #71717a;
+  font-size: 11px;
+}
+
+.stack-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.stack-entry {
+  padding: 6px 8px;
+  background: #27272a;
+  border-radius: 4px;
+  font-size: 11px;
+  border-left: 2px solid #3f3f46;
+}
+
+.stack-current {
+  border-left-color: #3b82f6;
+  background: #1e3a5f;
+}
+
+.stack-entry-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.stack-index {
+  width: 16px;
+  height: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #3f3f46;
+  border-radius: 50%;
+  font-size: 10px;
+  color: #a1a1aa;
+}
+
+.stack-entity {
+  font-weight: 500;
+  color: #60a5fa;
+}
+
+.stack-has-data {
+  color: #10b981;
+  font-size: 10px;
+}
+
+.stack-loading {
+  opacity: 0.7;
+}
+
+/* Hydration badge */
+.stack-hydration-badge {
+  font-size: 10px;
+  margin-left: auto;
+}
+
+.hydration-badge-loading {
+  color: #f59e0b;
+}
+
+.hydration-badge-data {
+  color: #10b981;
+}
+
+.hydration-badge-ready {
+  color: #71717a;
+}
+
+.hydration-badge-pending {
+  color: #f59e0b;
+}
+
+/* Hydration details row */
+.stack-entry-hydration {
+  padding-left: 24px;
+  margin-top: 4px;
+  font-size: 10px;
+}
+
+.hydration-loading {
+  color: #f59e0b;
+}
+
+.hydration-ready {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.hydration-label {
+  color: #a1a1aa;
+  font-style: italic;
+}
+
+.hydration-data {
+  font-size: 10px;
+  title: "Has entity data";
+}
+
+.hydration-pending {
+  color: #71717a;
+}
+
+.stack-entry-props {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding-left: 24px;
+  margin-top: 4px;
+}
+
+.stack-prop {
+  color: #71717a;
+  font-size: 10px;
+}
+
+.stack-prop code {
+  color: #fbbf24;
+  background: #18181b;
+  padding: 1px 4px;
+  border-radius: 2px;
 }
 
 .router-tabs {
@@ -454,6 +765,57 @@ function hasParams(obj) {
   border-radius: 3px;
 }
 
+/* Matched Routes */
+.matched-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.matched-entry {
+  padding: 6px 8px;
+  background: #27272a;
+  border-radius: 4px;
+  font-size: 11px;
+  border-left: 2px solid #3f3f46;
+}
+
+.matched-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.matched-index {
+  width: 16px;
+  height: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #3f3f46;
+  border-radius: 50%;
+  font-size: 10px;
+  color: #a1a1aa;
+}
+
+.matched-name {
+  font-weight: 500;
+  color: #d4d4d8;
+}
+
+.matched-path {
+  font-size: 10px;
+  color: #71717a;
+  font-family: monospace;
+  padding-left: 24px;
+  margin-top: 2px;
+}
+
+.matched-meta {
+  padding-left: 24px;
+  margin-top: 4px;
+}
+
 /* History */
 .history-header-bar {
   display: flex;
@@ -553,6 +915,35 @@ function hasParams(obj) {
   font-family: monospace;
   margin-top: 4px;
   word-break: break-all;
+}
+
+.history-nav-btn {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  background: transparent;
+  border: none;
+  border-radius: 3px;
+  color: #71717a;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.history-entry:hover .history-nav-btn {
+  opacity: 1;
+}
+
+.history-nav-btn:hover {
+  background: #3f3f46;
+  color: #3b82f6;
+}
+
+.history-nav-btn .pi {
+  font-size: 11px;
 }
 
 /* Routes */

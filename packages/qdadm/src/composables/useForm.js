@@ -65,7 +65,7 @@
 import { ref, computed, watch, onMounted, inject, provide } from 'vue'
 import { useBareForm } from './useBareForm'
 import { useHooks } from './useHooks'
-import { useActiveStack } from '../chain/useActiveStack.js'
+import { useStackHydrator } from '../chain/useStackHydrator.js'
 import { deepClone } from '../utils/transformers'
 
 export function useForm(options = {}) {
@@ -95,7 +95,7 @@ export function useForm(options = {}) {
   const hooks = useHooks()
 
   // Active stack for navigation context
-  const stack = useActiveStack()
+  const hydrator = useStackHydrator()
 
   // Read config from manager with option overrides
   const routePrefix = options.routePrefix ?? manager.routePrefix
@@ -246,7 +246,7 @@ export function useForm(options = {}) {
       takeSnapshot()
 
       // Update active stack
-      stack.setCurrentData(data)
+      hydrator.setCurrentData(data)
 
       // Invoke form:alter hooks after data is loaded
       await invokeFormAlterHook()

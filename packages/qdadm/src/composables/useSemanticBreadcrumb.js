@@ -109,10 +109,10 @@ export function computeSemanticBreadcrumb(path, routes, currentRoute = null) {
         } else if (matchedRoute.name?.includes('edit')) {
           kind = 'entity-edit'
         }
-        items.push({ kind, entity, id: paramValue })
+        items.push({ kind, entity, id: paramValue, route: matchedRoute.name })
       } else {
-        // Entity list
-        items.push({ kind: 'entity-list', entity })
+        // Entity list - include route name for child routes (e.g., 'bot-command' vs 'commands')
+        items.push({ kind: 'entity-list', entity, route: matchedRoute.name })
       }
     } else {
       // Generic route

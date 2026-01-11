@@ -121,14 +121,14 @@ export function useEntityItemFormPage(config = {}) {
   const confirm = useConfirm()
 
   // Use useEntityItemPage for common infrastructure
-  // (orchestrator, manager, entityId, provide('mainEntity'), stack)
+  // (orchestrator, manager, entityId, provide('mainEntity'), hydrator)
   const itemPage = useEntityItemPage({
     entity,
     loadOnMount: false,  // Form controls its own loading
     getId
   })
 
-  const { manager, orchestrator, entityId, getInitialDataWithParent, parentConfig, parentId, parentData, parentChain, getChainDepth, stack } = itemPage
+  const { manager, orchestrator, entityId, getInitialDataWithParent, parentConfig, parentId, parentData, parentChain, getChainDepth, hydrator } = itemPage
 
   // Read config from manager with option overrides
   const entityName = config.entityName ?? manager.label
@@ -251,7 +251,7 @@ export function useEntityItemFormPage(config = {}) {
       takeSnapshot()
 
       // Update active stack
-      stack.setCurrentData(transformed)
+      hydrator.setCurrentData(transformed)
 
       if (onLoadSuccess) {
         await onLoadSuccess(transformed)
@@ -1291,8 +1291,8 @@ export function useEntityItemFormPage(config = {}) {
     props: formProps,
     events: formEvents,
 
-    // Active navigation stack (unified context)
-    stack
+    // Stack hydrator (for setting entity data on navigation context)
+    hydrator
   }
 
   // Auto-generate fields from manager schema if enabled

@@ -146,6 +146,22 @@ export class KernelContext {
     return this._kernel.options?.authAdapter ?? null
   }
 
+  /**
+   * Get ActiveStack instance (sync navigation context)
+   * @returns {import('../chain/ActiveStack.js').ActiveStack|null}
+   */
+  get activeStack() {
+    return this._kernel.activeStack ?? null
+  }
+
+  /**
+   * Get StackHydrator instance (async data loading)
+   * @returns {import('../chain/StackHydrator.js').StackHydrator|null}
+   */
+  get stackHydrator() {
+    return this._kernel.stackHydrator ?? null
+  }
+
   // ─────────────────────────────────────────────────────────────────────────────
   // Fluent registration methods (return this for chaining)
   // ─────────────────────────────────────────────────────────────────────────────
