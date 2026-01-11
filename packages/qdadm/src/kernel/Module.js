@@ -49,12 +49,27 @@ export class Module {
   static priority = 0
 
   /**
+   * Path to module styles (relative import or absolute)
+   * Set in subclass to auto-load CSS/SCSS when module connects.
+   * Styles are loaded once and cached.
+   *
+   * @example
+   * class DebugModule extends Module {
+   *   static styles = () => import('./styles.scss')
+   * }
+   *
+   * @type {(() => Promise<any>)|null}
+   */
+  static styles = null
+
+  /**
    * @param {Object} options - Module configuration options
    */
   constructor(options = {}) {
     this.options = options
     this.ctx = null
     this._signalCleanups = []
+    this._stylesLoaded = false
   }
 
   /**
@@ -73,6 +88,23 @@ export class Module {
    */
   enabled(ctx) {
     return true
+  }
+
+  /**
+   * Load module styles if defined
+   * Called automatically by ModuleLoader before connect()
+   * @returns {Promise<void>}
+   */
+  async loadStyles() {
+    const stylesLoader = this.constructor.styles
+    if (this._stylesLoaded || !stylesLoader) return
+
+    try {
+      await stylesLoader()
+      this._stylesLoaded = true
+    } catch (e) {
+      console.warn(`[${this.constructor.name}] Failed to load styles:`, e)
+    }
   }
 
   /**

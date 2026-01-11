@@ -1,24 +1,16 @@
 <script setup>
 /**
- * WelcomePage - Multi-Backend Demo home page
+ * WelcomePage - qdadm Demo
  *
- * Showcases qdadm's storage abstraction with six different backends:
- * - MockApiStorage (localStorage persistence)
- * - ApiStorage (JSONPlaceholder REST API)
- * - DummyJsonStorage (DummyJSON API with limit/skip pagination)
- * - RestCountriesStorage (REST Countries API with client-side pagination)
- * - LocalStorage (browser localStorage for persistent local data)
- * - MemoryStorage (volatile in-memory storage)
+ * Showcases qdadm's modular architecture and key features.
  */
 import { usePageTitle, qdadmLogo } from 'qdadm'
 import Card from 'primevue/card'
 import Button from 'primevue/button'
-import DataTable from 'primevue/datatable'
-import Column from 'primevue/column'
 import Tag from 'primevue/tag'
 import { useRouter } from 'vue-router'
 
-usePageTitle('Multi-Backend Demo')
+usePageTitle('qdadm Demo')
 
 const router = useRouter()
 
@@ -26,105 +18,83 @@ function openGitHub() {
   window.open('https://github.com/quazardous/qdadm', '_blank')
 }
 
-// Storage backends available in qdadm
-const backends = [
+// Killer features
+const features = [
   {
-    name: 'MockApiStorage',
-    type: 'localStorage',
-    description: 'In-memory with localStorage persistence. Ideal for demos and prototyping.',
-    features: ['Fixtures seeding', 'Persists across refresh', 'Full CRUD simulation']
+    icon: 'pi pi-bolt',
+    title: '20 Lines = Full CRUD',
+    desc: 'Declare fields + storage, get list/create/edit/delete with search, filters, pagination.'
   },
   {
-    name: 'LocalStorage',
-    type: 'localStorage',
-    description: 'Pure browser localStorage. Data persists across sessions.',
-    features: ['No network calls', 'Persistent storage', 'Full CRUD support']
+    icon: 'pi pi-th-large',
+    title: 'Modular Architecture',
+    desc: 'Kernel + Modules. Plug features in, unplug what you don\'t need. Tree-shakeable.'
   },
   {
-    name: 'MemoryStorage',
-    type: 'volatile',
-    description: 'In-memory only. Data lost on page refresh.',
-    features: ['Session-scoped', 'No persistence', 'Initial data seeding']
+    icon: 'pi pi-arrows-alt',
+    title: 'Event-Driven',
+    desc: 'SignalBus for decoupled communication. Components react without tight coupling.'
   },
   {
-    name: 'ApiStorage',
-    type: 'REST API',
-    description: 'HTTP client for REST APIs. Connects to any backend with standard conventions.',
-    features: ['Axios-based', 'Pagination support', 'Custom response mapping']
+    icon: 'pi pi-database',
+    title: 'Pluggable Storage',
+    desc: 'Same interface, any backend. Switch from localStorage to REST API with zero code changes.'
   },
   {
-    name: 'DummyJsonStorage',
-    type: 'REST API',
-    description: 'Extended ApiStorage for APIs with limit/skip pagination.',
-    features: ['limit/skip pagination', 'Response key mapping', 'Custom list() override']
+    icon: 'pi pi-lock',
+    title: 'Built-in Security',
+    desc: 'Role-based permissions at entity level. Hide buttons, protect routes, filter data.'
   },
   {
-    name: 'RestCountriesStorage',
-    type: 'REST API',
-    description: 'Extended ApiStorage with client-side pagination and caching.',
-    features: ['Client-side pagination', '5-minute cache', 'Custom ID field (cca3)']
+    icon: 'pi pi-sliders-h',
+    title: 'Debug Tools',
+    desc: 'Optional debug bar with collectors for signals, routes, zones, auth state.'
   }
+]
+
+// Architecture highlights
+const architecture = [
+  { name: 'Kernel', desc: 'One-liner bootstrap with Vue, Router, Pinia, PrimeVue wiring' },
+  { name: 'Modules', desc: 'Self-contained features with routes, entities, nav items' },
+  { name: 'SignalBus', desc: 'Pub/sub events with wildcard subscriptions' },
+  { name: 'Zones', desc: 'UI composition slots with weighted blocks' },
+  { name: 'Chain', desc: 'Active navigation stack for breadcrumbs and context' },
+  { name: 'Hooks', desc: 'Lifecycle extension points for cross-cutting concerns' }
 ]
 
 // Demo entities grouped by backend/section
 const entityGroups = [
   {
-    section: 'Library',
+    section: 'Library Demo',
     backend: 'MockApiStorage',
     severity: 'info',
-    description: 'Full CRUD with permissions, relationships, and fixtures',
+    description: 'Full CRUD with permissions and relationships',
     entities: [
-      { name: 'Books', route: 'book', icon: 'pi pi-book', desc: 'CRUD with genre filter, admin-only delete' },
-      { name: 'Genres', route: 'genre', icon: 'pi pi-tags', desc: 'Parent entity with child route to filtered books' },
-      { name: 'Loans', route: 'loan', icon: 'pi pi-arrow-right-arrow-left', desc: 'Ownership-based access, enrichment pattern' },
-      { name: 'Users', route: 'user', icon: 'pi pi-users', desc: 'Admin-only access for user management' }
+      { name: 'Books', route: 'book', icon: 'pi pi-book' },
+      { name: 'Genres', route: 'genre', icon: 'pi pi-tags' },
+      { name: 'Loans', route: 'loan', icon: 'pi pi-arrow-right-arrow-left' },
+      { name: 'Users', route: 'user', icon: 'pi pi-users' }
     ]
   },
   {
-    section: 'Local Storage',
+    section: 'Browser Storage',
     backend: 'LocalStorage',
     severity: 'secondary',
-    description: 'Persistent browser storage - survives page refresh and sessions',
+    description: 'Persistent + volatile storage options',
     entities: [
-      { name: 'Favorites', route: 'favorite', icon: 'pi pi-star', desc: 'Bookmarks stored in browser localStorage' }
+      { name: 'Favorites', route: 'favorite', icon: 'pi pi-star' },
+      { name: 'Settings', route: 'setting', icon: 'pi pi-cog' }
     ]
   },
   {
-    section: 'Memory Storage',
-    backend: 'MemoryStorage',
-    severity: 'contrast',
-    description: 'Volatile storage - data lost on page refresh',
-    entities: [
-      { name: 'Settings', route: 'setting', icon: 'pi pi-cog', desc: 'Key/value pairs for session configuration' }
-    ]
-  },
-  {
-    section: 'JSONPlaceholder',
+    section: 'External APIs',
     backend: 'ApiStorage',
     severity: 'success',
-    description: 'Read-only integration with external REST API',
+    description: 'REST integrations with different pagination styles',
     entities: [
-      { name: 'JP Users', route: 'jp_user', icon: 'pi pi-users', desc: 'External users with detail page' },
-      { name: 'Posts', route: 'post', icon: 'pi pi-file-edit', desc: 'Posts with author relationship' },
-      { name: 'Todos', route: 'todo', icon: 'pi pi-check-square', desc: 'Simple todo list with completion toggle' }
-    ]
-  },
-  {
-    section: 'DummyJSON',
-    backend: 'DummyJsonStorage',
-    severity: 'warn',
-    description: 'Different pagination style (limit/skip)',
-    entities: [
-      { name: 'Products', route: 'product', icon: 'pi pi-box', desc: 'Products with thumbnails, price, category' }
-    ]
-  },
-  {
-    section: 'REST Countries',
-    backend: 'RestCountriesStorage',
-    severity: 'danger',
-    description: 'Client-side pagination with caching for large datasets',
-    entities: [
-      { name: 'Countries', route: 'country', icon: 'pi pi-globe', desc: '250 countries with flag, capital, region' }
+      { name: 'Posts', route: 'post', icon: 'pi pi-file-edit' },
+      { name: 'Products', route: 'product', icon: 'pi pi-box' },
+      { name: 'Countries', route: 'country', icon: 'pi pi-globe' }
     ]
   }
 ]
@@ -139,94 +109,68 @@ function navigateTo(route) {
     <!-- Hero Section -->
     <div class="welcome-hero">
       <img :src="qdadmLogo" alt="qdadm" class="welcome-logo" />
-      <h1 class="welcome-title">qdadm Multi-Backend Demo</h1>
+      <h1 class="welcome-title">qdadm</h1>
       <p class="welcome-tagline">
-        Vue 3 admin framework with pluggable storage backends
+        Build admin dashboards in minutes, not days
+      </p>
+      <p class="welcome-subtitle">
+        Vue 3 + PrimeVue framework with modular architecture, pluggable storage, and built-in permissions
       </p>
       <div class="welcome-actions">
-        <Button label="Browse Books" icon="pi pi-book" @click="navigateTo('book')" />
-        <Button label="View on GitHub" icon="pi pi-github" severity="secondary" outlined @click="openGitHub" />
+        <Button label="Browse Demo" icon="pi pi-play" @click="navigateTo('book')" />
+        <Button label="GitHub" icon="pi pi-github" severity="secondary" outlined @click="openGitHub" />
       </div>
     </div>
 
-    <!-- What is qdadm? -->
+    <!-- Why qdadm? -->
     <section class="welcome-section">
-      <h2>What is qdadm?</h2>
-      <p>
-        <strong>qdadm</strong> is a declarative admin dashboard framework for Vue 3 with PrimeVue.
-        Define entities with fields and storage, get full CRUD with search, filters, pagination,
-        and permissions in ~20 lines of code.
-      </p>
-      <div class="highlight-box">
-        <i class="pi pi-lightbulb"></i>
-        <span>
-          <strong>Key concept:</strong> Pages only know entity names. Storage is invisible.
-          Switch from localStorage to REST API with zero page changes.
-        </span>
+      <h2>Why qdadm?</h2>
+      <div class="features-grid">
+        <div v-for="f in features" :key="f.title" class="feature-card">
+          <i :class="f.icon" class="feature-icon"></i>
+          <div class="feature-content">
+            <strong>{{ f.title }}</strong>
+            <span>{{ f.desc }}</span>
+          </div>
+        </div>
       </div>
     </section>
 
-    <!-- Storage Backends -->
+    <!-- Architecture -->
     <section class="welcome-section">
-      <h2>Storage Backends</h2>
-      <p class="section-intro">
-        qdadm abstracts storage behind EntityManager. Same CRUD interface, different implementations.
-      </p>
-      <DataTable :value="backends" class="backends-table" stripedRows>
-        <Column field="name" header="Backend">
-          <template #body="{ data }">
-            <code class="backend-name">{{ data.name }}</code>
-          </template>
-        </Column>
-        <Column field="type" header="Type">
-          <template #body="{ data }">
-            <Tag :value="data.type" :severity="data.type === 'localStorage' ? 'info' : data.type === 'volatile' ? 'warn' : 'success'" />
-          </template>
-        </Column>
-        <Column field="description" header="Description" />
-        <Column header="Features">
-          <template #body="{ data }">
-            <ul class="feature-list">
-              <li v-for="f in data.features" :key="f">{{ f }}</li>
-            </ul>
-          </template>
-        </Column>
-      </DataTable>
+      <h2>Architecture</h2>
+      <div class="arch-grid">
+        <div v-for="a in architecture" :key="a.name" class="arch-item">
+          <code>{{ a.name }}</code>
+          <span>{{ a.desc }}</span>
+        </div>
+      </div>
     </section>
 
-    <!-- Demo Entities -->
+    <!-- Try it -->
     <section class="welcome-section">
-      <h2>Demo Entities</h2>
-      <p class="section-intro">
-        This demo showcases six different storage backends with various entity types and permission models.
-      </p>
-
+      <h2>Try It</h2>
       <div class="entity-groups">
         <Card v-for="group in entityGroups" :key="group.section" class="entity-group-card">
           <template #title>
             <div class="group-header">
               <span>{{ group.section }}</span>
-              <Tag :value="group.backend" :severity="group.severity" />
+              <Tag :value="group.backend" :severity="group.severity" size="small" />
             </div>
           </template>
-          <template #subtitle>
-            {{ group.description }}
-          </template>
+          <template #subtitle>{{ group.description }}</template>
           <template #content>
-            <div class="entity-cards">
-              <div
+            <div class="entity-chips">
+              <Button
                 v-for="entity in group.entities"
                 :key="entity.route"
-                class="entity-card"
+                :label="entity.name"
+                :icon="entity.icon"
+                severity="secondary"
+                outlined
+                size="small"
                 @click="navigateTo(entity.route)"
-              >
-                <i :class="entity.icon" class="entity-icon"></i>
-                <div class="entity-info">
-                  <strong>{{ entity.name }}</strong>
-                  <span>{{ entity.desc }}</span>
-                </div>
-                <i class="pi pi-chevron-right entity-arrow"></i>
-              </div>
+              />
             </div>
           </template>
         </Card>
@@ -235,50 +179,54 @@ function navigateTo(route) {
 
     <!-- Demo Credentials -->
     <div class="demo-credentials">
-      <i class="pi pi-info-circle"></i>
-      <div>
-        <strong>Demo credentials:</strong>
-        <span>admin / admin (admin role), bob / bob or june / june (regular users)</span>
-      </div>
+      <i class="pi pi-user"></i>
+      <span><strong>Login:</strong> admin/admin (admin) · bob/bob · june/june</span>
     </div>
   </div>
 </template>
 
 <style scoped>
 .welcome-page {
-  max-width: 960px;
+  max-width: 900px;
   margin: 0 auto;
-  padding-bottom: 2rem;
+  padding: 0 1rem 2rem;
 }
 
-/* Hero Section */
+/* Hero */
 .welcome-hero {
   text-align: center;
-  padding: 2rem 0 2.5rem;
+  padding: 2.5rem 0;
 }
 
 .welcome-logo {
-  width: 100px;
-  height: 100px;
-  margin-bottom: 0.75rem;
+  width: 80px;
+  height: 80px;
+  margin-bottom: 0.5rem;
 }
 
 .welcome-title {
-  font-size: 2.25rem;
+  font-size: 2.5rem;
   font-weight: 700;
   margin: 0;
   color: var(--p-primary-600);
 }
 
 .welcome-tagline {
-  font-size: 1.125rem;
-  color: var(--p-surface-600);
-  margin: 0.5rem 0 1.5rem;
+  font-size: 1.5rem;
+  font-weight: 500;
+  color: var(--p-surface-800);
+  margin: 0.5rem 0 0.25rem;
+}
+
+.welcome-subtitle {
+  font-size: 1rem;
+  color: var(--p-surface-500);
+  margin: 0 0 1.5rem;
 }
 
 .welcome-actions {
   display: flex;
-  gap: 1rem;
+  gap: 0.75rem;
   justify-content: center;
 }
 
@@ -288,220 +236,165 @@ function navigateTo(route) {
 }
 
 .welcome-section h2 {
-  font-size: 1.375rem;
+  font-size: 1.25rem;
   font-weight: 600;
-  margin: 0 0 0.75rem;
-  color: var(--p-surface-800);
-}
-
-.welcome-section p {
-  color: var(--p-surface-700);
-  line-height: 1.6;
   margin: 0 0 1rem;
+  color: var(--p-surface-700);
+  border-bottom: 1px solid var(--p-surface-200);
+  padding-bottom: 0.5rem;
 }
 
-.section-intro {
-  color: var(--p-surface-600);
-  margin-bottom: 1rem;
+/* Features Grid */
+.features-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1rem;
 }
 
-/* Highlight Box */
-.highlight-box {
+.feature-card {
   display: flex;
   gap: 0.75rem;
-  align-items: flex-start;
-  background: var(--p-primary-50);
-  border: 1px solid var(--p-primary-200);
-  border-radius: 8px;
   padding: 1rem;
+  background: var(--p-surface-50);
+  border-radius: 8px;
+  border: 1px solid var(--p-surface-100);
 }
 
-.highlight-box i {
-  color: var(--p-primary-500);
+.feature-icon {
   font-size: 1.25rem;
+  color: var(--p-primary-500);
   flex-shrink: 0;
   margin-top: 0.125rem;
 }
 
-.highlight-box span {
-  color: var(--p-surface-700);
-  line-height: 1.5;
+.feature-content {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
 }
 
-/* Backends Table */
-.backends-table {
-  margin-top: 0.5rem;
-}
-
-.backend-name {
-  background: var(--p-surface-100);
-  padding: 0.25rem 0.5rem;
-  border-radius: 4px;
-  font-size: 0.875rem;
+.feature-content strong {
+  font-size: 0.9375rem;
   color: var(--p-surface-800);
 }
 
-.feature-list {
-  margin: 0;
-  padding-left: 1.25rem;
-  font-size: 0.875rem;
+.feature-content span {
+  font-size: 0.8125rem;
   color: var(--p-surface-600);
+  line-height: 1.4;
 }
 
-.feature-list li {
-  margin-bottom: 0.25rem;
+/* Architecture Grid */
+.arch-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.75rem;
 }
 
-.feature-list li:last-child {
-  margin-bottom: 0;
+.arch-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: 0.75rem;
+  background: var(--p-surface-50);
+  border-radius: 6px;
+}
+
+.arch-item code {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--p-primary-600);
+}
+
+.arch-item span {
+  font-size: 0.75rem;
+  color: var(--p-surface-600);
+  line-height: 1.3;
 }
 
 /* Entity Groups */
 .entity-groups {
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  gap: 0.75rem;
 }
 
 .entity-group-card {
   border: 1px solid var(--p-surface-200);
 }
 
+.entity-group-card :deep(.p-card-body) {
+  padding: 0.875rem 1rem;
+}
+
 .entity-group-card :deep(.p-card-title) {
-  font-size: 1.125rem;
+  font-size: 1rem;
   padding-bottom: 0;
 }
 
 .entity-group-card :deep(.p-card-subtitle) {
-  font-size: 0.875rem;
-  color: var(--p-surface-600);
-}
-
-.entity-group-card :deep(.p-card-body) {
-  padding: 1rem 1.25rem;
+  font-size: 0.8125rem;
+  margin-top: 0.125rem;
 }
 
 .entity-group-card :deep(.p-card-content) {
-  padding: 0;
+  padding: 0.5rem 0 0 0 !important;
 }
 
 .group-header {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
-}
-
-/* Entity Cards */
-.entity-cards {
-  display: flex;
-  flex-direction: column;
   gap: 0.5rem;
 }
 
-.entity-card {
+.entity-chips {
   display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  padding: 0.75rem 1rem;
-  background: var(--p-surface-50);
-  border: 1px solid var(--p-surface-200);
-  border-radius: 6px;
-  cursor: pointer;
-  transition: all 0.15s ease;
-}
-
-.entity-card:hover {
-  background: var(--p-surface-100);
-  border-color: var(--p-primary-300);
-}
-
-.entity-icon {
-  font-size: 1.25rem;
-  color: var(--p-primary-500);
-  width: 2rem;
-  text-align: center;
-  flex-shrink: 0;
-}
-
-.entity-info {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 0.125rem;
-}
-
-.entity-info strong {
-  font-size: 0.9375rem;
-  color: var(--p-surface-800);
-}
-
-.entity-info span {
-  font-size: 0.8125rem;
-  color: var(--p-surface-600);
-}
-
-.entity-arrow {
-  color: var(--p-surface-400);
-  font-size: 0.875rem;
-}
-
-.entity-card:hover .entity-arrow {
-  color: var(--p-primary-500);
+  flex-wrap: wrap;
+  gap: 0.5rem;
 }
 
 /* Demo Credentials */
 .demo-credentials {
   display: flex;
-  gap: 0.75rem;
+  gap: 0.5rem;
   align-items: center;
-  background: var(--p-blue-50);
-  border: 1px solid var(--p-blue-200);
-  border-radius: 8px;
-  padding: 1rem;
-  margin-top: 1rem;
-}
-
-.demo-credentials i {
-  color: var(--p-blue-500);
-  font-size: 1.25rem;
-  flex-shrink: 0;
-}
-
-.demo-credentials div {
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-}
-
-.demo-credentials strong {
-  color: var(--p-surface-800);
-}
-
-.demo-credentials span {
+  background: var(--p-surface-100);
+  border-radius: 6px;
+  padding: 0.75rem 1rem;
   font-size: 0.875rem;
   color: var(--p-surface-600);
 }
 
+.demo-credentials i {
+  color: var(--p-surface-500);
+}
+
 /* Responsive */
-@media (max-width: 640px) {
+@media (max-width: 768px) {
+  .features-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .arch-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 480px) {
   .welcome-title {
-    font-size: 1.75rem;
+    font-size: 2rem;
+  }
+
+  .welcome-tagline {
+    font-size: 1.25rem;
   }
 
   .welcome-actions {
     flex-direction: column;
   }
 
-  .entity-card {
-    flex-wrap: wrap;
-  }
-
-  .entity-info {
-    flex-basis: calc(100% - 3rem);
-  }
-
-  .entity-arrow {
-    display: none;
+  .arch-grid {
+    grid-template-columns: 1fr;
   }
 }
 </style>

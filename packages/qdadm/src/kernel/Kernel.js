@@ -466,6 +466,17 @@ export class Kernel {
         continue
       }
 
+      // Load module styles if defined (must happen before connect)
+      if (typeof module.loadStyles === 'function') {
+        const styleResult = module.loadStyles()
+        // Fire-and-forget for async style loading in sync context
+        if (styleResult instanceof Promise) {
+          styleResult.catch(err => {
+            console.warn(`[Kernel] Module '${name}' styles failed:`, err)
+          })
+        }
+      }
+
       // Connect module (sync - async modules will be fire-and-forget)
       const result = module.connect(ctx)
 
@@ -512,6 +523,11 @@ export class Kernel {
       // Check if enabled
       if (!module.enabled(ctx)) {
         continue
+      }
+
+      // Load module styles if defined (must happen before connect)
+      if (typeof module.loadStyles === 'function') {
+        await module.loadStyles()
       }
 
       // Connect module (await async)
@@ -1336,7 +1352,7 @@ export class Kernel {
 
   /**
    * Get the DebugModule instance if loaded
-   * @returns {import('../debug/DebugModule.js').DebugModule|null}
+   * @returns {import('../modules/debug/DebugModule.js').DebugModule|null}
    */
   getDebugModule() {
     return this.moduleLoader?._loaded?.get('debug') ?? null
@@ -1345,7 +1361,7 @@ export class Kernel {
   /**
    * Shorthand accessor for debug bridge
    * Allows `kernel.debugBar.toggle()` syntax
-   * @returns {import('../debug/DebugBridge.js').DebugBridge|null}
+   * @returns {import('../modules/debug/DebugBridge.js').DebugBridge|null}
    */
   get debugBar() {
     const debugModule = this.getDebugModule()

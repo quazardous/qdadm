@@ -294,8 +294,12 @@ export class ModuleLoader {
         continue
       }
 
-      // Connect module
+      // Load styles and connect module
       try {
+        // Load module styles if defined (Module subclasses only)
+        if (typeof module.loadStyles === 'function') {
+          await module.loadStyles()
+        }
         await module.connect(ctx)
         this._loaded.set(name, module)
         this._loadOrder.push(name)

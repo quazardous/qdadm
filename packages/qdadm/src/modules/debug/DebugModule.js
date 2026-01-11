@@ -19,7 +19,7 @@
  */
 
 import { h, inject, defineComponent } from 'vue'
-import { Module } from '../kernel/Module.js'
+import { Module } from '../../kernel/Module.js'
 import { createDebugBridge } from './DebugBridge.js'
 import { ErrorCollector } from './ErrorCollector.js'
 import { SignalCollector } from './SignalCollector.js'
@@ -80,6 +80,12 @@ export class DebugModule extends Module {
    * @type {number}
    */
   static priority = 1000
+
+  /**
+   * Module styles - loaded automatically before connect()
+   * @type {() => Promise<any>}
+   */
+  static styles = () => import('./styles.scss')
 
   /**
    * Create a new DebugModule

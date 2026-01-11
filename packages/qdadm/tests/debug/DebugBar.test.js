@@ -18,7 +18,7 @@ global.ResizeObserver = class ResizeObserver {
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { ref, reactive } from 'vue'
-import DebugBar from '../../src/debug/components/DebugBar.vue'
+import DebugBar from '../../src/modules/debug/components/DebugBar.vue'
 
 // Mock PrimeVue components
 vi.mock('primevue/badge', () => ({
@@ -39,7 +39,7 @@ vi.mock('primevue/button', () => ({
 }))
 
 // Mock panel components to avoid complex dependencies
-vi.mock('../../src/debug/components/panels', () => ({
+vi.mock('../../src/modules/debug/components/panels', () => ({
   ZonesPanel: { template: '<div class="zones-panel">Zones</div>' },
   AuthPanel: { template: '<div class="auth-panel">Auth</div>' },
   EntitiesPanel: { template: '<div class="entities-panel">Entities</div>' },

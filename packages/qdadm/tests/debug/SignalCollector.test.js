@@ -4,7 +4,7 @@
  * Tests the SignalCollector debug collector that captures SignalBus events.
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { SignalCollector } from '../../src/debug/SignalCollector.js'
+import { SignalCollector } from '../../src/modules/debug/SignalCollector.js'
 import { createSignalBus, SIGNAL_ACTIONS } from '../../src/kernel/SignalBus.js'
 
 describe('SignalCollector', () => {

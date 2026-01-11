@@ -9,6 +9,7 @@ export default defineConfig({
     alias: [
       { find: '@', replacement: resolve(__dirname, 'src') },
       { find: 'qdadm/styles', replacement: resolve(__dirname, '../qdadm/src/styles/index.scss') },
+      { find: 'qdadm/modules/debug', replacement: resolve(__dirname, '../qdadm/src/modules/debug/index.js') },
       { find: 'qdadm', replacement: resolve(__dirname, '../qdadm/src') }
     ],
     dedupe: ['vue', 'vue-router', 'primevue', 'pinia', 'vanilla-jsoneditor']

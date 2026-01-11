@@ -8,7 +8,7 @@
  */
 
 import { Kernel } from 'qdadm'
-import { debugBar } from 'qdadm/debug'
+import { debugBar } from 'qdadm/modules/debug'
 import { createLocalStorageRoleGranter } from 'qdadm/security'
 import PrimeVue from 'primevue/config'
 import Aura from '@primeuix/themes/aura'

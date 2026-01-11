@@ -2,7 +2,7 @@
  * Tests for ErrorCollector
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { ErrorCollector } from '../../src/debug/ErrorCollector.js'
+import { ErrorCollector } from '../../src/modules/debug/ErrorCollector.js'
 
 describe('ErrorCollector', () => {
   let collector

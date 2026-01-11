@@ -12,7 +12,7 @@
  */
 
 import { Collector } from './Collector.js'
-import { computeSemanticBreadcrumb } from '../composables/useSemanticBreadcrumb.js'
+import { computeSemanticBreadcrumb } from '../../composables/useSemanticBreadcrumb.js'
 
 /**
  * Collector for Vue Router state visualization

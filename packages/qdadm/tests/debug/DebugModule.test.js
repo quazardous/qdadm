@@ -5,11 +5,11 @@
  * into the Module System v2.
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { DebugModule, DEBUG_BRIDGE_KEY, DEBUG_ZONE } from '../../src/debug/DebugModule.js'
+import { DebugModule, DEBUG_BRIDGE_KEY, DEBUG_ZONE } from '../../src/modules/debug/DebugModule.js'
 import { Module } from '../../src/kernel/Module.js'
-import { DebugBridge } from '../../src/debug/DebugBridge.js'
-import { ErrorCollector } from '../../src/debug/ErrorCollector.js'
-import { SignalCollector } from '../../src/debug/SignalCollector.js'
+import { DebugBridge } from '../../src/modules/debug/DebugBridge.js'
+import { ErrorCollector } from '../../src/modules/debug/ErrorCollector.js'
+import { SignalCollector } from '../../src/modules/debug/SignalCollector.js'
 
 // Mock KernelContext for testing
 function createMockContext(overrides = {}) {

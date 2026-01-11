@@ -3,6 +3,10 @@
 All notable changes to qdadm will be documented in this file.
 This is not a commit log. Keep entries simple, user-focused.
 
+## [0.55.0] - 2026-01-11
+
+- **Debug bar refactor**: Put debug bar outside main codebase
+
 ## [0.54.0] - 2026-01-11
 
 - **Navigation stack refactored**: Better separation between sync and async layers
