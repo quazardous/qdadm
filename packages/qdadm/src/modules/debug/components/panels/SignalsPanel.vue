@@ -132,8 +132,8 @@ function getDomainColor(name) {
         <button
           v-for="p in presets"
           :key="p.pattern"
-          class="preset-btn"
-          :class="{ 'preset-active': filterPattern === p.pattern }"
+          class="debug-toolbar-btn"
+          :class="{ 'debug-toolbar-btn--active': filterPattern === p.pattern }"
           @click="applyPreset(p.pattern)"
         >
           {{ p.label }}

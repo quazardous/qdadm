@@ -45,10 +45,10 @@ function isHighlighted(zoneName) {
 
 <template>
   <div class="zones-panel">
-    <div class="zones-toolbar">
+    <div class="debug-panel-toolbar">
       <button
-        class="zones-toggle"
-        :class="{ 'zones-toggle-on': !isFilterActive() }"
+        class="debug-toolbar-btn"
+        :class="{ 'debug-toolbar-btn--active': !isFilterActive() }"
         :title="isFilterActive() ? 'Click to show all zones' : 'Click to show current page only'"
         @click="toggleFilter"
       >
@@ -56,8 +56,8 @@ function isHighlighted(zoneName) {
         All Pages
       </button>
       <button
-        class="zones-toggle"
-        :class="{ 'zones-toggle-internal': showInternalZones() }"
+        class="debug-toolbar-btn"
+        :class="{ 'debug-toolbar-btn--active': showInternalZones() }"
         :title="showInternalZones() ? 'Click to hide internal zones' : 'Click to show internal zones (prefixed with _)'"
         @click="toggleInternalFilter"
       >
@@ -65,11 +65,12 @@ function isHighlighted(zoneName) {
         Internal
       </button>
     </div>
-    <div v-if="entries.length === 0" class="zones-empty">
-      <i class="pi pi-inbox" />
-      <span>No zones</span>
-    </div>
-    <div v-for="zone in entries" :key="zone.name" class="zone-item">
+    <div class="zones-panel-content">
+      <div v-if="entries.length === 0" class="zones-empty">
+        <i class="pi pi-inbox" />
+        <span>No zones</span>
+      </div>
+      <div v-for="zone in entries" :key="zone.name" class="zone-item">
       <div class="zone-header">
         <button
           class="zone-highlight"
@@ -95,6 +96,7 @@ function isHighlighted(zoneName) {
       <div v-else-if="zone.hasDefault" class="zone-default">
         Default: {{ zone.defaultName || '(component)' }}
       </div>
+    </div>
     </div>
   </div>
 </template>

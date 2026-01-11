@@ -639,6 +639,104 @@ $debug-info: #3b82f6;
 }
 
 /* =============================================================================
+   PANEL TOOLBAR (unified action bar at top of panels)
+   ============================================================================= */
+
+.debug-panel-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: #27272a;
+  border-bottom: 1px solid #3f3f46;
+}
+
+/* Toolbar button - standard */
+.debug-toolbar-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  background: #3f3f46;
+  border: none;
+  border-radius: 3px;
+  color: #a1a1aa;
+  cursor: pointer;
+  font-size: 10px;
+  white-space: nowrap;
+}
+
+.debug-toolbar-btn:hover {
+  background: #52525b;
+  color: #f4f4f5;
+}
+
+.debug-toolbar-btn .pi {
+  font-size: 10px;
+}
+
+/* Toolbar button - danger variant */
+.debug-toolbar-btn--danger {
+  background: rgba(239, 68, 68, 0.15);
+  color: #f87171;
+}
+
+.debug-toolbar-btn--danger:hover {
+  background: rgba(239, 68, 68, 0.3);
+  color: #fca5a5;
+}
+
+/* Toolbar button - active/pressed state */
+.debug-toolbar-btn--active {
+  background: #8b5cf6;
+  color: white;
+}
+
+.debug-toolbar-btn--active:hover {
+  background: #7c3aed;
+}
+
+/* Toolbar input */
+.debug-toolbar-input {
+  flex: 1;
+  min-width: 0;
+  font-size: 11px;
+  padding: 4px 8px;
+  background: #18181b;
+  border: 1px solid #3f3f46;
+  border-radius: 4px;
+  color: #f4f4f5;
+}
+
+.debug-toolbar-input:focus {
+  outline: none;
+  border-color: #8b5cf6;
+}
+
+.debug-toolbar-input::placeholder {
+  color: #71717a;
+}
+
+/* Toolbar icon (standalone) */
+.debug-toolbar-icon {
+  color: #71717a;
+  font-size: 12px;
+}
+
+/* Toolbar label/text */
+.debug-toolbar-label {
+  font-size: 10px;
+  color: #71717a;
+}
+
+/* Toolbar separator */
+.debug-toolbar-separator {
+  width: 1px;
+  height: 16px;
+  background: #3f3f46;
+}
+
+/* =============================================================================
    OBJECT TREE
    ============================================================================= */
 
@@ -726,7 +824,14 @@ $debug-info: #3b82f6;
    ============================================================================= */
 
 .auth-panel {
-  padding: 8px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.auth-panel-content {
+  padding: 0 8px 8px 8px;
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -2420,7 +2525,14 @@ $debug-info: #3b82f6;
    ============================================================================= */
 
 .zones-panel {
-  padding: 8px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.zones-panel-content {
+  padding: 0 8px 8px 8px;
   display: flex;
   flex-direction: column;
   gap: 8px;

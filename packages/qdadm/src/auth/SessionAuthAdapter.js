@@ -144,6 +144,16 @@ export class SessionAuthAdapter {
   }
 
   /**
+   * Destroy session (catastrophic/silent logout)
+   *
+   * Clears token WITHOUT triggering normal logout signals.
+   * Used by DebugBar to test how the app handles unexpected session loss.
+   */
+  destroySession() {
+    this._token = null
+  }
+
+  /**
    * Validate that the adapter is properly configured
    *
    * Called during bootstrap to catch configuration errors early.
@@ -314,6 +324,15 @@ export class LocalStorageSessionAuthAdapter extends SessionAuthAdapter {
     this.persist()
 
     return original
+  }
+
+  /**
+   * Destroy session - clears token and localStorage
+   * @override
+   */
+  destroySession = () => {
+    this._token = null
+    localStorage.removeItem(this._storageKey)
   }
 
   // ─────────────────────────────────────────────────────────────────

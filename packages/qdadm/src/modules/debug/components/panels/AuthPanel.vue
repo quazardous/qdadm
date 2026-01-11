@@ -3,13 +3,26 @@
  * AuthPanel - Auth collector display with activity indicator
  * Each event has its own timer and fades out before destruction
  */
-import { onMounted, ref, onUnmounted } from 'vue'
+import { onMounted, ref, onUnmounted, inject } from 'vue'
 import ObjectTree from '../ObjectTree.vue'
 
 const props = defineProps({
   collector: { type: Object, required: true },
   entries: { type: Array, required: true }
 })
+
+// Inject auth adapter for token loss simulation
+const authAdapter = inject('authAdapter', null)
+
+/**
+ * Destroy session without normal logout flow
+ * Simulates catastrophic token loss (server revocation, storage corruption)
+ */
+function destroySession() {
+  if (authAdapter?.destroySession) {
+    authAdapter.destroySession()
+  }
+}
 
 // Local events with fade state
 const localEvents = ref([])
@@ -173,34 +186,44 @@ function getEventLabel(event) {
 
 <template>
   <div class="auth-panel">
-    <!-- Invariant entries (user, token, permissions, adapter) -->
-    <div
-      v-for="(entry, idx) in entries"
-      :key="idx"
-      class="auth-item"
-      :class="{ 'auth-item--impersonated': entry.type === 'impersonated' }"
-    >
-      <div class="auth-header" :class="{ 'auth-header--impersonated': entry.type === 'impersonated' }">
-        <i :class="['pi', getIcon(entry.type)]" />
-        <span class="auth-label">{{ entry.label || entry.type }}</span>
-      </div>
-      <div v-if="entry.message" class="auth-message">{{ entry.message }}</div>
-      <ObjectTree v-else-if="entry.data" :data="entry.data" :maxDepth="4" />
+    <!-- Debug actions -->
+    <div class="debug-panel-toolbar">
+      <button class="debug-toolbar-btn debug-toolbar-btn--danger" @click="destroySession" title="Clear token without logout (simulate session loss)">
+        <i class="pi pi-power-off" />
+        Destroy Session
+      </button>
     </div>
 
-    <!-- Recent auth events with individual timers -->
-    <TransitionGroup name="event">
+    <div class="auth-panel-content">
+      <!-- Invariant entries (user, token, permissions, adapter) -->
       <div
-        v-for="event in localEvents"
-        :key="event.id"
-        class="auth-activity"
-        :class="[event.type, { fading: event.fading }]"
+        v-for="(entry, idx) in entries"
+        :key="idx"
+        class="auth-item"
+        :class="{ 'auth-item--impersonated': entry.type === 'impersonated' }"
       >
-        <i :class="['pi', getEventIcon(event.type)]" />
-        <span>{{ getEventLabel(event) }}</span>
-        <span class="auth-time">{{ formatTime(event.timestamp) }}</span>
+        <div class="auth-header" :class="{ 'auth-header--impersonated': entry.type === 'impersonated' }">
+          <i :class="['pi', getIcon(entry.type)]" />
+          <span class="auth-label">{{ entry.label || entry.type }}</span>
+        </div>
+        <div v-if="entry.message" class="auth-message">{{ entry.message }}</div>
+        <ObjectTree v-else-if="entry.data" :data="entry.data" :maxDepth="4" />
       </div>
-    </TransitionGroup>
+
+      <!-- Recent auth events with individual timers -->
+      <TransitionGroup name="event">
+        <div
+          v-for="event in localEvents"
+          :key="event.id"
+          class="auth-activity"
+          :class="[event.type, { fading: event.fading }]"
+        >
+          <i :class="['pi', getEventIcon(event.type)]" />
+          <span>{{ getEventLabel(event) }}</span>
+          <span class="auth-time">{{ formatTime(event.timestamp) }}</span>
+        </div>
+      </TransitionGroup>
+    </div>
   </div>
 </template>
 
