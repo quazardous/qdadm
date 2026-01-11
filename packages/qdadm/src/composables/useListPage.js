@@ -1,6 +1,5 @@
 import { ref, computed, watch, onMounted, inject, provide } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { useToast } from 'primevue/usetoast'
 import { useConfirm } from 'primevue/useconfirm'
 import { useHooks } from './useHooks.js'
 import { useEntityItemPage } from './useEntityItemPage.js'
@@ -139,11 +138,17 @@ export function useListPage(config = {}) {
 
   const router = useRouter()
   const route = useRoute()
-  const toast = useToast()
   const confirm = useConfirm()
 
   // Get EntityManager via orchestrator
   const orchestrator = inject('qdadmOrchestrator')
+
+  // Toast helper - wraps orchestrator.toast for legacy compatibility
+  const toast = {
+    add({ severity, summary, detail, emitter }) {
+      orchestrator?.toast[severity]?.(summary, detail, emitter)
+    }
+  }
   if (!orchestrator) {
     throw new Error(
       '[qdadm] Orchestrator not provided.\n' +

@@ -1,6 +1,5 @@
 import { ref, computed, provide, inject, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { useToast } from 'primevue/usetoast'
 import { useDirtyState } from './useDirtyState'
 import { useUnsavedChangesGuard } from './useUnsavedChangesGuard'
 import { useBreadcrumb } from './useBreadcrumb'
@@ -81,7 +80,14 @@ export function useBareForm(options = {}) {
   // Router, route, toast - common dependencies
   const router = useRouter()
   const route = useRoute()
-  const toast = useToast()
+  const orchestrator = inject('qdadmOrchestrator', null)
+
+  // Toast helper - wraps orchestrator.toast for legacy compatibility
+  const toast = {
+    add({ severity, summary, detail, emitter }) {
+      orchestrator?.toast[severity]?.(summary, detail, emitter)
+    }
+  }
 
   // Common state
   const loading = ref(false)

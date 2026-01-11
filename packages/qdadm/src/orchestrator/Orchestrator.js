@@ -76,6 +76,63 @@ export class Orchestrator {
   }
 
   /**
+   * Set toast configuration (life defaults per severity)
+   * @param {Object} config - { success: 3000, error: 5000, warn: 5000, info: 3000 }
+   */
+  setToastConfig(config) {
+    this._toastConfig = { ...this._toastConfig, ...config }
+    this._toastHelper = null // Reset helper to pick up new config
+  }
+
+  /**
+   * Toast helper - wraps signal-based toasts
+   *
+   * Usage:
+   *   orchestrator.toast.success('Saved', 'Item saved successfully')
+   *   orchestrator.toast.error('Error', 'Failed to save', 'MyComponent')
+   *   orchestrator.toast.warn('Warning', 'Check your input', { life: 10000, emitter: 'Custom' })
+   *
+   * Third param can be:
+   * - string: treated as emitter
+   * - object: { life, emitter }
+   *
+   * @returns {Object} Toast helper with success/error/warn/info methods
+   */
+  get toast() {
+    if (!this._toastHelper) {
+      // Default life values per severity (can be overridden via setToastConfig)
+      const defaults = {
+        success: 3000,
+        error: 5000,
+        warn: 5000,
+        info: 3000,
+        ...this._toastConfig
+      }
+
+      const emit = (severity, summary, detail, options) => {
+        if (this._signals) {
+          // Options can be string (emitter) or object { life, emitter }
+          const opts = typeof options === 'string' ? { emitter: options } : (options || {})
+          this._signals.emit(`toast:${severity}`, {
+            summary,
+            detail,
+            life: opts.life ?? defaults[severity],
+            emitter: opts.emitter
+          })
+        }
+      }
+
+      this._toastHelper = {
+        success: (summary, detail, options) => emit('success', summary, detail, options),
+        error: (summary, detail, options) => emit('error', summary, detail, options),
+        warn: (summary, detail, options) => emit('warn', summary, detail, options),
+        info: (summary, detail, options) => emit('info', summary, detail, options)
+      }
+    }
+    return this._toastHelper
+  }
+
+  /**
    * Set the entity AuthAdapter for permission checks
    * This adapter will be injected into all newly registered managers
    * (unless they already have their own adapter)

@@ -44,7 +44,7 @@ import DefaultMenu from './defaults/DefaultMenu.vue'
 import DefaultFooter from './defaults/DefaultFooter.vue'
 import DefaultUserInfo from './defaults/DefaultUserInfo.vue'
 import DefaultBreadcrumb from './defaults/DefaultBreadcrumb.vue'
-import DefaultToaster from './defaults/DefaultToaster.vue'
+// DefaultToaster removed - Toast is now provided by Kernel at root level
 
 const slots = useSlots()
 const hasMainSlot = !!slots.main
@@ -110,11 +110,7 @@ provide('qdadmNavlinksOverride', navlinksOverride)
       </div>
     </div>
 
-    <!-- Toaster zone: toast notifications -->
-    <Zone
-      :name="LAYOUT_ZONES.TOASTER"
-      :default-component="DefaultToaster"
-    />
+    <!-- Toast is now provided by Kernel at root level -->
 
     <!-- Confirm dialog (global) -->
     <ConfirmDialog />

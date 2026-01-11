@@ -79,7 +79,6 @@
  */
 import { ref, computed, watch, onMounted, onUnmounted, provide } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { useToast } from 'primevue/usetoast'
 import { useConfirm } from 'primevue/useconfirm'
 import { useDirtyState } from './useDirtyState'
 import { useUnsavedChangesGuard } from './useUnsavedChangesGuard'
@@ -117,7 +116,6 @@ export function useEntityItemFormPage(config = {}) {
 
   const router = useRouter()
   const route = useRoute()
-  const toast = useToast()
   const confirm = useConfirm()
 
   // Use useEntityItemPage for common infrastructure
@@ -129,6 +127,13 @@ export function useEntityItemFormPage(config = {}) {
   })
 
   const { manager, orchestrator, entityId, getInitialDataWithParent, parentConfig, parentId, parentData, parentChain, getChainDepth, hydrator } = itemPage
+
+  // Toast helper - wraps orchestrator.toast for legacy compatibility
+  const toast = {
+    add({ severity, summary, detail, emitter }) {
+      orchestrator?.toast[severity]?.(summary, detail, emitter)
+    }
+  }
 
   // Read config from manager with option overrides
   const entityName = config.entityName ?? manager.label

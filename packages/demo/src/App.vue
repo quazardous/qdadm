@@ -3,17 +3,16 @@
  * App Root Component
  *
  * Provides:
- * - Toast notifications (needed for pages outside BaseLayout like LoginPage)
  * - Confirmation dialogs
  * - RouterView
+ *
+ * Note: Toast is now provided by Kernel at root level
  */
 import { RouterView } from 'vue-router'
-import Toast from 'primevue/toast'
 import ConfirmDialog from 'primevue/confirmdialog'
 </script>
 
 <template>
-  <Toast position="top-right" />
   <ConfirmDialog />
   <RouterView />
 </template>

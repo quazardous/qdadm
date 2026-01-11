@@ -3,6 +3,16 @@
 All notable changes to qdadm will be documented in this file.
 This is not a commit log. Keep entries simple, user-focused.
 
+## [0.58.0] - 2026-01-11
+
+- **Session loss detection**: Kernel detects session loss and emits `auth:session-lost` signal with toast warning
+- **Destroy Session button**: Debug bar Auth panel button to simulate token loss
+- **Global Toast**: Kernel injects Toast/ToastListener at root level - works on all pages including login
+- **Toast helper**: `orchestrator.toast.success/error/warn/info(summary, detail, emitter)` with configurable defaults
+- **Configurable toast life**: `createKernel({ toast: { success: 2000, error: 8000 } })`
+- **Debug panel toolbars**: Unified styling with `.debug-panel-toolbar` classes
+- **Breaking**: Apps must remove `<Toast />` from layouts (Kernel provides it globally)
+
 ## [0.57.0] - 2026-01-11
 
 - **InfoBanner component**: Unified message banner with severity support (info, success, warn, error)

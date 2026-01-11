@@ -43,12 +43,14 @@ import { createRouter, createWebHistory, createWebHashHistory } from 'vue-router
 import ToastService from 'primevue/toastservice'
 import ConfirmationService from 'primevue/confirmationservice'
 import Tooltip from 'primevue/tooltip'
+import Toast from 'primevue/toast'
+import ToastListener from '../toast/ToastListener.vue'
 
 import { createQdadm } from '../plugin.js'
 import { initModules, getRoutes, setSectionOrder, alterMenuSections, registry } from '../module/moduleRegistry.js'
 import { createModuleLoader } from './ModuleLoader.js'
 import { createKernelContext } from './KernelContext.js'
-import { ToastBridgeModule } from '../toast/ToastBridgeModule.js'
+// ToastBridgeModule no longer used - Toast/ToastListener rendered at root level
 import { Orchestrator } from '../orchestrator/Orchestrator.js'
 import { createSignalBus } from './SignalBus.js'
 import { createZoneRegistry } from '../zones/ZoneRegistry.js'
@@ -101,7 +103,7 @@ export class Kernel {
    * @param {object} options.eventRouter - EventRouter config { 'source:signal': ['target:signal', ...] }
    * @param {object} options.sse - SSEBridge config { url, reconnectDelay, signalPrefix, autoConnect, events }
    * @param {object} options.debugBar - Debug bar config { module: DebugModule, component: QdadmDebugBar, ...options }
-   * @param {boolean} options.toast - Enable ToastBridgeModule (default: true). Set to false to disable.
+   * @param {boolean} options.toast - Reserved for future use (toast is always enabled when PrimeVue is configured)
    */
   constructor(options) {
     // Auto-inject DebugModule if debugBar.module is provided
@@ -127,13 +129,8 @@ export class Kernel {
       }
     }
 
-    // Auto-inject ToastBridgeModule unless toast: false
-    // Handles toast:* signals from useSignalToast() composable
-    if (options.toast !== false) {
-      options.moduleDefs = options.moduleDefs || []
-      // Add at beginning for high priority (loads early)
-      options.moduleDefs.unshift(new ToastBridgeModule())
-    }
+    // Note: Toast is now handled at root level via _createVueApp()
+    // ToastBridgeModule is no longer auto-injected to avoid duplicate listeners
 
     this.options = options
     this.vueApp = null
@@ -718,7 +715,28 @@ export class Kernel {
     const { authAdapter } = this.options
     if (!authAdapter) return
 
+    // Track if user was ever authenticated (to detect session loss)
+    let wasEverAuthenticated = authAdapter.isAuthenticated()
+
+    // Listen for session loss signal and show toast
+    const debug = this.options.debug ?? false
+    this.signals.on('auth:session-lost', () => {
+      if (debug) {
+        console.warn('[Kernel] auth:session-lost received, emitting toast:warn')
+      }
+      this.orchestrator.toast.warn(
+        'Session lost',
+        'Your session has expired. Please log in again.',
+        'Kernel'
+      )
+    })
+
     this.router.beforeEach((to, from, next) => {
+      // Update auth tracking
+      if (authAdapter.isAuthenticated()) {
+        wasEverAuthenticated = true
+      }
+
       // Check if route or any parent is explicitly public
       const isPublic = to.matched.some(record =>
         record.meta.public === true || record.meta.requiresAuth === false
@@ -733,8 +751,24 @@ export class Kernel {
       const requiresAuth = to.matched.some(record => record.meta.requiresAuth === true)
 
       if (requiresAuth && !authAdapter.isAuthenticated()) {
-        // Redirect to login (if exists) or emit signal
-        const loginRoute = this.router.hasRoute('login') ? { name: 'login' } : '/'
+        // Session loss detected - emit signal if user was previously authenticated
+        if (wasEverAuthenticated) {
+          const debug = this.options.debug ?? false
+          if (debug) {
+            console.warn('[Kernel] Session lost detected, emitting auth:session-lost')
+          }
+          this.signals.emit('auth:session-lost', {
+            reason: 'token_missing',
+            redirectTo: 'login'
+          })
+          // Reset tracking for next session
+          wasEverAuthenticated = false
+        }
+
+        // Redirect to login with session_lost param (if exists) or emit signal
+        const loginRoute = this.router.hasRoute('login')
+          ? { name: 'login', query: { session_lost: '1' } }
+          : '/'
         next(loginRoute)
       } else {
         next()
@@ -847,6 +881,11 @@ export class Kernel {
       deferred: this.deferred,
       entityAuthAdapter: this.options.entityAuthAdapter || null
     })
+
+    // Apply toast config if provided (life defaults per severity)
+    if (this.options.toast) {
+      this.orchestrator.setToastConfig(this.options.toast)
+    }
   }
 
   /**
@@ -1060,35 +1099,44 @@ export class Kernel {
   /**
    * Create Vue app instance
    *
-   * When debugBar is enabled, wraps the root component to include QdadmDebugBar
-   * at the app level, ensuring it's visible on all pages (including login).
+   * Always wraps the root component with:
+   * - Toast (for global toast notifications on all pages including login)
+   * - QdadmDebugBar (if debugBar is enabled)
    */
   _createVueApp() {
     if (!this.options.root) {
       throw new Error('[Kernel] root component is required')
     }
 
-    // Always wrap root with Toast (and DebugBar if enabled)
     const OriginalRoot = this.options.root
     const DebugBarComponent = this.options.debugBar?.component && QdadmDebugBar ? QdadmDebugBar : null
+    const hasPrimeVue = !!this.options.primevue?.plugin
 
-    // Wrap root with DebugBar if enabled
-    // Note: Toast must be included by apps in their App.vue for pages outside BaseLayout
-    if (DebugBarComponent) {
-      const WrappedRoot = defineComponent({
-        name: 'QdadmRootWrapper',
-        components: { OriginalRoot, DebugBarComponent },
-        setup() {
-          return () => h('div', { id: 'qdadm-root', style: 'display: contents' }, [
-            h(OriginalRoot),
-            h(DebugBarComponent)
-          ])
+    // Wrap root with Toast + ToastListener (for global toasts on all pages) and optionally DebugBar
+    // Note: Apps should NOT include their own <Toast /> - Kernel provides it at root level
+    const WrappedRoot = defineComponent({
+      name: 'QdadmRootWrapper',
+      setup() {
+        return () => {
+          const children = [h(OriginalRoot)]
+
+          // Add global Toast and ToastListener if PrimeVue is configured
+          if (hasPrimeVue) {
+            children.push(h(Toast))
+            children.push(h(ToastListener))
+          }
+
+          // Add DebugBar if enabled
+          if (DebugBarComponent) {
+            children.push(h(DebugBarComponent))
+          }
+
+          return h('div', { id: 'qdadm-root', style: 'display: contents' }, children)
         }
-      })
-      this.vueApp = createApp(WrappedRoot)
-    } else {
-      this.vueApp = createApp(OriginalRoot)
-    }
+      }
+    })
+
+    this.vueApp = createApp(WrappedRoot)
   }
 
   /**

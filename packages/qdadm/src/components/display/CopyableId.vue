@@ -6,8 +6,7 @@
  *   <CopyableId :value="entityId" label="ID" />
  *   <CopyableId :value="apiKey" label="API Key" />
  */
-import { ref } from 'vue'
-import { useToast } from 'primevue/usetoast'
+import { ref, inject } from 'vue'
 import Button from 'primevue/button'
 
 const props = defineProps({
@@ -21,29 +20,19 @@ const props = defineProps({
   }
 })
 
-const toast = useToast()
+const orchestrator = inject('qdadmOrchestrator', null)
 const copied = ref(false)
 
 async function copyToClipboard() {
   try {
     await navigator.clipboard.writeText(props.value)
     copied.value = true
-    toast.add({
-      severity: 'success',
-      summary: 'Copied',
-      detail: `${props.label} copied to clipboard`,
-      life: 2000
-    })
+    orchestrator?.toast.success('Copied', `${props.label} copied to clipboard`, 'CopyableId')
     setTimeout(() => {
       copied.value = false
     }, 2000)
   } catch {
-    toast.add({
-      severity: 'error',
-      summary: 'Error',
-      detail: 'Failed to copy to clipboard',
-      life: 3000
-    })
+    orchestrator?.toast.error('Error', 'Failed to copy to clipboard', 'CopyableId')
   }
 }
 </script>

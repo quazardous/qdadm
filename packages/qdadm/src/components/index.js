@@ -18,7 +18,6 @@ export { default as DefaultMenu } from './layout/defaults/DefaultMenu.vue'
 export { default as DefaultFooter } from './layout/defaults/DefaultFooter.vue'
 export { default as DefaultUserInfo } from './layout/defaults/DefaultUserInfo.vue'
 export { default as DefaultBreadcrumb } from './layout/defaults/DefaultBreadcrumb.vue'
-export { default as DefaultToaster } from './layout/defaults/DefaultToaster.vue'
 
 // Forms
 export { default as FormPage } from './forms/FormPage.vue'

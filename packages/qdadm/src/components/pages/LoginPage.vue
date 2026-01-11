@@ -19,7 +19,6 @@
  */
 import { ref, inject, computed } from 'vue'
 import { useRouter } from 'vue-router'
-import { useToast } from 'primevue/usetoast'
 import Card from 'primevue/card'
 import InputText from 'primevue/inputtext'
 import Password from 'primevue/password'
@@ -102,7 +101,6 @@ const props = defineProps({
 const emit = defineEmits(['login', 'error'])
 
 const router = useRouter()
-const toast = useToast()
 const authAdapter = inject('authAdapter', null)
 const orchestrator = inject('qdadmOrchestrator', null)
 const appConfig = inject('qdadmApp', {})
@@ -115,12 +113,7 @@ const displayTitle = computed(() => props.title || appConfig.name || 'Admin')
 
 async function handleLogin() {
   if (!authAdapter?.login) {
-    toast.add({
-      severity: 'error',
-      summary: 'Configuration Error',
-      detail: 'No auth adapter configured',
-      life: 5000
-    })
+    orchestrator?.toast.error('Configuration Error', 'No auth adapter configured', 'LoginPage')
     return
   }
 
@@ -131,17 +124,13 @@ async function handleLogin() {
       password: password.value
     })
 
-    toast.add({
-      severity: 'success',
-      summary: 'Welcome',
-      detail: `Logged in as ${result.user?.username || result.user?.email || username.value}`,
-      life: 3000
-    })
-
-    // Emit business signal if enabled
-    if (props.emitSignal && orchestrator?.signals) {
-      orchestrator.signals.emit('auth:login', { user: result.user })
-    }
+    // Emit auth:login signal for debug bar and other listeners
+    orchestrator?.signals.emit('auth:login', { user: result.user })
+    orchestrator?.toast.success(
+      'Welcome',
+      `Logged in as ${result.user?.username || result.user?.email || username.value}`,
+      'LoginPage'
+    )
 
     emit('login', result)
     router.push(props.redirectTo)
@@ -153,20 +142,12 @@ async function handleLogin() {
       || error.message
       || 'Invalid credentials'
 
-    toast.add({
-      severity: 'error',
-      summary: 'Login Failed',
-      detail: message,
-      life: 5000
+    orchestrator?.signals.emit('auth:login:error', {
+      username: username.value,
+      error: message,
+      status: error.response?.status
     })
-
-    if (orchestrator?.signals) {
-      orchestrator.signals.emit('auth:login:error', {
-        username: username.value,
-        error: message,
-        status: error.response?.status
-      })
-    }
+    orchestrator?.toast.error('Login Failed', message, 'LoginPage')
 
     emit('error', error)
   } finally {
