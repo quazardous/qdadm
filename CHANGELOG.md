@@ -3,6 +3,12 @@
 All notable changes to qdadm will be documented in this file.
 This is not a commit log. Keep entries simple, user-focused.
 
+## [0.59.0] - 2026-01-11
+
+- **Mobile row tap**: Tap on a table row navigates to edit/show page (based on declared routes)
+- **Route-based action detection**: `getPrimaryRowAction()` checks if `-edit` or `-show` routes exist
+- **Smart click handling**: Ignores taps on buttons, links, and interactive elements
+
 ## [0.58.0] - 2026-01-11
 
 - **Session loss detection**: Kernel detects session loss and emits `auth:session-lost` signal with toast warning
