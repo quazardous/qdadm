@@ -87,7 +87,6 @@ list.addFilter('read', {
 
 // ============ HEADER ACTIONS ============
 list.addCreateAction('New Loan')
-list.addBulkDeleteAction()
 
 // Bulk toggle read status
 const markingRead = ref(false)
@@ -139,6 +138,9 @@ list.addHeaderAction('mark-unread', {
   visible: (state) => state.hasSelection,
   loading: () => markingRead.value
 })
+
+// Delete is last so it's the primary action in mobile split button
+list.addBulkDeleteAction()
 
 // ============ ROW ACTIONS ============
 list.addEditAction()

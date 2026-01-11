@@ -770,9 +770,38 @@ export class Kernel {
           ? { name: 'login', query: { session_lost: '1' } }
           : '/'
         next(loginRoute)
-      } else {
-        next()
+        return
       }
+
+      // Check entity permissions (authorization, not just authentication)
+      const entity = to.meta?.entity
+      if (entity && this.orchestrator) {
+        try {
+          const manager = this.orchestrator.get(entity)
+          if (manager && !manager.canRead()) {
+            // Show visible error via toast
+            console.warn(`[qdadm] Access denied to ${to.path} (entity: ${entity})`)
+            this.orchestrator.toast.error(
+              'Access Denied',
+              `You don't have permission to access ${manager.labelPlural || entity}`,
+              'Kernel'
+            )
+            // Emit signal for custom error handling
+            this.signals.emit('auth:access-denied', {
+              path: to.path,
+              entity,
+              manager
+            })
+            // Redirect to home
+            next({ path: '/' })
+            return
+          }
+        } catch (e) {
+          // Entity not registered - allow navigation (route guard handles unknown entities)
+        }
+      }
+
+      next()
     })
   }
 

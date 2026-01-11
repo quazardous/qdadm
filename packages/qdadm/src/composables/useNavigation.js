@@ -9,7 +9,7 @@
  * the navigation structure dynamically.
  */
 
-import { computed, inject, ref, onMounted } from 'vue'
+import { computed, inject, ref, onMounted, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { getNavSections, alterMenuSections, isMenuAltered } from '../module/moduleRegistry'
 import { useSemanticBreadcrumb } from './useSemanticBreadcrumb'
@@ -31,6 +31,7 @@ export function useNavigation() {
   const router = useRouter()
   const orchestrator = inject('qdadmOrchestrator', null)
   const hooks = inject('qdadmHooks', null)
+  const signals = orchestrator?.signals || null
 
   // Semantic breadcrumb for entity-based active detection
   const { breadcrumb } = useSemanticBreadcrumb()
@@ -38,7 +39,7 @@ export function useNavigation() {
   // Track whether menu:alter has completed
   const isReady = ref(isMenuAltered())
 
-  // Trigger version to force reactivity after alteration
+  // Trigger version to force reactivity after alteration or auth change
   const alterVersion = ref(0)
 
   /**
@@ -50,6 +51,24 @@ export function useNavigation() {
     if (!manager) return true
     return manager.canRead()
   }
+
+  // Signal cleanup functions
+  const signalCleanups = []
+
+  // Listen to auth signals to refresh menu when permissions change
+  if (signals) {
+    signalCleanups.push(
+      signals.on('auth:impersonate', () => { alterVersion.value++ }),
+      signals.on('auth:impersonate:stop', () => { alterVersion.value++ }),
+      signals.on('auth:login', () => { alterVersion.value++ }),
+      signals.on('auth:logout', () => { alterVersion.value++ })
+    )
+  }
+
+  // Cleanup signal listeners on unmount
+  onUnmounted(() => {
+    signalCleanups.forEach(cleanup => cleanup?.())
+  })
 
   // Invoke menu:alter hook on mount
   onMounted(async () => {

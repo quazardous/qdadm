@@ -25,3 +25,4 @@ export { useLayoutResolver, createLayoutComponents, layoutMeta, LAYOUT_TYPES } f
 export { useSSEBridge } from './useSSEBridge'
 export { useDeferred, useDeferredValue, DEFERRED_INJECTION_KEY } from './useDeferred'
 export { useInfoBanner, provideBannerStore, createBannerStore } from './useInfoBanner'
+export { useUserImpersonator } from './useUserImpersonator'

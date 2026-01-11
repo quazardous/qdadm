@@ -14,7 +14,7 @@
  * - 'select' (default): Standard dropdown
  * - 'autocomplete': Searchable dropdown with type-ahead
  */
-import { computed, ref, watch } from 'vue'
+import { computed, ref, watch, onMounted, onUnmounted } from 'vue'
 import PageHeader from '../layout/PageHeader.vue'
 import CardsGrid from '../display/CardsGrid.vue'
 import FilterBar from './FilterBar.vue'
@@ -24,6 +24,7 @@ import Column from 'primevue/column'
 import Button from 'primevue/button'
 import Select from 'primevue/select'
 import AutoComplete from 'primevue/autocomplete'
+import SplitButton from 'primevue/splitbutton'
 
 const props = defineProps({
   // Header
@@ -119,6 +120,30 @@ const emit = defineEmits([
   'sort',
   'row-click'
 ])
+
+// Mobile detection for header actions dropdown
+const isMobile = ref(window.innerWidth < 768)
+function handleResize() {
+  isMobile.value = window.innerWidth < 768
+}
+onMounted(() => window.addEventListener('resize', handleResize))
+onUnmounted(() => window.removeEventListener('resize', handleResize))
+
+// Header actions for mobile split button
+// Primary action = last (rightmost, e.g. Delete selected), dropdown = rest (e.g. Create)
+const primaryHeaderAction = computed(() => {
+  if (props.headerActions.length === 0) return null
+  return props.headerActions[props.headerActions.length - 1]
+})
+const dropdownHeaderActions = computed(() => {
+  if (props.headerActions.length <= 1) return []
+  return props.headerActions.slice(0, -1).map(action => ({
+    label: resolveLabel(action.label),
+    icon: action.icon,
+    disabled: action.isLoading,
+    command: action.onClick
+  }))
+})
 
 function clearAllFilters() {
   // Build empty filter values object
@@ -221,16 +246,42 @@ function onRowClick(event) {
     <PageHeader :title="title" :subtitle="subtitle">
       <template #actions>
         <slot name="header-actions" ></slot>
-        <Button
-          v-for="action in headerActions"
-          :key="action.name"
-          :label="resolveLabel(action.label)"
-          :icon="action.icon"
-          :severity="action.severity"
-          :size="action.size || 'small'"
-          :loading="action.isLoading"
-          @click="action.onClick"
-        />
+        <!-- Mobile: split button (primary action + dropdown) -->
+        <template v-if="isMobile && headerActions.length > 0">
+          <!-- Single action: just a button -->
+          <Button
+            v-if="headerActions.length === 1"
+            :label="resolveLabel(primaryHeaderAction.label)"
+            :icon="primaryHeaderAction.icon"
+            :severity="primaryHeaderAction.severity"
+            :size="primaryHeaderAction.size || 'small'"
+            :loading="primaryHeaderAction.isLoading"
+            @click="primaryHeaderAction.onClick"
+          />
+          <!-- Multiple actions: split button -->
+          <SplitButton
+            v-else
+            :label="resolveLabel(primaryHeaderAction.label)"
+            :icon="primaryHeaderAction.icon"
+            :severity="primaryHeaderAction.severity"
+            :model="dropdownHeaderActions"
+            size="small"
+            @click="primaryHeaderAction.onClick"
+          />
+        </template>
+        <!-- Desktop: individual buttons -->
+        <template v-else>
+          <Button
+            v-for="action in headerActions"
+            :key="action.name"
+            :label="resolveLabel(action.label)"
+            :icon="action.icon"
+            :severity="action.severity"
+            :size="action.size || 'small'"
+            :loading="action.isLoading"
+            @click="action.onClick"
+          />
+        </template>
       </template>
     </PageHeader>
 

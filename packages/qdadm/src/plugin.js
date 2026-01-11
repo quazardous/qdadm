@@ -123,8 +123,22 @@ export function createQdadm(options) {
         if (entity) {
           const manager = orchestrator.get(entity)
           if (manager && !manager.canRead()) {
-            // Redirect to home or show forbidden
+            // Show visible error via toast
             console.warn(`[qdadm] Access denied to ${to.path} (entity: ${entity})`)
+            options.toast.add({
+              severity: 'error',
+              summary: 'Access Denied',
+              detail: `You don't have permission to access ${manager.labelPlural || entity}`,
+              life: 5000
+            })
+            // Emit signal if orchestrator has signals configured
+            if (orchestrator.signals) {
+              orchestrator.signals.emit('auth:access-denied', {
+                path: to.path,
+                entity,
+                manager
+              })
+            }
             return next({ path: '/' })
           }
         }

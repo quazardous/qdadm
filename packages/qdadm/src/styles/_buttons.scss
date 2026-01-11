@@ -316,3 +316,76 @@
   border-color: var(--p-surface-900) !important;
   color: var(--p-surface-900) !important;
 }
+
+// =============================================================================
+// SplitButton - Outlined Style
+// =============================================================================
+
+.p-splitbutton {
+  // Main button
+  .p-splitbutton-defaultbutton {
+    border: 1px solid var(--p-primary-500) !important;
+    border-right: none !important;
+    border-top-right-radius: 0 !important;
+    border-bottom-right-radius: 0 !important;
+    background: transparent !important;
+    color: var(--p-primary-500) !important;
+
+    &:hover:not(:disabled) {
+      background: var(--p-primary-50) !important;
+    }
+  }
+
+  // Dropdown button
+  .p-splitbutton-dropdown {
+    border: 1px solid var(--p-primary-500) !important;
+    border-left: none !important;
+    border-top-left-radius: 0 !important;
+    border-bottom-left-radius: 0 !important;
+    background: transparent !important;
+    color: var(--p-primary-500) !important;
+
+    &:hover:not(:disabled) {
+      background: var(--p-primary-50) !important;
+    }
+  }
+
+  // Danger severity
+  &.p-splitbutton-danger {
+    .p-splitbutton-defaultbutton,
+    .p-splitbutton-dropdown {
+      border-color: var(--p-red-500) !important;
+      color: var(--p-red-600) !important;
+
+      &:hover:not(:disabled) {
+        background: var(--p-red-50) !important;
+      }
+    }
+  }
+
+  // Secondary severity
+  &.p-splitbutton-secondary {
+    .p-splitbutton-defaultbutton,
+    .p-splitbutton-dropdown {
+      border-color: var(--p-surface-400) !important;
+      color: var(--p-surface-600) !important;
+
+      &:hover:not(:disabled) {
+        background: var(--p-surface-100) !important;
+      }
+    }
+  }
+
+  // Success severity
+  &.p-splitbutton-success {
+    .p-splitbutton-defaultbutton,
+    .p-splitbutton-dropdown {
+      border-color: var(--p-green-500) !important;
+      color: var(--p-green-600) !important;
+
+      &:hover:not(:disabled) {
+        background: var(--p-green-50) !important;
+      }
+    }
+  }
+}

@@ -3,6 +3,25 @@
 All notable changes to qdadm will be documented in this file.
 This is not a commit log. Keep entries simple, user-focused.
 
+## [0.59.4] - 2026-01-12
+
+- **useUserImpersonator composable**: Reusable composable for user impersonation in admin dashboards. Supports entity-based or direct users list, configurable ID/label fields, and permission checks.
+- **EntityManager readOnly from storage**: `readOnly` getter now checks `storage.capabilities.readOnly` in addition to constructor option. Write operations automatically blocked when storage is read-only.
+
+## [0.59.3] - 2026-01-12
+
+- **Access denied toast**: Route guard shows visible error toast when access is denied (not just console log)
+- **Kernel entity permissions**: Kernel route guard now checks entity `canRead()` (was only checking authentication)
+- **Auth signal**: Emits `auth:access-denied` signal for custom error handling
+- **Menu refresh on auth**: Navigation re-filters on `auth:impersonate`, `auth:login`, `auth:logout` signals
+- **Debug warning**: Warning when `crud()` called without entity registration (helps diagnose nav filtering)
+
+## [0.59.2] - 2026-01-11
+
+- **Mobile responsive**: Filter bar wraps on mobile, card container invisible
+- **Mobile header actions**: SplitButton replaces individual buttons (primary action + dropdown)
+- **SplitButton outlined style**: Consistent thin border styling with severity variants
+
 ## [0.59.1] - 2026-01-11
 
 - **Debug bar mobile fix**: Hide per-tab pause/clear buttons on mobile

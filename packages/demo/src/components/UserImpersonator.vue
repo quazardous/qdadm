@@ -1,80 +1,21 @@
 <script setup>
 /**
- * UserImpersonator - Demo component for user impersonation
+ * UserImpersonator - Demo component using useUserImpersonator
  *
- * Allows admins to impersonate other users to test permission-based UI.
- * Unlike RoleSwitcher (which changes roles abstractly), this impersonates
- * actual users from the demo database.
- *
- * Permission check:
- *   - Requires 'auth:impersonate' permission (granted to ROLE_ADMIN)
- *   - Uses isGranted() from SecurityChecker
- *
- * Impersonation state:
- *   - Stores originalUser + impersonatedAs in localStorage
- *   - authAdapter.getUser() returns impersonatedAs when active
- *   - Banner shows when impersonating
+ * Demonstrates the composable with custom user source (localStorage in demo).
  *
  * Usage:
  *   <UserImpersonator />
  */
 
-import { ref, computed, onMounted, onUnmounted, inject, nextTick } from 'vue'
-import { useRouter } from 'vue-router'
+import { ref, onMounted, onUnmounted, inject, nextTick } from 'vue'
 import Select from 'primevue/select'
 import { SidebarBox } from 'qdadm/components'
+import { useUserImpersonator } from 'qdadm/composables'
 
 const USERS_STORAGE_KEY = 'mockapi_users_data'
 
-const router = useRouter()
-const orchestrator = inject('qdadmOrchestrator')
-const authAdapter = inject('authAdapter')
-const signalCleanups = []
-
-// State
-const users = ref([])
-const currentUser = ref(null)
-const originalUser = ref(null)
-const selectedUser = ref(null)
-
-/**
- * Check if current user can impersonate others
- * Depends on currentUser to force re-evaluation when auth state changes
- */
-const canImpersonate = computed(() => {
-  // Force re-evaluation when user changes (entityAuth.isGranted is not reactive)
-  const _ = currentUser.value
-  const entityAuth = orchestrator?.entityAuthAdapter
-  if (!entityAuth?.isGranted) return false
-  return entityAuth.isGranted('auth:impersonate')
-})
-
-/**
- * Currently impersonating another user
- */
-const isImpersonating = computed(() => {
-  return originalUser.value !== null
-})
-
-/**
- * Users available for impersonation
- * Excludes: original admin AND currently impersonated user (can't impersonate yourself)
- */
-const availableUsers = computed(() => {
-  const excludeIds = new Set()
-  // Always exclude the original admin
-  if (originalUser.value?.id) excludeIds.add(originalUser.value.id)
-  // Also exclude the currently impersonated user
-  if (currentUser.value?.id) excludeIds.add(currentUser.value.id)
-  return users.value.filter(u => !excludeIds.has(u.id)).map(u => ({
-    id: u.id,
-    username: u.username
-  }))
-})
-
-/**
- * Get all users from MockApiStorage
- */
+// Get users from localStorage (demo-specific)
 function getAllUsers() {
   try {
     const stored = localStorage.getItem(USERS_STORAGE_KEY)
@@ -84,106 +25,58 @@ function getAllUsers() {
   }
 }
 
-/**
- * Load current state from authAdapter
- */
-function loadState() {
-  currentUser.value = authAdapter?.getUser?.() || null
-  originalUser.value = authAdapter?.getOriginalUser?.() || null
-  users.value = getAllUsers()
+// Reactive users list from localStorage
+const demoUsers = ref(getAllUsers())
 
-  if (isImpersonating.value) {
-    selectedUser.value = currentUser.value
-  }
-}
+// Use the composable with direct users list
+const {
+  currentUser,
+  isImpersonating,
+  canImpersonate,
+  availableUsers,
+  impersonate,
+  exitImpersonation
+} = useUserImpersonator({
+  users: demoUsers,
+  userKey: 'id',
+  userLabel: 'username'
+})
 
-/**
- * Handle user selection from dropdown
- * @param {Object} event - Selection event
- */
-function onUserSelect(event) {
-  if (event.value?.id) {
-    impersonateUser(event.value.id)
-  }
-}
+// Selected user for dropdown
+const selectedUser = ref(null)
 
-/**
- * Start impersonating a user
- *
- * Signal-driven: just emit the signal, authAdapter reacts via connectSignals().
- *
- * @param {string} userId - ID of user to impersonate
- */
-async function impersonateUser(userId) {
-  // Fetch fresh user data from storage (not stale users.value)
-  const freshUsers = getAllUsers()
-  const targetUser = freshUsers.find(u => u.id === userId)
-  if (!targetUser) return
-
-  // Get current user for signal payload
-  const original = authAdapter?.getUser?.()
-
-  // Build target user object
-  const impersonatedUser = {
-    id: targetUser.id,
-    username: targetUser.username,
-    role: targetUser.role
-  }
-
-  // Emit auth:impersonate signal - authAdapter reacts via connectSignals()
-  // Signal handlers (including this component's) refresh state automatically
-  await orchestrator?.signals?.emit('auth:impersonate', {
-    target: impersonatedUser,
-    original
-  })
-
-  // Navigate to home to apply new permissions
-  router.push({ name: 'home' })
-}
-
-/**
- * Exit impersonation and restore original user
- *
- * Signal-driven: just emit the signal, authAdapter reacts via connectSignals().
- */
-async function exitImpersonation() {
-  // Get original user for signal payload
-  const original = authAdapter?.getOriginalUser?.()
-
-  // Emit auth:impersonate:stop signal - authAdapter reacts via connectSignals()
-  // Signal handlers (including this component's) refresh state automatically
-  await orchestrator?.signals?.emit('auth:impersonate:stop', {
-    original
-  })
-
-  // Navigate to home to apply original permissions
-  router.push({ name: 'home' })
-}
+// Refresh users from localStorage on impersonation changes
+const orchestrator = inject('qdadmOrchestrator')
+const signalCleanups = []
 
 onMounted(() => {
-  loadState()
-
-  // Subscribe to impersonation signals to refresh state
   const signals = orchestrator?.signals
   if (signals) {
     signalCleanups.push(signals.on('auth:impersonate', () => {
-      loadState()
+      demoUsers.value = getAllUsers()
     }))
     signalCleanups.push(signals.on('auth:impersonate:stop', async () => {
-      loadState()
+      demoUsers.value = getAllUsers()
       selectedUser.value = null
-      // Wait for next tick to ensure Vue has processed the state changes
       await nextTick()
     }))
   }
 })
 
 onUnmounted(() => {
-  // Cleanup signal subscriptions
   for (const cleanup of signalCleanups) {
     if (typeof cleanup === 'function') cleanup()
   }
 })
+
+/**
+ * Handle user selection from dropdown
+ */
+function onUserSelect(event) {
+  if (event.value?.id) {
+    impersonate(event.value)
+  }
+}
 </script>
 
 <template>

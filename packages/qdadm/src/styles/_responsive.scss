@@ -158,27 +158,27 @@
   @include tablet {
     flex-wrap: wrap;
     gap: 0.75rem;
-
-    .filter-bar-search {
-      width: 100%;
-      order: -1;
-    }
-
-    .filter-bar-filters {
-      flex-wrap: wrap;
-      gap: 0.5rem;
-    }
-
-    .filter-bar-item {
-      min-width: calc(50% - 0.25rem);
-      flex: 1 1 auto;
-    }
   }
+}
 
-  @include mobile {
-    .filter-bar-item {
-      min-width: 100%;
-    }
+.filter-bar-left {
+  @include tablet {
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    width: 100%;
+  }
+}
+
+// ============================================
+// Card Responsive
+// ============================================
+
+.card {
+  @include tablet {
+    border-radius: 0;
+    border: none;
+    background: transparent;
+    padding: 0;
   }
 }
 
