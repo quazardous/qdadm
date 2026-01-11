@@ -2,6 +2,8 @@
 
 All notable changes to qdadm will be documented in this file.
 
+This is not a commit log. Keep entries simple, one per day, user-focused.
+
 ## [0.54.0] - 2026-01-11
 
 - **Navigation stack refactored**: Better separation between sync and async layers
