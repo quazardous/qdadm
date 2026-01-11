@@ -5,6 +5,32 @@ All notable changes to qdadm will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.54.0] - 2026-01-11
+
+### Changed
+- **StackHydrator refactored to vanilla JS**: Async hydration layer now uses SignalBus instead of Vue reactivity
+  - `StackHydrator` class: Pure vanilla JS, listens to `stack:change` signal
+  - `useStackHydrator` composable: Reactive bridge for Vue components
+  - Emits `stack:hydration:change` signal when levels are hydrated
+- **ActiveStack refactored to vanilla JS**: Sync navigation context now uses SignalBus
+  - Added equality check in `set()` to prevent duplicate emissions
+  - `useActiveStack` composable is now read-only (no more `rebuildStack`)
+- **Kernel manages stack rebuilding**: Single source of truth via `router.afterEach`
+  - New `_setupStackSync()` and `_rebuildActiveStack()` methods
+  - Stack only contains levels WITH IDs (list pages don't add a level)
+- **useNavContext uses hydrated data**: Breadcrumb labels now from StackHydrator instead of ActiveStack
+  - Fixes "..." display issue - labels resolve when data is hydrated
+- **Semantic breadcrumb includes route name**: Child routes properly identified
+  - Added `route: matchedRoute.name` to entity items
+  - `useNavContext` checks `routeRecord?.meta?.navLabel` for child routes
+
+### Fixed
+- **QuarKernel event format**: SignalBus handlers now correctly access `event.data?.levels`
+  - Fixes `TypeError: can't access property Symbol.iterator, newLevels is undefined`
+
+### Known Issues
+- Signal noise: 4 signals per navigation instead of expected 2 (documented in ActiveStack.js)
+
 ## [0.53.2] - 2026-01-11
 
 ### Added
