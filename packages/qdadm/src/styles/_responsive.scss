@@ -195,9 +195,16 @@
 .form-actions {
   @include mobile {
     flex-direction: column;
+    gap: 0.5rem;
+
+    .form-actions-left {
+      width: 100%;
+      flex-direction: column;
+    }
 
     .p-button {
       width: 100%;
+      white-space: nowrap;
     }
   }
 }

@@ -83,7 +83,7 @@ function getStockSeverity(stock) {
       </div>
 
       <!-- Error State -->
-      <InfoBanner v-else-if="error" severity="error">
+      <InfoBanner v-else-if="error" severity="error" :closable="false">
         {{ error }}
       </InfoBanner>
 

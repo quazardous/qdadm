@@ -35,10 +35,10 @@ const props = defineProps({
     type: [String, Boolean],
     default: null
   },
-  // Allow closing the banner
+  // Allow closing the banner (default: true)
   closable: {
     type: Boolean,
-    default: false
+    default: true
   }
 })
 

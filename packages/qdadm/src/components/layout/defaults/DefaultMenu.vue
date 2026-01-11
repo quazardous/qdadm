@@ -174,6 +174,7 @@ watch(() => route?.path, () => {
   align-items: center;
   gap: 0.75rem;
   padding: 0.625rem 1.5rem;
+  font-size: 0.9375rem;
   color: var(--p-surface-300, #cbd5e1);
   text-decoration: none;
   transition: all 0.15s;
