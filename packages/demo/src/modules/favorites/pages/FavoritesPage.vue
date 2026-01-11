@@ -85,7 +85,7 @@ async function addSampleFavorites() {
   })
 
   // Trigger list refresh
-  list.refresh()
+  list.loadItems({}, { force: true })
 }
 </script>
 

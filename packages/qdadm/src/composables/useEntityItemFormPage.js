@@ -449,11 +449,14 @@ export function useEntityItemFormPage(config = {}) {
       }
 
       if (listRoute?.name) {
-        return { name: listRoute.name, params: route.params }
+        // Filter out entity ID param (doesn't exist in create mode)
+        const params = { ...route.params }
+        delete params[manager.idField]
+        return { name: listRoute.name, params }
       }
     }
 
-    // Default: top-level entity list
+    // Default: top-level entity list (no params needed)
     return { name: routePrefix }
   }
 

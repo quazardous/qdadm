@@ -218,6 +218,7 @@ function onSort(event) {
           :label="resolveLabel(action.label)"
           :icon="action.icon"
           :severity="action.severity"
+          :size="action.size || 'small'"
           :loading="action.isLoading"
           @click="action.onClick"
         />

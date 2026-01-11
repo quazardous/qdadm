@@ -81,6 +81,13 @@ const childNavlinks = computed(() => {
   const entityName = route.meta?.entity
   if (!entityName) return []
 
+  // Get current entity's manager to determine idField
+  const currentManager = getManager(entityName)
+  const entityId = route.params[currentManager?.idField || 'id']
+
+  // Only show children when we have an entity ID (not on create pages)
+  if (!entityId) return []
+
   const children = getChildRoutes(entityName)
   if (children.length === 0) return []
 
@@ -92,10 +99,6 @@ const childNavlinks = computed(() => {
   })
 
   if (navRoutes.length === 0) return []
-
-  // Get current entity's manager to determine idField
-  const currentManager = getManager(entityName)
-  const entityId = route.params[currentManager?.idField || 'id']
 
   // Build navlinks to child routes
   return navRoutes.map(childRoute => {
