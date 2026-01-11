@@ -583,9 +583,9 @@ function getCollectorColor(name) {
           <i :class="['pi', getCollectorIcon(c.name)]" :style="{ color: getCollectorColor(c.name) }" />
           <span v-if="!tabsCompact" class="debug-tab-label">{{ getCollectorLabel(c.name) }}</span>
           <Badge v-if="c.badge > 0" :value="c.badge" severity="secondary" />
-          <!-- Per-collector play/pause for recording collectors (bottom mode only, not compact) -->
+          <!-- Per-collector play/pause for recording collectors (bottom mode only, not compact, not mobile) -->
           <button
-            v-if="c.records && displayMode === 'bottom' && !tabsCompact"
+            v-if="c.records && displayMode === 'bottom' && !tabsCompact && !isMobile"
             class="debug-tab-toggle"
             :class="{ 'debug-tab-toggle-paused': !c.enabled }"
             :title="c.enabled ? 'Pause recording' : 'Resume recording'"
@@ -593,9 +593,9 @@ function getCollectorColor(name) {
           >
             <i :class="['pi', c.enabled ? 'pi-pause' : 'pi-play']" />
           </button>
-          <!-- Per-collector clear button for recording collectors (bottom mode only, not compact) -->
+          <!-- Per-collector clear button for recording collectors (bottom mode only, not compact, not mobile) -->
           <button
-            v-if="c.records && c.badge > 0 && displayMode === 'bottom' && !tabsCompact"
+            v-if="c.records && c.badge > 0 && displayMode === 'bottom' && !tabsCompact && !isMobile"
             class="debug-tab-clear"
             title="Clear entries"
             @click.stop="clearCollector(c.collector)"

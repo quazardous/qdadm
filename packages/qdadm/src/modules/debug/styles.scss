@@ -392,8 +392,9 @@ $debug-info: #3b82f6;
   gap: 2px;
   flex: 1;
   overflow-y: auto;
-  overflow-x: hidden;
+  overflow-x: visible;
   min-height: 0;
+  padding-right: 4px; /* Space for badge overflow */
 }
 .debug-mobile .debug-tab {
   width: 32px;

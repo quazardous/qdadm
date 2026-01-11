@@ -3,6 +3,11 @@
 All notable changes to qdadm will be documented in this file.
 This is not a commit log. Keep entries simple, user-focused.
 
+## [0.59.1] - 2026-01-11
+
+- **Debug bar mobile fix**: Hide per-tab pause/clear buttons on mobile
+- **Debug bar badges**: Fix badge overflow clipping on mobile mini menu
+
 ## [0.59.0] - 2026-01-11
 
 - **Mobile row tap**: Tap on a table row navigates to edit/show page (based on declared routes)
