@@ -5,8 +5,8 @@
 
 import { useListPage, ListPage, useOrchestrator } from '../../index.js'
 import Column from 'primevue/column'
-import Tag from 'primevue/tag'
 import Message from 'primevue/message'
+import Chip from 'primevue/chip'
 
 // ============ LIST BUILDER ============
 const list = useListPage({ entity: 'roles' })
@@ -49,7 +49,7 @@ const canPersist = manager?.canPersist ?? false
       <Column field="name" header="Role" sortable style="width: 25%">
         <template #body="{ data }">
           <div>
-            <code class="role-name">{{ data.name }}</code>
+            <span class="p-role-label">{{ data.name }}</span>
             <div v-if="data.label && data.label !== data.name" class="text-sm text-color-secondary mt-1">
               {{ data.label }}
             </div>
@@ -59,13 +59,12 @@ const canPersist = manager?.canPersist ?? false
 
       <Column header="Inherits" style="width: 20%">
         <template #body="{ data }">
-          <div v-if="data.inherits?.length" class="flex flex-wrap gap-1">
-            <Tag
+          <div v-if="data.inherits?.length" class="p-role-labels">
+            <span
               v-for="parent in data.inherits"
               :key="parent"
-              :value="parent"
-              severity="secondary"
-            />
+              class="p-role-label"
+            >{{ parent }}</span>
           </div>
           <span v-else class="text-color-secondary">-</span>
         </template>
@@ -73,18 +72,16 @@ const canPersist = manager?.canPersist ?? false
 
       <Column header="Permissions" style="width: 40%">
         <template #body="{ data }">
-          <div v-if="data.permissions?.length" class="perm-tags">
-            <Tag
+          <div v-if="data.permissions?.length" class="chips-container">
+            <Chip
               v-for="perm in data.permissions.slice(0, 5)"
               :key="perm"
-              :value="perm"
-              severity="secondary"
+              :label="perm"
             />
-            <Tag
+            <Chip
               v-if="data.permissions.length > 5"
-              :value="`+${data.permissions.length - 5}`"
-              severity="secondary"
-              class="perm-tag--more"
+              :label="`+${data.permissions.length - 5}`"
+              class="chip-more"
             />
           </div>
           <span v-else class="text-color-secondary">No permissions</span>
@@ -95,26 +92,13 @@ const canPersist = manager?.canPersist ?? false
 </template>
 
 <style scoped>
-.role-name {
-  padding: 0.2rem 0.4rem;
-  background: var(--p-surface-100);
-  border-radius: 4px;
-  font-size: 0.875rem;
-  color: var(--p-primary-color);
-  font-weight: 500;
-}
-
-.perm-tags {
+.chips-container {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.35rem;
+  gap: 0.25rem;
 }
 
-.perm-tags :deep(.p-tag) {
-  border-radius: 999px !important;
-}
-
-.perm-tag--more {
-  border-style: dashed !important;
+.chip-more {
+  border-style: dashed;
 }
 </style>

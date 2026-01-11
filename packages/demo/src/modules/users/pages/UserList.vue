@@ -4,7 +4,6 @@
  */
 
 import { useListPage, ListPage } from 'qdadm'
-import Tag from 'primevue/tag'
 import Column from 'primevue/column'
 
 // ============ LIST BUILDER ============
@@ -34,10 +33,6 @@ list.addBulkDeleteAction()
 list.addEditAction()
 list.addDeleteAction({ labelField: 'username' })
 
-// ============ HELPERS ============
-function getRoleSeverity(role) {
-  return role === 'admin' ? 'danger' : 'info'
-}
 </script>
 
 <template>
@@ -46,7 +41,7 @@ function getRoleSeverity(role) {
       <Column field="username" header="Username" sortable />
       <Column field="role" header="Role" sortable style="width: 120px">
         <template #body="{ data }">
-          <Tag :value="data.role" :severity="getRoleSeverity(data.role)" />
+          <span class="p-role-label">{{ data.role }}</span>
         </template>
       </Column>
     </template>

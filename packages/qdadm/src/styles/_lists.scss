@@ -156,3 +156,56 @@
     font-size: $font-size-xs;
   }
 }
+
+// =============================================================================
+// Role & Permission Labels
+// =============================================================================
+
+.p-role-label,
+.p-permission-label {
+  display: inline-flex;
+  align-items: center;
+  background: transparent;
+  font-size: $font-size-xs;
+  font-weight: normal !important;
+  padding: 0.25rem 0.75rem;
+  border-radius: var(--p-tag-border-radius, 6px);
+  white-space: nowrap;
+
+  &--pill {
+    border-radius: 999px;
+  }
+
+  &--more {
+    border-style: dashed;
+  }
+}
+
+.p-role-label {
+  border: 1px solid var(--p-blue-500);
+  color: var(--p-blue-600);
+}
+
+.p-permission-label {
+  border: 1px solid var(--p-surface-400);
+  color: var(--p-surface-600);
+}
+
+.p-role-labels,
+.p-permission-labels {
+  display: flex;
+  flex-wrap: wrap;
+  gap: $space-xs;
+}
+
+// =============================================================================
+// Chip Override (thin border style)
+// =============================================================================
+
+.p-chip {
+  background: none !important;
+  border: 1px solid var(--p-surface-300) !important;
+  color: var(--p-surface-600) !important;
+  font-size: $font-size-xs !important;
+  padding: 0.2rem 0.6rem !important;
+}
