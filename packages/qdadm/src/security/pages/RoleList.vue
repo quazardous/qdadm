@@ -6,7 +6,6 @@
 import { useListPage, ListPage, useOrchestrator } from '../../index.js'
 import Column from 'primevue/column'
 import Tag from 'primevue/tag'
-import Chip from 'primevue/chip'
 import Message from 'primevue/message'
 
 // ============ LIST BUILDER ============
@@ -74,17 +73,18 @@ const canPersist = manager?.canPersist ?? false
 
       <Column header="Permissions" style="width: 40%">
         <template #body="{ data }">
-          <div v-if="data.permissions?.length" class="flex flex-wrap gap-1">
-            <Chip
+          <div v-if="data.permissions?.length" class="perm-tags">
+            <Tag
               v-for="perm in data.permissions.slice(0, 5)"
               :key="perm"
-              :label="perm"
-              class="text-xs"
+              :value="perm"
+              severity="secondary"
             />
-            <Chip
+            <Tag
               v-if="data.permissions.length > 5"
-              :label="`+${data.permissions.length - 5} more`"
-              class="text-xs"
+              :value="`+${data.permissions.length - 5}`"
+              severity="secondary"
+              class="perm-tag--more"
             />
           </div>
           <span v-else class="text-color-secondary">No permissions</span>
@@ -102,5 +102,19 @@ const canPersist = manager?.canPersist ?? false
   font-size: 0.875rem;
   color: var(--p-primary-color);
   font-weight: 500;
+}
+
+.perm-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.perm-tags :deep(.p-tag) {
+  border-radius: 999px !important;
+}
+
+.perm-tag--more {
+  border-style: dashed !important;
 }
 </style>
