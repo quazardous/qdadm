@@ -603,12 +603,12 @@ const showBreadcrumb = computed(() => {
   display: flex;
   flex-direction: column;
   transition: margin-left var(--fad-transition-slow);
+  overflow-y: auto;
 }
 
 .page-content {
   flex: 1;
   padding: 1rem;
-  overflow-y: auto;
 }
 
 /* Dark mode support */

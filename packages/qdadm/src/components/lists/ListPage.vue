@@ -65,7 +65,10 @@ const props = defineProps({
 
   // Row Actions
   getActions: { type: Function, default: null },
-  actionsWidth: { type: String, default: '120px' }
+  actionsWidth: { type: String, default: '120px' },
+
+  // Mobile row tap
+  hasRowTapAction: { type: Boolean, default: false }
 })
 
 function resolveLabel(label, _action) {
@@ -113,7 +116,8 @@ const emit = defineEmits([
   'update:searchQuery',
   'update:filterValues',
   'page',
-  'sort'
+  'sort',
+  'row-click'
 ])
 
 function clearAllFilters() {
@@ -201,6 +205,11 @@ function onPage(event) {
 
 function onSort(event) {
   emit('sort', event)
+}
+
+function onRowClick(event) {
+  // event.data = row data, event.originalEvent = MouseEvent
+  emit('row-click', event.data, event.originalEvent)
 }
 </script>
 
@@ -301,6 +310,8 @@ function onSort(event) {
         @update:selection="onSelectionChange"
         @page="onPage"
         @sort="onSort"
+        @row-click="onRowClick"
+        :class="{ 'datatable-row-clickable': hasRowTapAction }"
         stripedRows
         removableSort
       >

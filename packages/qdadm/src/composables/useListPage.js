@@ -1,4 +1,4 @@
-import { ref, computed, watch, onMounted, inject, provide } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted, inject, provide } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useConfirm } from 'primevue/useconfirm'
 import { useHooks } from './useHooks.js'
@@ -139,6 +139,9 @@ export function useListPage(config = {}) {
   const router = useRouter()
   const route = useRoute()
   const confirm = useConfirm()
+
+  // Mobile detection (viewport width < 768px)
+  const isMobile = ref(window.innerWidth < 768)
 
   // Get EntityManager via orchestrator
   const orchestrator = inject('qdadmOrchestrator')
@@ -1274,6 +1277,58 @@ export function useListPage(config = {}) {
     router.push({ name: `${routePrefix}-show`, params: { [manager.idField]: item[resolvedDataKey] } })
   }
 
+  // ============ MOBILE ROW TAP ============
+  /**
+   * Get primary action for row tap (based on declared routes, not permissions)
+   * Priority: edit > show
+   * @returns {'edit'|'show'|null}
+   */
+  function getPrimaryRowAction() {
+    const editRouteName = `${routePrefix}-edit`
+    const showRouteName = `${routePrefix}-show`
+
+    if (router.hasRoute(editRouteName)) {
+      return 'edit'
+    }
+    if (router.hasRoute(showRouteName)) {
+      return 'show'
+    }
+    return null
+  }
+
+  /**
+   * Handle row click for mobile navigation
+   * Only triggers on mobile, ignores clicks on interactive elements
+   * @param {object} item - Row data
+   * @param {Event} originalEvent - Original mouse/touch event
+   */
+  function onRowClick(item, originalEvent) {
+    // Ignore if not mobile
+    if (!isMobile.value) return
+
+    // Ignore if in selection mode
+    if (hasBulkActions.value && selected.value.length > 0) return
+
+    // Ignore if click was on interactive element
+    const target = originalEvent?.target
+    if (target?.closest('button, a, .p-button, .table-actions, input, .p-checkbox')) {
+      return
+    }
+
+    // Execute primary action
+    const action = getPrimaryRowAction()
+    if (action === 'edit') {
+      goToEdit(item)
+    } else if (action === 'show') {
+      goToShow(item)
+    }
+  }
+
+  /**
+   * Whether row tap navigation is available (mobile + has edit/show route)
+   */
+  const hasRowTapAction = computed(() => isMobile.value && getPrimaryRowAction() !== null)
+
   // ============ DELETE ============
   async function deleteItem(item, labelField = 'name') {
     try {
@@ -1561,7 +1616,15 @@ export function useListPage(config = {}) {
   // Initialize from registry immediately (sync)
   initFromRegistry()
 
+  // Mobile detection resize handler
+  function handleResize() {
+    isMobile.value = window.innerWidth < 768
+  }
+
   onMounted(async () => {
+    // Listen for viewport changes
+    window.addEventListener('resize', handleResize)
+
     // Restore filters from URL/session after registry init
     restoreFilters()
 
@@ -1579,6 +1642,10 @@ export function useListPage(config = {}) {
     if (loadOnMount && manager) {
       loadItems()
     }
+  })
+
+  onUnmounted(() => {
+    window.removeEventListener('resize', handleResize)
   })
 
   // ============ UTILITIES ============
@@ -1699,7 +1766,10 @@ export function useListPage(config = {}) {
     filterValues: filterValues.value,
 
     // Row actions
-    getActions
+    getActions,
+
+    // Mobile row tap
+    hasRowTapAction: hasRowTapAction.value
   }))
 
   /**
@@ -1711,7 +1781,8 @@ export function useListPage(config = {}) {
     'update:searchQuery': (value) => { searchQuery.value = value },
     'update:filterValues': updateFilters,
     'page': onPage,
-    'sort': onSort
+    'sort': onSort,
+    'row-click': onRowClick
   }
 
   return {
@@ -1806,6 +1877,12 @@ export function useListPage(config = {}) {
     goToCreate,
     goToEdit,
     goToShow,
+
+    // Mobile row tap
+    isMobile,
+    hasRowTapAction,
+    getPrimaryRowAction,
+    onRowClick,
 
     // Delete
     deleteItem,

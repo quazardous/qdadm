@@ -209,3 +209,17 @@
   font-size: $font-size-xs !important;
   padding: 0.2rem 0.6rem !important;
 }
+
+// =============================================================================
+// Mobile Row Tap
+// =============================================================================
+
+.datatable-row-clickable {
+  .p-datatable-tbody > tr {
+    cursor: pointer;
+
+    &:active {
+      background: var(--p-primary-50) !important;
+    }
+  }
+}
