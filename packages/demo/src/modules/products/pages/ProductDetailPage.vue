@@ -16,7 +16,7 @@ import { useRouter } from 'vue-router'
 import { PageLayout, usePageTitle, useEntityItemPage } from 'qdadm'
 import Card from 'primevue/card'
 import Button from 'primevue/button'
-import Message from 'primevue/message'
+import { InfoBanner } from 'qdadm/components'
 import Tag from 'primevue/tag'
 import Rating from 'primevue/rating'
 
@@ -83,9 +83,9 @@ function getStockSeverity(stock) {
       </div>
 
       <!-- Error State -->
-      <Message v-else-if="error" severity="error" :closable="false">
+      <InfoBanner v-else-if="error" severity="error">
         {{ error }}
-      </Message>
+      </InfoBanner>
 
       <!-- Product Details -->
       <div v-else-if="product" class="product-content">

@@ -1,0 +1,357 @@
+/**
+ * qdadm - Form Styles
+ *
+ * Form layouts, fields, and related patterns:
+ * - Form grid layouts
+ * - Form fields and inputs
+ * - Toggle fields and checkboxes
+ * - Editor boxes and chips
+ * - Info grids and timestamps
+ * - Dirty state indicator
+ */
+
+@use 'variables' as *;
+
+// =============================================================================
+// Form Grid Layouts
+// =============================================================================
+
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: $space-lg;
+  padding: $space-md 0;
+
+  @include tablet {
+    grid-template-columns: 1fr;
+  }
+}
+
+// Form rows - grid layouts
+.form-row {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: $space-lg;
+  align-items: end;
+}
+
+.form-row-3 {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: $space-md;
+  align-items: end;
+}
+
+.form-row.metadata {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: $space-md;
+  padding: $space-md;
+  background: var(--p-surface-50);
+  border-radius: $radius-lg;
+  align-items: end;
+}
+
+.form-row.checkboxes {
+  display: flex;
+  gap: 3rem;
+}
+
+// Spacing between form sections
+.form-row + .form-field,
+.form-field + .form-row {
+  margin-top: 1.25rem;
+}
+
+// =============================================================================
+// Form Fields
+// =============================================================================
+
+.form-field {
+  display: flex;
+  flex-direction: column;
+  gap: $space-sm;
+
+  label {
+    font-weight: $font-weight-medium;
+    color: var(--p-surface-700);
+  }
+
+  small {
+    color: var(--p-surface-500);
+    font-size: 0.85rem;
+  }
+
+  // Force PrimeVue inputs to be full width
+  .p-inputtext,
+  .p-textarea,
+  .p-select,
+  .p-multiselect,
+  .p-inputwrapper,
+  input,
+  textarea {
+    width: 100% !important;
+    box-sizing: border-box;
+  }
+
+  .p-textarea,
+  textarea {
+    min-height: 100px;
+    resize: vertical;
+  }
+}
+
+// =============================================================================
+// Meta Items
+// =============================================================================
+
+.meta-item {
+  display: flex;
+  flex-direction: column;
+  gap: $space-xs;
+
+  label {
+    font-size: 0.85rem;
+    color: var(--p-surface-500);
+  }
+
+  span {
+    font-weight: $font-weight-medium;
+  }
+}
+
+// =============================================================================
+// Toggle/Checkbox Fields
+// =============================================================================
+
+.toggle-field {
+  flex-direction: row;
+  align-items: center;
+  gap: $space-md;
+
+  label {
+    min-width: 120px;
+  }
+}
+
+.checkbox-field {
+  display: flex;
+  align-items: center;
+  gap: $space-sm;
+
+  label {
+    margin: 0;
+    cursor: pointer;
+  }
+}
+
+// =============================================================================
+// Field with Inline Button
+// =============================================================================
+
+.url-field,
+.lock-field,
+.envelope-field {
+  display: flex;
+  gap: $space-sm;
+  align-items: center;
+
+  input {
+    flex: 1;
+  }
+}
+
+// =============================================================================
+// Field Hints and Errors
+// =============================================================================
+
+.field-hint,
+.form-hint {
+  font-size: 0.8rem;
+  color: var(--p-surface-400);
+  margin-top: $space-xs;
+  display: block;
+}
+
+.field-error {
+  font-size: 0.8rem;
+  color: var(--p-red-500);
+  margin-top: $space-xs;
+  display: block;
+}
+
+// =============================================================================
+// Editor Box (container for complex editors)
+// =============================================================================
+
+.editor-box {
+  border: $border-width solid var(--p-surface-200);
+  border-radius: $radius-lg;
+  padding: 0.75rem;
+  background: var(--p-surface-50);
+}
+
+// Chips container with separator
+.editor-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: $space-sm;
+  margin-bottom: 0.75rem;
+  padding-bottom: 0.75rem;
+  border-bottom: $border-width solid var(--p-surface-200);
+}
+
+// Chip typography for code-like content
+.chip-code {
+  font-family: $font-family-mono;
+  font-size: $font-size-sm;
+}
+
+.chip-namespace {
+  color: var(--p-surface-500);
+}
+
+.chip-action {
+  color: var(--p-primary-600);
+  font-weight: $font-weight-medium;
+}
+
+.chip-wildcard {
+  color: var(--p-orange-500);
+  font-weight: $font-weight-bold;
+}
+
+// =============================================================================
+// Info Grids
+// =============================================================================
+
+.info-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: $space-md;
+
+  > div {
+    display: flex;
+    flex-direction: column;
+    gap: $space-xs;
+  }
+
+  label {
+    font-size: 0.85rem;
+    color: var(--p-surface-500);
+  }
+}
+
+.info-item {
+  display: flex;
+  flex-direction: column;
+  gap: $space-xs;
+
+  label {
+    font-size: $font-size-xs;
+    font-weight: $font-weight-semibold;
+    color: var(--p-surface-500);
+    text-transform: uppercase;
+  }
+}
+
+.info-value {
+  font-size: 0.9rem;
+}
+
+// =============================================================================
+// Timestamps Grid
+// =============================================================================
+
+.timestamps-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: $space-md;
+
+  &--separator {
+    padding-top: $space-md;
+    border-top: $border-width solid var(--p-surface-200);
+  }
+}
+
+.timestamp {
+  display: flex;
+  flex-direction: column;
+  gap: $space-xs;
+
+  label {
+    font-size: $font-size-xs;
+    color: var(--text-color-secondary);
+    text-transform: uppercase;
+  }
+}
+
+// =============================================================================
+// Dirty State Indicator
+// =============================================================================
+
+.form-dirty-indicator {
+  display: flex;
+  align-items: center;
+  gap: $space-sm;
+  padding: $space-sm $space-md;
+  background: color-mix(in srgb, var(--p-orange-100) 50%, transparent);
+  border: $border-width solid var(--p-orange-300);
+  border-radius: $radius-md;
+  color: var(--p-orange-700);
+  font-size: $font-size-sm;
+  margin-bottom: $space-md;
+
+  i {
+    color: var(--p-orange-500);
+  }
+}
+
+// Modified form fields - orange border
+.form-field.field-dirty {
+  .p-inputtext,
+  .p-select,
+  .p-textarea,
+  .p-password input,
+  .p-multiselect,
+  .p-calendar input,
+  .p-inputnumber input,
+  .p-dropdown {
+    border-color: #f97316 !important;
+    box-shadow: 0 0 0 1px #f97316 !important;
+  }
+}
+
+// =============================================================================
+// Form Cards
+// =============================================================================
+
+.form-card {
+  background: var(--p-surface-0);
+  padding: $space-xl;
+  border-radius: $radius-lg;
+}
+
+// =============================================================================
+// Config Pages Pattern
+// =============================================================================
+
+.config-intro {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: $space-md;
+  background: var(--p-surface-50);
+  border-radius: $radius-lg;
+  margin-bottom: $space-lg;
+
+  i {
+    font-size: 1.25rem;
+    color: var(--p-primary-500);
+    margin-top: 0.125rem;
+  }
+}
+
+.config-field {
+  margin-bottom: $space-lg;
+}

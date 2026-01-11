@@ -1,0 +1,147 @@
+/**
+ * Design Tokens - CSS Custom Properties
+ *
+ * Generates CSS custom properties (--fad-*) from SCSS variables.
+ * These tokens map to PrimeVue theme variables for consistency.
+ */
+
+@use '../variables' as *;
+
+:root {
+  // ===========================================================================
+  // Colors - Semantic
+  // ===========================================================================
+
+  // Text colors
+  --fad-text-primary: var(--p-text-color);
+  --fad-text-secondary: var(--p-text-muted-color);
+  --fad-text-disabled: var(--p-surface-400);
+  --fad-text-inverse: var(--p-surface-0);
+
+  // Surface colors (backgrounds, cards, overlays)
+  --fad-surface-ground: var(--p-surface-ground);
+  --fad-surface-card: var(--p-surface-card);
+  --fad-surface-overlay: var(--p-surface-overlay);
+  --fad-surface-border: var(--p-surface-200);
+  --fad-surface-hover: var(--p-surface-100);
+
+  // Primary brand color
+  --fad-primary: var(--p-primary-color);
+  --fad-primary-hover: var(--p-primary-600);
+  --fad-primary-text: var(--p-primary-contrast-color);
+
+  // Status colors
+  --fad-success: var(--p-green-500);
+  --fad-warning: var(--p-orange-500);
+  --fad-danger: var(--p-red-500);
+  --fad-info: var(--p-blue-500);
+
+  // ===========================================================================
+  // Spacing
+  // ===========================================================================
+
+  --fad-space-2xs: #{$space-2xs};
+  --fad-space-xs: #{$space-xs};
+  --fad-space-sm: #{$space-sm};
+  --fad-space-md: #{$space-md};
+  --fad-space-lg: #{$space-lg};
+  --fad-space-xl: #{$space-xl};
+  --fad-space-2xl: #{$space-2xl};
+
+  // ===========================================================================
+  // Typography
+  // ===========================================================================
+
+  --fad-font-family: #{$font-family-base};
+
+  // Font sizes
+  --fad-font-size-2xs: #{$font-size-2xs};
+  --fad-font-size-xs: #{$font-size-xs};
+  --fad-font-size-sm: #{$font-size-sm};
+  --fad-font-size-md: #{$font-size-md};
+  --fad-font-size-lg: #{$font-size-lg};
+  --fad-font-size-xl: #{$font-size-xl};
+  --fad-font-size-2xl: #{$font-size-2xl};
+
+  // Font weights
+  --fad-font-weight-light: #{$font-weight-light};
+  --fad-font-weight-normal: #{$font-weight-normal};
+  --fad-font-weight-medium: #{$font-weight-medium};
+  --fad-font-weight-semibold: #{$font-weight-semibold};
+  --fad-font-weight-bold: #{$font-weight-bold};
+
+  // Line heights
+  --fad-line-height-tight: #{$line-height-tight};
+  --fad-line-height-normal: #{$line-height-normal};
+  --fad-line-height-relaxed: #{$line-height-relaxed};
+
+  // ===========================================================================
+  // Borders & Radius
+  // ===========================================================================
+
+  --fad-border-width: #{$border-width};
+  --fad-border-color: var(--fad-surface-border);
+
+  --fad-radius-sm: #{$radius-sm};
+  --fad-radius-md: #{$radius-md};
+  --fad-radius-lg: #{$radius-lg};
+  --fad-radius-xl: #{$radius-xl};
+  --fad-radius-full: #{$radius-full};
+
+  // ===========================================================================
+  // Shadows
+  // ===========================================================================
+
+  --fad-shadow-sm: #{$shadow-sm};
+  --fad-shadow-md: #{$shadow-md};
+  --fad-shadow-lg: #{$shadow-lg};
+  --fad-shadow-xl: #{$shadow-xl};
+
+  // ===========================================================================
+  // Transitions
+  // ===========================================================================
+
+  --fad-transition-instant: #{$transition-instant};
+  --fad-transition-fast: #{$transition-fast};
+  --fad-transition-normal: #{$transition-normal};
+  --fad-transition-slow: #{$transition-slow};
+
+  // ===========================================================================
+  // Z-Index
+  // ===========================================================================
+
+  --fad-z-dropdown: #{$z-dropdown};
+  --fad-z-sticky: #{$z-sticky};
+  --fad-z-fixed: #{$z-fixed};
+  --fad-z-modal-backdrop: #{$z-modal-backdrop};
+  --fad-z-modal: #{$z-modal};
+  --fad-z-popover: #{$z-popover};
+  --fad-z-tooltip: #{$z-tooltip};
+
+  // ===========================================================================
+  // Layout
+  // ===========================================================================
+
+  --fad-sidebar-width: #{$sidebar-width};
+  --fad-sidebar-width-tablet: #{$sidebar-width-tablet};
+  --fad-sidebar-width-collapsed: #{$sidebar-width-collapsed};
+  --fad-header-height: #{$header-height};
+  --fad-content-max-width: #{$content-max-width};
+
+  // ===========================================================================
+  // Navigation
+  // ===========================================================================
+
+  --fad-nav-item-height: #{$nav-item-height};
+  --fad-nav-item-padding-x: #{$nav-item-padding-x};
+  --fad-nav-item-padding-y: #{$nav-item-padding-y};
+  --fad-nav-icon-size: #{$nav-icon-size};
+  --fad-nav-section-gap: #{$nav-section-gap};
+}
+
+// Dark mode overrides
+.dark-mode {
+  --fad-surface-border: var(--p-surface-700);
+  --fad-surface-hover: var(--p-surface-800);
+  --fad-text-disabled: var(--p-surface-500);
+}

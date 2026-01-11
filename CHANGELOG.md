@@ -3,6 +3,19 @@
 All notable changes to qdadm will be documented in this file.
 This is not a commit log. Keep entries simple, user-focused.
 
+## [0.57.0] - 2026-01-11
+
+- **InfoBanner component**: Unified message banner with severity support (info, success, warn, error)
+- **useInfoBanner composable**: Programmatic banner management with BannerZone renderer
+- **SCSS reorganization**: Split _main.scss into focused partials (_forms, _stats, _states, _lists, _filter-bar, _helpers)
+- **Debug bar mobile**: Fullscreen mode with vertical mini menu on mobile devices
+
+## [0.56.0] - 2026-01-11
+
+- **Collapsible sidebar**: Mini icon-only mode for desktop/tablet with persistent state
+- **Mobile fullscreen menu**: Sidebar opens as fullscreen overlay on mobile (100vw, 100dvh)
+- **Powered by link**: qdadm text now links to GitHub repository
+
 ## [0.55.0] - 2026-01-11
 
 - **Debug bar refactor**: Put debug bar outside main codebase

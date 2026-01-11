@@ -1,0 +1,144 @@
+/**
+ * qdadm - List Page Styles
+ *
+ * Patterns for list/table pages:
+ * - Status and type tags
+ * - External and domain links
+ * - Clickable cells
+ * - Entity links
+ * - Tags preview
+ * - Table actions
+ */
+
+@use 'variables' as *;
+
+// =============================================================================
+// Table Actions
+// =============================================================================
+
+.table-actions {
+  display: flex;
+  gap: $space-xs;
+  justify-content: flex-start;
+}
+
+// =============================================================================
+// Status/Type Tags
+// =============================================================================
+
+.text-muted {
+  color: var(--p-surface-400);
+}
+
+.status-tags,
+.type-tags {
+  display: flex;
+  gap: $space-xs;
+  flex-wrap: wrap;
+}
+
+// =============================================================================
+// External Links
+// =============================================================================
+
+.external-link {
+  display: flex;
+  align-items: center;
+  gap: $space-sm;
+  color: var(--p-primary-500);
+  text-decoration: none;
+
+  &:hover {
+    text-decoration: underline;
+  }
+
+  i {
+    font-size: $font-size-xs;
+    opacity: 0.6;
+  }
+}
+
+// =============================================================================
+// Domain Cells
+// =============================================================================
+
+.domain-cell {
+  display: flex;
+  align-items: center;
+}
+
+.domain-link {
+  display: flex;
+  align-items: center;
+  gap: $space-sm;
+  color: var(--p-primary-500);
+  text-decoration: none;
+
+  &:hover {
+    text-decoration: underline;
+  }
+
+  i {
+    font-size: $font-size-xs;
+    opacity: 0.6;
+  }
+}
+
+.domain-tags {
+  display: flex;
+  gap: $space-xs;
+}
+
+// =============================================================================
+// Clickable Cells
+// =============================================================================
+
+.clickable-cell {
+  cursor: pointer;
+  color: var(--p-primary-color);
+
+  &:hover {
+    text-decoration: underline;
+  }
+}
+
+// =============================================================================
+// Entity Links
+// =============================================================================
+
+.entity-link {
+  display: flex;
+  align-items: center;
+  gap: $space-sm;
+  text-decoration: none;
+  color: var(--p-primary-color);
+
+  &:hover {
+    text-decoration: underline;
+  }
+}
+
+.entity-type {
+  font-weight: $font-weight-medium;
+}
+
+.entity-id {
+  font-size: $font-size-xs;
+  background: var(--p-surface-100);
+  padding: 0.15rem 0.35rem;
+  border-radius: 3px;
+}
+
+// =============================================================================
+// Tags Preview
+// =============================================================================
+
+.tags-preview {
+  display: flex;
+  gap: $space-xs;
+  flex-wrap: wrap;
+
+  .p-tag {
+    font-size: $font-size-xs;
+  }
+}

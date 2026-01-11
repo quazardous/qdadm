@@ -1,0 +1,88 @@
+/**
+ * Markdown Rendered Content
+ * Styles for displaying markdown-to-HTML content
+ */
+
+@use 'variables' as *;
+
+.markdown-rendered {
+  background: var(--p-surface-100);
+  padding: $space-md;
+  border-radius: $radius-sm;
+  max-height: 400px;
+  overflow-y: auto;
+  font-size: $font-size-sm;
+
+  // Headings
+  h1, h2, h3, h4 {
+    margin: $space-md 0 $space-sm 0;
+    font-weight: $font-weight-semibold;
+  }
+
+  h1 { font-size: $font-size-2xl; }
+  h2 { font-size: $font-size-xl; }
+  h3 { font-size: $font-size-lg; }
+
+  // Paragraphs
+  p {
+    margin: $space-sm 0;
+  }
+
+  // Lists
+  ul, ol {
+    margin: $space-sm 0;
+    padding-left: $space-lg;
+  }
+
+  // Links
+  a {
+    color: var(--p-primary-500);
+    text-decoration: underline;
+  }
+
+  // Inline code
+  code {
+    background: var(--p-surface-200);
+    padding: 0.1rem 0.3rem;
+    border-radius: $radius-sm;
+    font-family: $font-family-mono;
+    font-size: 0.85em;
+  }
+
+  // Code blocks
+  pre {
+    background: var(--p-surface-200);
+    padding: 0.75rem;
+    border-radius: $radius-sm;
+    overflow-x: auto;
+  }
+
+  // Blockquotes
+  blockquote {
+    border-left: 3px solid var(--p-surface-300);
+    margin: $space-sm 0;
+    padding-left: $space-md;
+    color: var(--p-surface-600);
+  }
+
+  // Figures (images with captions)
+  .md-figure {
+    margin: $space-md 0;
+    padding: 0;
+
+    img {
+      max-width: 100%;
+      height: auto;
+      border-radius: $radius-sm;
+      display: block;
+    }
+
+    figcaption {
+      margin-top: $space-sm;
+      font-size: $font-size-xs;
+      color: var(--p-surface-500);
+      font-style: italic;
+      line-height: $line-height-normal;
+    }
+  }
+}

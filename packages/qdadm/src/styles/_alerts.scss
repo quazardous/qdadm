@@ -1,0 +1,75 @@
+/**
+ * Alert and Notice Boxes
+ * Warning, info, and system notice styles
+ */
+
+@use 'variables' as *;
+
+// Warning banner (yellow) - for system notices
+.alert-warning {
+  background: var(--p-yellow-50);
+  padding: $space-md;
+  margin-bottom: $space-md;
+  border-radius: $radius-lg;
+  border: $border-width solid var(--p-yellow-200);
+}
+
+.alert-warning-icon {
+  color: var(--p-yellow-600);
+}
+
+.alert-warning-text {
+  margin-left: $space-sm;
+  color: var(--p-yellow-700);
+}
+
+// Info banner (orange) - for important notices
+.alert-info {
+  color: var(--p-orange-600);
+  margin-bottom: $space-md;
+}
+
+// Key info panel - for displaying read-only metadata
+.key-info-panel {
+  background: var(--p-surface-50);
+  padding: $space-md;
+  margin-bottom: $space-md;
+  border-radius: $radius-lg;
+}
+
+.key-info-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: $space-xl;
+  align-items: center;
+}
+
+.key-info-item small {
+  color: var(--p-surface-500);
+  display: block;
+}
+
+// =============================================================================
+// InfoBanner Component Styles
+// =============================================================================
+
+// Global styles for PrimeVue Message when used as InfoBanner
+.info-banner {
+  margin-top: $space-md;
+  margin-bottom: $space-md;
+
+  // No top margin if first child
+  &:first-child {
+    margin-top: 0;
+  }
+
+  // Ensure consistent padding
+  .p-message-content {
+    padding: $space-sm $space-md;
+  }
+
+  // Remove default icon from PrimeVue Message (we use our own)
+  .p-message-icon {
+    display: none;
+  }
+}

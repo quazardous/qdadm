@@ -105,7 +105,8 @@ export class CountriesModule extends Module {
     })
 
     // Detail page (read-only, not part of CRUD pattern)
-    ctx.routes('countries/:id', [
+    // Route param must match entity idField (cca3)
+    ctx.routes('countries/:cca3', [
       {
         path: '',
         name: 'country-show',

@@ -1,0 +1,331 @@
+/**
+ * Component Styles
+ *
+ * Reusable component classes that can be used directly in templates
+ * or as base styles for Vue components.
+ */
+
+@use '../variables' as *;
+
+// =============================================================================
+// Cards
+// =============================================================================
+
+.fad-card {
+  background: var(--fad-surface-card);
+  border: $border-width solid var(--fad-border-color);
+  border-radius: $radius-lg;
+  padding: $space-lg;
+}
+
+.fad-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: $space-md;
+  padding-bottom: $space-md;
+  border-bottom: $border-width solid var(--fad-border-color);
+}
+
+.fad-card-title {
+  font-size: $font-size-lg;
+  font-weight: $font-weight-semibold;
+  color: var(--fad-text-primary);
+  margin: 0;
+}
+
+.fad-card-body {
+  color: var(--fad-text-primary);
+}
+
+.fad-card-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: $space-sm;
+  margin-top: $space-md;
+  padding-top: $space-md;
+  border-top: $border-width solid var(--fad-border-color);
+}
+
+// =============================================================================
+// Form Elements
+// =============================================================================
+
+.fad-form-field {
+  display: flex;
+  flex-direction: column;
+  gap: $space-sm;
+  margin-bottom: $space-lg;
+}
+
+.fad-form-label {
+  font-weight: $font-weight-medium;
+  color: var(--fad-text-primary);
+  font-size: $font-size-sm;
+}
+
+.fad-form-label-required::after {
+  content: " *";
+  color: var(--fad-danger);
+}
+
+.fad-form-help {
+  font-size: $font-size-xs;
+  color: var(--fad-text-secondary);
+}
+
+.fad-form-error {
+  font-size: $font-size-xs;
+  color: var(--fad-danger);
+}
+
+.fad-form-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: $space-md;
+}
+
+.fad-form-section-title {
+  font-size: $font-size-lg;
+  font-weight: $font-weight-semibold;
+  color: var(--fad-text-primary);
+  margin: $space-xl 0 $space-md 0;
+  padding-bottom: $space-sm;
+  border-bottom: $border-width solid var(--fad-border-color);
+
+  &:first-child {
+    margin-top: 0;
+  }
+}
+
+// =============================================================================
+// Form Field States
+// =============================================================================
+
+.fad-form-field--dirty {
+  position: relative;
+
+  &::before {
+    content: "";
+    position: absolute;
+    left: -8px;
+    top: 0;
+    bottom: 0;
+    width: 3px;
+    background: var(--fad-warning);
+    border-radius: $radius-full;
+  }
+}
+
+.fad-form-field--error .fad-form-label {
+  color: var(--fad-danger);
+}
+
+// =============================================================================
+// Page Header
+// =============================================================================
+
+.fad-page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: $space-lg;
+  padding-bottom: $space-md;
+}
+
+.fad-page-title {
+  font-size: $font-size-2xl;
+  font-weight: $font-weight-semibold;
+  color: var(--fad-text-primary);
+  margin: 0;
+}
+
+.fad-page-actions {
+  display: flex;
+  gap: $space-sm;
+}
+
+// =============================================================================
+// Empty State
+// =============================================================================
+
+.fad-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: $space-2xl $space-md;
+  text-align: center;
+  color: var(--fad-text-secondary);
+}
+
+.fad-empty-state-icon {
+  font-size: 3rem;
+  opacity: 0.5;
+  margin-bottom: $space-md;
+}
+
+.fad-empty-state-title {
+  font-size: $font-size-lg;
+  font-weight: $font-weight-medium;
+  color: var(--fad-text-primary);
+  margin: 0 0 $space-sm 0;
+}
+
+.fad-empty-state-description {
+  font-size: $font-size-sm;
+  max-width: 400px;
+}
+
+// =============================================================================
+// Loading State
+// =============================================================================
+
+.fad-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: $space-2xl;
+}
+
+.fad-loading-spinner {
+  animation: fad-spin 1s linear infinite;
+}
+
+@keyframes fad-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+// =============================================================================
+// Status Badges
+// =============================================================================
+
+.fad-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: $space-xs $space-sm;
+  font-size: $font-size-xs;
+  font-weight: $font-weight-medium;
+  border-radius: $radius-full;
+  text-transform: uppercase;
+  letter-spacing: 0.025em;
+
+  &--success {
+    background: var(--p-green-100);
+    color: var(--p-green-700);
+  }
+
+  &--warning {
+    background: var(--p-orange-100);
+    color: var(--p-orange-700);
+  }
+
+  &--danger {
+    background: var(--p-red-100);
+    color: var(--p-red-700);
+  }
+
+  &--info {
+    background: var(--p-blue-100);
+    color: var(--p-blue-700);
+  }
+
+  &--neutral {
+    background: var(--p-surface-100);
+    color: var(--p-surface-600);
+  }
+}
+
+// =============================================================================
+// Tabs (for form tabs)
+// =============================================================================
+
+.fad-tabs {
+  display: flex;
+  gap: $space-xs;
+  border-bottom: $border-width solid var(--fad-border-color);
+  margin-bottom: $space-lg;
+}
+
+.fad-tab {
+  display: flex;
+  align-items: center;
+  gap: $space-xs;
+  padding: $space-sm $space-md;
+  font-size: $font-size-sm;
+  font-weight: $font-weight-medium;
+  color: var(--fad-text-secondary);
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  transition: all $transition-fast;
+  margin-bottom: -1px;
+
+  &:hover {
+    color: var(--fad-text-primary);
+  }
+
+  &--active {
+    color: var(--fad-primary);
+    border-bottom-color: var(--fad-primary);
+  }
+}
+
+.fad-tab-count {
+  background: var(--p-surface-100);
+  color: var(--fad-text-secondary);
+  padding: 0.125rem 0.375rem;
+  border-radius: $radius-full;
+  font-size: $font-size-xs;
+
+  .fad-tab--active & {
+    background: var(--p-primary-100);
+    color: var(--fad-primary);
+  }
+}
+
+// =============================================================================
+// Page Navigation (breadcrumb + navlinks)
+// =============================================================================
+
+.fad-page-nav {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: $space-sm;
+}
+
+.fad-page-nav-breadcrumb {
+  flex: 1;
+}
+
+.fad-page-nav-links {
+  display: flex;
+  align-items: center;
+  gap: $space-sm;
+  font-size: $font-size-sm;
+}
+
+.fad-page-nav-separator {
+  color: var(--fad-text-secondary);
+}
+
+.fad-page-nav-link {
+  color: var(--fad-primary);
+  text-decoration: none;
+  transition: color $transition-fast;
+
+  &:hover {
+    color: var(--fad-primary-hover);
+    text-decoration: underline;
+  }
+
+  &--active {
+    color: var(--fad-text-primary);
+    font-weight: $font-weight-medium;
+    pointer-events: none;
+  }
+}

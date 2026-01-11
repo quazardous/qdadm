@@ -1,0 +1,295 @@
+/**
+ * qdadm - Main Styles
+ *
+ * Core framework styles including:
+ * - Base resets
+ * - Page layout
+ * - Section headers
+ * - Info blocks
+ * - Breadcrumb
+ *
+ * Other styles are in separate partials:
+ * - _forms.scss - Form layouts and fields
+ * - _stats.scss - Stats cards
+ * - _states.scss - Loading/empty/error states
+ * - _lists.scss - List page patterns
+ * - _filter-bar.scss - Filter bar
+ * - _utilities.scss - Utility classes
+ */
+
+@use 'variables' as *;
+
+// =============================================================================
+// Base Reset
+// =============================================================================
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html, body, #app {
+  height: 100%;
+  font-family: $font-family-base;
+}
+
+// =============================================================================
+// Global Placeholder Styling
+// =============================================================================
+
+input::placeholder,
+textarea::placeholder,
+.p-inputtext::placeholder,
+.p-autocomplete-input::placeholder,
+.p-textarea::placeholder,
+.p-select-label.p-placeholder,
+.p-dropdown-label.p-placeholder {
+  color: #a0aec0 !important;
+  opacity: 1;
+}
+
+// =============================================================================
+// Page Content
+// =============================================================================
+
+.page-content {
+  flex: 1;
+  padding: $space-lg;
+  overflow-y: auto;
+}
+
+// =============================================================================
+// Page Headers
+// =============================================================================
+
+.page-header {
+  margin-bottom: $space-lg;
+}
+
+.page-title {
+  font-size: $font-size-2xl;
+  font-weight: $font-weight-semibold;
+  color: var(--p-surface-900);
+}
+
+.header-actions {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+// =============================================================================
+// PrimeVue Tabs
+// =============================================================================
+
+.p-tabpanels {
+  padding-top: $space-md;
+}
+
+.p-tabpanel > .form-field:first-child,
+.p-tabpanel > .form-row:first-child,
+.p-tabpanel > .form-grid:first-child {
+  margin-top: $space-sm;
+}
+
+// =============================================================================
+// Info Blocks
+// =============================================================================
+
+.info-block {
+  background: var(--p-surface-50);
+  padding: $space-lg;
+  border-radius: $radius-lg;
+}
+
+.info-block-title {
+  margin: 0 0 $space-md 0;
+  font-size: $font-size-md;
+  color: var(--p-surface-600);
+
+  i {
+    margin-right: $space-sm;
+  }
+}
+
+.info-label {
+  font-weight: $font-weight-medium;
+  color: var(--p-surface-500);
+  display: block;
+  margin-bottom: $space-xs;
+}
+
+.info-label-sm {
+  font-size: $font-size-xs;
+  font-weight: $font-weight-semibold;
+  color: var(--p-surface-500);
+  text-transform: uppercase;
+  display: block;
+  margin-bottom: $space-xs;
+}
+
+.value-lg {
+  font-size: $font-size-2xl;
+  font-weight: $font-weight-semibold;
+}
+
+// Accent blocks
+.accent-block {
+  background: var(--p-surface-50);
+  border-left: 3px solid var(--p-primary-500);
+  padding: $space-md;
+  border-radius: $radius-sm;
+}
+
+// Code/key display
+.code-block {
+  word-break: break-all;
+  font-family: $font-family-mono;
+  background: var(--p-surface-100);
+  padding: $space-md;
+  border-radius: $radius-sm;
+}
+
+// =============================================================================
+// Section Headers
+// =============================================================================
+
+.section-header {
+  display: flex;
+  align-items: center;
+  gap: $space-sm;
+  margin-bottom: $space-md;
+
+  h3 {
+    margin: 0;
+    font-size: $font-size-md;
+    font-weight: $font-weight-semibold;
+  }
+
+  i {
+    color: var(--p-primary-500);
+  }
+}
+
+.section-description {
+  color: var(--p-surface-500);
+  font-size: $font-size-sm;
+  margin-bottom: $space-md;
+}
+
+.section-title {
+  margin: 0 0 $space-md 0;
+  font-size: $font-size-md;
+  font-weight: $font-weight-semibold;
+  color: var(--p-surface-700);
+
+  &--separator {
+    border-top: $border-width solid var(--p-surface-200);
+    padding-top: $space-lg;
+  }
+
+  i {
+    margin-right: $space-sm;
+  }
+}
+
+// =============================================================================
+// Image Gallery Pattern
+// =============================================================================
+
+.image-gallery {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: $space-md;
+}
+
+.image-card {
+  position: relative;
+  border-radius: $radius-lg;
+  overflow: hidden;
+  border: $border-width solid var(--p-surface-200);
+
+  img {
+    width: 100%;
+    aspect-ratio: 16/9;
+    object-fit: cover;
+  }
+
+  &--clickable {
+    cursor: pointer;
+    transition: border-color $transition-normal, box-shadow $transition-normal;
+
+    &:hover {
+      border-color: var(--p-primary-300);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    }
+  }
+}
+
+.image-caption {
+  padding: $space-sm;
+  background: var(--p-surface-50);
+  font-size: $font-size-xs;
+  color: var(--p-surface-600);
+}
+
+// =============================================================================
+// Info Row Pattern
+// =============================================================================
+
+.info-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: $space-sm 0;
+  border-bottom: $border-width solid var(--p-surface-100);
+
+  &:last-child {
+    border-bottom: none;
+  }
+}
+
+// =============================================================================
+// Breadcrumb
+// =============================================================================
+
+.layout-breadcrumb {
+  padding: 0.75rem $space-lg;
+  background: var(--p-surface-0, white);
+  border-bottom: $border-width solid var(--p-surface-200, #e2e8f0);
+
+  .p-breadcrumb-list {
+    margin: 0;
+    padding: 0;
+  }
+}
+
+.breadcrumb-link {
+  display: flex;
+  align-items: center;
+  gap: $radius-md;
+  color: var(--p-primary-600, #2563eb);
+  text-decoration: none;
+  font-size: $font-size-sm;
+
+  &:hover {
+    text-decoration: underline;
+  }
+
+  i {
+    font-size: $font-size-sm;
+  }
+}
+
+.breadcrumb-current {
+  display: flex;
+  align-items: center;
+  gap: $radius-md;
+  color: var(--p-surface-600, #475569);
+  font-size: $font-size-sm;
+
+  i {
+    font-size: $font-size-sm;
+  }
+}

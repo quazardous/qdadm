@@ -1,0 +1,254 @@
+/**
+ * Sidebar Components
+ *
+ * Generic classes for sidebar footer items (user info, impersonation, etc.)
+ * These provide a consistent structure for icon + text boxes in the sidebar.
+ *
+ * Structure:
+ *   .sidebar-box (container with border-top, hover state)
+ *     .sidebar-box-inner (flex wrapper)
+ *       .sidebar-box-icon (left icon, absolute positioned - FIXED position)
+ *       .sidebar-box-content (text, fades in/out with sidebar)
+ *         .sidebar-box-title
+ *         .sidebar-box-subtitle
+ *
+ * Behavior:
+ *   - Icon stays at fixed left position (never moves horizontally)
+ *   - On close: text disappears immediately
+ *   - On open: text appears with delayed fade after sidebar is fully open
+ *
+ * Modifiers:
+ *   --impersonator: orange color scheme
+ *   --full: full-width content (for controls/dropdowns)
+ */
+
+// =============================================================================
+// Variables
+// =============================================================================
+
+$sidebar-box-icon-left: 0.5rem;
+$sidebar-box-icon-size: 28px;
+$sidebar-box-content-left: 2rem;
+$sidebar-box-height: 3.5rem;
+
+// Timing: sidebar width transition is --fad-transition-slow (200ms)
+// Content should appear AFTER sidebar is open, so delay = 200ms, duration = 100ms
+$sidebar-box-content-delay: 0.2s;
+$sidebar-box-content-duration: 0.1s;
+
+/* =============================================================================
+   Sidebar Box - Generic footer item
+   ============================================================================= */
+
+.sidebar-box {
+  position: relative;
+  z-index: 1;
+  padding: 0.5rem 0.75rem;
+  border-top: 1px solid var(--p-surface-700, #334155);
+  height: $sidebar-box-height;
+  box-sizing: border-box;
+  cursor: pointer;
+  transition: background var(--fad-transition-fast);
+  display: flex;
+  align-items: center;
+}
+
+.sidebar-box:hover {
+  background: var(--p-surface-700, #334155);
+}
+
+.sidebar-box-inner {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding-left: $sidebar-box-content-left;
+  height: 100%;
+  width: 100%;
+}
+
+// Icon: FIXED position at left, never moves
+.sidebar-box-icon {
+  position: absolute;
+  left: $sidebar-box-icon-left;
+  top: 50%;
+  transform: translateY(-50%);
+  width: $sidebar-box-icon-size;
+  height: $sidebar-box-icon-size;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.875rem;
+  color: var(--p-surface-400, #94a3b8);
+  // No horizontal transition - icon never moves
+}
+
+.sidebar-box:hover .sidebar-box-icon {
+  color: var(--p-surface-200, #e2e8f0);
+}
+
+// Content: fades in with delay when sidebar opens
+.sidebar-box-content {
+  flex: 1;
+  min-width: 0;
+  opacity: 1;
+  // Delayed fade-in: wait for sidebar to open, then fade in
+  transition: opacity $sidebar-box-content-duration ease $sidebar-box-content-delay;
+}
+
+.sidebar-box-title {
+  font-weight: var(--fad-font-weight-normal);
+  font-size: var(--fad-font-size-sm);
+  color: var(--p-surface-100, #f1f5f9);
+  white-space: nowrap;
+}
+
+.sidebar-box-subtitle {
+  font-size: var(--fad-font-size-2xs);
+  color: var(--p-surface-400, #94a3b8);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* =============================================================================
+   Sidebar Box - Impersonator variant (orange colors)
+   ============================================================================= */
+
+.sidebar-box--impersonator .sidebar-box-icon {
+  color: var(--p-orange-400, #fb923c);
+}
+
+.sidebar-box--impersonator:hover .sidebar-box-icon {
+  color: var(--p-orange-300, #fdba74);
+}
+
+.sidebar-box--impersonator .sidebar-box-title {
+  color: var(--p-orange-400, #fb923c);
+}
+
+.sidebar-box--impersonator .sidebar-box-subtitle {
+  color: var(--p-orange-300, #fdba74);
+}
+
+/* =============================================================================
+   Sidebar Box - Collapsed state
+   ============================================================================= */
+
+.sidebar--collapsed .sidebar-box {
+  // Remove horizontal padding, keep centered
+  padding: 0;
+}
+
+.sidebar--collapsed .sidebar-box-inner {
+  // Center the icon (which is still absolute)
+  justify-content: center;
+  padding-left: 0;
+}
+
+// Icon: stays at EXACT SAME left position - no movement at all
+// The icon remains at left edge, not centered in collapsed mode
+.sidebar--collapsed .sidebar-box-icon {
+  // Keep same position as expanded - icon does NOT move horizontally
+  // left: $sidebar-box-icon-left; (inherited, no change needed)
+}
+
+// Content: disappears IMMEDIATELY when closing (no transition)
+.sidebar--collapsed .sidebar-box-content {
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0s, visibility 0s; // Instant hide
+}
+
+/* =============================================================================
+   Sidebar Box Controls - Dropdown variant (hidden when collapsed)
+   ============================================================================= */
+
+.sidebar-box-controls {
+  padding: 0.5rem 1rem;
+}
+
+.sidebar-box-controls-label {
+  font-size: var(--fad-font-size-xs);
+  font-weight: var(--fad-font-weight-medium);
+  color: var(--p-surface-500, #64748b);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  display: block;
+  margin-bottom: 0.375rem;
+}
+
+.sidebar-box-controls-input {
+  width: 100%;
+}
+
+.sidebar-box-controls-input :deep(.p-autocomplete-input) {
+  width: 100%;
+  font-size: var(--fad-font-size-sm);
+}
+
+.sidebar-box-controls-input :deep(.p-autocomplete-overlay) {
+  z-index: 9999 !important;
+}
+
+.sidebar--collapsed .sidebar-box-controls {
+  display: none !important;
+}
+
+/* =============================================================================
+   Sidebar Box - Full-width variant (for controls/dropdowns)
+   ============================================================================= */
+
+.sidebar-box--full {
+  height: auto;
+  cursor: default;
+}
+
+.sidebar-box--full:hover {
+  background: transparent;
+}
+
+.sidebar-box-full {
+  width: 100%;
+  padding: 0.25rem 0;
+  opacity: 1;
+  transition: opacity $sidebar-box-content-duration ease $sidebar-box-content-delay;
+}
+
+.sidebar-box-full-label {
+  font-size: var(--fad-font-size-xs);
+  font-weight: var(--fad-font-weight-medium);
+  color: var(--p-surface-500, #64748b);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  display: block;
+  margin-bottom: 0.375rem;
+}
+
+.sidebar-box-full-input {
+  width: 100%;
+}
+
+.sidebar-box-full-input :deep(.p-autocomplete-input) {
+  width: 100%;
+  font-size: var(--fad-font-size-sm);
+}
+
+.sidebar-box-full-input :deep(.p-autocomplete-overlay) {
+  z-index: 9999 !important;
+}
+
+// Full-width boxes: hide immediately when collapsed
+.sidebar--collapsed .sidebar-box--full {
+  opacity: 0;
+  visibility: hidden;
+  height: 0;
+  padding: 0;
+  border: none;
+  overflow: hidden;
+  transition: opacity 0s, visibility 0s, height 0s, padding 0s;
+}
+
+.sidebar--collapsed .sidebar-box-full {
+  opacity: 0;
+  transition: opacity 0s;
+}

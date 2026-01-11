@@ -353,6 +353,87 @@ $debug-info: #3b82f6;
   overflow: auto;
 }
 
+/* Mobile mode - fullscreen with vertical menu like right panel */
+.debug-mobile {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: auto;
+  height: auto;
+  border: none;
+  border-radius: 0;
+  flex-direction: row; /* Like right panel: header on left, content on right */
+}
+.debug-mobile .debug-header {
+  flex-direction: column;
+  width: 44px;
+  padding: 8px 6px;
+  border-bottom: none;
+  border-right: 1px solid #3f3f46;
+  align-items: center;
+  gap: 4px;
+  height: 100%;
+  overflow: hidden;
+}
+.debug-mobile .debug-title {
+  flex-direction: column;
+  gap: 4px;
+  flex-shrink: 0;
+}
+.debug-mobile .debug-title span:not(.debug-header-badge) {
+  display: none;
+}
+.debug-mobile .debug-tabs {
+  flex-direction: column;
+  margin-left: 0;
+  margin-top: 8px;
+  gap: 2px;
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  min-height: 0;
+}
+.debug-mobile .debug-tab {
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  justify-content: center;
+  position: relative;
+}
+.debug-mobile .debug-tab-label {
+  display: none;
+}
+.debug-mobile .debug-tab .p-badge {
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  min-width: 14px;
+  height: 14px;
+  font-size: 9px;
+  padding: 0 3px;
+}
+.debug-mobile .debug-actions {
+  flex-direction: column;
+  margin-left: 0;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid #3f3f46;
+  gap: 2px;
+  flex-shrink: 0;
+}
+.debug-mobile .debug-actions .p-button {
+  width: 28px;
+  height: 28px;
+}
+.debug-mobile .debug-content {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  overflow: auto;
+}
+
 /* Header */
 .debug-header {
   display: flex;

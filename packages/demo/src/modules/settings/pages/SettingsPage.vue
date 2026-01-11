@@ -15,7 +15,7 @@ import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
 import InputText from 'primevue/inputtext'
 import Select from 'primevue/select'
-import Message from 'primevue/message'
+import { InfoBanner } from 'qdadm/components'
 import Button from 'primevue/button'
 import Tag from 'primevue/tag'
 
@@ -198,15 +198,10 @@ function getTypeSeverity(type) {
     </div>
 
     <!-- Warning Banner -->
-    <Message severity="warn" :closable="false" class="mb-4">
-      <div class="flex align-items-center gap-2">
-        <i class="pi pi-exclamation-triangle text-xl"></i>
-        <span>
-          <strong>Volatile Storage:</strong> Settings are stored in memory only and will be
-          <strong>lost on page refresh</strong>. This demonstrates MemoryStorage behavior.
-        </span>
-      </div>
-    </Message>
+    <InfoBanner severity="warn">
+      <strong>Volatile Storage:</strong> Settings are stored in memory only and will be
+      <strong>lost on page refresh</strong>. This demonstrates MemoryStorage behavior.
+    </InfoBanner>
 
     <div class="card">
       <!-- Add New Setting Form -->

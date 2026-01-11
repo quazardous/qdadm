@@ -1,0 +1,80 @@
+/**
+ * Show/Detail Page Styles
+ * Common styles for entity detail views (EventShow, NexusShow, etc.)
+ */
+
+@use 'variables' as *;
+
+// Header with back button
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: $space-md;
+}
+
+// Content layout grid
+.content-grid {
+  display: grid;
+  gap: $space-lg;
+}
+
+// Meta grid for key-value displays
+.meta-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: $space-lg;
+
+  @include tablet {
+    grid-template-columns: 1fr;
+  }
+}
+
+// Summary/description text blocks
+.summary-text,
+.intent-text {
+  line-height: $line-height-normal;
+}
+
+// Tags container
+.tags-wrap {
+  display: flex;
+  gap: $space-sm;
+  flex-wrap: wrap;
+}
+
+// URL action buttons
+.url-actions {
+  display: flex;
+  gap: $space-sm;
+  align-items: center;
+}
+
+// Content boxes for text display
+.content-box {
+  background: var(--p-surface-100);
+  padding: $space-md;
+  border-radius: $radius-sm;
+  white-space: pre-wrap;
+  word-break: break-word;
+
+  &--scrollable {
+    max-height: 300px;
+    overflow-y: auto;
+  }
+
+  &--tall {
+    max-height: 400px;
+  }
+}
+
+// Status and tags row
+.status-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+.tags-row {
+  display: flex;
+  gap: $space-sm;
+}

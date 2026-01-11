@@ -1,0 +1,35 @@
+/**
+ * Code and Key Display
+ * Monospace text, code boxes, and key displays
+ */
+
+@use 'variables' as *;
+
+// Code box - for displaying keys, code, or technical values
+.code-box {
+  word-break: break-all;
+  font-family: $font-family-mono;
+  background: var(--p-surface-100);
+  padding: $space-md;
+  border-radius: $radius-sm;
+
+  // Small variant
+  &--sm {
+    padding: $space-sm;
+    font-size: $font-size-sm;
+  }
+}
+
+// Tag size variants
+.tag-sm {
+  font-size: 0.7rem;
+}
+
+.tag-xs {
+  font-size: $font-size-xs;
+}
+
+// Constrained width for tag previews
+.tags-constrained {
+  max-width: 300px;
+}

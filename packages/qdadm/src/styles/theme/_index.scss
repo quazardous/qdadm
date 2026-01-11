@@ -5,6 +5,6 @@
  * Use the fad-* classes in your components.
  */
 
-@import './tokens.css';
-@import './utilities.css';
-@import './components.css';
+@use 'tokens';
+@use 'utilities';
+@use 'components';

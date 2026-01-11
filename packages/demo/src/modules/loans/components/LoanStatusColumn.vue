@@ -18,7 +18,7 @@
  */
 import { ref, onMounted } from 'vue'
 import { useOrchestrator } from 'qdadm'
-import Message from 'primevue/message'
+import { InfoBanner } from 'qdadm/components'
 
 const { getManager } = useOrchestrator()
 const loansManager = getManager('loans')
@@ -45,13 +45,7 @@ onMounted(async () => {
 </script>
 
 <template>
-  <Message
-    v-if="!loading && overdueCount > 0"
-    severity="error"
-    :closable="false"
-    class="mt-2 mb-0"
-  >
-    <i class="pi pi-exclamation-triangle mr-2"></i>
+  <InfoBanner v-if="!loading && overdueCount > 0" severity="error" class="mt-2 mb-0">
     {{ overdueCount }} book(s) overdue - borrowed more than 2 weeks ago
-  </Message>
+  </InfoBanner>
 </template>

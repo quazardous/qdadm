@@ -5,21 +5,21 @@
  * These complement the scoped styles in Vue components.
  */
 
-@use 'breakpoints' as *;
+@use 'variables' as *;
 
 // ============================================
 // CSS Variables for responsive behavior
 // ============================================
 
 :root {
-  // Sidebar
-  --qdadm-sidebar-width: 15rem;
-  --qdadm-sidebar-collapsed-width: 4rem;
-  --qdadm-sidebar-transition: 0.25s ease;
+  // Sidebar (uses SCSS variables from _variables.scss)
+  --qdadm-sidebar-width: #{$sidebar-width};
+  --qdadm-sidebar-collapsed-width: #{$sidebar-width-collapsed};
+  --qdadm-sidebar-transition: #{$transition-slow};
 
   // Content padding
-  --qdadm-content-padding: 1.5rem;
-  --qdadm-content-padding-mobile: 1rem;
+  --qdadm-content-padding: #{$space-lg};
+  --qdadm-content-padding-mobile: #{$space-md};
 }
 
 // ============================================
@@ -32,10 +32,9 @@
     --qdadm-sidebar-width: 12rem;
   }
 
-  // Mobile: sidebar becomes overlay
+  // Mobile: sidebar becomes fullscreen overlay
   @include tablet {
-    --qdadm-sidebar-width: 80vw;
-    max-width: 280px;
+    --qdadm-sidebar-width: 100vw;
   }
 }
 
@@ -49,10 +48,14 @@
     position: fixed;
     z-index: 1000;
     box-shadow: none;
+    width: 100vw !important;
+    height: 100dvh;
+    max-height: 100dvh;
+    overflow-y: auto;
 
     &.sidebar--open {
       transform: translateX(0);
-      box-shadow: 0 0 20px rgba(0, 0, 0, 0.3);
+      box-shadow: none;
     }
   }
 }
@@ -242,3 +245,4 @@
     display: inline !important;
   }
 }
+

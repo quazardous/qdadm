@@ -10,6 +10,7 @@ export { default as PageHeader } from './layout/PageHeader.vue'
 export { default as Breadcrumb } from './layout/Breadcrumb.vue'
 export { default as PageNav } from './layout/PageNav.vue'
 export { default as Zone } from './layout/Zone.vue'
+export { default as SidebarBox } from './layout/SidebarBox.vue'
 
 // Default zone components
 export { default as DefaultHeader } from './layout/defaults/DefaultHeader.vue'
@@ -59,6 +60,8 @@ export { default as EmptyState } from './display/EmptyState.vue'
 export { default as IntensityBar } from './display/IntensityBar.vue'
 export { default as BoolCell } from './BoolCell.vue'
 export { default as SeverityTag } from './SeverityTag.vue'
+export { default as InfoBanner } from './InfoBanner.vue'
+export { default as BannerZone } from './display/BannerZone.vue'
 
 // Pages
 export { default as LoginPage } from './pages/LoginPage.vue'

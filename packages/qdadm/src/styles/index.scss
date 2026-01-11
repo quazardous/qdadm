@@ -1,19 +1,36 @@
 /**
- * qdadm - Styles entry point
+ * qdadm - Styles Entry Point
  *
  * Import this file in your main.js:
  *   import 'qdadm/styles'
+ *
+ * Or import individual partials:
+ *   @use 'qdadm/styles/variables' as *;
  */
 
-/* Main styles */
-@use './main.css';
+// Design tokens (CSS custom properties)
+@use './theme/tokens';
 
-/* Component-specific styles */
-@use './_alerts.css';
-@use './_code.css';
-@use './_dialogs.css';
-@use './_markdown.css';
-@use './_show-pages.css';
+// Theme utilities and components
+@use './theme/utilities';
+@use './theme/components';
 
-/* Responsive styles (must be last for specificity) */
+// Main framework styles
+@use './main';
+@use './forms';
+@use './stats';
+@use './states';
+@use './lists';
+@use './filter-bar';
+@use './helpers';
+
+// Component-specific styles
+@use './alerts';
+@use './code';
+@use './dialogs';
+@use './markdown';
+@use './show-pages';
+@use './sidebar';
+
+// Responsive styles (must be last for specificity)
 @use './responsive';

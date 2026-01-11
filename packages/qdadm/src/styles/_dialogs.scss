@@ -1,0 +1,19 @@
+/**
+ * Dialog Content Styles
+ * Styles for modal dialog content
+ */
+
+@use 'variables' as *;
+
+// Dialog content spacing
+.dialog-content {
+  margin-bottom: $space-md;
+}
+
+// Dialog section title
+.dialog-section-title {
+  font-size: $font-size-sm;
+  font-weight: $font-weight-semibold;
+  margin-bottom: $space-sm;
+  color: var(--p-surface-600);
+}

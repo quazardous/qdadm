@@ -81,7 +81,7 @@ const kernel = new Kernel({
   },
 
   // Branding
-  app: { name: 'Book Manager', shortName: 'Books', version },
+  app: { name: 'Book Manager', shortName: 'BM', version },
 
   // PrimeVue
   primevue: { plugin: PrimeVue, theme: Aura },

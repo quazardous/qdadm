@@ -19,7 +19,7 @@
 import { ref, onMounted, watch, computed } from 'vue'
 import { useRoute } from 'vue-router'
 import { useOrchestrator } from 'qdadm'
-import Message from 'primevue/message'
+import { InfoBanner } from 'qdadm/components'
 
 const route = useRoute()
 const { getManager } = useOrchestrator()
@@ -68,32 +68,14 @@ function formatDate(dateStr) {
 <template>
   <div class="availability-wrapper">
     <!-- Loan status banner (before wrapped content) -->
-    <Message
-      v-if="!loading && activeLoan"
-      severity="warn"
-      :closable="false"
-      class="mb-3"
-    >
-      <div class="flex align-items-center gap-2">
-        <i class="pi pi-user text-lg"></i>
-        <span>
-          Currently on loan to <strong>{{ borrowerName }}</strong>
-          since {{ formatDate(activeLoan.borrowed_at) }}
-        </span>
-      </div>
-    </Message>
+    <InfoBanner v-if="!loading && activeLoan" severity="warn" icon="pi-user">
+      Currently on loan to <strong>{{ borrowerName }}</strong>
+      since {{ formatDate(activeLoan.borrowed_at) }}
+    </InfoBanner>
 
-    <Message
-      v-else-if="!loading && !activeLoan && bookId"
-      severity="success"
-      :closable="false"
-      class="mb-3"
-    >
-      <div class="flex align-items-center gap-2">
-        <i class="pi pi-check-circle text-lg"></i>
-        <span>This book is <strong>available</strong> for checkout</span>
-      </div>
-    </Message>
+    <InfoBanner v-else-if="!loading && !activeLoan && bookId" severity="success">
+      This book is <strong>available</strong> for checkout
+    </InfoBanner>
 
     <!-- Original wrapped content (BooksDetailPanel) -->
     <slot />

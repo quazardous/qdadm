@@ -96,10 +96,19 @@ const panelSizes = ref(savedState.panelSizes || defaultPanelSizes)
 const isPanelResizing = ref(false)
 const panelResizeStart = ref({ y: 0, x: 0, height: 0, width: 0 })
 
-// Responsive tabs state (applies to bottom and window modes with horizontal header)
+// Mobile detection
+const MOBILE_BREAKPOINT = 768
+const isMobile = ref(window.innerWidth < MOBILE_BREAKPOINT)
+
+function updateMobileState() {
+  isMobile.value = window.innerWidth < MOBILE_BREAKPOINT
+}
+
+
+// Responsive tabs state (applies to bottom and window modes with horizontal header, not mobile)
 const headerRef = ref(null)
 const headerWidth = ref(1000)
-const isHorizontalHeader = computed(() => (displayMode.value === 'bottom' || displayMode.value === 'window' || fullscreen.value) && displayMode.value !== 'right')
+const isHorizontalHeader = computed(() => !isMobile.value && (displayMode.value === 'bottom' || displayMode.value === 'window' || fullscreen.value) && displayMode.value !== 'right')
 const tabsCompact = computed(() => isHorizontalHeader.value && headerWidth.value < 600)
 const tabsDropdown = computed(() => isHorizontalHeader.value && headerWidth.value < 400)
 const showTabsDropdown = ref(false)
@@ -118,10 +127,13 @@ onMounted(() => {
   })
   // Close dropdown on outside click
   document.addEventListener('click', onDocumentClick)
+  // Mobile detection on resize
+  window.addEventListener('resize', updateMobileState)
 })
 onUnmounted(() => {
   resizeObserver?.disconnect()
   document.removeEventListener('click', onDocumentClick)
+  window.removeEventListener('resize', updateMobileState)
 })
 watch(headerRef, (el) => {
   resizeObserver?.disconnect()
@@ -207,7 +219,12 @@ function toggle() {
 
 function expand() {
   minimized.value = false
-  displayMode.value = 'right'
+  // On mobile, go directly to fullscreen
+  if (isMobile.value) {
+    fullscreen.value = true
+  } else {
+    displayMode.value = 'right'
+  }
   expanded.value = true
   saveState()
 }
@@ -497,18 +514,18 @@ function getCollectorColor(name) {
 
   <!-- Full panel -->
   <div v-else class="debug-panel" :class="[
-    fullscreen ? 'debug-fullscreen' : `debug-${displayMode}`,
+    isMobile ? 'debug-mobile' : (fullscreen ? 'debug-fullscreen' : `debug-${displayMode}`),
     { 'debug-expanded': expanded }
-  ]" :style="displayMode === 'window' && !fullscreen ? {
+  ]" :style="!isMobile && displayMode === 'window' && !fullscreen ? {
     zIndex,
     left: windowBounds.x + 'px',
     top: windowBounds.y + 'px',
     width: windowBounds.width + 'px',
     height: windowBounds.height + 'px'
-  } : displayMode === 'bottom' && expanded && !fullscreen ? {
+  } : !isMobile && displayMode === 'bottom' && expanded && !fullscreen ? {
     zIndex,
     height: panelSizes.bottomHeight + 'px'
-  } : displayMode === 'right' && expanded && !fullscreen ? {
+  } : !isMobile && displayMode === 'right' && expanded && !fullscreen ? {
     zIndex,
     width: panelSizes.rightWidth + 'px'
   } : { zIndex }">
@@ -593,47 +610,47 @@ function getCollectorColor(name) {
         <Button icon="pi pi-trash" severity="secondary" size="small" text rounded title="Clear all" @click="clearAll" />
         <!-- Badge count mode toggle -->
         <Button :icon="countAllBadges ? 'pi pi-hashtag' : 'pi pi-eye'" :severity="countAllBadges ? 'info' : 'secondary'" size="small" text rounded :title="countAllBadges ? 'Showing all (click for unseen only)' : 'Showing unseen (click for all)'" @click="toggleCountMode" />
-        <!-- Mode toggle (bottom/right) - not shown in window/fullscreen mode -->
+        <!-- Mode toggle (bottom/right) - not shown in window/fullscreen/mobile mode -->
         <button
-          v-if="displayMode !== 'window' && !fullscreen"
+          v-if="!isMobile && displayMode !== 'window' && !fullscreen"
           class="debug-mode-btn"
           :title="getModeTitle()"
           @click="toggleMode"
         >{{ displayMode === 'bottom' ? '|' : '―' }}</button>
-        <!-- Enter window mode button - not in fullscreen -->
-        <Button v-if="displayMode !== 'window' && !fullscreen" icon="pi pi-external-link" severity="secondary" size="small" text rounded title="Detach window" @click="enterWindowMode" />
-        <!-- Exit window mode button (dock back) -->
-        <Button v-if="displayMode === 'window'" icon="pi pi-link" severity="secondary" size="small" text rounded title="Dock panel" @click="exitWindowMode" />
-        <!-- Fullscreen (not in window mode) -->
-        <Button v-if="displayMode !== 'window'" :icon="fullscreen ? 'pi pi-window-minimize' : 'pi pi-window-maximize'" severity="secondary" size="small" text rounded :title="fullscreen ? 'Exit fullscreen' : 'Fullscreen'" @click="toggleFullscreen" />
-        <!-- Expand/collapse (not in window/fullscreen mode) -->
-        <Button v-if="displayMode !== 'window' && !fullscreen" :icon="displayMode === 'right' ? (expanded ? 'pi pi-chevron-right' : 'pi pi-chevron-left') : (expanded ? 'pi pi-chevron-down' : 'pi pi-chevron-up')" severity="secondary" size="small" text rounded @click="toggle" />
-        <!-- Minimize - not in fullscreen -->
-        <Button v-if="!fullscreen" icon="pi pi-arrow-down-right" severity="secondary" size="small" text rounded title="Minimize" @click="minimize" />
+        <!-- Enter window mode button - not in fullscreen/mobile -->
+        <Button v-if="!isMobile && displayMode !== 'window' && !fullscreen" icon="pi pi-external-link" severity="secondary" size="small" text rounded title="Detach window" @click="enterWindowMode" />
+        <!-- Exit window mode button (dock back) - not on mobile -->
+        <Button v-if="!isMobile && displayMode === 'window'" icon="pi pi-link" severity="secondary" size="small" text rounded title="Dock panel" @click="exitWindowMode" />
+        <!-- Fullscreen (not in window/mobile mode) -->
+        <Button v-if="!isMobile && displayMode !== 'window'" :icon="fullscreen ? 'pi pi-window-minimize' : 'pi pi-window-maximize'" severity="secondary" size="small" text rounded :title="fullscreen ? 'Exit fullscreen' : 'Fullscreen'" @click="toggleFullscreen" />
+        <!-- Expand/collapse (not in window/fullscreen/mobile mode) -->
+        <Button v-if="!isMobile && displayMode !== 'window' && !fullscreen" :icon="displayMode === 'right' ? (expanded ? 'pi pi-chevron-right' : 'pi pi-chevron-left') : (expanded ? 'pi pi-chevron-down' : 'pi pi-chevron-up')" severity="secondary" size="small" text rounded @click="toggle" />
+        <!-- Minimize - always show (on mobile, this is the only way to close) -->
+        <Button icon="pi pi-times" severity="secondary" size="small" text rounded title="Close" @click="minimize" />
       </div>
     </div>
 
-    <!-- Resize handle for window mode (not in fullscreen) -->
-    <div v-if="displayMode === 'window' && !fullscreen" class="debug-resize-handle" @mousedown="startResize" />
+    <!-- Resize handle for window mode (not in fullscreen/mobile) -->
+    <div v-if="!isMobile && displayMode === 'window' && !fullscreen" class="debug-resize-handle" @mousedown="startResize" />
 
-    <!-- Resize handle for bottom mode (drag to resize height) -->
+    <!-- Resize handle for bottom mode (drag to resize height) - not on mobile -->
     <div
-      v-if="displayMode === 'bottom' && expanded && !fullscreen"
+      v-if="!isMobile && displayMode === 'bottom' && expanded && !fullscreen"
       class="debug-panel-resize debug-panel-resize-top"
       @mousedown="startPanelResize($event, 'vertical')"
     />
 
-    <!-- Resize handle for right mode (drag to resize width) -->
+    <!-- Resize handle for right mode (drag to resize width) - not on mobile -->
     <div
-      v-if="displayMode === 'right' && expanded && !fullscreen"
+      v-if="!isMobile && displayMode === 'right' && expanded && !fullscreen"
       class="debug-panel-resize debug-panel-resize-left"
       @mousedown="startPanelResize($event, 'horizontal')"
     />
 
     <!-- Content -->
     <div v-if="expanded && currentCollector" class="debug-content">
-      <!-- Content header with controls (right/window/fullscreen mode, for recording collectors) -->
-      <div v-if="(displayMode === 'right' || displayMode === 'window' || fullscreen) && currentCollector.records" class="debug-content-header">
+      <!-- Content header with controls (right/window/fullscreen/mobile mode, for recording collectors) -->
+      <div v-if="(isMobile || displayMode === 'right' || displayMode === 'window' || fullscreen) && currentCollector.records" class="debug-content-header">
         <span class="debug-content-title">{{ getCollectorLabel(currentCollector.name) }}</span>
         <div class="debug-content-controls">
           <button
@@ -694,7 +711,7 @@ function getCollectorColor(name) {
 
       <!-- Toasts collector (vertical modes) -->
       <ToastsPanel
-        v-else-if="(currentCollector.name === 'toasts' || currentCollector.name === 'ToastCollector') && (displayMode !== 'bottom' || fullscreen)"
+        v-else-if="(currentCollector.name === 'toasts' || currentCollector.name === 'ToastCollector') && (isMobile || displayMode !== 'bottom' || fullscreen)"
         :entries="currentCollector.entries"
       />
 
@@ -704,14 +721,14 @@ function getCollectorColor(name) {
         <span>No entries</span>
       </div>
 
-      <!-- Default entries - horizontal (bottom mode) -->
+      <!-- Default entries - horizontal (bottom mode, not mobile) -->
       <EntriesPanel
-        v-else-if="displayMode === 'bottom' && !fullscreen"
+        v-else-if="!isMobile && displayMode === 'bottom' && !fullscreen"
         :entries="currentCollector.entries"
         mode="horizontal"
       />
 
-      <!-- Default entries - vertical (right/fullscreen mode) -->
+      <!-- Default entries - vertical (right/fullscreen/mobile mode) -->
       <EntriesPanel
         v-else
         :entries="currentCollector.entries"

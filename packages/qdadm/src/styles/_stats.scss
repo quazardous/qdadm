@@ -1,0 +1,47 @@
+/**
+ * qdadm - Stats Styles
+ *
+ * Dashboard statistics cards and grids
+ */
+
+@use 'variables' as *;
+
+// =============================================================================
+// Stats Grid Layout
+// =============================================================================
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: $space-lg;
+  margin-bottom: $space-xl;
+}
+
+// =============================================================================
+// Stat Card
+// =============================================================================
+
+.stat-card {
+  background: var(--p-surface-0);
+  border-radius: $radius-lg;
+  padding: $space-lg;
+  border: $border-width solid var(--p-surface-200);
+}
+
+.stat-card-title {
+  font-size: $font-size-sm;
+  color: var(--p-surface-500);
+  margin-bottom: $space-sm;
+}
+
+.stat-card-value {
+  font-size: 2rem;
+  font-weight: $font-weight-semibold;
+  color: var(--p-surface-900);
+}
+
+.stat-card-subtitle {
+  font-size: $font-size-xs;
+  color: var(--p-surface-400);
+  margin-top: $space-xs;
+}

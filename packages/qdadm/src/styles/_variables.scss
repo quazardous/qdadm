@@ -1,0 +1,224 @@
+/**
+ * qdadm - Design System Variables
+ *
+ * Centralized SCSS variables for the entire framework.
+ * Import this file in any component that needs access to these values:
+ *   @use 'qdadm/styles/variables' as *;
+ *
+ * Note: CSS custom properties (--fad-*) are still generated for runtime theming.
+ * SCSS variables are for compile-time values (breakpoints, calculations, mixins).
+ */
+
+// =============================================================================
+// COLORS
+// =============================================================================
+// Note: Color values use CSS custom properties for runtime theming.
+// These SCSS variables are for reference/documentation only.
+
+// Primary brand color
+$color-primary: var(--p-primary-color) !default;
+$color-primary-hover: var(--p-primary-600) !default;
+
+// Status colors
+$color-success: var(--p-green-500) !default;
+$color-warning: var(--p-orange-500) !default;
+$color-danger: var(--p-red-500) !default;
+$color-info: var(--p-blue-500) !default;
+
+// =============================================================================
+// TYPOGRAPHY
+// =============================================================================
+// Modern, clean typography inspired by VSCode/Material Design.
+// Lighter weights and tighter sizes for a refined look.
+
+// Font family - Inter for modern UI, system fonts as fallback
+$font-family-base: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !default;
+$font-family-mono: ui-monospace, 'Cascadia Code', 'Source Code Pro', Menlo, Consolas, monospace !default;
+
+// Font sizes (rem-based for accessibility)
+// Modern compact scale - readable but efficient
+$font-size-2xs: 0.6875rem !default; // 11px - Micro text (badges, version)
+$font-size-xs: 0.75rem !default;    // 12px - Small text, section titles
+$font-size-sm: 0.875rem !default;   // 14px - Nav items, secondary text
+$font-size-md: 0.9375rem !default;  // 15px - Body text
+$font-size-lg: 1rem !default;       // 16px - Headings
+$font-size-xl: 1.125rem !default;   // 18px - Large headings
+$font-size-2xl: 1.25rem !default;   // 20px - Page titles
+
+// Font weights - prefer lighter weights for modern look
+$font-weight-light: 300 !default;     // Light text
+$font-weight-normal: 400 !default;    // Body text
+$font-weight-medium: 500 !default;    // Emphasized text
+$font-weight-semibold: 600 !default;  // Headings (use sparingly)
+$font-weight-bold: 700 !default;      // Strong emphasis (rare)
+
+// Line heights
+$line-height-tight: 1.25 !default;
+$line-height-normal: 1.5 !default;
+$line-height-relaxed: 1.75 !default;
+
+// =============================================================================
+// SPACING
+// =============================================================================
+// Compact spacing scale for modern UI.
+// More economical use of space, similar to VSCode/IDE density.
+
+$space-2xs: 0.125rem !default; // 2px  - Micro spacing
+$space-xs: 0.25rem !default;   // 4px  - Tight spacing (inline elements)
+$space-sm: 0.375rem !default;  // 6px  - Small gaps (compact)
+$space-md: 0.75rem !default;   // 12px - Default spacing (reduced from 16px)
+$space-lg: 1rem !default;      // 16px - Section spacing
+$space-xl: 1.5rem !default;    // 24px - Large sections
+$space-2xl: 2rem !default;     // 32px - Page-level spacing
+
+// =============================================================================
+// BORDERS & RADIUS
+// =============================================================================
+
+$border-width: 1px !default;
+$border-color: var(--p-surface-200) !default;
+
+$radius-sm: 0.25rem !default;   // 4px  - Subtle rounding
+$radius-md: 0.375rem !default;  // 6px  - Inputs, buttons
+$radius-lg: 0.5rem !default;    // 8px  - Cards, modals
+$radius-xl: 0.75rem !default;   // 12px - Large cards
+$radius-full: 9999px !default;  // Fully rounded (pills, avatars)
+
+// =============================================================================
+// SHADOWS
+// =============================================================================
+
+$shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05) !default;
+$shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1) !default;
+$shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1) !default;
+$shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1) !default;
+
+// =============================================================================
+// TRANSITIONS
+// =============================================================================
+// Snappy transitions for responsive feel.
+// Modern UIs use shorter durations - instant feedback matters.
+
+$transition-instant: 50ms ease !default;  // Near-instant (active states)
+$transition-fast: 100ms ease !default;    // Micro-interactions (hover, focus)
+$transition-normal: 150ms ease !default;  // Standard transitions
+$transition-slow: 200ms ease !default;    // Larger animations (modals, drawers)
+
+// =============================================================================
+// Z-INDEX SCALE
+// =============================================================================
+// Layering system to ensure proper stacking.
+
+$z-dropdown: 1000 !default;       // Dropdowns, selects
+$z-sticky: 1020 !default;         // Sticky headers
+$z-fixed: 1030 !default;          // Fixed elements
+$z-modal-backdrop: 1040 !default; // Modal backdrop
+$z-modal: 1050 !default;          // Modal content
+$z-popover: 1060 !default;        // Popovers, tooltips
+$z-tooltip: 1070 !default;        // Top-level tooltips
+
+// =============================================================================
+// LAYOUT - SIDEBAR
+// =============================================================================
+// Compact sidebar dimensions for modern admin layout.
+// Inspired by VSCode's slim sidebar proportions.
+
+$sidebar-width: 15rem !default;           // 240px - Desktop sidebar
+$sidebar-width-tablet: 13rem !default;    // 208px - Tablet sidebar width (768-1023px)
+$sidebar-width-collapsed: 2.5rem !default; // 40px  - Collapsed sidebar (icon-only)
+
+// Header
+$header-height: 2.75rem !default;  // 44px - Mobile header height (compact)
+
+// Content
+$content-max-width: 87.5rem !default;  // 1400px - Maximum content width
+
+// =============================================================================
+// LAYOUT - NAVIGATION
+// =============================================================================
+// Navigation item sizing - readable but compact.
+
+$nav-item-height: 2rem !default;       // 32px - Nav item height
+$nav-item-padding-x: 0.75rem !default; // 12px - Horizontal padding
+$nav-item-padding-y: 0.5rem !default;  // 8px - Vertical padding
+$nav-icon-size: 1rem !default;         // 16px - Icon size
+$nav-section-gap: 0.5rem !default;     // 8px - Gap between sections
+
+// =============================================================================
+// BREAKPOINTS
+// =============================================================================
+// Desktop-first breakpoint system (max-width queries).
+// Usage: @include tablet { ... }
+
+$bp-desktop-lg: 1400px !default;  // Large desktop (wide monitors)
+$bp-desktop: 1200px !default;     // Standard desktop
+$bp-tablet-lg: 1024px !default;   // Large tablet / small laptop
+$bp-tablet: 768px !default;       // Tablet portrait
+$bp-mobile-lg: 576px !default;    // Large mobile (landscape)
+$bp-mobile: 480px !default;       // Standard mobile
+
+// Sidebar behavior thresholds
+$bp-sidebar-collapse: $bp-tablet-lg !default;  // Sidebar collapses below this
+$bp-sidebar-hidden: $bp-tablet !default;       // Sidebar becomes drawer below this
+
+// =============================================================================
+// BREAKPOINT MIXINS
+// =============================================================================
+// Desktop-first media query mixins (max-width).
+// Usage in components:
+//   @use 'qdadm/styles/variables' as *;
+//   .sidebar { @include tablet { width: 60px; } }
+
+@mixin desktop-lg {
+  @media (max-width: #{$bp-desktop-lg - 1px}) { @content; }
+}
+
+@mixin desktop {
+  @media (max-width: #{$bp-desktop - 1px}) { @content; }
+}
+
+@mixin tablet-lg {
+  @media (max-width: #{$bp-tablet-lg - 1px}) { @content; }
+}
+
+@mixin tablet {
+  @media (max-width: #{$bp-tablet - 1px}) { @content; }
+}
+
+@mixin mobile-lg {
+  @media (max-width: #{$bp-mobile-lg - 1px}) { @content; }
+}
+
+@mixin mobile {
+  @media (max-width: #{$bp-mobile - 1px}) { @content; }
+}
+
+// Utility mixins for visibility
+@mixin hide-below($bp) {
+  @media (max-width: #{$bp - 1px}) { display: none !important; }
+}
+
+@mixin show-below($bp) {
+  display: none !important;
+  @media (max-width: #{$bp - 1px}) { display: block !important; }
+}
+
+// Sidebar-specific mixins
+@mixin sidebar-collapsed {
+  @media (max-width: #{$bp-sidebar-collapse - 1px}) { @content; }
+}
+
+@mixin sidebar-hidden {
+  @media (max-width: #{$bp-sidebar-hidden - 1px}) { @content; }
+}
+
+// =============================================================================
+// HELPER FUNCTIONS
+// =============================================================================
+
+/// Convert pixel value to rem
+/// @param {Number} $px - Pixel value
+/// @return {Number} - Rem value (base 16px)
+@function px-to-rem($px) {
+  @return ($px / 16) * 1rem;
+}

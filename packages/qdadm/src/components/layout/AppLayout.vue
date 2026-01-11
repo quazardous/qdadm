@@ -22,6 +22,7 @@ import { useNavContext } from '../../composables/useNavContext'
 import Button from 'primevue/button'
 import Breadcrumb from 'primevue/breadcrumb'
 import UnsavedChangesDialog from '../dialogs/UnsavedChangesDialog.vue'
+import SidebarBox from './SidebarBox.vue'
 import qdadmLogo from '../../assets/logo.svg'
 import { version as qdadmVersion } from '../../../package.json'
 
@@ -47,12 +48,40 @@ const collapsedSections = ref({})
 const sidebarOpen = ref(false)
 const MOBILE_BREAKPOINT = 768
 
+// Desktop sidebar collapsed state
+const sidebarCollapsed = ref(false)
+const COLLAPSED_STORAGE_KEY = computed(() => `${app.shortName.toLowerCase()}_sidebar_collapsed`)
+
 function toggleSidebar() {
   sidebarOpen.value = !sidebarOpen.value
 }
 
 function closeSidebar() {
   sidebarOpen.value = false
+}
+
+function toggleSidebarCollapse() {
+  sidebarCollapsed.value = !sidebarCollapsed.value
+  saveSidebarCollapsed()
+}
+
+function loadSidebarCollapsed() {
+  try {
+    const stored = localStorage.getItem(COLLAPSED_STORAGE_KEY.value)
+    if (stored === 'true') {
+      sidebarCollapsed.value = true
+    }
+  } catch (e) {
+    // Ignore
+  }
+}
+
+function saveSidebarCollapsed() {
+  try {
+    localStorage.setItem(COLLAPSED_STORAGE_KEY.value, String(sidebarCollapsed.value))
+  } catch (e) {
+    // Ignore
+  }
 }
 
 // Check if we're on mobile
@@ -115,6 +144,7 @@ function isSectionExpanded(section) {
 // Load state on mount + setup resize listener
 onMounted(() => {
   loadCollapsedState()
+  loadSidebarCollapsed()
   window.addEventListener('resize', handleResize)
 })
 
@@ -153,6 +183,19 @@ function handleLogout() {
   logout()
   signals?.emit('auth:logout', { reason: 'user' })
   router.push({ name: 'login' })
+}
+
+/**
+ * Handle sidebar header click
+ * Mobile: close sidebar drawer
+ * Desktop: navigate to home
+ */
+function handleHeaderClick() {
+  if (isMobile()) {
+    closeSidebar()
+  } else {
+    router.push({ name: 'home' })
+  }
 }
 
 // Check if slot content is provided
@@ -199,8 +242,16 @@ const showBreadcrumb = computed(() => {
     ></div>
 
     <!-- Sidebar -->
-    <aside class="sidebar" :class="{ 'sidebar--open': sidebarOpen }">
-      <div class="sidebar-header">
+    <aside class="sidebar" :class="{ 'sidebar--open': sidebarOpen, 'sidebar--collapsed': sidebarCollapsed }">
+      <!-- Collapse toggle button (desktop only) - fixed position in sidebar -->
+      <button
+        class="sidebar-collapse-btn"
+        @click="toggleSidebarCollapse"
+        :title="sidebarCollapsed ? 'Expand menu' : 'Collapse menu'"
+      >
+        <i class="pi" :class="sidebarCollapsed ? 'pi-chevron-right' : 'pi-chevron-left'"></i>
+      </button>
+      <div class="sidebar-header" :data-short-name="app.shortName" @click="handleHeaderClick">
         <div class="sidebar-header-top">
           <img v-if="app.logo" :src="app.logo" :alt="app.name" class="sidebar-logo" />
           <h1 v-else>{{ app.name }}</h1>
@@ -237,34 +288,37 @@ const showBreadcrumb = computed(() => {
         </div>
       </nav>
 
-      <div v-if="authEnabled" class="sidebar-footer">
-        <div class="user-info">
-          <div class="user-avatar">{{ userInitials }}</div>
-          <div class="user-details">
-            <div class="user-name">{{ userDisplayName }}</div>
-            <div class="user-role">{{ userSubtitle }}</div>
-          </div>
-          <Button
-            icon="pi pi-sign-out"
-            severity="secondary"
-            text
-            rounded
-            @click="handleLogout"
-            v-tooltip.top="'Logout'"
-          />
-        </div>
+      <!-- Slot for custom content after navigation (e.g., impersonation controls) -->
+      <div class="sidebar-slot">
+        <slot name="sidebar-after-nav"></slot>
       </div>
 
-      <div v-if="features.poweredBy" class="powered-by">
-        <img :src="qdadmLogo" alt="qdadm" class="powered-by-logo" />
-        <span class="powered-by-text">
-          powered by <strong>qdadm</strong> v{{ qdadmVersion }}
-        </span>
-      </div>
+      <SidebarBox
+        v-if="authEnabled"
+        id="user-zone"
+        icon="pi-sign-out"
+        :title="userDisplayName"
+        :subtitle="userSubtitle"
+        @click="handleLogout"
+        v-tooltip.top="'Logout'"
+      >
+        <div class="user-avatar">{{ userInitials }}</div>
+      </SidebarBox>
+
+      <SidebarBox v-if="features.poweredBy" id="powered-by">
+        <template #icon>
+          <img :src="qdadmLogo" alt="qdadm" />
+        </template>
+        <template #subtitle-content>
+          <span class="sidebar-box-subtitle">
+            powered by <a href="https://github.com/quazardous/qdadm" target="_blank" rel="noopener" class="powered-by-link">qdadm</a> v{{ qdadmVersion }}
+          </span>
+        </template>
+      </SidebarBox>
     </aside>
 
     <!-- Main content -->
-    <main class="main-content">
+    <main class="main-content" :class="{ 'main-content--sidebar-collapsed': sidebarCollapsed }">
       <!-- Mobile header bar -->
       <div class="mobile-header">
         <Button
@@ -331,15 +385,31 @@ const showBreadcrumb = computed(() => {
 </template>
 
 <style scoped>
+/* =============================================================================
+   MODERN ADMIN LAYOUT - VSCode/Material-inspired styling
+
+   Design principles:
+   - Compact spacing, no wasted space
+   - Subtle hover states (slight bg change, no bold colors)
+   - Light font weights
+   - Fast, snappy transitions
+   - Minimal borders, rely on bg contrast
+   ============================================================================= */
+
 .app-layout {
   display: flex;
   min-height: 100vh;
+  font-family: var(--fad-font-family);
 }
 
+/* -----------------------------------------------------------------------------
+   Sidebar
+   ----------------------------------------------------------------------------- */
+
 .sidebar {
-  width: var(--fad-sidebar-width, 15rem);
+  width: var(--fad-sidebar-width);
   background: var(--p-surface-800, #1e293b);
-  color: var(--p-surface-0, white);
+  color: var(--p-surface-100, #f1f5f9);
   display: flex;
   flex-direction: column;
   position: fixed;
@@ -347,84 +417,121 @@ const showBreadcrumb = computed(() => {
   left: 0;
   bottom: 0;
   z-index: 100;
+  transition: width var(--fad-transition-slow);
+  font-size: var(--fad-font-size-sm);
+  overflow: hidden;
 }
 
+/* Header - compact branding, clickable to home */
 .sidebar-header {
-  padding: 1.5rem;
+  position: relative;
+  padding: 0.75rem 1rem;
+  padding-top: 0.5rem;
   border-bottom: 1px solid var(--p-surface-700, #334155);
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 0.5rem;
+  gap: 0.25rem;
+  text-decoration: none;
+  color: inherit;
+  cursor: pointer;
+  height: 3.75rem;
+  box-sizing: border-box;
+}
+
+.sidebar-header:hover {
+  background: var(--p-surface-700, #334155);
+}
+
+.sidebar-header::after {
+  content: '';
+  opacity: 0;
+  transition: opacity var(--fad-transition-fast);
 }
 
 .sidebar-header-top {
   display: flex;
   align-items: center;
   gap: 0.5rem;
+  width: 100%;
+  padding-left: 1.5rem;
 }
 
 .sidebar-header h1 {
-  font-size: 1.25rem;
-  font-weight: 600;
+  font-size: var(--fad-font-size-md);
+  font-weight: var(--fad-font-weight-medium);
   margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  transition: opacity var(--fad-transition-normal);
+  color: var(--p-surface-0, white);
 }
 
 .sidebar-logo {
-  max-height: 32px;
-  max-width: 160px;
+  max-height: 24px;
+  max-width: 120px;
 }
 
 .version {
-  font-size: 0.625rem;
+  font-size: var(--fad-font-size-2xs);
   color: var(--p-surface-400, #94a3b8);
   background: var(--p-surface-700, #334155);
   padding: 0.125rem 0.375rem;
   border-radius: 0.25rem;
+  margin-left: 1.5rem;
+  font-weight: var(--fad-font-weight-normal);
+  white-space: nowrap;
 }
 
+/* Navigation - compact, subtle */
 .sidebar-nav {
   flex: 1;
   overflow-y: auto;
-  padding: 1rem 0;
+  padding: 0.5rem 0;
 }
 
 .nav-section {
-  margin-bottom: 0.5rem;
+  margin-bottom: var(--fad-nav-section-gap);
 }
 
 .nav-section-title {
-  padding: 0.5rem 1.5rem;
-  font-size: 0.75rem;
-  font-weight: 600;
+  padding: var(--fad-nav-item-padding-y) var(--fad-nav-item-padding-x);
+  padding-left: 1rem;
+  font-size: var(--fad-font-size-xs);
+  font-weight: var(--fad-font-weight-medium);
   text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: var(--p-surface-400, #94a3b8);
+  letter-spacing: 0.06em;
+  color: var(--p-surface-500, #64748b);
   display: flex;
+  height: 1.5rem;
+  transition: height var(--fad-transition-slow), padding var(--fad-transition-slow), opacity var(--fad-transition-fast);
+  overflow: hidden;
+  white-space: nowrap;
   justify-content: space-between;
   align-items: center;
   cursor: pointer;
   user-select: none;
-  transition: color 0.15s;
+  transition: color var(--fad-transition-fast);
 }
 
 .nav-section-title:hover {
-  color: var(--p-surface-200, #e2e8f0);
+  color: var(--p-surface-300, #cbd5e1);
 }
 
 .nav-section-active {
-  color: var(--p-primary-400, #60a5fa);
+  color: var(--p-primary-300, #93c5fd);
 }
 
 .nav-section-chevron {
-  font-size: 0.625rem;
-  transition: transform 0.2s;
+  font-size: 0.5rem;
+  transition: transform var(--fad-transition-fast);
+  opacity: 0.6;
 }
 
 .nav-section-items {
   max-height: 500px;
   overflow: hidden;
-  transition: max-height 0.2s ease-out, opacity 0.15s;
+  transition: max-height var(--fad-transition-normal), opacity var(--fad-transition-fast);
 }
 
 .nav-section-collapsed {
@@ -432,14 +539,29 @@ const showBreadcrumb = computed(() => {
   opacity: 0;
 }
 
+/* Sidebar slot */
+.sidebar-slot {
+  position: relative;
+  z-index: 10;
+}
+
+/* Nav items - compact, subtle hover */
 .nav-item {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
-  padding: 0.625rem 1.5rem;
+  gap: 0.5rem;
+  padding: var(--fad-nav-item-padding-y) var(--fad-nav-item-padding-x);
+  padding-left: 1rem;
   color: var(--p-surface-300, #cbd5e1);
   text-decoration: none;
-  transition: all 0.15s;
+  font-size: var(--fad-font-size-sm);
+  font-weight: var(--fad-font-weight-normal);
+  border-radius: 0;
+  transition: background var(--fad-transition-fast), color var(--fad-transition-fast);
+}
+
+.nav-item span {
+  white-space: nowrap;
 }
 
 .nav-item:hover {
@@ -448,73 +570,46 @@ const showBreadcrumb = computed(() => {
 }
 
 .nav-item-active {
-  background: var(--p-primary-600, #2563eb);
-  color: var(--p-surface-0, white);
+  background: var(--p-surface-700, #334155);
+  color: var(--p-primary-300, #93c5fd);
+  border-left: 2px solid var(--p-primary-400, #60a5fa);
+  padding-left: calc(1rem - 2px);
+}
+
+.nav-item-active:hover {
+  background: var(--p-surface-600, #475569);
 }
 
 .nav-item i {
-  font-size: 1rem;
-  width: 1.25rem;
+  font-size: var(--fad-nav-icon-size);
+  width: 1.125rem;
   text-align: center;
+  opacity: 0.8;
 }
 
-.sidebar-footer {
-  padding: 1rem 1.5rem;
-  border-top: 1px solid var(--p-surface-700, #334155);
+.nav-item-active i {
+  opacity: 1;
 }
 
-.user-info {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-}
-
-.user-avatar {
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  background: var(--p-primary-600, #2563eb);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 0.875rem;
-  font-weight: 600;
-}
-
-.user-details {
-  flex: 1;
-  min-width: 0;
-}
-
-.user-name {
-  font-weight: 500;
-  font-size: 0.875rem;
-}
-
-.user-role {
-  font-size: 0.75rem;
-  color: var(--p-surface-400, #94a3b8);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
+/* -----------------------------------------------------------------------------
+   Main Content
+   ----------------------------------------------------------------------------- */
 
 .main-content {
   flex: 1;
-  margin-left: var(--fad-sidebar-width, 15rem);
+  margin-left: var(--fad-sidebar-width);
   background: var(--p-surface-50, #f8fafc);
   min-height: 100vh;
   display: flex;
   flex-direction: column;
+  transition: margin-left var(--fad-transition-slow);
 }
 
 .page-content {
   flex: 1;
-  padding: 1.5rem;
+  padding: 1rem;
   overflow-y: auto;
 }
-
-/* Breadcrumb styles are in main.css */
 
 /* Dark mode support */
 .dark-mode .sidebar {
@@ -525,69 +620,101 @@ const showBreadcrumb = computed(() => {
   background: var(--p-surface-900);
 }
 
-.powered-by {
-  padding: 0.75rem 1rem;
-  border-top: 1px solid var(--p-surface-700, #334155);
+/* User zone - overrides for sidebar-box */
+#user-zone .user-avatar {
+  position: absolute;
+  right: 0.75rem;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--p-surface-600, #475569);
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  opacity: 0.6;
-  transition: opacity 0.15s;
-}
-
-.powered-by:hover {
+  justify-content: center;
+  font-size: var(--fad-font-size-xs);
+  font-weight: var(--fad-font-weight-medium);
+  /* Fade in with delay when sidebar opens */
   opacity: 1;
+  transition: opacity 0.1s ease 0.2s;
 }
 
-.powered-by-logo {
-  width: 1.25rem;
-  height: 1.25rem;
+/* Avatar: disappear IMMEDIATELY when closing */
+.sidebar--collapsed #user-zone .user-avatar {
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0s, visibility 0s;
 }
 
-.powered-by-text {
-  font-size: 0.625rem;
-  color: var(--p-surface-400, #94a3b8);
-  letter-spacing: 0.02em;
+/* Powered by - overrides for sidebar-box */
+#powered-by {
+  height: 2rem;
+  opacity: 0.5;
+  transition: opacity var(--fad-transition-fast), background var(--fad-transition-fast);
+  cursor: default;
 }
 
-.powered-by-text strong {
+#powered-by:hover {
+  opacity: 0.8;
+  background: transparent;
+}
+
+#powered-by .sidebar-box-icon {
+  width: 1rem;
+  height: 1rem;
+}
+
+#powered-by .sidebar-box-icon img {
+  width: 100%;
+  height: 100%;
+}
+
+.powered-by-link {
   color: var(--p-surface-300, #cbd5e1);
+  text-decoration: none;
+  font-weight: var(--fad-font-weight-medium);
+  transition: color var(--fad-transition-fast);
 }
 
-/* Nav bar (breadcrumb + navlinks) - aligned with sidebar header */
+.powered-by-link:hover {
+  color: var(--p-primary-300, #93c5fd);
+}
+
+/* Nav bar (breadcrumb + navlinks) - compact */
 .layout-nav-bar {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 1.5rem;
+  padding: 0.75rem 1rem;
   padding-bottom: 0;
 }
 
 .layout-navlinks {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  font-size: 0.875rem;
+  gap: 0.375rem;
+  font-size: var(--fad-font-size-sm);
 }
 
 .layout-navlinks-separator {
   color: var(--p-surface-400, #94a3b8);
+  opacity: 0.5;
 }
 
 .layout-navlink {
   color: var(--p-primary-500, #3b82f6);
   text-decoration: none;
-  transition: color 0.15s;
+  transition: color var(--fad-transition-fast);
 }
 
 .layout-navlink:hover {
-  color: var(--p-primary-700, #1d4ed8);
-  text-decoration: underline;
+  color: var(--p-primary-600, #2563eb);
 }
 
 .layout-navlink--active {
-  color: var(--p-surface-700, #334155);
-  font-weight: 500;
+  color: var(--p-surface-600, #475569);
+  font-weight: var(--fad-font-weight-medium);
   pointer-events: none;
 }
 
@@ -600,50 +727,170 @@ const showBreadcrumb = computed(() => {
 }
 
 .layout-nav-bar :deep(.p-breadcrumb-list) {
-  gap: 0.5rem;
+  gap: 0.375rem;
 }
 
 .layout-nav-bar :deep(.p-breadcrumb-item-link),
 .layout-nav-bar .breadcrumb-link {
   color: var(--p-primary-500, #3b82f6);
   text-decoration: none;
-  font-size: 0.875rem;
+  font-size: var(--fad-font-size-sm);
 }
 
 .layout-nav-bar :deep(.p-breadcrumb-item-link:hover),
 .layout-nav-bar .breadcrumb-link:hover {
-  color: var(--p-primary-700, #1d4ed8);
-  text-decoration: underline;
+  color: var(--p-primary-600, #2563eb);
 }
 
 .layout-nav-bar .breadcrumb-current {
   color: var(--p-surface-600, #475569);
-  font-size: 0.875rem;
+  font-size: var(--fad-font-size-sm);
 }
 
 .layout-nav-bar :deep(.p-breadcrumb-separator) {
   color: var(--p-surface-400, #94a3b8);
+  opacity: 0.5;
 }
 
-/* ============================================
+/* -----------------------------------------------------------------------------
+   Sidebar Collapse Button (Desktop) - minimal toggle
+   ----------------------------------------------------------------------------- */
+
+.sidebar-collapse-btn {
+  position: absolute;
+  left: 0.5rem;
+  top: 0.5rem;
+  padding: 0.25rem;
+  background: transparent;
+  border: none;
+  border-radius: var(--fad-radius-sm);
+  color: var(--p-surface-500, #64748b);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background var(--fad-transition-fast), color var(--fad-transition-fast);
+  z-index: 10;
+}
+
+.sidebar-collapse-btn:hover {
+  background: var(--p-surface-700, #334155);
+  color: var(--p-surface-200, #e2e8f0);
+}
+
+.sidebar-collapse-btn i {
+  font-size: 0.75rem;
+}
+
+/* -----------------------------------------------------------------------------
+   Sidebar Collapsed State (Desktop) - Icon-only mini sidebar
+   ----------------------------------------------------------------------------- */
+
+.sidebar--collapsed {
+  width: var(--fad-sidebar-width-collapsed) !important;
+}
+
+.sidebar--collapsed .sidebar-header {
+  padding: 0.25rem;
+  padding-top: 1.75rem;
+  align-items: center;
+  justify-content: flex-start;
+}
+
+.sidebar--collapsed .sidebar-header h1,
+.sidebar--collapsed .sidebar-header .version,
+.sidebar--collapsed .sidebar-logo {
+  display: none;
+}
+
+/* Show a small icon/initial in collapsed header - positioned absolutely to stay in place during animation */
+.sidebar-header::after {
+  content: attr(data-short-name);
+  position: absolute;
+  left: calc(var(--fad-sidebar-width-collapsed) / 2);
+  top: 2rem;
+  transform: translateX(-50%);
+  font-size: var(--fad-font-size-xs);
+  font-weight: var(--fad-font-weight-medium);
+  color: var(--p-surface-400);
+  opacity: 0;
+  transition: opacity var(--fad-transition-fast);
+  pointer-events: none;
+}
+
+.sidebar--collapsed .sidebar-header::after {
+  opacity: 1;
+}
+
+.sidebar--collapsed .sidebar-nav {
+  padding: 0.25rem 0;
+  overflow-y: hidden;
+}
+
+.sidebar--collapsed .nav-section-title {
+  height: 0;
+  padding-top: 0;
+  padding-bottom: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* In collapsed mode, slot stays visible but content is hidden via child styles */
+
+.sidebar--collapsed .nav-section-items {
+  max-height: none !important;
+  opacity: 1 !important;
+}
+
+.sidebar--collapsed .nav-item {
+  padding: 0.5rem 0;
+  gap: 0;
+  border-left: none !important;
+  justify-content: center;
+}
+
+.sidebar--collapsed .nav-item-active {
+  border-left: none !important;
+  padding: 0.5rem 0;
+}
+
+.sidebar--collapsed .nav-item span {
+  display: none;
+}
+
+.sidebar--collapsed .nav-item i {
+  width: auto;
+}
+
+/* Powered-by collapsed: smaller height */
+.sidebar--collapsed #powered-by {
+  height: 2rem;
+}
+
+.main-content--sidebar-collapsed {
+  margin-left: var(--fad-sidebar-width-collapsed) !important;
+}
+
+/* -----------------------------------------------------------------------------
    Mobile / Responsive Styles
-   ============================================ */
+   ----------------------------------------------------------------------------- */
 
 .mobile-header {
   display: none;
   align-items: center;
-  gap: 0.75rem;
-  padding: 0.75rem 1rem;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
   background: var(--p-surface-0, white);
   border-bottom: 1px solid var(--p-surface-200, #e2e8f0);
   position: sticky;
   top: 0;
   z-index: 50;
+  height: var(--fad-header-height);
 }
 
 .mobile-header-title {
-  font-weight: 600;
-  font-size: 1.125rem;
+  font-weight: var(--fad-font-weight-medium);
+  font-size: var(--fad-font-size-md);
   color: var(--p-surface-800, #1e293b);
 }
 
@@ -656,10 +903,10 @@ const showBreadcrumb = computed(() => {
   display: none;
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.5);
+  background: rgba(0, 0, 0, 0.4);
   z-index: 99;
   opacity: 0;
-  transition: opacity 0.25s ease;
+  transition: opacity var(--fad-transition-normal);
   pointer-events: none;
 }
 
@@ -673,16 +920,84 @@ const showBreadcrumb = computed(() => {
     display: flex !important;
   }
 
+  /* Hide collapse button on mobile */
+  .sidebar-collapse-btn {
+    display: none !important;
+  }
+
   .sidebar {
     transform: translateX(-100%);
-    transition: transform 0.25s ease;
+    transition: transform var(--fad-transition-normal);
     box-shadow: none;
-    width: min(80vw, 280px);
+    /* Mobile: fullscreen */
+    width: 100vw !important;
+    height: 100dvh;
+    max-height: 100dvh;
+    overflow-y: auto;
   }
 
   .sidebar.sidebar--open {
     transform: translateX(0);
-    box-shadow: 4px 0 20px rgba(0, 0, 0, 0.15);
+    box-shadow: none;
+  }
+
+  /* Ignore collapsed state on mobile - restore all elements */
+  .sidebar.sidebar--collapsed {
+    width: 100vw !important;
+  }
+
+  .sidebar.sidebar--collapsed .sidebar-header {
+    padding: 0.75rem 1rem;
+    align-items: flex-start;
+  }
+
+  .sidebar.sidebar--collapsed .sidebar-header::after {
+    display: none;
+  }
+
+  .sidebar.sidebar--collapsed .sidebar-header h1,
+  .sidebar.sidebar--collapsed .sidebar-header .version,
+  .sidebar.sidebar--collapsed .sidebar-logo {
+    display: block;
+    opacity: 1;
+    width: auto;
+  }
+
+  .sidebar.sidebar--collapsed .nav-section-title {
+    opacity: 1;
+    height: auto;
+    padding: var(--fad-nav-item-padding-y) var(--fad-nav-item-padding-x);
+    padding-left: 1rem;
+    pointer-events: auto;
+  }
+
+  .sidebar.sidebar--collapsed .nav-item {
+    justify-content: flex-start;
+    padding: var(--fad-nav-item-padding-y) var(--fad-nav-item-padding-x);
+    padding-left: 1rem;
+    gap: 0.5rem;
+  }
+
+  .sidebar.sidebar--collapsed .nav-item span {
+    display: inline;
+    opacity: 1;
+    width: auto;
+  }
+
+  .sidebar.sidebar--collapsed .nav-item i {
+    font-size: var(--fad-nav-icon-size);
+    width: 1.125rem;
+  }
+
+  .sidebar.sidebar--collapsed #powered-by,
+  .sidebar.sidebar--collapsed #user-zone {
+    display: flex;
+  }
+
+  .sidebar.sidebar--collapsed #user-zone .user-avatar,
+  .sidebar.sidebar--collapsed .sidebar-box-content {
+    opacity: 1;
+    width: auto;
   }
 
   .sidebar-overlay {
@@ -694,16 +1009,17 @@ const showBreadcrumb = computed(() => {
     pointer-events: auto;
   }
 
-  .main-content {
-    margin-left: 0;
+  .main-content,
+  .main-content--sidebar-collapsed {
+    margin-left: 0 !important;
   }
 
   .page-content {
-    padding: 1rem;
+    padding: 0.75rem;
   }
 
   .layout-nav-bar {
-    padding: 1rem;
+    padding: 0.75rem;
     padding-bottom: 0;
   }
 }
@@ -711,11 +1027,15 @@ const showBreadcrumb = computed(() => {
 /* Large tablet breakpoint (768px - 1023px) */
 @media (min-width: 768px) and (max-width: 1023px) {
   .sidebar {
-    width: 12rem;
+    width: var(--fad-sidebar-width-tablet);
   }
 
   .main-content {
-    margin-left: 12rem;
+    margin-left: var(--fad-sidebar-width-tablet);
+  }
+
+  .main-content--sidebar-collapsed {
+    margin-left: var(--fad-sidebar-width-collapsed) !important;
   }
 }
 </style>

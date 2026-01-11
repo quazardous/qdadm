@@ -1,0 +1,74 @@
+/**
+ * qdadm - State Styles
+ *
+ * Loading, empty, and error states
+ */
+
+@use 'variables' as *;
+
+// =============================================================================
+// Loading State
+// =============================================================================
+
+.loading-state {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: $space-2xl;
+
+  &--inline {
+    padding: $space-md;
+    gap: 0.75rem;
+    color: var(--p-text-muted-color);
+  }
+}
+
+// =============================================================================
+// Empty State
+// =============================================================================
+
+.empty-state {
+  padding: $space-xl;
+  text-align: center;
+  color: var(--p-text-muted-color);
+}
+
+.empty-state-icon {
+  font-size: 3rem;
+  color: var(--p-text-muted-color);
+}
+
+// =============================================================================
+// Error States
+// =============================================================================
+
+.error-message {
+  background: var(--p-red-50);
+  border: $border-width solid var(--p-red-200);
+  border-radius: $radius-md;
+  padding: 0.75rem $space-md;
+  color: var(--p-red-700);
+  font-family: $font-family-mono;
+  font-size: 0.85rem;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.error-content {
+  background: var(--p-red-50);
+  color: var(--p-red-700);
+  padding: $space-md;
+  border-radius: $radius-lg;
+  overflow-x: auto;
+  margin: 0;
+  font-size: 0.85rem;
+  white-space: pre-wrap;
+}
+
+// Dark mode adjustments
+:root[data-theme='dark'] .error-message,
+:root[data-theme='dark'] .error-content {
+  background: rgba(239, 68, 68, 0.1);
+  color: var(--p-red-400);
+  border-color: var(--p-red-900);
+}

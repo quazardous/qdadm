@@ -1,0 +1,55 @@
+/**
+ * qdadm - Filter Bar Styles
+ *
+ * Filter bar component for list pages
+ */
+
+@use 'variables' as *;
+
+// =============================================================================
+// Filter Bar Layout
+// =============================================================================
+
+.filter-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: $space-md;
+  margin-bottom: $space-md;
+}
+
+.filter-bar-left {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.filter-bar-right {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+// =============================================================================
+// Active Filter Highlight
+// =============================================================================
+
+.p-select.filter-active,
+.p-inputtext.filter-active {
+  border-color: #f97316 !important;
+  box-shadow: 0 0 0 1px #f97316 !important;
+}
+
+// =============================================================================
+// Button Height Alignment
+// =============================================================================
+
+// Ensure buttons match input height in inline form layouts
+.filter-bar .p-button,
+.filter-bar-left .p-button,
+.flex.align-items-end .p-button,
+.flex.items-end .p-button {
+  height: 2.5rem;
+  align-self: flex-end;
+  margin-bottom: 0;
+}

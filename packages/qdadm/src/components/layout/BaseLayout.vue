@@ -140,7 +140,7 @@ provide('qdadmNavlinksOverride', navlinksOverride)
 }
 
 .sidebar {
-  width: var(--fad-sidebar-width, 15rem);
+  width: var(--fad-sidebar-width, 18rem);
   background: var(--p-surface-800, #1e293b);
   color: var(--p-surface-0, white);
   display: flex;
@@ -154,7 +154,7 @@ provide('qdadmNavlinksOverride', navlinksOverride)
 
 .main-area {
   flex: 1;
-  margin-left: var(--fad-sidebar-width, 15rem);
+  margin-left: var(--fad-sidebar-width, 18rem);
   background: var(--p-surface-50, #f8fafc);
   min-height: 100vh;
   display: flex;

@@ -14,7 +14,7 @@ import { useRouter } from 'vue-router'
 import { PageLayout, usePageTitle, useOrchestrator, useEntityItemPage } from 'qdadm'
 import Card from 'primevue/card'
 import Button from 'primevue/button'
-import Message from 'primevue/message'
+import { InfoBanner } from 'qdadm/components'
 
 const router = useRouter()
 
@@ -64,29 +64,15 @@ function goToAuthor() {
 <template>
   <PageLayout>
     <div class="post-detail-page">
-      <!-- Header -->
-      <div class="page-header">
-        <div class="header-content">
-          <Button
-            icon="pi pi-arrow-left"
-            severity="secondary"
-            text
-            rounded
-            @click="goBack"
-          />
-          <h1>{{ pageTitle }}</h1>
-        </div>
-      </div>
-
       <!-- Loading State -->
       <div v-if="loading" class="loading-state">
         <i class="pi pi-spin pi-spinner" style="font-size: 2rem"></i>
       </div>
 
       <!-- Error State -->
-      <Message v-else-if="error" severity="error" :closable="false">
+      <InfoBanner v-else-if="error" severity="error">
         {{ error }}
-      </Message>
+      </InfoBanner>
 
       <!-- Post Details -->
       <Card v-else-if="post">
@@ -140,22 +126,6 @@ function goToAuthor() {
   display: flex;
   flex-direction: column;
   gap: 1rem;
-}
-
-.page-header {
-  margin-bottom: 0.5rem;
-}
-
-.header-content {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.header-content h1 {
-  margin: 0;
-  font-size: 1.5rem;
-  font-weight: 600;
 }
 
 .loading-state {
