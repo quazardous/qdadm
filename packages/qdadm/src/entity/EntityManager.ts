@@ -174,14 +174,9 @@ export interface EntityManagerOptions<T extends EntityRecord = EntityRecord> {
 // Forward declaration for Orchestrator (to avoid circular deps)
 interface Orchestrator {
   get<T extends EntityRecord>(name: string): EntityManager<T> | undefined
-  kernel?: {
-    options?: {
-      authAdapter?: {
-        getUser?: () => AuthUser | null
-      }
-    }
-  }
-  deferred?: DeferredRegistry
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  kernel?: any
+  deferred?: DeferredRegistry | null
 }
 
 // Forward declaration for DeferredRegistry

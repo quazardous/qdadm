@@ -4,7 +4,7 @@
  * Run: npm test
  */
 import { describe, it, expect } from 'vitest'
-import { Orchestrator } from '../../src/orchestrator/Orchestrator.js'
+import { Orchestrator } from '../../src/orchestrator/Orchestrator'
 import { EntityManager } from '../../src/entity/EntityManager'
 import { EntityAuthAdapter, PermissiveAuthAdapter } from '../../src/entity/auth'
 

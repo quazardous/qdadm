@@ -6,7 +6,7 @@
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { defineComponent, h } from 'vue'
-import { Module } from '../../src/kernel/Module.js'
+import { Module } from '../../src/kernel/Module'
 import {
   ModuleLoader,
   createModuleLoader,

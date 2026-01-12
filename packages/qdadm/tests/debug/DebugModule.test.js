@@ -6,7 +6,7 @@
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { DebugModule, DEBUG_BRIDGE_KEY, DEBUG_ZONE } from '../../src/modules/debug/DebugModule.js'
-import { Module } from '../../src/kernel/Module.js'
+import { Module } from '../../src/kernel/Module'
 import { DebugBridge } from '../../src/modules/debug/DebugBridge.js'
 import { ErrorCollector } from '../../src/modules/debug/ErrorCollector.js'
 import { SignalCollector } from '../../src/modules/debug/SignalCollector.js'

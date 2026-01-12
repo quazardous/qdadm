@@ -12,7 +12,7 @@ import {
   CircularDependencyError,
   ModuleLoadError,
 } from '../../src/kernel/ModuleLoader.js'
-import { Module } from '../../src/kernel/Module.js'
+import { Module } from '../../src/kernel/Module'
 
 describe('ModuleLoader', () => {
   describe('factory function', () => {

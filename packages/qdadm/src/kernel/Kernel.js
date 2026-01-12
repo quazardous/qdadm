@@ -51,7 +51,7 @@ import { initModules, getRoutes, setSectionOrder, alterMenuSections, registry } 
 import { createModuleLoader } from './ModuleLoader.js'
 import { createKernelContext } from './KernelContext.js'
 // ToastBridgeModule no longer used - Toast/ToastListener rendered at root level
-import { Orchestrator } from '../orchestrator/Orchestrator.js'
+import { Orchestrator } from '../orchestrator/Orchestrator'
 import { createSignalBus } from './SignalBus'
 import { createZoneRegistry } from '../zones/ZoneRegistry.js'
 import { registerStandardZones } from '../zones/zones.js'

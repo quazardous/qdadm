@@ -19,7 +19,7 @@
  * await kernel.boot()
  */
 
-import { Module } from '../kernel/Module.js'
+import { Module } from '../kernel/Module'
 import ToastListener from './ToastListener.vue'
 
 /**

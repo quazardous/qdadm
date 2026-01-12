@@ -19,7 +19,7 @@
  */
 
 import { h, inject, defineComponent } from 'vue'
-import { Module } from '../../kernel/Module.js'
+import { Module } from '../../kernel/Module'
 import { createDebugBridge } from './DebugBridge.js'
 import { ErrorCollector } from './ErrorCollector.js'
 import { SignalCollector } from './SignalCollector.js'

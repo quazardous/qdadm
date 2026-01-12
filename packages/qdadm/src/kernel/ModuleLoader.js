@@ -10,7 +10,7 @@
  * Provides topological sorting based on requires + priority.
  */
 
-import { Module } from './Module.js'
+import { Module } from './Module'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Custom Errors

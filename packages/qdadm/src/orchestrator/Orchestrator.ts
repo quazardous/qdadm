@@ -29,9 +29,84 @@
  * ```
  */
 import { getEntityConfig } from '../module/moduleRegistry.js'
+import type { EntityManager, EntityManagerOptions } from '../entity/EntityManager'
+import type { EntityRecord } from '../types'
+import type { SignalBus } from '../kernel/SignalBus'
+import type { HookRegistry } from '../hooks/HookRegistry'
+import type { EntityAuthAdapter } from '../entity/auth/EntityAuthAdapter'
+
+/**
+ * DeferredRegistry interface (minimal for Orchestrator needs)
+ */
+export interface DeferredRegistry {
+  has(key: string): boolean
+  await(key: string): Promise<unknown>
+  queue<T>(key: string, fn: () => Promise<T>): Promise<T>
+}
+
+/**
+ * Entity factory function type
+ */
+export type EntityFactory = (
+  entityName: string,
+  entityConfig: EntityManagerOptions | EntityManager | undefined
+) => EntityManager | null
+
+/**
+ * Toast options
+ */
+export interface ToastOptions {
+  life?: number
+  emitter?: string
+}
+
+/**
+ * Toast config for default life durations
+ */
+export interface ToastConfig {
+  success?: number
+  error?: number
+  warn?: number
+  info?: number
+}
+
+/**
+ * Toast helper interface
+ */
+export interface ToastHelper {
+  success(summary: string, detail?: string, options?: string | ToastOptions): void
+  error(summary: string, detail?: string, options?: string | ToastOptions): void
+  warn(summary: string, detail?: string, options?: string | ToastOptions): void
+  info(summary: string, detail?: string, options?: string | ToastOptions): void
+}
+
+/**
+ * Orchestrator constructor options
+ */
+export interface OrchestratorOptions {
+  entityFactory?: EntityFactory | null
+  managers?: Record<string, EntityManager>
+  signals?: SignalBus | null
+  hooks?: HookRegistry | null
+  deferred?: DeferredRegistry | null
+  entityAuthAdapter?: EntityAuthAdapter | null
+}
 
 export class Orchestrator {
-  constructor(options = {}) {
+  private _entityFactory: EntityFactory | null
+  private _managers: Map<string, EntityManager>
+  private _signals: SignalBus | null
+  private _hooks: HookRegistry | null
+  private _deferred: DeferredRegistry | null
+  private _entityAuthAdapter: EntityAuthAdapter | null
+  private _toastConfig: ToastConfig = {}
+  private _toastHelper: ToastHelper | null = null
+
+  // Reference to kernel (set by Kernel after construction)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  kernel?: any
+
+  constructor(options: OrchestratorOptions = {}) {
     const {
       entityFactory = null,
       // Optional: pre-registered managers (for special cases)
@@ -43,7 +118,7 @@ export class Orchestrator {
       // DeferredRegistry instance for async warmup
       deferred = null,
       // Optional: AuthAdapter for entity permission checks (scope/silo)
-      entityAuthAdapter = null
+      entityAuthAdapter = null,
     } = options
 
     this._entityFactory = entityFactory
@@ -61,25 +136,22 @@ export class Orchestrator {
 
   /**
    * Set the SignalBus instance
-   * @param {SignalBus} signals
    */
-  setSignals(signals) {
+  setSignals(signals: SignalBus): void {
     this._signals = signals
   }
 
   /**
    * Get the SignalBus instance
-   * @returns {SignalBus|null}
    */
-  get signals() {
+  get signals(): SignalBus | null {
     return this._signals
   }
 
   /**
    * Set toast configuration (life defaults per severity)
-   * @param {Object} config - { success: 3000, error: 5000, warn: 5000, info: 3000 }
    */
-  setToastConfig(config) {
+  setToastConfig(config: ToastConfig): void {
     this._toastConfig = { ...this._toastConfig, ...config }
     this._toastHelper = null // Reset helper to pick up new config
   }
@@ -95,29 +167,33 @@ export class Orchestrator {
    * Third param can be:
    * - string: treated as emitter
    * - object: { life, emitter }
-   *
-   * @returns {Object} Toast helper with success/error/warn/info methods
    */
-  get toast() {
+  get toast(): ToastHelper {
     if (!this._toastHelper) {
       // Default life values per severity (can be overridden via setToastConfig)
-      const defaults = {
+      const defaults: Required<ToastConfig> = {
         success: 3000,
         error: 5000,
         warn: 5000,
         info: 3000,
-        ...this._toastConfig
+        ...this._toastConfig,
       }
 
-      const emit = (severity, summary, detail, options) => {
+      const emit = (
+        severity: keyof ToastConfig,
+        summary: string,
+        detail?: string,
+        options?: string | ToastOptions
+      ): void => {
         if (this._signals) {
           // Options can be string (emitter) or object { life, emitter }
-          const opts = typeof options === 'string' ? { emitter: options } : (options || {})
+          const opts: ToastOptions =
+            typeof options === 'string' ? { emitter: options } : options || {}
           this._signals.emit(`toast:${severity}`, {
             summary,
             detail,
             life: opts.life ?? defaults[severity],
-            emitter: opts.emitter
+            emitter: opts.emitter,
           })
         }
       }
@@ -126,7 +202,7 @@ export class Orchestrator {
         success: (summary, detail, options) => emit('success', summary, detail, options),
         error: (summary, detail, options) => emit('error', summary, detail, options),
         warn: (summary, detail, options) => emit('warn', summary, detail, options),
-        info: (summary, detail, options) => emit('info', summary, detail, options)
+        info: (summary, detail, options) => emit('info', summary, detail, options),
       }
     }
     return this._toastHelper
@@ -136,68 +212,58 @@ export class Orchestrator {
    * Set the entity AuthAdapter for permission checks
    * This adapter will be injected into all newly registered managers
    * (unless they already have their own adapter)
-   * @param {AuthAdapter} adapter
    */
-  setEntityAuthAdapter(adapter) {
+  setEntityAuthAdapter(adapter: EntityAuthAdapter): void {
     this._entityAuthAdapter = adapter
   }
 
   /**
    * Get the entity AuthAdapter
-   * @returns {AuthAdapter|null}
    */
-  get entityAuthAdapter() {
+  get entityAuthAdapter(): EntityAuthAdapter | null {
     return this._entityAuthAdapter
   }
 
   /**
    * Set the HookRegistry instance
-   * @param {HookRegistry} hooks
    */
-  setHooks(hooks) {
+  setHooks(hooks: HookRegistry): void {
     this._hooks = hooks
   }
 
   /**
    * Get the HookRegistry instance
-   * @returns {HookRegistry|null}
    */
-  get hooks() {
+  get hooks(): HookRegistry | null {
     return this._hooks
   }
 
   /**
    * Set the DeferredRegistry instance
-   * @param {DeferredRegistry} deferred
    */
-  setDeferred(deferred) {
+  setDeferred(deferred: DeferredRegistry): void {
     this._deferred = deferred
   }
 
   /**
    * Get the DeferredRegistry instance
-   * @returns {DeferredRegistry|null}
    */
-  get deferred() {
+  get deferred(): DeferredRegistry | null {
     return this._deferred
   }
 
   /**
    * Set the entity factory
-   * @param {function} factory - (entityName, entityConfig) => EntityManager
    */
-  setFactory(factory) {
+  setFactory(factory: EntityFactory): void {
     this._entityFactory = factory
   }
 
   /**
    * Register an EntityManager manually
    * Use this for special managers that don't follow the factory pattern
-   *
-   * @param {string} name - Entity name
-   * @param {EntityManager} manager - Manager instance
    */
-  register(name, manager) {
+  register(name: string, manager: EntityManager): void {
     this._managers.set(name, manager)
     // Pass signals reference to manager for event emission
     if (this._signals && manager.setSignals) {
@@ -209,7 +275,8 @@ export class Orchestrator {
     }
     // Inject entityAuthAdapter if provided and manager doesn't have one
     // Manager's own adapter takes precedence (allows per-entity customization)
-    if (this._entityAuthAdapter && !manager._authAdapter) {
+    const managerWithAuth = manager as EntityManager & { _authAdapter?: unknown }
+    if (this._entityAuthAdapter && !managerWithAuth._authAdapter) {
       manager.authAdapter = this._entityAuthAdapter
     }
     if (manager.onRegister) {
@@ -219,43 +286,39 @@ export class Orchestrator {
 
   /**
    * Check if a manager exists (registered or can be created via factory)
-   * @param {string} name - Entity name
-   * @returns {boolean}
    */
-  has(name) {
+  has(name: string): boolean {
     return this._managers.has(name) || !!this._entityFactory
   }
 
   /**
    * Check if a manager is actually registered (not just creatable)
    * Use this to check if ctx.entity() was called for this entity
-   * @param {string} name - Entity name
-   * @returns {boolean}
    */
-  isRegistered(name) {
+  isRegistered(name: string): boolean {
     return this._managers.has(name)
   }
 
   /**
    * Get an EntityManager by name
    * Creates it via factory if not already registered
-   *
-   * @param {string} name - Entity name
-   * @returns {EntityManager}
    */
-  get(name) {
+  get<T extends EntityRecord = EntityRecord>(name: string): EntityManager<T> | undefined {
     // Return existing manager
     if (this._managers.has(name)) {
-      return this._managers.get(name)
+      return this._managers.get(name) as unknown as EntityManager<T>
     }
 
     // Get entity config from module registry (if declared)
-    const entityConfig = getEntityConfig(name)
+    const entityConfig = getEntityConfig(name) as
+      | EntityManagerOptions
+      | EntityManager
+      | undefined
 
     // If config is already an EntityManager, use it directly
-    if (entityConfig && typeof entityConfig.get === 'function') {
-      this.register(name, entityConfig)
-      return entityConfig
+    if (entityConfig && typeof (entityConfig as EntityManager).get === 'function') {
+      this.register(name, entityConfig as EntityManager)
+      return entityConfig as unknown as EntityManager<T>
     }
 
     // Create via factory
@@ -263,15 +326,16 @@ export class Orchestrator {
       const manager = this._entityFactory(name, entityConfig)
       if (manager) {
         this.register(name, manager)
-        return manager
+        return manager as unknown as EntityManager<T>
       }
     }
 
     // Build helpful error message
     const registered = this.getRegisteredNames()
-    const hint = registered.length > 0
-      ? `\nRegistered entities: ${registered.join(', ')}\n`
-      : '\nNo entities registered yet.\n'
+    const hint =
+      registered.length > 0
+        ? `\nRegistered entities: ${registered.join(', ')}\n`
+        : '\nNo entities registered yet.\n'
 
     const suggestion = `
 Possible causes:
@@ -292,9 +356,8 @@ Example fix in your module:
 
   /**
    * Get all registered manager names
-   * @returns {string[]}
    */
-  getRegisteredNames() {
+  getRegisteredNames(): string[] {
     return Array.from(this._managers.keys())
   }
 
@@ -309,7 +372,7 @@ Example fix in your module:
    * Components await what they need via DeferredRegistry:
    *   `await deferred.await('entity:books:cache')`
    *
-   * @returns {Promise<Map<string, any>>} For debugging/logging only
+   * @returns For debugging/logging only
    *
    * @example
    * ```js
@@ -321,18 +384,21 @@ Example fix in your module:
    * const { items } = await booksManager.list()  // Uses local cache
    * ```
    */
-  fireWarmups() {
-    const results = new Map()
+  fireWarmups(): Map<string, boolean | Error | null> {
+    const results = new Map<string, boolean | Error | null>()
 
     for (const [name, manager] of this._managers) {
       if (manager.warmup && manager.warmupEnabled) {
         // Fire each warmup - they register themselves in DeferredRegistry
-        manager.warmup().then(result => {
-          results.set(name, result)
-        }).catch(error => {
-          console.warn(`[Orchestrator] Warmup failed for ${name}:`, error.message)
-          results.set(name, error)
-        })
+        manager
+          .warmup()
+          .then((result) => {
+            results.set(name, result)
+          })
+          .catch((error: Error) => {
+            console.warn(`[Orchestrator] Warmup failed for ${name}:`, error.message)
+            results.set(name, error)
+          })
       }
     }
 
@@ -342,7 +408,7 @@ Example fix in your module:
   /**
    * Dispose all managers
    */
-  dispose() {
+  dispose(): void {
     for (const [, manager] of this._managers) {
       if (manager.onDispose) {
         manager.onDispose()
@@ -355,6 +421,6 @@ Example fix in your module:
 /**
  * Factory function to create an Orchestrator
  */
-export function createOrchestrator(options) {
+export function createOrchestrator(options?: OrchestratorOptions): Orchestrator {
   return new Orchestrator(options)
 }

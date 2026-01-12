@@ -5,7 +5,7 @@
  * default method behavior, signal cleanup tracking, and subclass inheritance.
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { Module } from '../../src/kernel/Module.js'
+import { Module } from '../../src/kernel/Module'
 
 describe('Module', () => {
   describe('static properties', () => {

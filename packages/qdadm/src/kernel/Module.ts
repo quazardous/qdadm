@@ -29,22 +29,43 @@
  * 3. Legacy function (backward compat):
  *    export function init({ registry, zones }) { ... }
  */
+
+// Forward declaration for KernelContext (to avoid circular deps)
+export interface KernelContextLike {
+  [key: string]: unknown
+}
+
+/**
+ * Module static properties interface
+ */
+export interface ModuleStatic {
+  name: string
+  requires: string[]
+  priority: number
+  styles: (() => Promise<unknown>) | null
+}
+
+/**
+ * Module constructor options
+ */
+export interface ModuleOptions {
+  name?: string
+  [key: string]: unknown
+}
+
 export class Module {
   /**
    * Unique module name (used for dependency resolution)
-   * @type {string}
    */
   static name = 'base'
 
   /**
    * Module dependencies - names of modules that must be loaded first
-   * @type {string[]}
    */
-  static requires = []
+  static requires: string[] = []
 
   /**
    * Load priority - higher values load later (useful for cross-module wiring)
-   * @type {number}
    */
   static priority = 0
 
@@ -57,72 +78,64 @@ export class Module {
    * class DebugModule extends Module {
    *   static styles = () => import('./styles.scss')
    * }
-   *
-   * @type {(() => Promise<any>)|null}
    */
-  static styles = null
+  static styles: (() => Promise<unknown>) | null = null
 
-  /**
-   * @param {Object} options - Module configuration options
-   */
-  constructor(options = {}) {
+  options: ModuleOptions
+  ctx: KernelContextLike | null = null
+  protected _signalCleanups: Array<() => void> = []
+  protected _stylesLoaded = false
+
+  constructor(options: ModuleOptions = {}) {
     this.options = options
-    this.ctx = null
-    this._signalCleanups = []
-    this._stylesLoaded = false
   }
 
   /**
    * Get the module name (from static property or options)
-   * @returns {string}
    */
-  get name() {
-    return this.options.name || this.constructor.name
+  get name(): string {
+    return this.options.name || (this.constructor as typeof Module).name
   }
 
   /**
    * Check if module should be enabled
    * Override in subclass for conditional loading
-   * @param {KernelContext} ctx
-   * @returns {boolean}
    */
-  enabled(ctx) {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  enabled(_ctx: any): boolean {
     return true
   }
 
   /**
    * Load module styles if defined
    * Called automatically by ModuleLoader before connect()
-   * @returns {Promise<void>}
    */
-  async loadStyles() {
-    const stylesLoader = this.constructor.styles
+  async loadStyles(): Promise<void> {
+    const stylesLoader = (this.constructor as typeof Module).styles
     if (this._stylesLoaded || !stylesLoader) return
 
     try {
       await stylesLoader()
       this._stylesLoaded = true
     } catch (e) {
-      console.warn(`[${this.constructor.name}] Failed to load styles:`, e)
+      console.warn(`[${(this.constructor as typeof Module).name}] Failed to load styles:`, e)
     }
   }
 
   /**
    * Connect module to kernel - main registration point
    * Override in subclass to register entities, routes, etc.
-   * @param {KernelContext} ctx
-   * @returns {Promise<void>}
    */
-  async connect(ctx) {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  async connect(_ctx: any): Promise<void> {
     // Override in subclass
   }
 
   /**
    * Disconnect module from kernel - cleanup
    * Override in subclass to remove listeners, cleanup resources
-   * @returns {Promise<void>}
    */
-  async disconnect() {
+  async disconnect(): Promise<void> {
     // Cleanup signal listeners registered via ctx.on()
     for (const cleanup of this._signalCleanups) {
       cleanup()
@@ -132,10 +145,9 @@ export class Module {
 
   /**
    * Register a signal cleanup function (used by KernelContext.on())
-   * @param {Function} cleanup
    * @internal
    */
-  _addSignalCleanup(cleanup) {
+  _addSignalCleanup(cleanup: () => void): void {
     this._signalCleanups.push(cleanup)
   }
 }

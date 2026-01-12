@@ -10,7 +10,7 @@ import { defineComponent, h } from 'vue'
 import { Kernel } from '../../src/kernel/Kernel.js'
 import { SignalBus } from '../../src/kernel/SignalBus'
 import { EntityManager } from '../../src/entity/EntityManager'
-import { Module } from '../../src/kernel/Module.js'
+import { Module } from '../../src/kernel/Module'
 import { ModuleLoader } from '../../src/kernel/ModuleLoader.js'
 
 /**

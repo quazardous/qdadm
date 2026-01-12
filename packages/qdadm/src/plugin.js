@@ -4,7 +4,7 @@
  * Creates and configures the qdadm framework for Vue applications.
  */
 
-import { Orchestrator } from './orchestrator/Orchestrator.js'
+import { Orchestrator } from './orchestrator/Orchestrator'
 import qdadmLogo from './assets/logo.svg'
 
 /**

@@ -23,7 +23,7 @@
  */
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports
-import { Module } from '../kernel/Module.js'
+import { Module } from '../kernel/Module'
 import { RolesManager } from './RolesManager'
 import type { RoleGranterAdapter } from './RoleGranterAdapter'
 import type { PermissionRegistry } from './PermissionRegistry'
