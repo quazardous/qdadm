@@ -4,7 +4,7 @@
  * Tests the SignalCollector debug collector that captures SignalBus events.
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { SignalCollector } from '../../src/modules/debug/SignalCollector.js'
+import { SignalCollector } from '../../src/modules/debug/SignalCollector'
 import { createSignalBus, SIGNAL_ACTIONS } from '../../src/kernel/SignalBus'
 
 describe('SignalCollector', () => {
@@ -20,12 +20,12 @@ describe('SignalCollector', () => {
     collector.uninstall()
   })
 
-  describe('static name', () => {
-    it('has static name property set to "signals"', () => {
-      expect(SignalCollector.name).toBe('signals')
+  describe('static collectorName', () => {
+    it('has static collectorName property set to "signals"', () => {
+      expect(SignalCollector.collectorName).toBe('signals')
     })
 
-    it('name getter returns static name', () => {
+    it('name getter returns static collectorName', () => {
       expect(collector.name).toBe('signals')
     })
   })
@@ -45,7 +45,7 @@ describe('SignalCollector', () => {
       expect(warnSpy).toHaveBeenCalledWith(
         '[SignalCollector] No signals bus found in context'
       )
-      expect(collector._unsubscribe).toBeUndefined()
+      expect(collector._unsubscribe).toBeNull()
 
       warnSpy.mockRestore()
     })

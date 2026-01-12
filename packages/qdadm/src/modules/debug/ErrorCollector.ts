@@ -12,25 +12,38 @@
  * collector.uninstall()
  */
 
-import { Collector } from './Collector.js'
+import { Collector, type CollectorContext, type CollectorEntry } from './Collector'
+
+/**
+ * Error entry type
+ */
+export interface ErrorEntry extends CollectorEntry {
+  message?: string
+  filename?: string
+  lineno?: number
+  colno?: number
+  error?: string
+  reason?: string
+}
 
 /**
  * Collector for JavaScript errors and unhandled promise rejections
  */
-export class ErrorCollector extends Collector {
+export class ErrorCollector extends Collector<ErrorEntry> {
   /**
    * Collector name identifier
-   * @type {string}
    */
-  static name = 'errors'
+  static override collectorName = 'errors'
+
+  private _handler: ((event: ErrorEvent) => void) | null = null
+  private _rejectionHandler: ((event: PromiseRejectionEvent) => void) | null = null
 
   /**
    * Internal install - subscribe to error and unhandledrejection events
-   * @param {object} ctx - Context object (not used for error collection)
    * @protected
    */
-  _doInstall(ctx) {
-    this._handler = (event) => {
+  protected override _doInstall(_ctx: CollectorContext): void {
+    this._handler = (event: ErrorEvent) => {
       this.record({
         message: event.message,
         filename: event.filename,
@@ -39,7 +52,7 @@ export class ErrorCollector extends Collector {
         error: event.error?.stack
       })
     }
-    this._rejectionHandler = (event) => {
+    this._rejectionHandler = (event: PromiseRejectionEvent) => {
       this.record({
         message: 'Unhandled Promise Rejection',
         reason: String(event.reason)
@@ -53,7 +66,7 @@ export class ErrorCollector extends Collector {
    * Internal uninstall - remove event listeners
    * @protected
    */
-  _doUninstall() {
+  protected override _doUninstall(): void {
     if (this._handler) {
       window.removeEventListener('error', this._handler)
       this._handler = null

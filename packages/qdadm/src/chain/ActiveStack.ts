@@ -19,23 +19,37 @@
  * stack.set([{ entity: 'bots', param: 'uuid', id: 'bot-123' }])
  */
 
+import type { SignalBus } from '../kernel/SignalBus'
+
 /**
- * @typedef {Object} StackLevel
- * @property {string} entity - Entity name (e.g., 'bots', 'commands')
- * @property {string} param - Route param name (e.g., 'uuid', 'id')
- * @property {string|null} foreignKey - Foreign key field for parent relation (null for root)
- * @property {string|null} id - Entity ID from route params
+ * Stack level definition
  */
+export interface StackLevel {
+  /** Entity name (e.g., 'bots', 'commands') */
+  entity: string
+  /** Route param name (e.g., 'uuid', 'id') */
+  param: string
+  /** Foreign key field for parent relation (null for root) */
+  foreignKey: string | null
+  /** Entity ID from route params */
+  id: string | null
+}
+
+/**
+ * Stack change event payload
+ */
+export interface StackChangePayload {
+  levels: StackLevel[]
+}
 
 export class ActiveStack {
-  /**
-   * @param {import('../kernel/SignalBus.js').SignalBus} [signalBus] - Optional signal bus for events
-   */
-  constructor(signalBus = null) {
-    /** @type {StackLevel[]} */
-    this._levels = []
+  private _levels: StackLevel[] = []
+  private _signalBus: SignalBus | null
 
-    /** @type {import('../kernel/SignalBus.js').SignalBus|null} */
+  /**
+   * @param signalBus - Optional signal bus for events
+   */
+  constructor(signalBus: SignalBus | null = null) {
     this._signalBus = signalBus
   }
 
@@ -46,13 +60,12 @@ export class ActiveStack {
   /**
    * Replace entire stack (called on route change)
    * Only emits if levels actually changed (prevents duplicate emissions)
-   * @param {StackLevel[]} levels
    *
    * BUG: Still getting duplicate signals (4 instead of 2) on navigation.
    * Equality check should prevent this but something is triggering multiple calls
    * with different levels. Need to investigate router.afterEach timing.
    */
-  set(levels) {
+  set(levels: StackLevel[]): void {
     // Quick equality check - same length and same entity+id pairs
     if (this._levelsEqual(levels)) {
       return
@@ -63,15 +76,15 @@ export class ActiveStack {
 
   /**
    * Check if new levels match current levels
-   * @param {StackLevel[]} newLevels
-   * @returns {boolean}
    * @private
    */
-  _levelsEqual(newLevels) {
+  private _levelsEqual(newLevels: StackLevel[]): boolean {
     if (this._levels.length !== newLevels.length) return false
     for (let i = 0; i < this._levels.length; i++) {
       const curr = this._levels[i]
       const next = newLevels[i]
+      // Both are guaranteed to exist because we checked lengths match
+      if (!curr || !next) continue
       if (curr.entity !== next.entity || curr.id !== next.id) {
         return false
       }
@@ -83,7 +96,7 @@ export class ActiveStack {
    * Clear the stack
    * Only emits if not already empty
    */
-  clear() {
+  clear(): void {
     if (this._levels.length === 0) return
     this._levels = []
     this._emit('stack:change', { levels: this._levels })
@@ -95,59 +108,50 @@ export class ActiveStack {
 
   /**
    * All stack levels
-   * @returns {StackLevel[]}
    */
-  getLevels() {
+  getLevels(): StackLevel[] {
     return this._levels
   }
 
   /**
    * Get level by index
-   * @param {number} index
-   * @returns {StackLevel|null}
    */
-  getLevel(index) {
+  getLevel(index: number): StackLevel | null {
     return this._levels[index] ?? null
   }
 
   /**
    * Get level by entity name
-   * @param {string} entity
-   * @returns {StackLevel|null}
    */
-  getLevelByEntity(entity) {
+  getLevelByEntity(entity: string): StackLevel | null {
     return this._levels.find(l => l.entity === entity) ?? null
   }
 
   /**
    * Current (deepest) level
-   * @returns {StackLevel|null}
    */
-  getCurrent() {
+  getCurrent(): StackLevel | null {
     return this._levels.at(-1) ?? null
   }
 
   /**
    * Parent level (one above current)
-   * @returns {StackLevel|null}
    */
-  getParent() {
+  getParent(): StackLevel | null {
     return this._levels.at(-2) ?? null
   }
 
   /**
    * Root level (first/topmost)
-   * @returns {StackLevel|null}
    */
-  getRoot() {
+  getRoot(): StackLevel | null {
     return this._levels[0] ?? null
   }
 
   /**
    * Stack depth
-   * @returns {number}
    */
-  getDepth() {
+  getDepth(): number {
     return this._levels.length
   }
 
@@ -157,11 +161,9 @@ export class ActiveStack {
 
   /**
    * Emit event via SignalBus
-   * @param {string} signal
-   * @param {*} payload
    * @private
    */
-  _emit(signal, payload) {
+  private _emit(signal: string, payload: StackChangePayload): void {
     if (this._signalBus) {
       this._signalBus.emit(signal, payload)
     }

@@ -2,7 +2,7 @@
  * Tests for ErrorCollector
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { ErrorCollector } from '../../src/modules/debug/ErrorCollector.js'
+import { ErrorCollector } from '../../src/modules/debug/ErrorCollector'
 
 describe('ErrorCollector', () => {
   let collector
@@ -37,8 +37,8 @@ describe('ErrorCollector', () => {
     window.removeEventListener = originalRemoveEventListener
   })
 
-  it('has static name "errors"', () => {
-    expect(ErrorCollector.name).toBe('errors')
+  it('has static collectorName "errors"', () => {
+    expect(ErrorCollector.collectorName).toBe('errors')
   })
 
   it('installs error and unhandledrejection listeners', () => {

@@ -12,7 +12,16 @@
  * collector.getEntries() // [{ name, data, source, timestamp }, ...]
  */
 
-import { Collector } from './Collector.js'
+import { Collector, type CollectorContext, type CollectorEntry } from './Collector'
+
+/**
+ * Signal entry type
+ */
+export interface SignalEntry extends CollectorEntry {
+  name: string
+  data: unknown
+  source: string | null
+}
 
 /**
  * Collector for SignalBus events
@@ -21,28 +30,25 @@ import { Collector } from './Collector.js'
  * Uses the `**` wildcard pattern to capture all signals including
  * multi-segment names (e.g., entity:data-invalidate, auth:impersonate:start).
  */
-export class SignalCollector extends Collector {
+export class SignalCollector extends Collector<SignalEntry> {
   /**
    * Collector name for identification
-   * @type {string}
    */
-  static name = 'signals'
+  static override collectorName = 'signals'
 
   /**
    * Signals to skip recording (internal kernel signals with non-serializable data)
-   * @type {Set<string>}
    * @private
    */
-  static _skipSignals = new Set(['kernel:ready', 'kernel:shutdown'])
+  private static _skipSignals = new Set(['kernel:ready', 'kernel:shutdown'])
+
+  private _unsubscribe: (() => void) | null = null
 
   /**
    * Internal install - subscribe to all signals
-   *
-   * @param {object} ctx - Context object from Kernel
-   * @param {import('../kernel/SignalBus.js').SignalBus} ctx.signals - SignalBus instance
    * @protected
    */
-  _doInstall(ctx) {
+  protected override _doInstall(ctx: CollectorContext): void {
     if (!ctx?.signals) {
       console.warn('[SignalCollector] No signals bus found in context')
       return
@@ -63,7 +69,7 @@ export class SignalCollector extends Collector {
       this.record({
         name: event.name,
         data,
-        source: data?.source ?? null
+        source: (data as Record<string, unknown>)?.source as string ?? null
       })
     })
   }
@@ -74,21 +80,22 @@ export class SignalCollector extends Collector {
    * Handles cases where data contains references to Kernel, Orchestrator,
    * or other complex objects that would cause cyclic reference errors.
    *
-   * @param {*} data - Raw event data
-   * @returns {*} Sanitized data safe for recording
+   * @param data - Raw event data
+   * @returns Sanitized data safe for recording
    * @private
    */
-  _sanitizeData(data) {
+  private _sanitizeData(data: unknown): unknown {
     if (data === null || data === undefined) return data
     if (typeof data !== 'object') return data
 
     // Try to create a simple clone, fallback to description if cyclic
     try {
+      const obj = data as Record<string, unknown>
       // Quick check for obviously problematic properties
-      if (data.kernel || data.orchestrator || data._kernel) {
+      if (obj.kernel || obj.orchestrator || obj._kernel) {
         // Extract only safe properties
-        const safe = {}
-        for (const [key, value] of Object.entries(data)) {
+        const safe: Record<string, unknown> = {}
+        for (const [key, value] of Object.entries(obj)) {
           if (key !== 'kernel' && key !== 'orchestrator' && key !== '_kernel') {
             if (typeof value !== 'object' || value === null) {
               safe[key] = value
@@ -107,7 +114,7 @@ export class SignalCollector extends Collector {
       return data
     } catch {
       // If serialization fails, return a safe representation
-      return { _type: 'unserializable', keys: Object.keys(data) }
+      return { _type: 'unserializable', keys: Object.keys(data as object) }
     }
   }
 
@@ -115,7 +122,7 @@ export class SignalCollector extends Collector {
    * Internal uninstall - cleanup subscription
    * @protected
    */
-  _doUninstall() {
+  protected override _doUninstall(): void {
     if (this._unsubscribe) {
       this._unsubscribe()
       this._unsubscribe = null
@@ -125,10 +132,10 @@ export class SignalCollector extends Collector {
   /**
    * Get entries filtered by signal name pattern
    *
-   * @param {string|RegExp} pattern - Pattern to match signal names
-   * @returns {Array<object>} Filtered entries
+   * @param pattern - Pattern to match signal names
+   * @returns Filtered entries
    */
-  getByPattern(pattern) {
+  getByPattern(pattern: string | RegExp): SignalEntry[] {
     const regex = pattern instanceof RegExp ? pattern : new RegExp(pattern)
     return this.entries.filter((entry) => regex.test(entry.name))
   }
@@ -136,10 +143,10 @@ export class SignalCollector extends Collector {
   /**
    * Get entries for a specific signal domain
    *
-   * @param {string} domain - Domain prefix (e.g., 'entity', 'auth', 'books')
-   * @returns {Array<object>} Entries matching the domain
+   * @param domain - Domain prefix (e.g., 'entity', 'auth', 'books')
+   * @returns Entries matching the domain
    */
-  getByDomain(domain) {
+  getByDomain(domain: string): SignalEntry[] {
     return this.entries.filter((entry) => entry.name.startsWith(`${domain}:`))
   }
 }

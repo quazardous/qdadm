@@ -20,6 +20,7 @@
  */
 
 import { Module } from '../kernel/Module'
+import type { KernelContext } from '../kernel/KernelContext'
 import ToastListener from './ToastListener.vue'
 
 /**
@@ -34,27 +35,24 @@ export const TOAST_ZONE = '_app:toasts'
 export class ToastBridgeModule extends Module {
   /**
    * Module identifier
-   * @type {string}
    */
-  static name = 'toast-bridge'
+  static override name = 'toast-bridge'
 
   /**
    * No dependencies
-   * @type {string[]}
    */
-  static requires = []
+  static override requires: string[] = []
 
   /**
    * High priority - should load early
-   * @type {number}
    */
-  static priority = 10
+  static override priority = 10
 
   /**
    * Connect module to kernel
-   * @param {import('../kernel/KernelContext.js').KernelContext} ctx
+   * @param ctx - Kernel context
    */
-  async connect(ctx) {
+  async connect(ctx: KernelContext): Promise<void> {
     // Define the toast zone
     ctx.zone(TOAST_ZONE)
 
@@ -62,7 +60,7 @@ export class ToastBridgeModule extends Module {
     ctx.block(TOAST_ZONE, {
       id: 'toast-listener',
       component: ToastListener,
-      weight: 0
+      weight: 0,
     })
   }
 }

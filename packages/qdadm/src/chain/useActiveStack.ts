@@ -14,11 +14,39 @@
  * - stack:change - when stack levels change
  */
 
-import { inject, ref, computed, onUnmounted } from 'vue'
+import { inject, ref, computed, onUnmounted, type ComputedRef, type Ref } from 'vue'
+import type { ActiveStack, StackLevel } from './ActiveStack'
+import type { SignalBus } from '../kernel/SignalBus'
 
-export function useActiveStack() {
-  const activeStack = inject('qdadmActiveStack')
-  const signalBus = inject('qdadmSignals')
+/**
+ * Return type for useActiveStack composable
+ */
+export interface UseActiveStackReturn {
+  /** Reactive levels array */
+  levels: Ref<StackLevel[]>
+  /** Current (deepest) level */
+  current: ComputedRef<StackLevel | null>
+  /** Parent level */
+  parent: ComputedRef<StackLevel | null>
+  /** Root level */
+  root: ComputedRef<StackLevel | null>
+  /** Stack depth */
+  depth: ComputedRef<number>
+  /** Get level by index */
+  getLevel: (index: number) => StackLevel | null
+  /** Get level by entity name */
+  getLevelByEntity: (entity: string) => StackLevel | null
+  /** Get current level (sync) */
+  getCurrent: () => StackLevel | null
+  /** Get parent level (sync) */
+  getParent: () => StackLevel | null
+  /** Get all levels (sync) */
+  getLevels: () => StackLevel[]
+}
+
+export function useActiveStack(): UseActiveStackReturn {
+  const activeStack = inject<ActiveStack | undefined>('qdadmActiveStack')
+  const signalBus = inject<SignalBus | undefined>('qdadmSignals')
 
   if (!activeStack) {
     console.warn('[useActiveStack] ActiveStack not provided')
@@ -26,14 +54,14 @@ export function useActiveStack() {
   }
 
   // Reactive state - updated via SignalBus
-  const levels = ref([...activeStack.getLevels()])
+  const levels = ref<StackLevel[]>([...activeStack.getLevels()])
 
   // Subscribe to stack changes
   // QuarKernel passes (event, ctx) where event.data contains the payload
-  let unsubscribe = null
+  let unsubscribe: (() => void) | null = null
   if (signalBus) {
     unsubscribe = signalBus.on('stack:change', (event) => {
-      const newLevels = event.data?.levels
+      const newLevels = (event.data as { levels?: StackLevel[] })?.levels
       if (newLevels) {
         // Create new array reference to trigger reactivity
         levels.value = [...newLevels]
@@ -63,8 +91,8 @@ export function useActiveStack() {
     depth,
 
     // Sync accessors (direct from vanilla JS instance)
-    getLevel: (i) => activeStack.getLevel(i),
-    getLevelByEntity: (e) => activeStack.getLevelByEntity(e),
+    getLevel: (i: number) => activeStack.getLevel(i),
+    getLevelByEntity: (e: string) => activeStack.getLevelByEntity(e),
     getCurrent: () => activeStack.getCurrent(),
     getParent: () => activeStack.getParent(),
     getLevels: () => activeStack.getLevels(),
@@ -74,9 +102,9 @@ export function useActiveStack() {
 /**
  * Fallback when ActiveStack not available
  */
-function createEmptyStack() {
+function createEmptyStack(): UseActiveStackReturn {
   return {
-    levels: computed(() => []),
+    levels: ref([]),
     current: computed(() => null),
     parent: computed(() => null),
     root: computed(() => null),

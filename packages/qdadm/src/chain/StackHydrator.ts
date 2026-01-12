@@ -14,42 +14,66 @@
  * signalBus.on('stack:hydrated', (event) => console.log('Hydrated:', event.data.levels))
  */
 
+import type { ActiveStack, StackLevel } from './ActiveStack'
+import type { Orchestrator } from '../orchestrator/Orchestrator'
+import type { SignalBus } from '../kernel/SignalBus'
+import type { EntityRecord } from '../types'
+
 /**
- * @typedef {Object} HydratedLevel
- * @property {string} entity - Entity name
- * @property {string} param - Route param name
- * @property {string|null} foreignKey - Foreign key field
- * @property {string|null} id - Entity ID
- * @property {Promise<void>} promise - Resolves when hydrated
- * @property {boolean} loading - True while fetching
- * @property {boolean} hydrated - True when data is loaded
- * @property {Error|null} error - Error if fetch failed
- * @property {Record<string, any>|null} data - Entity data
- * @property {string|null} label - Resolved label
+ * Hydrated level with async state
  */
+export interface HydratedLevel {
+  /** Entity name */
+  entity: string
+  /** Route param name */
+  param: string
+  /** Foreign key field */
+  foreignKey: string | null
+  /** Entity ID */
+  id: string | null
+  /** Resolves when hydrated */
+  promise: Promise<void> | null
+  /** True while fetching */
+  loading: boolean
+  /** True when data is loaded */
+  hydrated: boolean
+  /** Error if fetch failed */
+  error: Error | null
+  /** Entity data */
+  data: EntityRecord | null
+  /** Resolved label */
+  label: string | null
+}
+
+/**
+ * Hydrated levels payload
+ */
+export interface HydratedPayload {
+  levels: HydratedLevel[]
+}
 
 export class StackHydrator {
-  /**
-   * @param {import('./ActiveStack.js').ActiveStack} activeStack
-   * @param {import('../orchestrator/Orchestrator.js').Orchestrator} orchestrator
-   * @param {import('../kernel/SignalBus.js').SignalBus} [signalBus]
-   */
-  constructor(activeStack, orchestrator, signalBus = null) {
+  private _activeStack: ActiveStack
+  private _orchestrator: Orchestrator
+  private _signalBus: SignalBus | null
+  private _levels: HydratedLevel[] = []
+  private _pendingEmit: Promise<void> | null = null
+  private _unsubscribe: (() => void) | null = null
+
+  constructor(
+    activeStack: ActiveStack,
+    orchestrator: Orchestrator,
+    signalBus: SignalBus | null = null
+  ) {
     this._activeStack = activeStack
     this._orchestrator = orchestrator
     this._signalBus = signalBus
-
-    /** @type {HydratedLevel[]} */
-    this._levels = []
-
-    /** @type {Promise|null} - Pending batched emit */
-    this._pendingEmit = null
 
     // Listen to stack changes via SignalBus
     // QuarKernel passes (event, ctx) where event.data contains the payload
     if (signalBus) {
       this._unsubscribe = signalBus.on('stack:change', (event) => {
-        const levels = event.data?.levels
+        const levels = (event.data as { levels?: StackLevel[] })?.levels
         if (levels) {
           this._onStackChange(levels)
         }
@@ -62,7 +86,7 @@ export class StackHydrator {
   /**
    * Cleanup
    */
-  destroy() {
+  destroy(): void {
     if (this._unsubscribe) {
       this._unsubscribe()
       this._unsubscribe = null
@@ -75,10 +99,9 @@ export class StackHydrator {
 
   /**
    * Handle stack change - rebuild hydrated levels
-   * @param {import('./ActiveStack.js').StackLevel[]} stackLevels
    * @private
    */
-  _onStackChange(stackLevels) {
+  private _onStackChange(stackLevels: StackLevel[]): void {
     // Create new hydrated levels (each starts its own async hydration)
     this._levels = stackLevels.map((level, index) =>
       this._createHydratedLevel(level, index)
@@ -88,13 +111,10 @@ export class StackHydrator {
 
   /**
    * Create a hydrated level with its own promise
-   * @param {import('./ActiveStack.js').StackLevel} stackLevel
-   * @param {number} index
-   * @returns {HydratedLevel}
    * @private
    */
-  _createHydratedLevel(stackLevel, index) {
-    const level = {
+  private _createHydratedLevel(stackLevel: StackLevel, _index: number): HydratedLevel {
+    const level: HydratedLevel = {
       // Sync config (copied from stack)
       entity: stackLevel.entity,
       param: stackLevel.param,
@@ -118,11 +138,9 @@ export class StackHydrator {
 
   /**
    * Hydrate a single level
-   * @param {HydratedLevel} level
-   * @returns {Promise<void>}
    * @private
    */
-  async _hydrate(level) {
+  private async _hydrate(level: HydratedLevel): Promise<void> {
     // All levels in stack have IDs (that's the new contract)
     // But check anyway for safety
     if (!level.id) {
@@ -151,7 +169,7 @@ export class StackHydrator {
       level.label = manager.getEntityLabel?.(level.data) ?? level.id
       level.hydrated = true
     } catch (err) {
-      level.error = err
+      level.error = err instanceof Error ? err : new Error(String(err))
       level.label = level.id // Fallback to ID
       level.hydrated = true // Mark as hydrated even on error
     } finally {
@@ -165,7 +183,7 @@ export class StackHydrator {
    * Uses microtask to batch emissions within same tick
    * @private
    */
-  _scheduleEmit() {
+  private _scheduleEmit(): void {
     if (this._pendingEmit) return // Already scheduled
 
     this._pendingEmit = Promise.resolve().then(() => {
@@ -180,51 +198,43 @@ export class StackHydrator {
 
   /**
    * All hydrated levels
-   * @returns {HydratedLevel[]}
    */
-  getLevels() {
+  getLevels(): HydratedLevel[] {
     return this._levels
   }
 
   /**
    * Get hydrated level by index
-   * @param {number} index
-   * @returns {HydratedLevel|null}
    */
-  getLevel(index) {
+  getLevel(index: number): HydratedLevel | null {
     return this._levels[index] ?? null
   }
 
   /**
    * Get hydrated level by entity name
-   * @param {string} entity
-   * @returns {HydratedLevel|null}
    */
-  getLevelByEntity(entity) {
+  getLevelByEntity(entity: string): HydratedLevel | null {
     return this._levels.find(l => l.entity === entity) ?? null
   }
 
   /**
    * Current hydrated level
-   * @returns {HydratedLevel|null}
    */
-  getCurrent() {
+  getCurrent(): HydratedLevel | null {
     return this._levels.at(-1) ?? null
   }
 
   /**
    * Parent hydrated level
-   * @returns {HydratedLevel|null}
    */
-  getParent() {
+  getParent(): HydratedLevel | null {
     return this._levels.at(-2) ?? null
   }
 
   /**
    * Root hydrated level
-   * @returns {HydratedLevel|null}
    */
-  getRoot() {
+  getRoot(): HydratedLevel | null {
     return this._levels[0] ?? null
   }
 
@@ -235,9 +245,8 @@ export class StackHydrator {
   /**
    * Manually set data for current level (skips fetch)
    * Used by pages that already loaded the entity
-   * @param {Record<string, any>} data
    */
-  setCurrentData(data) {
+  setCurrentData(data: EntityRecord): void {
     const level = this.getCurrent()
     if (!level) return
 
@@ -251,10 +260,8 @@ export class StackHydrator {
 
   /**
    * Manually set data for a level by entity name
-   * @param {string} entity
-   * @param {Record<string, any>} data
    */
-  setEntityData(entity, data) {
+  setEntityData(entity: string, data: EntityRecord): void {
     const level = this.getLevelByEntity(entity)
     if (!level) return
 
@@ -272,11 +279,9 @@ export class StackHydrator {
 
   /**
    * Emit event via SignalBus
-   * @param {string} signal
-   * @param {*} payload
    * @private
    */
-  _emit(signal, payload) {
+  private _emit(signal: string, payload: HydratedPayload): void {
     if (this._signalBus) {
       this._signalBus.emit(signal, payload)
     }

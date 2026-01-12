@@ -20,14 +20,14 @@
 
 import { h, inject, defineComponent } from 'vue'
 import { Module } from '../../kernel/Module'
-import { createDebugBridge } from './DebugBridge.js'
-import { ErrorCollector } from './ErrorCollector.js'
-import { SignalCollector } from './SignalCollector.js'
-import { ToastCollector } from './ToastCollector.js'
-import { ZonesCollector } from './ZonesCollector.js'
-import { AuthCollector } from './AuthCollector.js'
-import { EntitiesCollector } from './EntitiesCollector.js'
-import { RouterCollector } from './RouterCollector.js'
+import { createDebugBridge } from './DebugBridge'
+import { ErrorCollector } from './ErrorCollector'
+import { SignalCollector } from './SignalCollector'
+import { ToastCollector } from './ToastCollector'
+import { ZonesCollector } from './ZonesCollector'
+import { AuthCollector } from './AuthCollector'
+import { EntitiesCollector } from './EntitiesCollector'
+import { RouterCollector } from './RouterCollector'
 import DebugBar from './components/DebugBar.vue'
 
 /**

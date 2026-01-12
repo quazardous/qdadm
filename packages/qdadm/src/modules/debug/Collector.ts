@@ -9,44 +9,95 @@
  *
  * @example
  * class SignalCollector extends Collector {
- *   static name = 'signals'
+ *   static override collectorName = 'signals'
  *
- *   install(ctx) {
+ *   protected override _doInstall(ctx: CollectorContext) {
  *     this._unbind = ctx.signals.on('*', (event) => {
  *       this.record({ type: event.name, data: event.data })
  *     })
  *   }
  *
- *   uninstall() {
+ *   protected override _doUninstall() {
  *     if (this._unbind) this._unbind()
  *   }
  * }
  */
 
+import type { SignalBus } from '../../kernel/SignalBus'
+import type { Orchestrator } from '../../orchestrator/Orchestrator'
+
+/**
+ * Context provided to collectors during install
+ */
+export interface CollectorContext {
+  signals?: SignalBus
+  orchestrator?: Orchestrator
+  router?: unknown
+  kernel?: unknown
+  [key: string]: unknown
+}
+
+/**
+ * Base entry type for collector entries
+ */
+export interface CollectorEntry {
+  timestamp: number
+  _isNew?: boolean
+  [key: string]: unknown
+}
+
+/**
+ * Collector options
+ */
+export interface CollectorOptions {
+  maxEntries?: number
+  enabled?: boolean
+  [key: string]: unknown
+}
+
+/**
+ * Notify callback type
+ */
+export type NotifyCallback = () => void
+
+/**
+ * Debug bridge interface
+ */
+export interface DebugBridgeInterface {
+  notify: () => void
+}
+
 /**
  * Base class for debug collectors
  */
-export class Collector {
+export class Collector<TEntry extends CollectorEntry = CollectorEntry> {
   /**
    * Collector name - override in subclass
-   * @type {string}
+   * Using collectorName to avoid conflict with Function.name
    */
-  static name = 'base'
+  static collectorName = 'base'
 
   /**
    * Whether this collector actually records (vs just displays state)
    * Override to false for collectors that only show current state (e.g., zones, auth)
-   * @type {boolean}
    */
   static records = true
 
+  options: CollectorOptions
+  maxEntries: number
+  entries: TEntry[]
+  protected _enabled: boolean
+  protected _installed: boolean
+  protected _ctx: CollectorContext | null
+  protected _seenCount: number
+  _bridge: DebugBridgeInterface | null
+  protected _notifyCallbacks: NotifyCallback[]
+
   /**
    * Create a new collector
-   * @param {object} options - Collector options
-   * @param {number} [options.maxEntries=100] - Maximum entries to keep in ring buffer
-   * @param {boolean} [options.enabled=true] - Initial enabled state
+   * @param options - Collector options
    */
-  constructor(options = {}) {
+  constructor(options: CollectorOptions = {}) {
     this.options = options
     this.maxEntries = options.maxEntries ?? 100
     this.entries = []
@@ -60,25 +111,22 @@ export class Collector {
 
   /**
    * Check if this collector type records events (vs showing state)
-   * @returns {boolean}
    */
-  get records() {
-    return this.constructor.records
+  get records(): boolean {
+    return (this.constructor as typeof Collector).records
   }
 
   /**
    * Check if collector is enabled
-   * @returns {boolean}
    */
-  get enabled() {
+  get enabled(): boolean {
     return this._enabled
   }
 
   /**
    * Set enabled state - installs/uninstalls as needed
-   * @param {boolean} value
    */
-  set enabled(value) {
+  set enabled(value: boolean) {
     if (this._enabled === value) return
     this._enabled = value
     if (this._ctx) {
@@ -92,28 +140,28 @@ export class Collector {
 
   /**
    * Toggle enabled state
-   * @returns {boolean} New enabled state
+   * @returns New enabled state
    */
-  toggle() {
+  toggle(): boolean {
     this.enabled = !this._enabled
     return this._enabled
   }
 
   /**
    * Get collector name from static property
-   * @returns {string}
    */
-  get name() {
-    return this.constructor.name
+  get name(): string {
+    return (this.constructor as typeof Collector).collectorName
   }
 
   /**
    * Record an entry in the ring buffer
    * Automatically adds timestamp and enforces max entries
-   * @param {object} entry - Entry data to record
+   * @param entry - Entry data to record
    */
-  record(entry) {
-    this.entries.push({ ...entry, timestamp: Date.now(), _isNew: true })
+  record(entry: Omit<TEntry, 'timestamp' | '_isNew'>): void {
+    const fullEntry = { ...entry, timestamp: Date.now(), _isNew: true } as TEntry
+    this.entries.push(fullEntry)
     if (this.entries.length > this.maxEntries) {
       this.entries.shift()
       // Adjust seenCount when oldest entry is removed
@@ -129,7 +177,7 @@ export class Collector {
    * Notify bridge that state has changed (for non-recording collectors)
    * Call this when collector state changes that should trigger UI update
    */
-  notifyChange() {
+  notifyChange(): void {
     this._bridge?.notify()
     // Call direct subscribers
     for (const cb of this._notifyCallbacks) {
@@ -143,10 +191,10 @@ export class Collector {
 
   /**
    * Subscribe to change notifications
-   * @param {Function} callback - Called when collector state changes
-   * @returns {Function} Unsubscribe function
+   * @param callback - Called when collector state changes
+   * @returns Unsubscribe function
    */
-  onNotify(callback) {
+  onNotify(callback: NotifyCallback): () => void {
     this._notifyCallbacks.push(callback)
     return () => {
       const idx = this._notifyCallbacks.indexOf(callback)
@@ -156,26 +204,26 @@ export class Collector {
 
   /**
    * Get unseen count (new entries since last markAsSeen)
-   * @returns {number} Number of unseen entries
+   * @returns Number of unseen entries
    */
-  getUnseenCount() {
+  getUnseenCount(): number {
     return Math.max(0, this.entries.length - this._seenCount)
   }
 
   /**
    * Get total count
-   * @returns {number} Total number of entries
+   * @returns Total number of entries
    */
-  getTotalCount() {
+  getTotalCount(): number {
     return this.entries.length
   }
 
   /**
    * Get badge count for UI display
-   * @param {boolean} [countAll=false] - If true, return total count; otherwise unseen count
-   * @returns {number} Number of entries
+   * @param countAll - If true, return total count; otherwise unseen count
+   * @returns Number of entries
    */
-  getBadge(countAll = false) {
+  getBadge(countAll = false): number {
     return countAll ? this.getTotalCount() : this.getUnseenCount()
   }
 
@@ -183,7 +231,7 @@ export class Collector {
    * Mark all current entries as seen
    * Removes _isNew flag and updates seenCount
    */
-  markAsSeen() {
+  markAsSeen(): void {
     this._seenCount = this.entries.length
     // Remove _isNew flag from all entries
     for (const entry of this.entries) {
@@ -194,7 +242,7 @@ export class Collector {
   /**
    * Clear all entries
    */
-  clear() {
+  clear(): void {
     this.entries = []
     this._seenCount = 0
   }
@@ -202,27 +250,27 @@ export class Collector {
   /**
    * Get all entries
    * Returns a shallow copy to trigger Vue reactivity when used in computed
-   * @returns {Array<object>} All recorded entries
+   * @returns All recorded entries
    */
-  getEntries() {
+  getEntries(): TEntry[] {
     return [...this.entries]
   }
 
   /**
    * Get latest entries
-   * @param {number} count - Number of entries to return
-   * @returns {Array<object>} Latest entries
+   * @param count - Number of entries to return
+   * @returns Latest entries
    */
-  getLatest(count) {
+  getLatest(count: number): TEntry[] {
     return this.entries.slice(-count)
   }
 
   /**
    * Install collector - subscribe to signals, events, etc.
    * Stores context for later use. Override _doInstall in subclass.
-   * @param {object} ctx - Context object with signals, router, etc.
+   * @param ctx - Context object with signals, router, etc.
    */
-  install(ctx) {
+  install(ctx: CollectorContext): void {
     this._ctx = ctx
     this._installed = true
     if (this._enabled) {
@@ -234,17 +282,17 @@ export class Collector {
    * Uninstall collector - cleanup subscriptions
    * Override _doUninstall in subclass to cleanup resources
    */
-  uninstall() {
+  uninstall(): void {
     this._doUninstall()
     this._installed = false
   }
 
   /**
    * Internal install - override in subclass
-   * @param {object} ctx - Context object
+   * @param ctx - Context object
    * @protected
    */
-  _doInstall(ctx) {
+  protected _doInstall(_ctx: CollectorContext): void {
     // Override in subclass
   }
 
@@ -252,7 +300,7 @@ export class Collector {
    * Internal uninstall - override in subclass
    * @protected
    */
-  _doUninstall() {
+  protected _doUninstall(): void {
     // Override in subclass
   }
 }

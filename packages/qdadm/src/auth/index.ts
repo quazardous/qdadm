@@ -7,4 +7,8 @@
 export {
   SessionAuthAdapter,
   LocalStorageSessionAuthAdapter,
-} from './SessionAuthAdapter.js'
+  type LoginCredentials,
+  type SessionData,
+  type AuthUser,
+  type ISessionAuthAdapter,
+} from './SessionAuthAdapter'

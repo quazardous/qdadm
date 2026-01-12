@@ -15,7 +15,7 @@
  * collector.getAuthInfo() // { user: {...}, permissions: [...], ... }
  */
 
-import { Collector } from './Collector.js'
+import { Collector } from './Collector'
 
 /**
  * Collector for authentication state visualization

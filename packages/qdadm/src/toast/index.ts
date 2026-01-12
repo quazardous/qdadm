@@ -10,6 +10,16 @@
  * - useSignalToast: Composable for emitting toast signals
  */
 
-export { ToastBridgeModule, TOAST_ZONE } from './ToastBridgeModule.js'
-export { useSignalToast } from './useSignalToast.js'
+export {
+  ToastBridgeModule,
+  TOAST_ZONE,
+} from './ToastBridgeModule'
+
+export {
+  useSignalToast,
+  type ToastSeverity,
+  type ToastOptions,
+  type SignalToastAPI,
+} from './useSignalToast'
+
 export { default as ToastListener } from './ToastListener.vue'

@@ -15,43 +15,92 @@
  * collector.getZoneInfo() // { zones: [...], totalBlocks: n }
  */
 
-import { Collector } from './Collector.js'
+import { Collector, type CollectorContext, type CollectorEntry, type CollectorOptions } from './Collector'
+import type { ZoneRegistry } from '../../zones/ZoneRegistry'
+import type { Router } from 'vue-router'
+
+/**
+ * Zone entry type (state-based, not event-based)
+ */
+export interface ZoneEntry extends CollectorEntry {
+  name: string
+  isOnPage: boolean
+  hasDefault: boolean
+  defaultName: string | null
+  blocksCount: number
+  blocks: ZoneBlock[]
+}
+
+/**
+ * Zone block info
+ */
+export interface ZoneBlock {
+  id: string
+  weight: number
+  component: string
+  hasWrappers: boolean
+  wrappersCount: number
+  wrappers: ZoneWrapper[]
+}
+
+/**
+ * Zone wrapper info
+ */
+export interface ZoneWrapper {
+  component: string
+  weight: number
+}
+
+/**
+ * ZonesCollector options
+ */
+export interface ZonesCollectorOptions extends CollectorOptions {
+  showCurrentPageOnly?: boolean
+  showInternalZones?: boolean
+}
+
+/**
+ * Extended context for zones collector
+ */
+interface ZonesCollectorContext extends CollectorContext {
+  zones?: ZoneRegistry
+  router?: Router
+}
 
 /**
  * Collector for Zone Registry state visualization
  */
-export class ZonesCollector extends Collector {
+export class ZonesCollector extends Collector<ZoneEntry> {
   /**
    * Collector name identifier
-   * @type {string}
    */
-  static name = 'zones'
+  static override collectorName = 'zones'
 
   /**
    * This collector shows state, not events
-   * @type {boolean}
    */
-  static records = false
+  static override records = false
 
-  constructor(options = {}) {
+  private _registry: ZoneRegistry | null = null
+  private _highlightedZone: string | null = null
+  private _overlays: Map<string, HTMLDivElement> = new Map()
+  private _showCurrentPageOnly: boolean
+  private _showInternalZones: boolean
+  private _routerCleanup: (() => void) | null = null
+
+  constructor(options: ZonesCollectorOptions = {}) {
     super(options)
-    this._registry = null
-    this._ctx = null
-    this._highlightedZone = null
-    this._overlays = new Map()
     this._showCurrentPageOnly = options.showCurrentPageOnly ?? true
     this._showInternalZones = options.showInternalZones ?? false
-    this._routerCleanup = null
   }
 
   /**
    * Internal install - get zone registry reference and subscribe to navigation
-   * @param {object} ctx - Context object
    * @protected
    */
-  _doInstall(ctx) {
+  protected override _doInstall(ctx: CollectorContext): void {
     this._ctx = ctx
-    this._registry = ctx.zones
+    this._registry = (ctx as ZonesCollectorContext).zones ?? null
     if (!this._registry) {
       console.warn('[ZonesCollector] No zone registry found in context')
     }
@@ -62,8 +111,8 @@ export class ZonesCollector extends Collector {
    * Setup router listener for navigation changes
    * @private
    */
-  _setupRouterListener() {
-    const router = this._ctx?.router
+  private _setupRouterListener(): void {
+    const router = (this._ctx as ZonesCollectorContext)?.router
     if (!router) {
       setTimeout(() => this._setupRouterListener(), 100)
       return
@@ -80,7 +129,7 @@ export class ZonesCollector extends Collector {
    * Internal uninstall - cleanup highlights and router listener
    * @protected
    */
-  _doUninstall() {
+  protected override _doUninstall(): void {
     this.clearHighlights()
     if (this._routerCleanup) {
       this._routerCleanup()
@@ -92,17 +141,13 @@ export class ZonesCollector extends Collector {
 
   /**
    * Check if a zone is rendered on the current page
-   * @param {string} zoneName - Zone name to check
-   * @returns {boolean}
+   * @param zoneName - Zone name to check
    *
    * Note: Internal zones (prefixed with _) are currently considered always on page
-   * since they're typically global (app:debug, app:toasts). If contextual internal
-   * zones are needed later, consider using a different prefix convention (e.g. `__`
-   * for global, `_` for contextual) or adding a `global` flag to zone config.
+   * since they're typically global (app:debug, app:toasts).
    */
-  isZoneOnPage(zoneName) {
+  isZoneOnPage(zoneName: string): boolean {
     // Internal zones are global, always considered "on page"
-    // TODO: revisit if contextual internal zones are needed
     if (zoneName.startsWith('_')) {
       return true
     }
@@ -112,54 +157,52 @@ export class ZonesCollector extends Collector {
 
   /**
    * Get/set filter for current page zones only
-   * @type {boolean}
    */
-  get showCurrentPageOnly() {
+  get showCurrentPageOnly(): boolean {
     return this._showCurrentPageOnly
   }
 
-  set showCurrentPageOnly(value) {
+  set showCurrentPageOnly(value: boolean) {
     this._showCurrentPageOnly = value
   }
 
   /**
    * Toggle current page filter
-   * @returns {boolean} New filter state
+   * @returns New filter state
    */
-  toggleFilter() {
+  toggleFilter(): boolean {
     this._showCurrentPageOnly = !this._showCurrentPageOnly
     return this._showCurrentPageOnly
   }
 
   /**
    * Get/set filter for internal zones (prefixed with _)
-   * @type {boolean}
    */
-  get showInternalZones() {
+  get showInternalZones(): boolean {
     return this._showInternalZones
   }
 
-  set showInternalZones(value) {
+  set showInternalZones(value: boolean) {
     this._showInternalZones = value
   }
 
   /**
    * Toggle internal zones filter
-   * @returns {boolean} New filter state
+   * @returns New filter state
    */
-  toggleInternalFilter() {
+  toggleInternalFilter(): boolean {
     this._showInternalZones = !this._showInternalZones
     return this._showInternalZones
   }
 
   /**
    * Get badge - show number of zones (filtered if filter active)
-   * @returns {number}
    */
-  getBadge() {
+  override getBadge(): number {
     if (!this._registry) return 0
+    const registry = this._registry as unknown as { _zones: Map<string, unknown> }
     let count = 0
-    for (const [name] of this._registry._zones) {
+    for (const [name] of registry._zones) {
       // Skip internal zones (prefixed with _) unless showing them
       if (name.startsWith('_') && !this._showInternalZones) continue
       // Apply page filter if enabled
@@ -171,14 +214,27 @@ export class ZonesCollector extends Collector {
 
   /**
    * Get all zone information for display
-   * @param {boolean} [forceAll=false] - If true, ignore filter and return all zones
-   * @returns {Array<object>} Zone info array
+   * @param forceAll - If true, ignore filter and return all zones
+   * @returns Zone info array
    */
-  getEntries(forceAll = false) {
+  override getEntries(forceAll = false): ZoneEntry[] {
     if (!this._registry) return []
 
-    const zones = []
-    for (const [name, config] of this._registry._zones) {
+    const registry = this._registry as unknown as {
+      _zones: Map<string, { default?: { name?: string; __name?: string } }>
+      getBlocks: (name: string) => Array<{
+        id?: string
+        weight: number
+        component?: { name?: string; __name?: string }
+        wrappers?: Array<{
+          component?: { name?: string; __name?: string }
+          weight: number
+        }>
+      }>
+    }
+
+    const zones: ZoneEntry[] = []
+    for (const [name, config] of registry._zones) {
       // Skip internal zones (prefixed with _) unless showing them
       if (name.startsWith('_') && !this._showInternalZones) {
         continue
@@ -190,8 +246,9 @@ export class ZonesCollector extends Collector {
         continue
       }
 
-      const blocks = this._registry.getBlocks(name)
+      const blocks = registry.getBlocks(name)
       zones.push({
+        timestamp: Date.now(),
         name,
         isOnPage,
         hasDefault: !!config.default,
@@ -216,14 +273,13 @@ export class ZonesCollector extends Collector {
   /**
    * Highlight a zone on the page
    * Creates a visual overlay around zone elements
-   * @param {string} zoneName - Zone name to highlight
+   * @param zoneName - Zone name to highlight
    */
-  highlightZone(zoneName) {
+  highlightZone(zoneName: string): void {
     this.clearHighlights()
     this._highlightedZone = zoneName
 
     // Find zone elements by data attribute
-    // Note: CSS.escape() handles special characters like colons in zone names
     const escapedName = CSS.escape(zoneName)
     const elements = document.querySelectorAll(`[data-zone="${zoneName}"], .zone-${escapedName}`)
 
@@ -269,7 +325,7 @@ export class ZonesCollector extends Collector {
   /**
    * Clear all zone highlights
    */
-  clearHighlights() {
+  clearHighlights(): void {
     this._overlays.forEach(overlay => overlay.remove())
     this._overlays.clear()
     this._highlightedZone = null
@@ -277,18 +333,17 @@ export class ZonesCollector extends Collector {
 
   /**
    * Get currently highlighted zone
-   * @returns {string|null}
    */
-  getHighlightedZone() {
+  getHighlightedZone(): string | null {
     return this._highlightedZone
   }
 
   /**
    * Toggle zone highlight
-   * @param {string} zoneName - Zone name
-   * @returns {boolean} Whether zone is now highlighted
+   * @param zoneName - Zone name
+   * @returns Whether zone is now highlighted
    */
-  toggleHighlight(zoneName) {
+  toggleHighlight(zoneName: string): boolean {
     if (this._highlightedZone === zoneName) {
       this.clearHighlights()
       return false

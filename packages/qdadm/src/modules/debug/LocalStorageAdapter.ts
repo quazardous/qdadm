@@ -12,36 +12,40 @@
  * storage.attach(debug) // Auto-saves on change, restores on load
  */
 
+import type { DebugBridge } from './DebugBridge'
+
 /**
  * LocalStorage adapter for debug settings persistence
  */
 export class LocalStorageAdapter {
+  readonly key: string
+  private _bridge: DebugBridge | null = null
+  private _unwatch: (() => void) | null = null
+
   /**
    * Create a new LocalStorageAdapter
-   * @param {string} key - localStorage key prefix
+   * @param key - localStorage key prefix
    */
   constructor(key = 'qdadm-debug') {
     this.key = key
-    this._bridge = null
-    this._unwatch = null
   }
 
   /**
    * Get the full key for a setting
-   * @param {string} name - Setting name
-   * @returns {string} Full localStorage key
+   * @param name - Setting name
+   * @returns Full localStorage key
    */
-  _getKey(name) {
+  private _getKey(name: string): string {
     return `${this.key}:${name}`
   }
 
   /**
    * Get a value from localStorage
-   * @param {string} name - Setting name
-   * @param {*} defaultValue - Default if not found
-   * @returns {*} The value
+   * @param name - Setting name
+   * @param defaultValue - Default if not found
+   * @returns The value
    */
-  get(name, defaultValue = null) {
+  get<T>(name: string, defaultValue: T | null = null): T | null {
     try {
       const stored = localStorage.getItem(this._getKey(name))
       return stored !== null ? JSON.parse(stored) : defaultValue
@@ -52,10 +56,10 @@ export class LocalStorageAdapter {
 
   /**
    * Set a value in localStorage
-   * @param {string} name - Setting name
-   * @param {*} value - Value to store
+   * @param name - Setting name
+   * @param value - Value to store
    */
-  set(name, value) {
+  set(name: string, value: unknown): void {
     try {
       localStorage.setItem(this._getKey(name), JSON.stringify(value))
     } catch {
@@ -65,18 +69,18 @@ export class LocalStorageAdapter {
 
   /**
    * Remove a value from localStorage
-   * @param {string} name - Setting name
+   * @param name - Setting name
    */
-  remove(name) {
+  remove(name: string): void {
     localStorage.removeItem(this._getKey(name))
   }
 
   /**
    * Clear all debug settings
    */
-  clear() {
+  clear(): void {
     const prefix = this.key + ':'
-    const keys = []
+    const keys: string[] = []
     for (let i = 0; i < localStorage.length; i++) {
       const key = localStorage.key(i)
       if (key && key.startsWith(prefix)) {
@@ -89,22 +93,20 @@ export class LocalStorageAdapter {
   /**
    * Attach to a DebugBridge and sync state
    * Restores saved state and watches for changes
-   * @param {DebugBridge} bridge - The debug bridge to attach to
-   * @returns {LocalStorageAdapter} this for chaining
+   * @param bridge - The debug bridge to attach to
+   * @returns this for chaining
    */
-  attach(bridge) {
+  attach(bridge: DebugBridge): this {
     this._bridge = bridge
 
     // Restore saved enabled state
-    const savedEnabled = this.get('enabled')
+    const savedEnabled = this.get<boolean>('enabled')
     if (savedEnabled !== null && bridge.enabled.value !== savedEnabled) {
       bridge.enabled.value = savedEnabled
     }
 
     // Watch for enabled changes (if Vue's watch is available)
-    if (typeof window !== 'undefined' && window.__VUE_WATCH__) {
-      // In a real Vue app, use watch from vue
-    }
+    // In a real Vue app, use watch from vue
 
     return this
   }
@@ -112,7 +114,7 @@ export class LocalStorageAdapter {
   /**
    * Detach from the debug bridge
    */
-  detach() {
+  detach(): void {
     if (this._unwatch) {
       this._unwatch()
       this._unwatch = null
@@ -123,7 +125,7 @@ export class LocalStorageAdapter {
   /**
    * Save current bridge state
    */
-  save() {
+  save(): void {
     if (!this._bridge) return
     this.set('enabled', this._bridge.enabled.value)
   }
@@ -131,9 +133,9 @@ export class LocalStorageAdapter {
   /**
    * Restore bridge state from localStorage
    */
-  restore() {
+  restore(): void {
     if (!this._bridge) return
-    const savedEnabled = this.get('enabled')
+    const savedEnabled = this.get<boolean>('enabled')
     if (savedEnabled !== null) {
       this._bridge.enabled.value = savedEnabled
     }
@@ -142,9 +144,8 @@ export class LocalStorageAdapter {
 
 /**
  * Factory function to create a LocalStorageAdapter
- * @param {string} key - localStorage key prefix
- * @returns {LocalStorageAdapter}
+ * @param key - localStorage key prefix
  */
-export function createLocalStorageAdapter(key) {
+export function createLocalStorageAdapter(key?: string): LocalStorageAdapter {
   return new LocalStorageAdapter(key)
 }

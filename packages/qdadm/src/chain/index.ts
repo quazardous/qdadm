@@ -11,9 +11,9 @@
  */
 
 // Sync stack (context only)
-export { ActiveStack } from './ActiveStack.js'
-export { useActiveStack } from './useActiveStack.js'
+export { ActiveStack, type StackLevel, type StackChangePayload } from './ActiveStack'
+export { useActiveStack, type UseActiveStackReturn } from './useActiveStack'
 
 // Async hydration (data + labels)
-export { StackHydrator } from './StackHydrator.js'
-export { useStackHydrator } from './useStackHydrator.js'
+export { StackHydrator, type HydratedLevel, type HydratedPayload } from './StackHydrator'
+export { useStackHydrator, type StackHydratorReturn } from './useStackHydrator'

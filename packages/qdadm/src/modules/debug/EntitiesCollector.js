@@ -16,7 +16,7 @@
  * collector.getEntries() // [{ name: 'books', storage: 'ApiStorage', ... }, ...]
  */
 
-import { Collector } from './Collector.js'
+import { Collector } from './Collector'
 
 /**
  * Collector for Entity Manager state visualization

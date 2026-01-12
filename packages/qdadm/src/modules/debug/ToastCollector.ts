@@ -18,33 +18,45 @@
  * // Toasts emitted via signals are now automatically recorded
  */
 
-import { Collector } from './Collector.js'
+import { Collector, type CollectorContext, type CollectorEntry } from './Collector'
+
+/**
+ * Toast entry type
+ */
+export interface ToastEntry extends CollectorEntry {
+  severity: string
+  summary?: string
+  detail?: string
+  life?: number
+  emitter: string
+}
 
 /**
  * Collector for toast notifications
  */
-export class ToastCollector extends Collector {
+export class ToastCollector extends Collector<ToastEntry> {
   /**
    * Collector name identifier
-   * @type {string}
    */
-  static name = 'toasts'
+  static override collectorName = 'toasts'
+
+  private _unsubscribe: (() => void) | null = null
 
   /**
    * Internal install - subscribe to toast signals
-   * @param {object} ctx - Context object
    * @protected
    */
-  _doInstall(ctx) {
+  protected override _doInstall(ctx: CollectorContext): void {
     // Listen for toast signals on the signal bus
     if (ctx?.signals) {
       this._unsubscribe = ctx.signals.on('toast:*', (event) => {
+        const data = event.data as { summary?: string; detail?: string; life?: number; emitter?: string } | undefined
         this.record({
-          severity: event.name.split(':')[1], // toast:success -> success
-          summary: event.data?.summary,
-          detail: event.data?.detail,
-          life: event.data?.life,
-          emitter: event.data?.emitter || 'unknown'
+          severity: event.name.split(':')[1] ?? 'info', // toast:success -> success
+          summary: data?.summary,
+          detail: data?.detail,
+          life: data?.life,
+          emitter: data?.emitter ?? 'unknown'
         })
       })
     } else {
@@ -56,7 +68,7 @@ export class ToastCollector extends Collector {
    * Internal uninstall - cleanup
    * @protected
    */
-  _doUninstall() {
+  protected override _doUninstall(): void {
     if (this._unsubscribe) {
       this._unsubscribe()
       this._unsubscribe = null
@@ -65,18 +77,17 @@ export class ToastCollector extends Collector {
 
   /**
    * Get entries by severity
-   * @param {string} severity - Severity level (success, info, warn, error)
-   * @returns {Array<object>} Filtered entries
+   * @param severity - Severity level (success, info, warn, error)
+   * @returns Filtered entries
    */
-  getBySeverity(severity) {
+  getBySeverity(severity: string): ToastEntry[] {
     return this.entries.filter((entry) => entry.severity === severity)
   }
 
   /**
    * Get error toasts count for badge
-   * @returns {number}
    */
-  getErrorCount() {
+  getErrorCount(): number {
     return this.entries.filter((e) => e.severity === 'error').length
   }
 }

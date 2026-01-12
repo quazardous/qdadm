@@ -11,53 +11,129 @@
  * collector.install(ctx)
  */
 
-import { Collector } from './Collector.js'
+import { Collector, type CollectorContext, type CollectorEntry, type CollectorOptions } from './Collector'
 import { computeSemanticBreadcrumb } from '../../composables/useSemanticBreadcrumb'
+import type { Router, RouteLocationNormalized, RouteRecordNormalized } from 'vue-router'
+import type { ActiveStack, StackLevel } from '../../chain/ActiveStack'
+import type { StackHydrator, HydratedLevel } from '../../chain/StackHydrator'
+
+/**
+ * Serialized route info
+ */
+export interface SerializedRoute {
+  name: string
+  path: string
+  fullPath: string
+  params: Record<string, string | string[]>
+  query: Record<string, string | string[] | null>
+  hash: string
+  meta: Record<string, unknown>
+  matched: Array<{
+    name: string | null
+    path: string
+    meta: Record<string, unknown>
+  }>
+}
+
+/**
+ * Navigation history entry
+ */
+export interface NavigationEntry extends CollectorEntry {
+  id: number
+  to: SerializedRoute
+  from: SerializedRoute | null
+  seen: boolean
+}
+
+/**
+ * Route list entry
+ */
+export interface RouteListEntry {
+  name: string
+  path: string
+  meta: Record<string, unknown>
+  hasComponent: boolean
+  children: number
+}
+
+/**
+ * Active stack debug info
+ */
+export interface ActiveStackInfo {
+  levels: Array<{
+    entity: string
+    param: string
+    foreignKey: string | null
+    id: string | null
+    hydrated: boolean
+    loading: boolean
+    label: string | null
+    hasData: boolean
+  }>
+  depth: number
+  current: StackLevel | null
+  parent: StackLevel | null
+}
+
+/**
+ * RouterCollector options
+ */
+export interface RouterCollectorOptions extends CollectorOptions {
+  maxHistory?: number
+}
+
+/**
+ * Extended context for router collector
+ */
+interface RouterCollectorContext extends CollectorContext {
+  router?: Router
+  activeStack?: ActiveStack
+  stackHydrator?: StackHydrator
+}
 
 /**
  * Collector for Vue Router state visualization
  */
-export class RouterCollector extends Collector {
+export class RouterCollector extends Collector<NavigationEntry> {
   /**
    * Collector name identifier
-   * @type {string}
    */
-  static name = 'router'
+  static override collectorName = 'router'
 
   /**
    * This collector records navigation events
-   * @type {boolean}
    */
-  static records = true
+  static override records = true
 
-  constructor(options = {}) {
+  private _history: NavigationEntry[] = []
+  private _maxHistory: number
+  private _removeGuard: (() => void) | null = null
+  private _guardInstalled: boolean = false
+  private _activeStack: ActiveStack | null = null
+  private _stackHydrator: StackHydrator | null = null
+
+  constructor(options: RouterCollectorOptions = {}) {
     super(options)
-    this._ctx = null
-    this._history = [] // Navigation history
     this._maxHistory = options.maxHistory ?? 20
-    this._removeGuard = null
-    this._guardInstalled = false
-    this._activeStack = null
   }
 
   /**
    * Get router lazily (router might not exist at install time)
-   * @returns {object|null}
    * @private
    */
-  get _router() {
-    return this._ctx?.router
+  private get _router(): Router | undefined {
+    return (this._ctx as RouterCollectorContext)?.router
   }
 
   /**
    * Internal install - store context (router is accessed lazily)
-   * @param {object} ctx - Context object
    * @protected
    */
-  _doInstall(ctx) {
+  protected override _doInstall(ctx: CollectorContext): void {
     this._ctx = ctx
-    this._activeStack = ctx.activeStack ?? null
-    this._stackHydrator = ctx.stackHydrator ?? null
+    const routerCtx = ctx as RouterCollectorContext
+    this._activeStack = routerCtx.activeStack ?? null
+    this._stackHydrator = routerCtx.stackHydrator ?? null
     // Router guard will be installed lazily when router becomes available
   }
 
@@ -65,7 +141,7 @@ export class RouterCollector extends Collector {
    * Ensure router guard is installed (called lazily)
    * @private
    */
-  _ensureGuard() {
+  private _ensureGuard(): void {
     if (this._guardInstalled || !this._router) return
 
     // Track navigation with afterEach
@@ -78,8 +154,8 @@ export class RouterCollector extends Collector {
     const current = this._router.currentRoute?.value
     if (current && current.path !== '/') {
       this._history.unshift({
+        timestamp: Date.now(),
         id: Date.now(),
-        timestamp: new Date(),
         to: this._serializeRoute(current),
         from: null,
         seen: false
@@ -89,14 +165,12 @@ export class RouterCollector extends Collector {
 
   /**
    * Add navigation event to history
-   * @param {object} to - Destination route
-   * @param {object} from - Source route
    * @private
    */
-  _addNavigation(to, from) {
-    const entry = {
+  private _addNavigation(to: RouteLocationNormalized, from: RouteLocationNormalized): void {
+    const entry: NavigationEntry = {
+      timestamp: Date.now(),
       id: Date.now(),
-      timestamp: new Date(),
       to: this._serializeRoute(to),
       from: from?.name ? this._serializeRoute(from) : null,
       seen: false
@@ -110,22 +184,20 @@ export class RouterCollector extends Collector {
 
   /**
    * Serialize route to plain object
-   * @param {object} route - Vue Router route object
-   * @returns {object}
    * @private
    */
-  _serializeRoute(route) {
+  private _serializeRoute(route: RouteLocationNormalized): SerializedRoute {
     return {
-      name: route.name || '(unnamed)',
+      name: (route.name as string) || '(unnamed)',
       path: route.path,
       fullPath: route.fullPath,
-      params: { ...route.params },
-      query: { ...route.query },
+      params: { ...route.params } as Record<string, string | string[]>,
+      query: { ...route.query } as Record<string, string | string[] | null>,
       hash: route.hash,
       meta: { ...route.meta },
       // Matched routes with their individual metas
       matched: route.matched?.map(m => ({
-        name: m.name || null,
+        name: (m.name as string) || null,
         path: m.path,
         meta: { ...m.meta }
       })) ?? []
@@ -136,7 +208,7 @@ export class RouterCollector extends Collector {
    * Internal uninstall - cleanup
    * @protected
    */
-  _doUninstall() {
+  protected override _doUninstall(): void {
     if (this._removeGuard) {
       this._removeGuard()
       this._removeGuard = null
@@ -148,16 +220,15 @@ export class RouterCollector extends Collector {
 
   /**
    * Get badge - count of unseen navigations
-   * @returns {number}
    */
-  getBadge() {
+  override getBadge(): number {
     return this._history.filter(h => !h.seen).length
   }
 
   /**
    * Mark all history as seen
    */
-  markSeen() {
+  markSeen(): void {
     for (const item of this._history) {
       item.seen = true
     }
@@ -165,9 +236,8 @@ export class RouterCollector extends Collector {
 
   /**
    * Get current route info
-   * @returns {object|null}
    */
-  getCurrentRoute() {
+  getCurrentRoute(): SerializedRoute | null {
     this._ensureGuard()
     const router = this._router
     if (!router) return null
@@ -178,23 +248,21 @@ export class RouterCollector extends Collector {
 
   /**
    * Get navigation history
-   * @returns {Array}
    */
-  getHistory() {
+  getHistory(): NavigationEntry[] {
     return this._history
   }
 
   /**
    * Get all registered routes
-   * @returns {Array}
    */
-  getRoutes() {
+  getRoutes(): RouteListEntry[] {
     this._ensureGuard()
     if (!this._router) return []
 
     const routes = this._router.getRoutes()
-    return routes.map(route => ({
-      name: route.name || '(unnamed)',
+    return routes.map((route: RouteRecordNormalized) => ({
+      name: (route.name as string) || '(unnamed)',
       path: route.path,
       meta: { ...route.meta },
       hasComponent: !!route.components?.default,
@@ -214,29 +282,26 @@ export class RouterCollector extends Collector {
    * - entity-show: Entity instance view
    * - entity-edit: Entity instance edit
    * - entity-create: Entity creation
-   *
-   * @returns {Array<{kind: string, ...props}>}
    */
-  getBreadcrumb() {
+  getBreadcrumb(): unknown[] {
     this._ensureGuard()
     const current = this._router?.currentRoute?.value
     if (!current) return []
 
-    return computeSemanticBreadcrumb(current.path, this._router.getRoutes(), current)
+    return computeSemanticBreadcrumb(current.path, this._router!.getRoutes(), current)
   }
 
   /**
    * Get entries for display (implements Collector interface)
-   * @returns {Array}
    */
-  getEntries() {
+  override getEntries(): NavigationEntry[] {
     return this._history
   }
 
   /**
    * Clear navigation history
    */
-  clear() {
+  override clear(): void {
     this._history = []
     this.notifyChange()
   }
@@ -244,9 +309,8 @@ export class RouterCollector extends Collector {
   /**
    * Get activeStack state for debugging
    * Combines sync stack (config) with hydrator (async data)
-   * @returns {object|null}
    */
-  getActiveStack() {
+  getActiveStack(): ActiveStackInfo | null {
     if (!this._activeStack) return null
 
     const syncLevels = this._activeStack.getLevels()
@@ -254,7 +318,7 @@ export class RouterCollector extends Collector {
 
     return {
       levels: syncLevels.map((level, idx) => {
-        const hydrated = hydratorLevels[idx]
+        const hydrated = hydratorLevels[idx] as HydratedLevel | undefined
         return {
           // Sync (from ActiveStack)
           entity: level.entity,
@@ -276,10 +340,9 @@ export class RouterCollector extends Collector {
 
   /**
    * Navigate to a path
-   * @param {string} path - Path to navigate to
-   * @returns {Promise<void>}
+   * @param path - Path to navigate to
    */
-  async navigate(path) {
+  async navigate(path: string): Promise<void> {
     if (!this._router) return
     await this._router.push(path)
   }
