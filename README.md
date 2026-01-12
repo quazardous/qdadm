@@ -1,262 +1,182 @@
 # qdadm
 
-**Build your Vue 3 admin in 5 minutes.**
+**The Vue 3 admin framework that gets out of your way.**
+
+TypeScript-first. Module-driven. Zero boilerplate.
 
 [![Live Demo](https://img.shields.io/badge/demo-live-brightgreen)](https://quazardous.github.io/qdadm/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.0+-blue)](https://www.typescriptlang.org/)
+[![Vue 3](https://img.shields.io/badge/Vue-3.4+-42b883)](https://vuejs.org/)
 
 ---
 
-## Quick Start (5 minutes)
+## Why qdadm?
 
-### 1. Create Vue project (1 min)
+**Stop writing CRUD boilerplate.** qdadm gives you:
 
-```bash
-npm create vite@latest my-admin -- --template vue
-cd my-admin
-npm install
+- **Entity-driven architecture** - Define once, get list/form/routes/permissions
+- **Smart defaults** - Works instantly, customize when needed
+- **TypeScript everywhere** - Full type safety, autocomplete, refactoring
+- **Extensible by design** - Hooks, signals, zones for any customization
+- **PrimeVue powered** - Beautiful UI out of the box
+
+```ts
+// That's it. Full CRUD for books.
+ctx.entity('books', {
+  fields: {
+    title: { type: 'text', required: true },
+    author: { type: 'text' }
+  },
+  storage: new ApiStorage({ endpoint: '/api/books' })
+})
+
+ctx.crud('books', {
+  list: () => import('./BookList.vue'),
+  form: () => import('./BookForm.vue')
+})
 ```
 
-### 2. Install qdadm + PrimeVue (30 sec)
+---
+
+## Quick Start
 
 ```bash
+# Clone and run
+git clone https://github.com/quazardous/qdadm.git
+cd qdadm && npm install && npm run dev
+```
+
+Or start fresh:
+
+```bash
+npm create vite@latest my-admin -- --template vue-ts
+cd my-admin
 npm install qdadm primevue @primeuix/themes
 ```
 
-### 3. Setup main.js (1 min)
-
-Replace `src/main.js`:
-
-```js
-import { Kernel, EntityManager, MockApiStorage } from 'qdadm'
+```ts
+// main.ts
+import { Kernel, MockApiStorage } from 'qdadm'
 import PrimeVue from 'primevue/config'
 import Aura from '@primeuix/themes/aura'
 import 'qdadm/styles'
 
-import App from './App.vue'
-import MainLayout from './MainLayout.vue'
-
 const kernel = new Kernel({
   root: App,
-  modules: import.meta.glob('./modules/*/index.js', { eager: true }),
-  managers: {
-    books: new EntityManager({
-      name: 'books',
-      storage: new MockApiStorage({
-        key: 'books',
-        initialData: [
-          { id: '1', title: '1984', author: 'Orwell' },
-          { id: '2', title: 'Dune', author: 'Herbert' }
-        ]
-      }),
-      labelField: 'title'
-    })
-  },
-  pages: { layout: MainLayout },
-  homeRoute: 'books',
-  app: { name: 'My Admin' },
-  primevue: { plugin: PrimeVue, theme: Aura }
+  primevue: { plugin: PrimeVue, theme: Aura },
+  app: { name: 'My Admin' }
 })
 
 kernel.createApp().mount('#app')
 ```
 
-### 4. Create layout (30 sec)
+---
 
-Create `src/MainLayout.vue`:
+## Core Concepts
 
-```vue
-<script setup>
-import { AppLayout } from 'qdadm/components'
-</script>
+### Modules own everything
 
-<template>
-  <AppLayout />
-</template>
-```
-
-### 5. Create your first module (2 min)
-
-Create `src/modules/books/BooksModule.js`:
-
-```js
-import { Module } from 'qdadm'
-
+```ts
 export class BooksModule extends Module {
   static name = 'books'
 
   async connect(ctx) {
-    ctx.entity('books', { ... })  // or reference manager from kernel
+    // Entity + storage
+    ctx.entity('books', { ... })
 
-    ctx.crud('books', {
-      list: () => import('./BookList.vue'),
-      form: () => import('./BookForm.vue')
-    }, {
-      nav: { section: 'Library', icon: 'pi pi-book' }
-    })
+    // Routes + navigation
+    ctx.crud('books', { list, form }, { nav: { section: 'Library' } })
+
+    // Custom routes
+    ctx.routes('books', [{ path: 'stats', component: BookStats }])
   }
 }
 ```
 
-Create `src/modules/books/BookList.vue`:
+### Storage adapters
 
-```vue
-<script setup>
-import { ListPage } from 'qdadm/components'
-import { useListPageBuilder } from 'qdadm/composables'
+```ts
+// Mock (localStorage, dev/demo)
+new MockApiStorage({ key: 'books', initialData: [...] })
 
-const list = useListPageBuilder('books')
-list.addColumn('title', 'Title')
-list.addColumn('author', 'Author')
-list.addEditAction()
-list.addDeleteAction()
-</script>
+// REST API
+new ApiStorage({ endpoint: '/api/books' })
 
-<template>
-  <ListPage v-bind="list.props.value" v-on="list.events" />
-</template>
+// Generated SDK (OpenAPI)
+new SdkStorage({ sdk: myGeneratedSdk, methods: { list: 'getBooks', ... } })
 ```
 
-Create `src/modules/books/BookForm.vue`:
+### Security built-in
 
-```vue
-<script setup>
-import { PageLayout, FormField, FormActions } from 'qdadm/components'
-import { useForm } from 'qdadm/composables'
-
-const { form, loading, saving, save, saveAndClose, cancel } = useForm('books')
-</script>
-
-<template>
-  <PageLayout :loading="loading">
-    <FormField label="Title" v-model="form.title" required />
-    <FormField label="Author" v-model="form.author" />
-    <FormActions :saving="saving" @save="save" @save-close="saveAndClose" @cancel="cancel" />
-  </PageLayout>
-</template>
-```
-
-### 6. Run it
-
-```bash
-npm run dev
-```
-
-Open http://localhost:5173 - You have a working admin with CRUD operations.
-
----
-
-## Next Steps
-
-### Add more entities
-
-```js
-// main.js - add a 'users' manager
-managers: {
-  books: new EntityManager({ ... }),
-  users: new EntityManager({
-    name: 'users',
-    storage: new MockApiStorage({ key: 'users' }),
-    labelField: 'name'
-  })
-}
-```
-
-### Connect to real API
-
-```js
-import { ApiStorage } from 'qdadm'
-
-new EntityManager({
-  name: 'books',
-  storage: new ApiStorage({
-    baseUrl: '/api/books',
-    // Automatic: GET /, GET /:id, POST /, PATCH /:id, DELETE /:id
-  })
-})
-```
-
-### Add authentication
-
-```js
-import { SessionAuthAdapter } from 'qdadm'
-import LoginPage from './LoginPage.vue'
-
-const authAdapter = new SessionAuthAdapter({
-  loginFn: async (credentials) => {
-    const res = await fetch('/api/login', { method: 'POST', body: JSON.stringify(credentials) })
-    return res.json() // { user, token }
-  }
-})
-
+```ts
 const kernel = new Kernel({
-  authAdapter,
-  pages: { login: LoginPage, layout: MainLayout },
-  // ...
-})
-```
-
-### Add permissions
-
-```js
-import { createLocalStorageRolesProvider } from 'qdadm/security'
-
-const kernel = new Kernel({
-  // ...
   security: {
     rolesProvider: createLocalStorageRolesProvider({
       defaults: {
         role_hierarchy: { ROLE_ADMIN: ['ROLE_USER'] },
         role_permissions: {
-          ROLE_USER: ['entity:*:read', 'entity:*:list'],
-          ROLE_ADMIN: ['entity:**', 'admin:**']  // ** = all
+          ROLE_USER: ['entity:*:read'],
+          ROLE_ADMIN: ['entity:**', 'admin:**']
         }
       }
     })
   }
 })
 
-// Permissions auto-checked via SecurityChecker.isGranted()
-// entity:books:read, entity:books:create, entity:books:update, entity:books:delete
+// Check anywhere
+ctx.security.isGranted('entity:books:delete')
+```
+
+### Extend everything
+
+```ts
+// Hooks - alter behavior
+ctx.hooks.register('entity:books:before-save', (data) => {
+  data.updatedAt = new Date()
+  return data
+})
+
+// Signals - react to events
+ctx.signals.on('auth:login', ({ user }) => {
+  analytics.identify(user.id)
+})
+
+// Zones - inject UI
+ctx.block('books-list-header', { component: ExportButton })
 ```
 
 ---
 
-## What's Included
+## What's Inside
 
-| Feature | Description |
-|---------|-------------|
-| **Kernel** | Bootstrap, routing, module loading |
-| **EntityManager** | CRUD, caching, permissions |
-| **Storage** | MockApiStorage, ApiStorage, SdkStorage |
-| **ListPage** | Sortable table, filters, pagination |
-| **FormField** | Auto-detect input type, validation |
-| **AppLayout** | Sidebar nav, breadcrumbs, theme |
+| Feature | What it does |
+|---------|--------------|
+| `Kernel` | Bootstrap, routing, DI container |
+| `EntityManager` | CRUD, cache, permissions, relations |
+| `Storage` | Mock, API, SDK adapters |
+| `ListPage` | Table, filters, pagination, actions |
+| `FormPage` | Auto-fields, validation, dirty tracking |
+| `SecurityChecker` | Roles, hierarchy, wildcard permissions |
+
+---
 
 ## Packages
 
 | Package | Description |
 |---------|-------------|
-| [qdadm](packages/qdadm) | Core library |
-| [demo](packages/demo) | Full demo app |
+| [qdadm](packages/qdadm) | Core library (TypeScript) |
+| [demo](packages/demo) | Full-featured demo |
 
-## Run Demo Locally
+---
 
-```bash
-git clone https://github.com/quazardous/qdadm.git
-cd qdadm
-npm install
-npm run dev
-```
+## Docs
 
-## Documentation
+- [QDADM_CREDO](packages/qdadm/QDADM_CREDO.md) - Philosophy & patterns
+- [Architecture](packages/qdadm/docs/architecture.md) - PAC pattern
+- [Extension](packages/qdadm/docs/extension.md) - Hooks, signals, zones
+- [Security](packages/qdadm/docs/security.md) - Permissions & roles
 
-| Doc | Purpose |
-|-----|---------|
-| [QDADM_CREDO](packages/qdadm/QDADM_CREDO.md) | Philosophy, patterns, concepts |
-| [Architecture](packages/qdadm/docs/architecture.md) | PAC pattern, layers |
-| [Extension](packages/qdadm/docs/extension.md) | Hooks, signals, zones |
-| [SdkStorage](packages/qdadm/README.md#sdkstorage) | Generated SDK integration |
-| [CHANGELOG](CHANGELOG.md) | Version history |
+---
 
 ## License
 
