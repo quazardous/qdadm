@@ -9,7 +9,7 @@ import {
   EntityAuthAdapter,
   AuthActions,
   PermissiveAuthAdapter
-} from '../../src/entity/auth/index.js'
+} from '../../src/entity/auth'
 import { MemoryStorage } from '../../src/entity/storage/MemoryStorage'
 
 /**

@@ -4,7 +4,7 @@
  * Run: npm test
  */
 import { describe, it, expect } from 'vitest'
-import { RoleHierarchy, createRoleHierarchy } from '../../../src/entity/auth/index.js'
+import { RoleHierarchy, createRoleHierarchy } from '../../../src/entity/auth'
 
 describe('RoleHierarchy', () => {
   describe('constructor', () => {

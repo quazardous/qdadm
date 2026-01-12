@@ -6,7 +6,7 @@
 import { describe, it, expect } from 'vitest'
 import { Orchestrator } from '../../src/orchestrator/Orchestrator.js'
 import { EntityManager } from '../../src/entity/EntityManager.js'
-import { EntityAuthAdapter, PermissiveAuthAdapter } from '../../src/entity/auth/index.js'
+import { EntityAuthAdapter, PermissiveAuthAdapter } from '../../src/entity/auth'
 
 /**
  * Test EntityAuthAdapter that tracks which entity/action was checked

@@ -19,4 +19,4 @@ export {
 export * from './storage/index'
 
 // Auth adapters
-export * from './auth/index.js'
+export * from './auth'

@@ -18,7 +18,7 @@ export { createQdadm } from './plugin.js'
 export * from './entity/index.js'
 
 // Session auth (user authentication)
-export * from './auth/index.js'
+export * from './auth'
 
 // Security (permissions, roles)
 export * from './security/index.js'

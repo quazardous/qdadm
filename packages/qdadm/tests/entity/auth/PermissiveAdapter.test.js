@@ -9,7 +9,7 @@ import {
   createPermissiveAdapter,
   EntityAuthAdapter,
   AuthActions
-} from '../../../src/entity/auth/index.js'
+} from '../../../src/entity/auth'
 
 describe('PermissiveAuthAdapter', () => {
   describe('inheritance', () => {

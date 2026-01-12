@@ -9,54 +9,35 @@
  * - Backward compatibility with existing apps that don't use auth
  * - Internal admin tools with implicit trust
  * - Testing environments
- *
- * @example
- * const adapter = new PermissiveAuthAdapter()
- * adapter.canPerform('users', 'delete') // true
- * adapter.canAccessRecord('invoices', { id: 123, secret: true }) // true
- * adapter.getCurrentUser() // null
- *
- * @extends EntityAuthAdapter
  */
-import { EntityAuthAdapter } from './EntityAuthAdapter.js'
+import { EntityAuthAdapter, type AuthUser } from './EntityAuthAdapter'
 
 export class PermissiveAuthAdapter extends EntityAuthAdapter {
   /**
    * Always allows any action on any entity type
-   *
-   * @param {string} entity - Entity name (ignored)
-   * @param {string} action - Action to check (ignored)
-   * @returns {boolean} Always returns true
    */
-  canPerform(entity, action) {
+  canPerform(_entity: string, _action: string): boolean {
     return true
   }
 
   /**
    * Always allows access to any record
-   *
-   * @param {string} entity - Entity name (ignored)
-   * @param {object} record - The record (ignored)
-   * @returns {boolean} Always returns true
    */
-  canAccessRecord(entity, record) {
+  canAccessRecord(_entity: string, _record: unknown): boolean {
     return true
   }
 
   /**
    * Returns null (no authenticated user in permissive mode)
-   *
-   * @returns {null} Always returns null
    */
-  getCurrentUser() {
+  getCurrentUser(): AuthUser | null {
     return null
   }
 }
 
 /**
  * Factory function to create a PermissiveAuthAdapter
- * @returns {PermissiveAuthAdapter}
  */
-export function createPermissiveAdapter() {
+export function createPermissiveAdapter(): PermissiveAuthAdapter {
   return new PermissiveAuthAdapter()
 }

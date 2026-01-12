@@ -8,35 +8,37 @@
  * - Exact match: 'products' matches only 'products'
  * - Prefix glob: 'external-*' matches 'external-products', 'external-orders'
  * - Suffix glob: '*-readonly' matches 'products-readonly'
- *
- * @example
- * ```js
- * const composite = new CompositeAuthAdapter({
- *   default: internalAuthAdapter,  // JWT for most entities
- *   mapping: {
- *     'products': apiKeyAdapter,    // API key for products
- *     'external-*': externalAuth,   // OAuth for external-* entities
- *     'readonly-*': readonlyAuth    // Read-only adapter
- *   }
- * })
- *
- * composite.canPerform('books', 'read')     // → uses default (internal)
- * composite.canPerform('products', 'read')  // → uses apiKeyAdapter
- * composite.canPerform('external-orders', 'read')  // → uses externalAuth
- * ```
  */
 
-import { EntityAuthAdapter } from './EntityAuthAdapter.js'
-import { authFactory } from './factory.js'
+import { EntityAuthAdapter } from './EntityAuthAdapter'
+import { authFactory, type AuthFactoryContext } from './factory'
 
+/**
+ * Pattern match entry
+ */
+interface PatternEntry {
+  pattern: string
+  regex: RegExp
+  adapter: EntityAuthAdapter
+}
+
+/**
+ * Composite adapter config
+ */
+export interface CompositeAuthConfig {
+  default: EntityAuthAdapter | string | Record<string, unknown>
+  mapping?: Record<string, EntityAuthAdapter | string | Record<string, unknown>>
+}
+
+/**
+ * CompositeAuthAdapter - Routes to sub-adapters based on entity patterns
+ */
 export class CompositeAuthAdapter extends EntityAuthAdapter {
-  /**
-   * @param {object} config - Composite auth configuration
-   * @param {AuthAdapter|string|object} config.default - Default adapter (required)
-   * @param {Object<string, AuthAdapter|string|object>} [config.mapping={}] - Entity pattern to adapter mapping
-   * @param {object} [context={}] - Factory context with authTypes
-   */
-  constructor(config, context = {}) {
+  protected _default: EntityAuthAdapter
+  protected _exactMatches: Map<string, EntityAuthAdapter>
+  protected _patterns: PatternEntry[]
+
+  constructor(config: CompositeAuthConfig, context: AuthFactoryContext = {}) {
     super()
 
     const { default: defaultConfig, mapping = {} } = config
@@ -58,8 +60,8 @@ export class CompositeAuthAdapter extends EntityAuthAdapter {
       if (pattern.includes('*')) {
         // Glob pattern: convert to regex
         const regexPattern = pattern
-          .replace(/[.+?^${}()|[\]\\]/g, '\\$&')  // Escape regex special chars
-          .replace(/\*/g, '.*')  // * → .*
+          .replace(/[.+?^${}()|[\]\\]/g, '\\$&') // Escape regex special chars
+          .replace(/\*/g, '.*') // * → .*
         const regex = new RegExp(`^${regexPattern}$`)
         this._patterns.push({ pattern, regex, adapter })
       } else {
@@ -71,19 +73,12 @@ export class CompositeAuthAdapter extends EntityAuthAdapter {
 
   /**
    * Get the adapter for a specific entity
-   *
-   * Resolution order:
-   * 1. Exact match in mapping
-   * 2. First matching glob pattern
-   * 3. Default adapter
-   *
-   * @param {string} entity - Entity name
-   * @returns {AuthAdapter}
    */
-  _getAdapter(entity) {
+  protected _getAdapter(entity: string): EntityAuthAdapter {
     // 1. Exact match
-    if (this._exactMatches.has(entity)) {
-      return this._exactMatches.get(entity)
+    const exactMatch = this._exactMatches.get(entity)
+    if (exactMatch) {
+      return exactMatch
     }
 
     // 2. Pattern match (first wins)
@@ -99,33 +94,20 @@ export class CompositeAuthAdapter extends EntityAuthAdapter {
 
   /**
    * Check if user can perform action on entity type (scope check)
-   * Delegates to the appropriate adapter based on entity name
-   *
-   * @param {string} entity - Entity name
-   * @param {string} action - Action: read, create, update, delete, list
-   * @returns {boolean}
    */
-  canPerform(entity, action) {
+  canPerform(entity: string, action: string): boolean {
     return this._getAdapter(entity).canPerform(entity, action)
   }
 
   /**
    * Check if user can access specific record (silo check)
-   * Delegates to the appropriate adapter based on entity name
-   *
-   * @param {string} entity - Entity name
-   * @param {object} record - The record to check
-   * @returns {boolean}
    */
-  canAccessRecord(entity, record) {
+  canAccessRecord(entity: string, record: unknown): boolean {
     return this._getAdapter(entity).canAccessRecord(entity, record)
   }
 
   /**
    * Get current user from the default adapter
-   * The "user" concept comes from the primary auth source
-   *
-   * @returns {object|null}
    */
   getCurrentUser() {
     return this._default.getCurrentUser()
@@ -133,24 +115,20 @@ export class CompositeAuthAdapter extends EntityAuthAdapter {
 
   /**
    * Check if user is granted an attribute (role or permission)
-   * Delegates to default adapter for global permissions
-   *
-   * @param {string} attribute - Role or permission to check
-   * @param {object} [subject] - Optional subject for context
-   * @returns {boolean}
    */
-  isGranted(attribute, subject = null) {
+  isGranted(attribute: string, subject: unknown = null): boolean {
     // For entity-specific permissions (entity:action), route to appropriate adapter
     if (attribute.includes(':') && !attribute.startsWith('ROLE_')) {
-      const [entity] = attribute.split(':')
+      const parts = attribute.split(':')
+      const entity = parts[0] || ''
       const adapter = this._getAdapter(entity)
-      if (adapter.isGranted) {
+      if ('isGranted' in adapter && typeof adapter.isGranted === 'function') {
         return adapter.isGranted(attribute, subject)
       }
     }
 
     // Global permissions use default adapter
-    if (this._default.isGranted) {
+    if ('isGranted' in this._default && typeof this._default.isGranted === 'function') {
       return this._default.isGranted(attribute, subject)
     }
 
@@ -160,21 +138,27 @@ export class CompositeAuthAdapter extends EntityAuthAdapter {
 
   /**
    * Get the default adapter
-   * @returns {AuthAdapter}
    */
-  get defaultAdapter() {
+  get defaultAdapter(): EntityAuthAdapter {
     return this._default
   }
 
   /**
    * Get adapter info for debugging
-   * @returns {object}
    */
-  getAdapterInfo() {
-    const info = {
+  getAdapterInfo(): {
+    default: string
+    exactMatches: Record<string, string>
+    patterns: Array<{ pattern: string; adapter: string }>
+  } {
+    const info: {
+      default: string
+      exactMatches: Record<string, string>
+      patterns: Array<{ pattern: string; adapter: string }>
+    } = {
       default: this._getAdapterName(this._default),
       exactMatches: {},
-      patterns: []
+      patterns: [],
     }
 
     for (const [entity, adapter] of this._exactMatches) {
@@ -184,7 +168,7 @@ export class CompositeAuthAdapter extends EntityAuthAdapter {
     for (const { pattern, adapter } of this._patterns) {
       info.patterns.push({
         pattern,
-        adapter: this._getAdapterName(adapter)
+        adapter: this._getAdapterName(adapter),
       })
     }
 
@@ -193,20 +177,18 @@ export class CompositeAuthAdapter extends EntityAuthAdapter {
 
   /**
    * Get adapter name for debugging
-   * @private
    */
-  _getAdapterName(adapter) {
+  protected _getAdapterName(adapter: EntityAuthAdapter): string {
     return adapter.constructor?.name || 'Unknown'
   }
 }
 
 /**
  * Factory function to create CompositeAuthAdapter
- *
- * @param {object} config - { default, mapping }
- * @param {object} [context] - Factory context
- * @returns {CompositeAuthAdapter}
  */
-export function createCompositeAuthAdapter(config, context = {}) {
+export function createCompositeAuthAdapter(
+  config: CompositeAuthConfig,
+  context: AuthFactoryContext = {}
+): CompositeAuthAdapter {
   return new CompositeAuthAdapter(config, context)
 }

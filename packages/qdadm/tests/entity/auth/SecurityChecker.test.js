@@ -8,7 +8,7 @@ import {
   SecurityChecker,
   createSecurityChecker,
   RoleHierarchy
-} from '../../../src/entity/auth/index.js'
+} from '../../../src/entity/auth'
 
 describe('SecurityChecker', () => {
   const createChecker = (user = null, config = {}) => {

@@ -1,5 +1,5 @@
-import { PermissiveAuthAdapter } from './auth/PermissiveAdapter.js'
-import { AuthActions } from './auth/EntityAuthAdapter.js'
+import { PermissiveAuthAdapter } from './auth/PermissiveAdapter'
+import { AuthActions } from './auth/EntityAuthAdapter'
 import { QueryExecutor } from '../query/QueryExecutor'
 import pluralize from 'pluralize'
 

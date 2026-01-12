@@ -1,4 +1,9 @@
 /**
+ * Role hierarchy configuration type
+ */
+export type RoleHierarchyConfig = Record<string, string[]>
+
+/**
  * RoleHierarchy - Topological role resolution for Symfony-like permission system
  *
  * Roles form a Directed Acyclic Graph (DAG) where higher roles inherit
@@ -6,7 +11,7 @@
  * roles that a user effectively has based on their assigned roles.
  *
  * @example
- * ```js
+ * ```ts
  * const hierarchy = new RoleHierarchy({
  *   ROLE_ADMIN: ['ROLE_USER'],           // Admin inherits from User
  *   ROLE_SUPER_ADMIN: ['ROLE_ADMIN'],    // Super admin inherits from Admin
@@ -15,17 +20,12 @@
  *
  * hierarchy.getReachableRoles('ROLE_ADMIN')
  * // Returns: ['ROLE_ADMIN', 'ROLE_USER']
- *
- * hierarchy.isGrantedRole(['ROLE_ADMIN'], 'ROLE_USER')
- * // Returns: true (admin has user permissions)
  * ```
  */
 export class RoleHierarchy {
-  /**
-   * @param {Object<string, string[]>} hierarchy - Role inheritance map
-   *        Keys are role names, values are arrays of parent roles they inherit from
-   */
-  constructor(hierarchy = {}) {
+  readonly map: RoleHierarchyConfig
+
+  constructor(hierarchy: RoleHierarchyConfig = {}) {
     this.map = hierarchy
   }
 
@@ -34,21 +34,13 @@ export class RoleHierarchy {
    *
    * Performs BFS traversal of the role graph to find all inherited roles.
    * Handles cycles gracefully by tracking visited nodes.
-   *
-   * @param {string} role - Starting role to resolve
-   * @returns {string[]} All roles including the starting role and all inherited roles
-   *
-   * @example
-   * // With hierarchy: { ROLE_ADMIN: ['ROLE_USER'] }
-   * hierarchy.getReachableRoles('ROLE_ADMIN')
-   * // Returns: ['ROLE_ADMIN', 'ROLE_USER']
    */
-  getReachableRoles(role) {
-    const visited = new Set()
-    const queue = [role]
+  getReachableRoles(role: string): string[] {
+    const visited = new Set<string>()
+    const queue: string[] = [role]
 
     while (queue.length > 0) {
-      const current = queue.shift()
+      const current = queue.shift()!
       if (visited.has(current)) continue
       visited.add(current)
 
@@ -65,17 +57,8 @@ export class RoleHierarchy {
    * A user has a role if:
    * 1. They are directly assigned that role, OR
    * 2. They have a role that inherits from the required role
-   *
-   * @param {string|string[]} userRoles - Role(s) assigned to the user
-   * @param {string} requiredRole - The role to check for
-   * @returns {boolean} True if user has the required role (directly or inherited)
-   *
-   * @example
-   * // With hierarchy: { ROLE_ADMIN: ['ROLE_USER'] }
-   * hierarchy.isGrantedRole(['ROLE_ADMIN'], 'ROLE_USER')  // true
-   * hierarchy.isGrantedRole(['ROLE_USER'], 'ROLE_ADMIN')  // false
    */
-  isGrantedRole(userRoles, requiredRole) {
+  isGrantedRole(userRoles: string | string[], requiredRole: string): boolean {
     const roles = Array.isArray(userRoles) ? userRoles : [userRoles]
 
     for (const role of roles) {
@@ -90,12 +73,9 @@ export class RoleHierarchy {
    * Get all roles that can reach a given role (reverse lookup)
    *
    * Useful for finding which roles would grant a specific permission.
-   *
-   * @param {string} targetRole - The role to find grantors for
-   * @returns {string[]} All roles that have the target role in their reachable set
    */
-  getRolesGranting(targetRole) {
-    const grantors = []
+  getRolesGranting(targetRole: string): string[] {
+    const grantors: string[] = []
 
     for (const role of Object.keys(this.map)) {
       if (this.isGrantedRole([role], targetRole)) {
@@ -113,14 +93,12 @@ export class RoleHierarchy {
 
   /**
    * Validate the hierarchy for cycles (optional sanity check)
-   *
-   * @returns {boolean} True if hierarchy is valid (no cycles)
    */
-  validate() {
-    const visiting = new Set()
-    const visited = new Set()
+  validate(): boolean {
+    const visiting = new Set<string>()
+    const visited = new Set<string>()
 
-    const hasCycle = (role) => {
+    const hasCycle = (role: string): boolean => {
       if (visited.has(role)) return false
       if (visiting.has(role)) return true
 
@@ -144,10 +122,7 @@ export class RoleHierarchy {
 
 /**
  * Create a RoleHierarchy instance from config
- *
- * @param {Object<string, string[]>} config - Role hierarchy configuration
- * @returns {RoleHierarchy}
  */
-export function createRoleHierarchy(config = {}) {
+export function createRoleHierarchy(config: RoleHierarchyConfig = {}): RoleHierarchy {
   return new RoleHierarchy(config)
 }
