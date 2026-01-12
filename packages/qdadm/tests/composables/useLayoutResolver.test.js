@@ -16,7 +16,7 @@ import {
   createLayoutComponents,
   layoutMeta,
   LAYOUT_TYPES
-} from '../../src/composables/useLayoutResolver.js'
+} from '../../src/composables/useLayoutResolver'
 
 // Mock layout components
 const MockListLayout = defineComponent({ name: 'ListLayout', render: () => h('div', 'list') })

@@ -27,14 +27,14 @@
 import type { App, Component } from 'vue'
 import type { Router, RouteRecordRaw } from 'vue-router'
 import { managerFactory } from '../entity/factory.js'
-import { registry, getRoutes } from '../module/moduleRegistry.js'
+import { registry, getRoutes } from '../module/moduleRegistry'
 import { UsersManager, type UsersManagerOptions } from '../security/UsersManager'
 import type { SignalBus } from './SignalBus'
 import type { ListenerOptions } from '@quazardous/quarkernel'
 import type { Module } from './Module'
 import type { Orchestrator } from '../orchestrator/Orchestrator'
 import type { HookRegistry } from '../hooks/HookRegistry'
-import type { ZoneRegistry } from '../zones/ZoneRegistry.js'
+import type { ZoneRegistry } from '../zones/ZoneRegistry'
 import type { DeferredRegistry } from '../deferred/DeferredRegistry.js'
 import type { SecurityChecker } from '../entity/auth/SecurityChecker'
 import type { PermissionRegistry } from '../security/PermissionRegistry'
@@ -99,8 +99,8 @@ interface KernelInterface {
 export interface NavItem {
   section: string
   route: string
+  label: string
   icon?: string
-  label?: string
   exact?: boolean
   entity?: string
 }
@@ -494,9 +494,7 @@ export class KernelContext {
       // Find parent route info from registered routes
       const parentRouteName = options.parentRoute
       const allRoutes = getRoutes()
-      const parentRoute = allRoutes.find(
-        (r: { name?: string }) => r.name === parentRouteName
-      ) as RouteRecordRaw & { meta?: { entity?: string }; path: string } | undefined
+      const parentRoute = allRoutes.find((r) => r.name === parentRouteName)
 
       if (parentRoute) {
         // Get parent entity from route meta

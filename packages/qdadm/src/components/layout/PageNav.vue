@@ -17,7 +17,7 @@
  */
 import { computed, watch, inject } from 'vue'
 import { useRoute } from 'vue-router'
-import { getSiblingRoutes, getChildRoutes } from '../../module/moduleRegistry.js'
+import { getSiblingRoutes, getChildRoutes } from '../../module/moduleRegistry'
 import { useOrchestrator } from '../../orchestrator/useOrchestrator.js'
 
 // Inject override ref from AppLayout

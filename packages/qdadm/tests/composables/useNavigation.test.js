@@ -5,7 +5,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
 import { defineComponent, h, nextTick } from 'vue'
 import { createRouter, createMemoryHistory } from 'vue-router'
-import { useNavigation } from '../../src/composables/useNavigation.js'
+import { useNavigation } from '../../src/composables/useNavigation'
 import { createHookRegistry } from '../../src/hooks/HookRegistry'
 import {
   registry,
@@ -14,7 +14,7 @@ import {
   alterMenuSections,
   isMenuAltered,
   setSectionOrder
-} from '../../src/module/moduleRegistry.js'
+} from '../../src/module/moduleRegistry'
 
 // Create a simple router for testing
 function createTestRouter() {

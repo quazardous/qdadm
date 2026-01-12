@@ -4,7 +4,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { defineComponent, h, onUnmounted } from 'vue'
-import { useSignals } from '../../src/composables/useSignals.js'
+import { useSignals } from '../../src/composables/useSignals'
 import { createSignalBus, SIGNAL_ACTIONS } from '../../src/kernel/SignalBus'
 
 describe('useSignals', () => {

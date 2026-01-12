@@ -32,7 +32,7 @@
 import { computed, useSlots, provide } from 'vue'
 import BaseLayout from './BaseLayout.vue'
 import Zone from './Zone.vue'
-import { LIST_ZONES } from '../../zones/zones.js'
+import { LIST_ZONES } from '../../zones/zones'
 
 // Default components for list zones
 import DefaultTable from './defaults/DefaultTable.vue'

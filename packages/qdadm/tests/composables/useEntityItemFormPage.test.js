@@ -6,7 +6,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { ref, nextTick, computed } from 'vue'
 import { mount, flushPromises } from '@vue/test-utils'
-import { useEntityItemFormPage } from '../../src/composables/useEntityItemFormPage.js'
+import { useEntityItemFormPage } from '../../src/composables/useEntityItemFormPage'
 
 // Mock route state that can be changed per test
 let mockRouteState = { name: 'book-create', params: {}, query: {} }
@@ -367,10 +367,10 @@ describe('useEntityItemFormPage', () => {
       result.data.value.title = 'New Book'
       await result.submit(false)
 
-      // Should navigate to edit route with created entity ID
+      // Should navigate to edit route with created entity ID (as string for router params)
       expect(mockRouter.push).toHaveBeenCalledWith({
         name: 'book-edit',
-        params: { id: 2 }  // ID returned by mock manager.create
+        params: { id: '2' }  // ID converted to string for router params
       })
     })
   })

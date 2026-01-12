@@ -7,7 +7,7 @@
  * - getStandardZoneNames utility
  */
 import { describe, it, expect, beforeEach } from 'vitest'
-import { ZoneRegistry } from '../../src/zones/ZoneRegistry.js'
+import { ZoneRegistry } from '../../src/zones/ZoneRegistry'
 import {
   ZONES,
   LAYOUT_ZONES,
@@ -16,7 +16,7 @@ import {
   DASHBOARD_ZONES,
   registerStandardZones,
   getStandardZoneNames
-} from '../../src/zones/zones.js'
+} from '../../src/zones/zones'
 
 describe('zones.js', () => {
   describe('LAYOUT_ZONES', () => {

@@ -28,7 +28,7 @@
  * const usersManager = orchestrator.get('users')
  * ```
  */
-import { getEntityConfig } from '../module/moduleRegistry.js'
+import { getEntityConfig } from '../module/moduleRegistry'
 import type { EntityManager, EntityManagerOptions } from '../entity/EntityManager'
 import type { EntityRecord } from '../types'
 import type { SignalBus } from '../kernel/SignalBus'

@@ -14,8 +14,8 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { defineComponent, ref } from 'vue'
 import DashboardLayout from '../../src/components/layout/DashboardLayout.vue'
-import { ZoneRegistry } from '../../src/zones/ZoneRegistry.js'
-import { registerStandardZones, DASHBOARD_ZONES } from '../../src/zones/zones.js'
+import { ZoneRegistry } from '../../src/zones/ZoneRegistry'
+import { registerStandardZones, DASHBOARD_ZONES } from '../../src/zones/zones'
 
 // Mock vue-router
 vi.mock('vue-router', () => ({

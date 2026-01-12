@@ -10,8 +10,8 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
 import { defineComponent, h, nextTick, computed } from 'vue'
-import { useZoneRegistry } from '../../src/composables/useZoneRegistry.js'
-import { createZoneRegistry } from '../../src/zones/ZoneRegistry.js'
+import { useZoneRegistry } from '../../src/composables/useZoneRegistry'
+import { createZoneRegistry } from '../../src/zones/ZoneRegistry'
 
 // Mock components
 const MockComponentA = { name: 'ComponentA' }

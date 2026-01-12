@@ -8,7 +8,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { ref, nextTick } from 'vue'
 import { mount, flushPromises } from '@vue/test-utils'
-import { useListPage } from '../../src/composables/useListPage.js'
+import { useListPage } from '../../src/composables/useListPage'
 import { createHookRegistry } from '../../src/hooks'
 
 // Mock route state that can be changed per test

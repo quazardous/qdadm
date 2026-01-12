@@ -16,8 +16,8 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { h, defineComponent, ref } from 'vue'
 import FormLayout from '../../src/components/layout/FormLayout.vue'
-import { ZoneRegistry } from '../../src/zones/ZoneRegistry.js'
-import { registerStandardZones, FORM_ZONES } from '../../src/zones/zones.js'
+import { ZoneRegistry } from '../../src/zones/ZoneRegistry'
+import { registerStandardZones, FORM_ZONES } from '../../src/zones/zones'
 
 // Mock vue-router
 vi.mock('vue-router', () => ({

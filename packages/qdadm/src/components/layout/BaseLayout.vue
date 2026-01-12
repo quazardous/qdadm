@@ -34,7 +34,7 @@ import { useSlots, provide, ref, inject } from 'vue'
 import { RouterView } from 'vue-router'
 import ConfirmDialog from 'primevue/confirmdialog'
 import Zone from './Zone.vue'
-import { LAYOUT_ZONES } from '../../zones/zones.js'
+import { LAYOUT_ZONES } from '../../zones/zones'
 import { useGuardDialog } from '../../composables/useGuardStore'
 import UnsavedChangesDialog from '../dialogs/UnsavedChangesDialog.vue'
 

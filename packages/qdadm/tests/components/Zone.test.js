@@ -13,7 +13,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { h, defineComponent } from 'vue'
 import Zone from '../../src/components/layout/Zone.vue'
-import { ZoneRegistry } from '../../src/zones/ZoneRegistry.js'
+import { ZoneRegistry } from '../../src/zones/ZoneRegistry'
 
 // Mock components for testing
 const MockComponentA = defineComponent({

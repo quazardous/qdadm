@@ -32,7 +32,7 @@
 import { useSlots } from 'vue'
 import BaseLayout from './BaseLayout.vue'
 import Zone from './Zone.vue'
-import { DASHBOARD_ZONES } from '../../zones/zones.js'
+import { DASHBOARD_ZONES } from '../../zones/zones'
 
 const slots = useSlots()
 </script>

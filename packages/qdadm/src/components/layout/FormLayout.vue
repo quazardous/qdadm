@@ -30,7 +30,7 @@
 import { useSlots, provide, computed } from 'vue'
 import BaseLayout from './BaseLayout.vue'
 import Zone from './Zone.vue'
-import { FORM_ZONES } from '../../zones/zones.js'
+import { FORM_ZONES } from '../../zones/zones'
 
 // Default components for form zones
 import DefaultFormActions from './defaults/DefaultFormActions.vue'

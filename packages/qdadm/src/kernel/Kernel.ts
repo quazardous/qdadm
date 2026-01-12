@@ -50,13 +50,13 @@ import {
   getRoutes,
   setSectionOrder,
   registry,
-} from '../module/moduleRegistry.js'
+} from '../module/moduleRegistry'
 import { createModuleLoader, type ModuleLoader, type ModuleLike } from './ModuleLoader'
 import { createKernelContext, type KernelContext } from './KernelContext'
 import { Orchestrator } from '../orchestrator/Orchestrator'
 import { createSignalBus, type SignalBus } from './SignalBus'
-import { createZoneRegistry, type ZoneRegistry } from '../zones/ZoneRegistry.js'
-import { registerStandardZones } from '../zones/zones.js'
+import { createZoneRegistry, type ZoneRegistry } from '../zones/ZoneRegistry'
+import { registerStandardZones } from '../zones/zones'
 import { createHookRegistry, type HookRegistry } from '../hooks/HookRegistry'
 import { createSecurityChecker, type SecurityChecker } from '../entity/auth/SecurityChecker'
 import { authFactory, CompositeAuthAdapter } from '../entity/auth'

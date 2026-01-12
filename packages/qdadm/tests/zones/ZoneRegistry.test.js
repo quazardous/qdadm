@@ -9,7 +9,7 @@
  * - Edge cases and error handling
  */
 import { describe, it, expect, beforeEach, vi } from 'vitest'
-import { ZoneRegistry, createZoneRegistry } from '../../src/zones/ZoneRegistry.js'
+import { ZoneRegistry, createZoneRegistry } from '../../src/zones/ZoneRegistry'
 
 // Mock components for testing
 const MockComponentA = { name: 'ComponentA' }
