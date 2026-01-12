@@ -21,12 +21,18 @@ const features = inject<Features>('qdadmFeatures', { poweredBy: true })
 </script>
 
 <template>
-  <div v-if="features.poweredBy" class="default-footer">
+  <a
+    v-if="features.poweredBy"
+    href="https://github.com/quazardous/qdadm"
+    target="_blank"
+    rel="noopener noreferrer"
+    class="default-footer"
+  >
     <img :src="qdadmLogo" alt="qdadm" class="footer-logo" />
     <span class="footer-text">
       powered by <strong>qdadm</strong> v{{ qdadmVersion }}
     </span>
-  </div>
+  </a>
 </template>
 
 <style scoped>
@@ -38,6 +44,8 @@ const features = inject<Features>('qdadmFeatures', { poweredBy: true })
   gap: 0.5rem;
   opacity: 0.6;
   transition: opacity 0.15s;
+  text-decoration: none;
+  cursor: pointer;
 }
 
 .default-footer:hover {
