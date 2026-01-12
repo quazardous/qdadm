@@ -3,6 +3,29 @@
 All notable changes to qdadm will be documented in this file.
 This is not a commit log. Keep entries simple, user-focused.
 
+## [1.0.0] - 2026-01-12
+
+### Breaking Changes
+- **Full TypeScript migration**: All source files converted to TypeScript with strict mode
+- **Type exports**: All public types are now exported from main entry point
+
+### Added
+- **TypeScript support**: Complete TypeScript conversion with proper type annotations
+- **ESLint + Prettier**: Code quality tooling with TypeScript-aware rules
+- **Type declarations**: `vite-env.d.ts` for asset imports (SVG, etc.)
+- **Strict mode**: TypeScript strict mode enabled for better type safety
+
+### Changed
+- All 64 Vue components now use `<script setup lang="ts">`
+- All composables, utilities, and modules converted to `.ts`
+- PrimeVue component props properly typed
+- Route params use `RouteParamsRawGeneric` for vue-router compatibility
+
+### Technical
+- 1806 tests passing
+- `vue-tsc --noEmit` type-check passes
+- 0 ESLint errors (warnings only for style preferences)
+
 ## [0.59.5] - 2026-01-12
 
 - **Centralized auth invalidation**: Kernel remounts entire app on auth signals (`auth:login`, `auth:logout`, `auth:impersonate`, `auth:impersonate:stop`). Composables no longer need individual signal listeners.
