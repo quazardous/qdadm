@@ -24,15 +24,33 @@
  */
 
 /**
+ * Base entity manager interface for decorators
+ */
+export interface DecoratorEntityManager {
+  name: string
+  idField: string
+  create: (data: Record<string, unknown>) => Promise<Record<string, unknown>>
+  update: (id: unknown, data: Record<string, unknown>) => Promise<Record<string, unknown>>
+  patch: (id: unknown, data: Record<string, unknown>) => Promise<Record<string, unknown>>
+  delete: (id: unknown) => Promise<void>
+  [key: string]: unknown
+}
+
+/**
+ * Decorator function type
+ */
+export type ManagerDecorator = (manager: DecoratorEntityManager) => DecoratorEntityManager
+
+/**
  * Apply a chain of decorators to an EntityManager
  *
  * Decorators are applied in order: first decorator wraps the base manager,
  * second wraps the first, etc. This means the last decorator in the array
  * is the outermost layer (executed first on method calls).
  *
- * @param {EntityManager} manager - Base EntityManager to decorate
- * @param {Function[]} decorators - Array of decorator functions
- * @returns {EntityManager} - Decorated manager
+ * @param manager - Base EntityManager to decorate
+ * @param decorators - Array of decorator functions
+ * @returns Decorated manager
  *
  * @example
  * // Decorator function signature
@@ -48,7 +66,10 @@
  *   }
  * }
  */
-export function createDecoratedManager(manager, decorators = []) {
+export function createDecoratedManager(
+  manager: DecoratorEntityManager,
+  decorators: ManagerDecorator[] = []
+): DecoratorEntityManager {
   if (!manager) {
     throw new Error('[createDecoratedManager] Manager is required')
   }
@@ -66,15 +87,36 @@ export function createDecoratedManager(manager, decorators = []) {
 }
 
 /**
+ * Audit log action details
+ */
+export interface AuditLogDetails {
+  entity: string
+  timestamp: string
+  id?: unknown
+  data?: Record<string, unknown>
+}
+
+/**
+ * Audit log function type
+ */
+export type AuditLogger = (action: string, details: AuditLogDetails) => void
+
+/**
+ * Audit log decorator options
+ */
+export interface AuditLogDecoratorOptions {
+  includeData?: boolean
+}
+
+/**
  * Audit log decorator factory
  *
  * Logs CRUD operations with timestamps. Useful for tracking changes,
  * debugging, or audit trails.
  *
- * @param {Function} logger - Logging function (receives action, details)
- * @param {object} [options] - Options
- * @param {boolean} [options.includeData=false] - Include record data in logs
- * @returns {Function} Decorator function
+ * @param logger - Logging function (receives action, details)
+ * @param options - Options
+ * @returns Decorator function
  *
  * @example
  * const auditedManager = createDecoratedManager(manager, [
@@ -89,60 +131,73 @@ export function createDecoratedManager(manager, decorators = []) {
  *   }, { includeData: true })
  * ])
  */
-export function withAuditLog(logger, options = {}) {
+export function withAuditLog(
+  logger: AuditLogger,
+  options: AuditLogDecoratorOptions = {}
+): ManagerDecorator {
   if (typeof logger !== 'function') {
     throw new Error('[withAuditLog] Logger must be a function')
   }
 
   const { includeData = false } = options
 
-  return (manager) => {
+  return (manager: DecoratorEntityManager): DecoratorEntityManager => {
     const entityName = manager.name
 
-    const logAction = (action, details) => {
+    const logAction = (action: string, details: Partial<AuditLogDetails>) => {
       logger(action, {
         entity: entityName,
         timestamp: new Date().toISOString(),
-        ...details
-      })
+        ...details,
+      } as AuditLogDetails)
     }
 
     return {
       // Preserve all manager properties and methods
       ...manager,
       // Ensure name is accessible (might be a getter)
-      get name() { return manager.name },
+      get name() {
+        return manager.name
+      },
 
-      async create(data) {
+      async create(data: Record<string, unknown>) {
         const result = await manager.create(data)
-        const logDetails = { id: result?.[manager.idField] }
+        const logDetails: Partial<AuditLogDetails> = { id: result?.[manager.idField] }
         if (includeData) logDetails.data = data
         logAction('create', logDetails)
         return result
       },
 
-      async update(id, data) {
+      async update(id: unknown, data: Record<string, unknown>) {
         const result = await manager.update(id, data)
-        const logDetails = { id }
+        const logDetails: Partial<AuditLogDetails> = { id }
         if (includeData) logDetails.data = data
         logAction('update', logDetails)
         return result
       },
 
-      async patch(id, data) {
+      async patch(id: unknown, data: Record<string, unknown>) {
         const result = await manager.patch(id, data)
-        const logDetails = { id }
+        const logDetails: Partial<AuditLogDetails> = { id }
         if (includeData) logDetails.data = data
         logAction('patch', logDetails)
         return result
       },
 
-      async delete(id) {
+      async delete(id: unknown) {
         await manager.delete(id)
         logAction('delete', { id })
-      }
+      },
     }
   }
+}
+
+/**
+ * Soft delete decorator options
+ */
+export interface SoftDeleteDecoratorOptions {
+  field?: string
+  timestamp?: () => string | number
 }
 
 /**
@@ -151,10 +206,8 @@ export function withAuditLog(logger, options = {}) {
  * Converts delete() to update with deleted_at timestamp.
  * Useful for audit trails, undo functionality, or legal compliance.
  *
- * @param {object} [options] - Options
- * @param {string} [options.field='deleted_at'] - Field name for deletion timestamp
- * @param {Function} [options.timestamp] - Custom timestamp function (default: ISO string)
- * @returns {Function} Decorator function
+ * @param options - Options
+ * @returns Decorator function
  *
  * @example
  * const softDeleteManager = createDecoratedManager(manager, [
@@ -174,21 +227,29 @@ export function withAuditLog(logger, options = {}) {
  *   })
  * ])
  */
-export function withSoftDelete(options = {}) {
-  const {
-    field = 'deleted_at',
-    timestamp = () => new Date().toISOString()
-  } = options
+export function withSoftDelete(options: SoftDeleteDecoratorOptions = {}): ManagerDecorator {
+  const { field = 'deleted_at', timestamp = () => new Date().toISOString() } = options
 
-  return (manager) => ({
+  return (manager: DecoratorEntityManager): DecoratorEntityManager => ({
     ...manager,
-    get name() { return manager.name },
+    get name() {
+      return manager.name
+    },
 
-    async delete(id) {
+    async delete(id: unknown) {
       // Convert delete to update with soft-delete field
-      return manager.patch(id, { [field]: timestamp() })
-    }
+      await manager.patch(id, { [field]: timestamp() })
+    },
   })
+}
+
+/**
+ * Timestamp decorator options
+ */
+export interface TimestampDecoratorOptions {
+  createdAtField?: string
+  updatedAtField?: string
+  timestamp?: () => string
 }
 
 /**
@@ -196,11 +257,8 @@ export function withSoftDelete(options = {}) {
  *
  * Automatically adds created_at and updated_at timestamps to records.
  *
- * @param {object} [options] - Options
- * @param {string} [options.createdAtField='created_at'] - Field for creation timestamp
- * @param {string} [options.updatedAtField='updated_at'] - Field for update timestamp
- * @param {Function} [options.timestamp] - Custom timestamp function
- * @returns {Function} Decorator function
+ * @param options - Options
+ * @returns Decorator function
  *
  * @example
  * const timestampedManager = createDecoratedManager(manager, [
@@ -213,40 +271,80 @@ export function withSoftDelete(options = {}) {
  * await timestampedManager.update(1, { title: 'Updated' })
  * // Record: { title: 'Updated', updated_at: '...' }
  */
-export function withTimestamps(options = {}) {
+export function withTimestamps(options: TimestampDecoratorOptions = {}): ManagerDecorator {
   const {
     createdAtField = 'created_at',
     updatedAtField = 'updated_at',
-    timestamp = () => new Date().toISOString()
+    timestamp = () => new Date().toISOString(),
   } = options
 
-  return (manager) => ({
+  return (manager: DecoratorEntityManager): DecoratorEntityManager => ({
     ...manager,
-    get name() { return manager.name },
+    get name() {
+      return manager.name
+    },
 
-    async create(data) {
+    async create(data: Record<string, unknown>) {
       const now = timestamp()
       return manager.create({
         ...data,
         [createdAtField]: now,
-        [updatedAtField]: now
+        [updatedAtField]: now,
       })
     },
 
-    async update(id, data) {
+    async update(id: unknown, data: Record<string, unknown>) {
       return manager.update(id, {
         ...data,
-        [updatedAtField]: timestamp()
+        [updatedAtField]: timestamp(),
       })
     },
 
-    async patch(id, data) {
+    async patch(id: unknown, data: Record<string, unknown>) {
       return manager.patch(id, {
         ...data,
-        [updatedAtField]: timestamp()
+        [updatedAtField]: timestamp(),
       })
-    }
+    },
   })
+}
+
+/**
+ * Validation context
+ */
+export interface ValidationContext {
+  action: 'create' | 'update' | 'patch'
+  id?: unknown
+  manager: DecoratorEntityManager
+}
+
+/**
+ * Validation errors
+ */
+export type ValidationErrors = Record<string, string>
+
+/**
+ * Validator function type
+ */
+export type ValidatorFn = (
+  data: Record<string, unknown>,
+  context: ValidationContext
+) => ValidationErrors | null
+
+/**
+ * Validation error
+ */
+export interface ValidationError extends Error {
+  name: 'ValidationError'
+  errors: ValidationErrors
+}
+
+/**
+ * Validation decorator options
+ */
+export interface ValidationDecoratorOptions {
+  onUpdate?: boolean
+  onPatch?: boolean
 }
 
 /**
@@ -255,11 +353,9 @@ export function withTimestamps(options = {}) {
  * Validates data before create/update operations.
  * Throws ValidationError if validation fails.
  *
- * @param {Function} validator - Validation function (data, context) => errors | null
- * @param {object} [options] - Options
- * @param {boolean} [options.onUpdate=true] - Validate on update
- * @param {boolean} [options.onPatch=true] - Validate on patch
- * @returns {Function} Decorator function
+ * @param validator - Validation function (data, context) => errors | null
+ * @param options - Options
+ * @returns Decorator function
  *
  * @example
  * const validatedManager = createDecoratedManager(manager, [
@@ -274,21 +370,21 @@ export function withTimestamps(options = {}) {
  * await validatedManager.create({ price: -5 })
  * // Throws: ValidationError { errors: { title: '...', price: '...' } }
  */
-export function withValidation(validator, options = {}) {
+export function withValidation(
+  validator: ValidatorFn,
+  options: ValidationDecoratorOptions = {}
+): ManagerDecorator {
   if (typeof validator !== 'function') {
     throw new Error('[withValidation] Validator must be a function')
   }
 
-  const {
-    onUpdate = true,
-    onPatch = true
-  } = options
+  const { onUpdate = true, onPatch = true } = options
 
-  return (manager) => {
-    const validate = (data, context) => {
+  return (manager: DecoratorEntityManager): DecoratorEntityManager => {
+    const validate = (data: Record<string, unknown>, context: ValidationContext) => {
       const errors = validator(data, context)
       if (errors && Object.keys(errors).length > 0) {
-        const error = new Error('Validation failed')
+        const error = new Error('Validation failed') as ValidationError
         error.name = 'ValidationError'
         error.errors = errors
         throw error
@@ -297,26 +393,28 @@ export function withValidation(validator, options = {}) {
 
     return {
       ...manager,
-      get name() { return manager.name },
+      get name() {
+        return manager.name
+      },
 
-      async create(data) {
+      async create(data: Record<string, unknown>) {
         validate(data, { action: 'create', manager })
         return manager.create(data)
       },
 
-      async update(id, data) {
+      async update(id: unknown, data: Record<string, unknown>) {
         if (onUpdate) {
           validate(data, { action: 'update', id, manager })
         }
         return manager.update(id, data)
       },
 
-      async patch(id, data) {
+      async patch(id: unknown, data: Record<string, unknown>) {
         if (onPatch) {
           validate(data, { action: 'patch', id, manager })
         }
         return manager.patch(id, data)
-      }
+      },
     }
   }
 }

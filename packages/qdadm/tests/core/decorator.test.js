@@ -14,7 +14,7 @@ import {
   withSoftDelete,
   withTimestamps,
   withValidation,
-} from '../../src/core/decorator.js'
+} from '../../src/core/decorator'
 
 /**
  * Mock storage for testing CRUD operations

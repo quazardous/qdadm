@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { DeferredRegistry, createDeferredRegistry } from '../../src/deferred/DeferredRegistry.js'
+import { DeferredRegistry, createDeferredRegistry } from '../../src/deferred/DeferredRegistry'
 
 describe('DeferredRegistry', () => {
   let registry

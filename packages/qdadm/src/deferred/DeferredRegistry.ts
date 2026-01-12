@@ -10,7 +10,7 @@
  * is created on first access and resolved when the task completes.
  *
  * @example
- * ```js
+ * ```ts
  * // During app boot - queue lazy services
  * deferred.queue('users-service', () => usersService.init())
  * deferred.queue('config', () => configService.load())
@@ -31,26 +31,55 @@
  */
 
 /**
- * @typedef {'pending' | 'running' | 'completed' | 'failed'} DeferredStatus
+ * Status of a deferred entry
  */
+export type DeferredStatus = 'pending' | 'running' | 'completed' | 'failed'
 
 /**
- * @typedef {object} DeferredEntry
- * @property {Promise} promise - The deferred promise
- * @property {function} resolve - Resolve function
- * @property {function} reject - Reject function
- * @property {DeferredStatus} status - Current status
- * @property {any} value - Resolved value or error
- * @property {number} timestamp - Creation timestamp
+ * Deferred entry stored in the registry
  */
+export interface DeferredEntry<T = unknown> {
+  promise: Promise<T>
+  resolve: (value: T) => void
+  reject: (error: Error) => void
+  status: DeferredStatus
+  value: T | Error | undefined
+  timestamp: number
+}
+
+/**
+ * Kernel interface for event emission
+ */
+export interface DeferredKernel {
+  emit: (event: string, data: unknown) => void
+}
+
+/**
+ * DeferredRegistry options
+ */
+export interface DeferredRegistryOptions {
+  kernel?: DeferredKernel | null
+  debug?: boolean
+}
+
+/**
+ * Entry info returned by entries()
+ */
+export interface DeferredEntryInfo {
+  key: string
+  status: DeferredStatus
+  timestamp: number
+}
 
 export class DeferredRegistry {
+  private _entries: Map<string, DeferredEntry>
+  private _kernel: DeferredKernel | null
+  private _debug: boolean
+
   /**
-   * @param {object} options
-   * @param {object} [options.kernel] - Optional QuarKernel for event emission
-   * @param {boolean} [options.debug=false] - Enable debug logging
+   * @param options - Registry options
    */
-  constructor(options = {}) {
+  constructor(options: DeferredRegistryOptions = {}) {
     this._entries = new Map()
     this._kernel = options.kernel || null
     this._debug = options.debug || false
@@ -58,57 +87,58 @@ export class DeferredRegistry {
 
   /**
    * Get or create a deferred entry for a key
-   * @param {string} key - Unique identifier
-   * @returns {DeferredEntry}
+   * @param key - Unique identifier
+   * @returns Deferred entry
    */
-  _getOrCreate(key) {
+  private _getOrCreate<T = unknown>(key: string): DeferredEntry<T> {
     if (!this._entries.has(key)) {
-      let resolve, reject
-      const promise = new Promise((res, rej) => {
+      let resolve!: (value: T) => void
+      let reject!: (error: Error) => void
+      const promise = new Promise<T>((res, rej) => {
         resolve = res
         reject = rej
       })
 
-      const entry = {
+      const entry: DeferredEntry<T> = {
         promise,
         resolve,
         reject,
         status: 'pending',
         value: undefined,
-        timestamp: Date.now()
+        timestamp: Date.now(),
       }
 
-      this._entries.set(key, entry)
+      this._entries.set(key, entry as DeferredEntry)
 
       if (this._debug) {
         console.debug(`[deferred] Created entry: ${key}`)
       }
     }
 
-    return this._entries.get(key)
+    return this._entries.get(key) as DeferredEntry<T>
   }
 
   /**
    * Get the promise for a key (creates if doesn't exist)
    * Can be called BEFORE queue() - promise resolves when task completes
    *
-   * @param {string} key - Unique identifier
-   * @returns {Promise<any>}
+   * @param key - Unique identifier
+   * @returns Promise that resolves when the deferred completes
    */
-  await(key) {
-    return this._getOrCreate(key).promise
+  await<T = unknown>(key: string): Promise<T> {
+    return this._getOrCreate<T>(key).promise
   }
 
   /**
    * Queue a task for execution
    * If already running/completed, returns existing promise (deduplication)
    *
-   * @param {string} key - Unique identifier
-   * @param {function(): Promise<any>} executor - Async function to execute
-   * @returns {Promise<any>} Promise that resolves with task result
+   * @param key - Unique identifier
+   * @param executor - Async function to execute
+   * @returns Promise that resolves with task result
    */
-  queue(key, executor) {
-    const entry = this._getOrCreate(key)
+  queue<T = unknown>(key: string, executor: () => Promise<T> | T): Promise<T> {
+    const entry = this._getOrCreate<T>(key)
 
     // Already started - return existing promise (idempotent)
     if (entry.status !== 'pending') {
@@ -128,7 +158,7 @@ export class DeferredRegistry {
     // Execute and handle result
     Promise.resolve()
       .then(() => executor())
-      .then(value => {
+      .then((value) => {
         entry.status = 'completed'
         entry.value = value
         entry.resolve(value)
@@ -138,7 +168,7 @@ export class DeferredRegistry {
           console.debug(`[deferred] Completed: ${key}`)
         }
       })
-      .catch(error => {
+      .catch((error: Error) => {
         entry.status = 'failed'
         entry.value = error
         entry.reject(error)
@@ -156,12 +186,12 @@ export class DeferredRegistry {
    * Resolve a deferred externally (for SSE, webhooks, etc.)
    * No-op if already completed/failed
    *
-   * @param {string} key - Unique identifier
-   * @param {any} value - Value to resolve with
-   * @returns {boolean} True if resolved, false if already settled
+   * @param key - Unique identifier
+   * @param value - Value to resolve with
+   * @returns True if resolved, false if already settled
    */
-  resolve(key, value) {
-    const entry = this._getOrCreate(key)
+  resolve<T = unknown>(key: string, value: T): boolean {
+    const entry = this._getOrCreate<T>(key)
 
     if (entry.status === 'completed' || entry.status === 'failed') {
       if (this._debug) {
@@ -186,11 +216,11 @@ export class DeferredRegistry {
    * Reject a deferred externally (for SSE, webhooks, etc.)
    * No-op if already completed/failed
    *
-   * @param {string} key - Unique identifier
-   * @param {Error} error - Error to reject with
-   * @returns {boolean} True if rejected, false if already settled
+   * @param key - Unique identifier
+   * @param error - Error to reject with
+   * @returns True if rejected, false if already settled
    */
-  reject(key, error) {
+  reject(key: string, error: Error): boolean {
     const entry = this._getOrCreate(key)
 
     if (entry.status === 'completed' || entry.status === 'failed') {
@@ -214,75 +244,75 @@ export class DeferredRegistry {
 
   /**
    * Check if a key exists in the registry
-   * @param {string} key
-   * @returns {boolean}
+   * @param key - Unique identifier
+   * @returns True if entry exists
    */
-  has(key) {
+  has(key: string): boolean {
     return this._entries.has(key)
   }
 
   /**
    * Get the status of a deferred
-   * @param {string} key
-   * @returns {DeferredStatus|null} Status or null if not found
+   * @param key - Unique identifier
+   * @returns Status or null if not found
    */
-  status(key) {
+  status(key: string): DeferredStatus | null {
     return this._entries.get(key)?.status || null
   }
 
   /**
    * Get the resolved value (only if completed)
-   * @param {string} key
-   * @returns {any} Value or undefined
+   * @param key - Unique identifier
+   * @returns Value or undefined
    */
-  value(key) {
+  value<T = unknown>(key: string): T | undefined {
     const entry = this._entries.get(key)
-    return entry?.status === 'completed' ? entry.value : undefined
+    return entry?.status === 'completed' ? (entry.value as T) : undefined
   }
 
   /**
    * Check if a deferred is settled (completed or failed)
-   * @param {string} key
-   * @returns {boolean}
+   * @param key - Unique identifier
+   * @returns True if settled
    */
-  isSettled(key) {
+  isSettled(key: string): boolean {
     const status = this.status(key)
     return status === 'completed' || status === 'failed'
   }
 
   /**
    * Get all keys in the registry
-   * @returns {string[]}
+   * @returns Array of keys
    */
-  keys() {
+  keys(): string[] {
     return Array.from(this._entries.keys())
   }
 
   /**
    * Get all entries with their status
-   * @returns {Array<{key: string, status: DeferredStatus, timestamp: number}>}
+   * @returns Array of entry info
    */
-  entries() {
+  entries(): DeferredEntryInfo[] {
     return Array.from(this._entries.entries()).map(([key, entry]) => ({
       key,
       status: entry.status,
-      timestamp: entry.timestamp
+      timestamp: entry.timestamp,
     }))
   }
 
   /**
    * Clear a specific entry (for cleanup/retry)
-   * @param {string} key
-   * @returns {boolean} True if cleared
+   * @param key - Unique identifier
+   * @returns True if cleared
    */
-  clear(key) {
+  clear(key: string): boolean {
     return this._entries.delete(key)
   }
 
   /**
    * Clear all entries
    */
-  clearAll() {
+  clearAll(): void {
     this._entries.clear()
   }
 
@@ -290,7 +320,7 @@ export class DeferredRegistry {
    * Emit event via kernel (if provided)
    * @private
    */
-  _emit(event, data) {
+  private _emit(event: string, data: unknown): void {
     if (this._kernel) {
       this._kernel.emit(event, data)
     }
@@ -298,26 +328,26 @@ export class DeferredRegistry {
 
   /**
    * Set kernel for event emission
-   * @param {object} kernel - QuarKernel instance
+   * @param kernel - Kernel instance with emit method
    */
-  setKernel(kernel) {
+  setKernel(kernel: DeferredKernel): void {
     this._kernel = kernel
   }
 
   /**
    * Enable/disable debug mode
-   * @param {boolean} enabled
+   * @param enabled - Debug mode flag
    */
-  debug(enabled) {
+  debug(enabled: boolean): void {
     this._debug = enabled
   }
 }
 
 /**
  * Factory function
- * @param {object} options
- * @returns {DeferredRegistry}
+ * @param options - Registry options
+ * @returns New DeferredRegistry instance
  */
-export function createDeferredRegistry(options = {}) {
+export function createDeferredRegistry(options: DeferredRegistryOptions = {}): DeferredRegistry {
   return new DeferredRegistry(options)
 }

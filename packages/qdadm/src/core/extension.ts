@@ -37,21 +37,109 @@
  *   .register({ hooks, zones })
  */
 
+import type { Component } from 'vue'
+import type { HookRegistry } from '../hooks/HookRegistry'
+import type { ZoneRegistry } from '../zones/ZoneRegistry'
+
 /**
  * Default priority for extension hooks
  */
 const DEFAULT_PRIORITY = 50
 
 /**
- * Extension builder for fluent API
- *
- * @private
+ * Column configuration
  */
-class ExtensionBuilder {
+export interface ExtensionColumn {
+  field: string
+  header?: string
+  width?: number
+  body?: (data: unknown) => unknown
+  [key: string]: unknown
+}
+
+/**
+ * Field configuration
+ */
+export interface ExtensionField {
+  name: string
+  type?: string
+  label?: string
+  [key: string]: unknown
+}
+
+/**
+ * Filter configuration
+ */
+export interface ExtensionFilter {
+  name: string
+  type?: string
+  label?: string
+  [key: string]: unknown
+}
+
+/**
+ * Block configuration
+ */
+export interface ExtensionBlock {
+  component: Component
+  weight?: number
+  props?: Record<string, unknown>
+  id?: string
+  [key: string]: unknown
+}
+
+/**
+ * Extensions config object
+ */
+export interface ExtensionsConfig {
+  columns?: ExtensionColumn[]
+  fields?: ExtensionField[]
+  filters?: ExtensionFilter[]
+  blocks?: Record<string, ExtensionBlock[]>
+}
+
+/**
+ * Registration context
+ */
+export interface ExtensionContext {
+  hooks: HookRegistry
+  zones?: ZoneRegistry
+  priority?: number
+}
+
+/**
+ * Collected extensions config for serialization
+ */
+export interface CollectedExtensions {
+  target: string
+  columns?: ExtensionColumn[]
+  fields?: ExtensionField[]
+  filters?: ExtensionFilter[]
+  blocks?: Record<string, ExtensionBlock[]>
+}
+
+/**
+ * Block ID reference for cleanup
+ */
+interface BlockIdRef {
+  zoneName: string
+  id: string
+}
+
+/**
+ * Extension builder for fluent API
+ */
+export class ExtensionBuilder {
+  private _target: string
+  private _columns: ExtensionColumn[]
+  private _fields: ExtensionField[]
+  private _filters: ExtensionFilter[]
+  private _blocks: Map<string, ExtensionBlock[]>
+
   /**
-   * @param {string} target - Target module name to extend
+   * @param target - Target module name to extend
    */
-  constructor(target) {
+  constructor(target: string) {
     if (!target || typeof target !== 'string') {
       throw new Error('[extendModule] Target module name must be a non-empty string')
     }
@@ -65,14 +153,10 @@ class ExtensionBuilder {
   /**
    * Add a column to the target module's list view
    *
-   * @param {object} column - Column configuration
-   * @param {string} column.field - Field name
-   * @param {string} [column.header] - Column header label
-   * @param {number} [column.width] - Column width
-   * @param {Function} [column.body] - Custom body template function
-   * @returns {this} For chaining
+   * @param column - Column configuration
+   * @returns This instance for chaining
    */
-  addColumn(column) {
+  addColumn(column: ExtensionColumn): this {
     if (!column || !column.field) {
       throw new Error('[extendModule] Column must have a field property')
     }
@@ -83,10 +167,10 @@ class ExtensionBuilder {
   /**
    * Add multiple columns to the target module's list view
    *
-   * @param {object[]} columns - Array of column configurations
-   * @returns {this} For chaining
+   * @param columns - Array of column configurations
+   * @returns This instance for chaining
    */
-  addColumns(columns) {
+  addColumns(columns: ExtensionColumn[]): this {
     if (!Array.isArray(columns)) {
       throw new Error('[extendModule] addColumns expects an array')
     }
@@ -99,13 +183,10 @@ class ExtensionBuilder {
   /**
    * Add a field to the target module's form view
    *
-   * @param {object} field - Field configuration
-   * @param {string} field.name - Field name
-   * @param {string} [field.type='text'] - Field type
-   * @param {string} [field.label] - Field label
-   * @returns {this} For chaining
+   * @param field - Field configuration
+   * @returns This instance for chaining
    */
-  addField(field) {
+  addField(field: ExtensionField): this {
     if (!field || !field.name) {
       throw new Error('[extendModule] Field must have a name property')
     }
@@ -116,10 +197,10 @@ class ExtensionBuilder {
   /**
    * Add multiple fields to the target module's form view
    *
-   * @param {object[]} fields - Array of field configurations
-   * @returns {this} For chaining
+   * @param fields - Array of field configurations
+   * @returns This instance for chaining
    */
-  addFields(fields) {
+  addFields(fields: ExtensionField[]): this {
     if (!Array.isArray(fields)) {
       throw new Error('[extendModule] addFields expects an array')
     }
@@ -132,13 +213,10 @@ class ExtensionBuilder {
   /**
    * Add a filter to the target module's filter bar
    *
-   * @param {object} filter - Filter configuration
-   * @param {string} filter.name - Filter name
-   * @param {string} [filter.type='text'] - Filter type
-   * @param {string} [filter.label] - Filter label
-   * @returns {this} For chaining
+   * @param filter - Filter configuration
+   * @returns This instance for chaining
    */
-  addFilter(filter) {
+  addFilter(filter: ExtensionFilter): this {
     if (!filter || !filter.name) {
       throw new Error('[extendModule] Filter must have a name property')
     }
@@ -149,10 +227,10 @@ class ExtensionBuilder {
   /**
    * Add multiple filters to the target module's filter bar
    *
-   * @param {object[]} filters - Array of filter configurations
-   * @returns {this} For chaining
+   * @param filters - Array of filter configurations
+   * @returns This instance for chaining
    */
-  addFilters(filters) {
+  addFilters(filters: ExtensionFilter[]): this {
     if (!Array.isArray(filters)) {
       throw new Error('[extendModule] addFilters expects an array')
     }
@@ -165,15 +243,11 @@ class ExtensionBuilder {
   /**
    * Add a block to a zone in the target module
    *
-   * @param {string} zoneName - Zone name (e.g., 'books:detail:sidebar')
-   * @param {object} block - Block configuration
-   * @param {import('vue').Component} block.component - Vue component
-   * @param {number} [block.weight=50] - Block weight for ordering
-   * @param {object} [block.props={}] - Props to pass to component
-   * @param {string} [block.id] - Unique block ID
-   * @returns {this} For chaining
+   * @param zoneName - Zone name (e.g., 'books:detail:sidebar')
+   * @param block - Block configuration
+   * @returns This instance for chaining
    */
-  addBlock(zoneName, block) {
+  addBlock(zoneName: string, block: ExtensionBlock): this {
     if (!zoneName || typeof zoneName !== 'string') {
       throw new Error('[extendModule] Zone name must be a non-empty string')
     }
@@ -183,18 +257,18 @@ class ExtensionBuilder {
     if (!this._blocks.has(zoneName)) {
       this._blocks.set(zoneName, [])
     }
-    this._blocks.get(zoneName).push(block)
+    this._blocks.get(zoneName)!.push(block)
     return this
   }
 
   /**
    * Add multiple blocks to a zone
    *
-   * @param {string} zoneName - Zone name
-   * @param {object[]} blocks - Array of block configurations
-   * @returns {this} For chaining
+   * @param zoneName - Zone name
+   * @param blocks - Array of block configurations
+   * @returns This instance for chaining
    */
-  addBlocks(zoneName, blocks) {
+  addBlocks(zoneName: string, blocks: ExtensionBlock[]): this {
     if (!Array.isArray(blocks)) {
       throw new Error('[extendModule] addBlocks expects an array')
     }
@@ -207,31 +281,33 @@ class ExtensionBuilder {
   /**
    * Register all extensions with the kernel
    *
-   * @param {object} context - Registration context
-   * @param {object} context.hooks - HookRegistry instance
-   * @param {object} [context.zones] - ZoneRegistry instance (required for blocks)
-   * @param {number} [context.priority=50] - Hook priority
-   * @returns {Function} Cleanup function to remove all extensions
+   * @param context - Registration context
+   * @returns Cleanup function to remove all extensions
    */
-  register(context) {
+  register(context: ExtensionContext): () => void {
     if (!context || !context.hooks) {
       throw new Error('[extendModule] register() requires { hooks } context')
     }
 
     const { hooks, zones, priority = DEFAULT_PRIORITY } = context
-    const cleanupFns = []
+    const cleanupFns: Array<() => void> = []
 
     // Register column alter hook
     if (this._columns.length > 0) {
       const hookName = `${this._target}:list:alter`
       const columns = [...this._columns]
-      const unbind = hooks.register(hookName, (config) => {
-        if (!config.columns) {
-          config.columns = []
-        }
-        config.columns.push(...columns)
-        return config
-      }, { priority })
+      const unbind = hooks.register(
+        hookName,
+        (config) => {
+          const cfg = config as { columns?: ExtensionColumn[] }
+          if (!cfg.columns) {
+            cfg.columns = []
+          }
+          cfg.columns.push(...columns)
+          return config
+        },
+        { priority }
+      )
       cleanupFns.push(unbind)
     }
 
@@ -239,13 +315,18 @@ class ExtensionBuilder {
     if (this._fields.length > 0) {
       const hookName = `${this._target}:form:alter`
       const fields = [...this._fields]
-      const unbind = hooks.register(hookName, (config) => {
-        if (!config.fields) {
-          config.fields = []
-        }
-        config.fields.push(...fields)
-        return config
-      }, { priority })
+      const unbind = hooks.register(
+        hookName,
+        (config) => {
+          const cfg = config as { fields?: ExtensionField[] }
+          if (!cfg.fields) {
+            cfg.fields = []
+          }
+          cfg.fields.push(...fields)
+          return config
+        },
+        { priority }
+      )
       cleanupFns.push(unbind)
     }
 
@@ -253,13 +334,18 @@ class ExtensionBuilder {
     if (this._filters.length > 0) {
       const hookName = `${this._target}:filter:alter`
       const filters = [...this._filters]
-      const unbind = hooks.register(hookName, (config) => {
-        if (!config.filters) {
-          config.filters = []
-        }
-        config.filters.push(...filters)
-        return config
-      }, { priority })
+      const unbind = hooks.register(
+        hookName,
+        (config) => {
+          const cfg = config as { filters?: ExtensionFilter[] }
+          if (!cfg.filters) {
+            cfg.filters = []
+          }
+          cfg.filters.push(...filters)
+          return config
+        },
+        { priority }
+      )
       cleanupFns.push(unbind)
     }
 
@@ -274,7 +360,7 @@ class ExtensionBuilder {
         }
       }
       // Zone blocks cleanup: store zone/id pairs for removal
-      const blockIds = []
+      const blockIds: BlockIdRef[] = []
       for (const [zoneName, blocks] of this._blocks) {
         for (const block of blocks) {
           if (block.id) {
@@ -304,11 +390,11 @@ class ExtensionBuilder {
    *
    * Useful for debugging or serialization.
    *
-   * @returns {object} Extensions config
+   * @returns Extensions config
    */
-  toConfig() {
-    const config = {
-      target: this._target
+  toConfig(): CollectedExtensions {
+    const config: CollectedExtensions = {
+      target: this._target,
     }
     if (this._columns.length > 0) {
       config.columns = [...this._columns]
@@ -336,19 +422,22 @@ class ExtensionBuilder {
  * 1. Fluent API: extendModule('target').addColumn(...).register({ hooks })
  * 2. Config object: extendModule('target', { columns: [...] }, { hooks })
  *
- * @param {string} target - Target module name to extend
- * @param {object} [extensions] - Optional extensions config object
- * @param {object[]} [extensions.columns] - Columns to add to list view
- * @param {object[]} [extensions.fields] - Fields to add to form view
- * @param {object[]} [extensions.filters] - Filters to add to filter bar
- * @param {Object.<string, object[]>} [extensions.blocks] - Blocks to add to zones
- * @param {object} [context] - Registration context (required if extensions provided)
- * @param {object} context.hooks - HookRegistry instance
- * @param {object} [context.zones] - ZoneRegistry instance
- * @param {number} [context.priority] - Hook priority
- * @returns {ExtensionBuilder|Function} Builder for fluent API, or cleanup function if extensions provided
+ * @param target - Target module name to extend
+ * @param extensions - Optional extensions config object
+ * @param context - Registration context (required if extensions provided)
+ * @returns Builder for fluent API, or cleanup function if extensions provided
  */
-export function extendModule(target, extensions, context) {
+export function extendModule(target: string): ExtensionBuilder
+export function extendModule(
+  target: string,
+  extensions: ExtensionsConfig,
+  context: ExtensionContext
+): () => void
+export function extendModule(
+  target: string,
+  extensions?: ExtensionsConfig,
+  context?: ExtensionContext
+): ExtensionBuilder | (() => void) {
   const builder = new ExtensionBuilder(target)
 
   // If no extensions provided, return builder for fluent API
@@ -379,8 +468,3 @@ export function extendModule(target, extensions, context) {
 
   return builder.register(context)
 }
-
-/**
- * ExtensionBuilder class export for instanceof checks
- */
-export { ExtensionBuilder }

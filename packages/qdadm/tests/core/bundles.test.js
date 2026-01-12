@@ -13,7 +13,7 @@ import {
   withTimestamps,
   withVersioning,
   withAuditLog,
-} from '../../src/core/bundles.js'
+} from '../../src/core/bundles'
 import { createHookRegistry, HOOK_PRIORITY } from '../../src/hooks/index'
 
 describe('createHookBundle', () => {

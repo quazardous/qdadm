@@ -28,7 +28,7 @@
  */
 
 import { inject, ref, type Ref } from 'vue'
-import type { DeferredRegistry } from '../deferred/DeferredRegistry.js'
+import type { DeferredRegistry } from '../deferred/DeferredRegistry'
 
 /**
  * Injection key for DeferredRegistry
@@ -80,8 +80,8 @@ export function useDeferredValue<T = unknown>(key: string): UseDeferredValueRetu
   const error = ref<Error | null>(null)
 
   deferred
-    .await(key)
-    .then((value: T) => {
+    .await<T>(key)
+    .then((value) => {
       data.value = value
       loading.value = false
     })
