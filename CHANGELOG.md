@@ -3,6 +3,24 @@
 All notable changes to qdadm will be documented in this file.
 This is not a commit log. Keep entries simple, user-focused.
 
+## [1.1.0] - 2026-01-12
+
+### Breaking Changes
+- **Renamed `createLocalStorageRoleGranter` to `createLocalStorageRolesProvider`**
+- **Renamed type interfaces**: `StaticRoleGranterConfig` → `StaticRolesProviderConfig`, `EntityRoleGranterOptions` → `EntityRolesProviderOptions`, etc.
+- **Renamed `roleGranter` config property to `rolesProvider`** in Kernel security options
+
+### Added
+- **Clickable footer logo**: "Powered by qdadm" footer now links to GitHub repository
+
+### Fixed
+- **Products menu highlighting**: Added `entity` property to navItem for proper active state detection
+- **Debug SignalsPanel filter**: Replaced PrimeVue InputText with native input for consistent styling
+
+### Documentation
+- **README rewrite**: More punchy, TypeScript-first messaging
+- **Updated docs**: AGENT_GUIDE, security.md, QDADM_CREDO updated with new naming
+
 ## [1.0.0] - 2026-01-12
 
 ### Breaking Changes
