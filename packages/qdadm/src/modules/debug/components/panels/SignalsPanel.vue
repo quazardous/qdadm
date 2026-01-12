@@ -9,7 +9,6 @@
  * - ** → all signals (default)
  */
 import { ref, computed, watch } from 'vue'
-import InputText from 'primevue/inputtext'
 import ObjectTree from '../ObjectTree.vue'
 
 interface SignalEntry {
@@ -130,9 +129,10 @@ function getDomainColor(name: string): string {
     <div class="signals-filter">
       <div class="signals-filter-input">
         <i class="pi pi-filter" />
-        <InputText
+        <input
           v-model="filterPattern"
-          placeholder="Filter: auth:** cache:** *:created"
+          type="text"
+          placeholder="auth:** cache:** *:created"
           class="filter-input"
         />
         <span class="signals-count">{{ filterStats }}</span>
