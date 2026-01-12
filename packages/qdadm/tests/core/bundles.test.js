@@ -14,7 +14,7 @@ import {
   withVersioning,
   withAuditLog,
 } from '../../src/core/bundles.js'
-import { createHookRegistry, HOOK_PRIORITY } from '../../src/hooks/index.js'
+import { createHookRegistry, HOOK_PRIORITY } from '../../src/hooks/index'
 
 describe('createHookBundle', () => {
   it('creates a bundle factory function', () => {

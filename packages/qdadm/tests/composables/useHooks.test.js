@@ -5,7 +5,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { defineComponent, h } from 'vue'
 import { useHooks } from '../../src/composables/useHooks.js'
-import { createHookRegistry } from '../../src/hooks/HookRegistry.js'
+import { createHookRegistry } from '../../src/hooks/HookRegistry'
 
 describe('useHooks', () => {
   beforeEach(() => {

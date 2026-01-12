@@ -6,7 +6,7 @@
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import { extendModule, ExtensionBuilder } from '../../src/core/index.js'
-import { createHookRegistry } from '../../src/hooks/index.js'
+import { createHookRegistry } from '../../src/hooks/index'
 import { createZoneRegistry } from '../../src/zones/index.js'
 
 describe('extendModule', () => {

@@ -7,7 +7,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { KernelContext, createKernelContext } from '../../src/kernel/KernelContext.js'
 import { Module } from '../../src/kernel/Module.js'
-import { SignalBus, createSignalBus } from '../../src/kernel/SignalBus.js'
+import { SignalBus, createSignalBus } from '../../src/kernel/SignalBus'
 
 /**
  * Create a minimal mock kernel for testing

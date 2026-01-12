@@ -8,7 +8,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { defineComponent, h } from 'vue'
 import { Kernel } from '../../src/kernel/Kernel.js'
-import { SignalBus } from '../../src/kernel/SignalBus.js'
+import { SignalBus } from '../../src/kernel/SignalBus'
 import { EntityManager } from '../../src/entity/EntityManager.js'
 import { Module } from '../../src/kernel/Module.js'
 import { ModuleLoader } from '../../src/kernel/ModuleLoader.js'

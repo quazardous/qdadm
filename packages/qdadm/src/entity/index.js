@@ -16,7 +16,7 @@ export {
 } from './factory.js'
 
 // Storage adapters
-export * from './storage/index.js'
+export * from './storage/index'
 
 // Auth adapters
 export * from './auth/index.js'

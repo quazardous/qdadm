@@ -5,7 +5,7 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
-import { HookRegistry, createHookRegistry, HOOK_PRIORITY } from '../../src/hooks/index.js'
+import { HookRegistry, createHookRegistry, HOOK_PRIORITY } from '../../src/hooks/index'
 
 describe('HookRegistry', () => {
   let hooks

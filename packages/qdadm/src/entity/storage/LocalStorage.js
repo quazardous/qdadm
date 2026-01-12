@@ -1,4 +1,4 @@
-import { IStorage } from './IStorage.js'
+import { IStorage } from './IStorage'
 
 /**
  * LocalStorage - Browser localStorage storage adapter

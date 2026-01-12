@@ -6,7 +6,7 @@ import { mount, flushPromises } from '@vue/test-utils'
 import { defineComponent, h, nextTick } from 'vue'
 import { createRouter, createMemoryHistory } from 'vue-router'
 import { useNavigation } from '../../src/composables/useNavigation.js'
-import { createHookRegistry } from '../../src/hooks/HookRegistry.js'
+import { createHookRegistry } from '../../src/hooks/HookRegistry'
 import {
   registry,
   resetRegistry,

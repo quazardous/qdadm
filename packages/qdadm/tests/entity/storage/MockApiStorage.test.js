@@ -8,7 +8,7 @@ import {
   MockApiStorage,
   createMockApiStorage,
   getStorageCapabilities
-} from '../../../src/entity/storage/index.js'
+} from '../../../src/entity/storage/index'
 
 describe('MockApiStorage', () => {
   describe('static capabilities', () => {

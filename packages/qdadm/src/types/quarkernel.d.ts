@@ -29,11 +29,20 @@ declare module '@quazardous/quarkernel' {
     ctx: ListenerContext
   ) => void | Promise<void>
 
+  export interface ExecutionError {
+    listenerId: string
+    error: Error
+  }
+
   export interface QuarKernel {
     on(signal: string, handler: ListenerCallback, options?: ListenerOptions): () => void
-    once(signal: string, handler: ListenerCallback, options?: ListenerOptions): () => void
+    once(signal: string, handler?: ListenerCallback, options?: ListenerOptions): () => void
     off(signal: string, handler: ListenerCallback): void
     emit(signal: string, payload?: unknown): Promise<void>
+    emitSerial(signal: string, payload?: unknown): Promise<void>
+    clearExecutionErrors(): void
+    getExecutionErrors(): ExecutionError[]
+    debug(enabled: boolean): void
     destroy(): void
   }
 

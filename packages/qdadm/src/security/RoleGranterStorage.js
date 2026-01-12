@@ -14,7 +14,7 @@ export class RoleGranterStorage {
 
   /**
    * Static capabilities (standard storage pattern)
-   * @type {import('../entity/storage/index.js').StorageCapabilities}
+   * @type {import('../entity/storage/index').StorageCapabilities}
    */
   static capabilities = {
     supportsTotal: true,

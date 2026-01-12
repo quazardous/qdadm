@@ -19,7 +19,7 @@
  * ```
  */
 
-import { IStorage } from './IStorage.js'
+import { IStorage } from './IStorage'
 import { ApiStorage } from './ApiStorage.js'
 import { LocalStorage } from './LocalStorage.js'
 import { MemoryStorage } from './MemoryStorage.js'

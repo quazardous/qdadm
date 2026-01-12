@@ -1,4 +1,4 @@
-import { IStorage } from './IStorage.js'
+import { IStorage } from './IStorage'
 
 /**
  * SdkStorage - hey-api SDK storage adapter

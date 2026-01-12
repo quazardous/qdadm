@@ -10,7 +10,7 @@ import {
   SIGNALS,
   SIGNAL_ACTIONS,
   buildSignal
-} from '../../src/kernel/SignalBus.js'
+} from '../../src/kernel/SignalBus'
 
 describe('SignalBus', () => {
   describe('factory function', () => {

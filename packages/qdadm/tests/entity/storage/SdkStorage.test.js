@@ -5,7 +5,7 @@
  */
 import { describe, it, expect } from 'vitest'
 import { SdkStorage, createSdkStorage } from '../../../src/entity/storage/SdkStorage.js'
-import { getStorageCapabilities, DEFAULT_STORAGE_CAPABILITIES } from '../../../src/entity/storage/index.js'
+import { getStorageCapabilities, DEFAULT_STORAGE_CAPABILITIES } from '../../../src/entity/storage/index'
 
 describe('SdkStorage', () => {
   describe('static capabilities', () => {

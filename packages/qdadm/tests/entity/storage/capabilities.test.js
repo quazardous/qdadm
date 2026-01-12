@@ -17,7 +17,7 @@ import {
   LocalStorage,
   getStorageCapabilities,
   DEFAULT_STORAGE_CAPABILITIES
-} from '../../../src/entity/storage/index.js'
+} from '../../../src/entity/storage/index'
 
 describe('EntityManager + Storage Capabilities Integration', () => {
   describe('isCacheEnabled with ApiStorage', () => {

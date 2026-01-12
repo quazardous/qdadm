@@ -5,7 +5,7 @@
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { SignalCollector } from '../../src/modules/debug/SignalCollector.js'
-import { createSignalBus, SIGNAL_ACTIONS } from '../../src/kernel/SignalBus.js'
+import { createSignalBus, SIGNAL_ACTIONS } from '../../src/kernel/SignalBus'
 
 describe('SignalCollector', () => {
   let collector

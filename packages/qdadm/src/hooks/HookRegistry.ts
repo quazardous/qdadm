@@ -33,7 +33,7 @@
  * const alteredConfig = await hooks.alter('list:alter', baseConfig)
  */
 
-import { createKernel } from '@quazardous/quarkernel'
+import { createKernel, type QuarKernel, type ListenerOptions } from '@quazardous/quarkernel'
 
 /**
  * Default priority for hooks (middle of range)
@@ -49,26 +49,85 @@ export const HOOK_PRIORITY = {
   NORMAL: 50,
   LOW: 25,
   LAST: 0,
+} as const
+
+/**
+ * Hook handler function type
+ */
+export type HookHandler<T = unknown> = (data: T) => T | void | Promise<T | void>
+
+/**
+ * Hook registration options
+ */
+export interface HookRegistrationOptions {
+  priority?: number
+  id?: string
+  after?: string | string[]
+  once?: boolean
+}
+
+/**
+ * Hook entry for internal tracking
+ */
+interface HookEntry {
+  handler: HookHandler
+  priority: number
+  id?: string
+  after?: string | string[]
+  once: boolean
+  unbind: () => void
+}
+
+/**
+ * Hook entry with normalized dependencies
+ */
+interface HookEntryWithDeps extends HookEntry {
+  afterArray: string[]
+}
+
+/**
+ * HookRegistry constructor options
+ */
+export interface HookRegistryOptions {
+  kernel?: QuarKernel
+  debug?: boolean
+}
+
+/**
+ * Invoke options
+ */
+export interface InvokeOptions {
+  throwOnError?: boolean
+}
+
+/**
+ * Alter options
+ */
+export interface AlterOptions {
+  immutable?: boolean
 }
 
 /**
  * HookRegistry class - wraps QuarKernel for Drupal-inspired hook API
  */
 export class HookRegistry {
+  private _kernel: QuarKernel
+  private _hooks: Map<string, HookEntry[]>
+
   /**
    * Create a HookRegistry instance
    *
-   * @param {object} options - Configuration options
-   * @param {object} [options.kernel] - Existing QuarKernel instance to wrap
-   * @param {boolean} [options.debug=false] - Enable debug logging
+   * @param options - Configuration options
    */
-  constructor(options = {}) {
-    this._kernel = options.kernel ?? createKernel({
-      delimiter: ':',
-      wildcard: true,
-      errorBoundary: true,
-      debug: options.debug ?? false,
-    })
+  constructor(options: HookRegistryOptions = {}) {
+    this._kernel =
+      options.kernel ??
+      createKernel({
+        delimiter: ':',
+        wildcard: true,
+        errorBoundary: true,
+        debug: options.debug ?? false,
+      })
 
     // Track registered hooks for introspection
     this._hooks = new Map()
@@ -77,25 +136,16 @@ export class HookRegistry {
   /**
    * Register a hook handler
    *
-   * @param {string} name - Hook name (colon-delimited, e.g., 'entity:presave')
-   * @param {Function} handler - Handler function
-   * @param {object} [options] - Registration options
-   * @param {number} [options.priority=50] - Priority (higher runs first)
-   * @param {string} [options.id] - Unique handler ID for debugging
-   * @param {string|string[]} [options.after] - Run after these handler IDs
-   * @param {boolean} [options.once=false] - Remove after first invocation
-   * @returns {Function} Unbind function to remove this handler
+   * @param name - Hook name (colon-delimited, e.g., 'entity:presave')
+   * @param handler - Handler function
+   * @param options - Registration options
+   * @returns Unbind function to remove this handler
    */
-  register(name, handler, options = {}) {
-    const {
-      priority = DEFAULT_PRIORITY,
-      id,
-      after,
-      once = false,
-    } = options
+  register(name: string, handler: HookHandler, options: HookRegistrationOptions = {}): () => void {
+    const { priority = DEFAULT_PRIORITY, id, after, once = false } = options
 
     // Build QuarKernel options
-    const kernelOptions = {
+    const kernelOptions: ListenerOptions = {
       priority,
       once,
     }
@@ -109,14 +159,14 @@ export class HookRegistry {
     }
 
     // Register with QuarKernel
-    const unbind = this._kernel.on(name, handler, kernelOptions)
+    const unbind = this._kernel.on(name, handler as never, kernelOptions)
 
     // Track for introspection
     if (!this._hooks.has(name)) {
       this._hooks.set(name, [])
     }
 
-    const hookEntry = {
+    const hookEntry: HookEntry = {
       handler,
       priority,
       id,
@@ -125,7 +175,7 @@ export class HookRegistry {
       unbind,
     }
 
-    this._hooks.get(name).push(hookEntry)
+    this._hooks.get(name)!.push(hookEntry)
 
     // Return enhanced unbind that also cleans up tracking
     return () => {
@@ -151,14 +201,12 @@ export class HookRegistry {
    * Handlers may be async; all are awaited before returning.
    * No return value is expected from handlers.
    *
-   * @param {string} name - Hook name
-   * @param {*} context - Context object passed to all handlers (can be mutated)
-   * @param {object} [options] - Invocation options
-   * @param {boolean} [options.throwOnError=false] - Rethrow collected errors after all handlers run
-   * @returns {Promise<void>}
-   * @throws {AggregateError} If throwOnError is true and any handlers threw errors
+   * @param name - Hook name
+   * @param context - Context object passed to all handlers (can be mutated)
+   * @param options - Invocation options
+   * @throws AggregateError if throwOnError is true and any handlers threw errors
    */
-  async invoke(name, context = {}, options = {}) {
+  async invoke(name: string, context: unknown = {}, options: InvokeOptions = {}): Promise<void> {
     const { throwOnError = false } = options
 
     // Clear any previous execution errors
@@ -172,9 +220,11 @@ export class HookRegistry {
     if (throwOnError) {
       const errors = this._kernel.getExecutionErrors()
       if (errors.length > 0) {
-        const errorMessages = errors.map(e => `[${e.listenerId}] ${e.error.message}`)
+        const errorMessages = errors.map(
+          (e: { listenerId: string; error: Error }) => `[${e.listenerId}] ${e.error.message}`
+        )
         throw new AggregateError(
-          errors.map(e => e.error),
+          errors.map((e: { error: Error }) => e.error),
           `Hook "${name}" handlers failed:\n  ${errorMessages.join('\n  ')}`
         )
       }
@@ -188,11 +238,10 @@ export class HookRegistry {
    * Handlers are chained: each receives the output of the previous handler (reduce pattern).
    * Respects priority ordering (higher priority runs first) and `after` dependencies.
    *
-   * @param {string} name - Hook name
-   * @param {*} data - Initial data to transform
-   * @param {object} [options] - Alter options
-   * @param {boolean} [options.immutable=false] - Clone data between handlers for immutability
-   * @returns {Promise<*>} Transformed data after all handlers
+   * @param name - Hook name
+   * @param data - Initial data to transform
+   * @param options - Alter options
+   * @returns Transformed data after all handlers
    *
    * @example
    * // Register handlers
@@ -207,7 +256,7 @@ export class HookRegistry {
    * // With immutability (each handler gets a fresh clone)
    * const config = await hooks.alter('list:alter', baseConfig, { immutable: true })
    */
-  async alter(name, data, options = {}) {
+  async alter<T>(name: string, data: T, options: AlterOptions = {}): Promise<T> {
     const { immutable = false } = options
 
     // No handlers? Return data unchanged
@@ -222,7 +271,7 @@ export class HookRegistry {
     const sortedHandlers = this._sortByDependencies(handlers)
 
     // Chain through handlers: each receives previous output (reduce pattern)
-    let result = data
+    let result: T = data
     for (const entry of sortedHandlers) {
       // Clone data if immutability is enabled
       const input = immutable ? this._cloneData(result) : result
@@ -230,7 +279,7 @@ export class HookRegistry {
 
       // If handler returns something, use it; otherwise keep current
       if (handlerResult !== undefined) {
-        result = handlerResult
+        result = handlerResult as T
       }
     }
 
@@ -239,12 +288,8 @@ export class HookRegistry {
 
   /**
    * Clone data for immutability support
-   *
-   * @private
-   * @param {*} val - Value to clone
-   * @returns {*} Cloned value
    */
-  _cloneData(val) {
+  private _cloneData<T>(val: T): T {
     if (val === null || val === undefined) {
       return val
     }
@@ -258,43 +303,35 @@ export class HookRegistry {
   /**
    * Sort handlers by dependencies and priority
    * Uses topological sort for dependency resolution (after option)
-   *
-   * @private
-   * @param {Array} handlers - Array of handler entries
-   * @returns {Array} Sorted handlers
    */
-  _sortByDependencies(handlers) {
+  private _sortByDependencies(handlers: HookEntry[]): HookEntryWithDeps[] {
     // If no dependencies, just return sorted by priority
-    const hasDependencies = handlers.some(h => h.after && (
-      typeof h.after === 'string' ||
-      (Array.isArray(h.after) && h.after.length > 0)
-    ))
+    const hasDependencies = handlers.some(
+      (h) => h.after && (typeof h.after === 'string' || (Array.isArray(h.after) && h.after.length > 0))
+    )
 
-    if (!hasDependencies) {
-      return [...handlers].sort((a, b) => b.priority - a.priority)
-    }
-
-    // Normalize after to arrays
-    const entriesWithDeps = handlers.map(h => ({
+    const entriesWithDeps: HookEntryWithDeps[] = handlers.map((h) => ({
       ...h,
-      afterArray: h.after
-        ? (Array.isArray(h.after) ? h.after : [h.after])
-        : [],
+      afterArray: h.after ? (Array.isArray(h.after) ? h.after : [h.after]) : [],
     }))
 
+    if (!hasDependencies) {
+      return entriesWithDeps.sort((a, b) => b.priority - a.priority)
+    }
+
     // Build ID set for validation
-    const handlerIds = new Set(entriesWithDeps.filter(e => e.id).map(e => e.id))
+    const handlerIds = new Set(entriesWithDeps.filter((e) => e.id).map((e) => e.id))
 
     // Filter dependencies to only those that exist in this hook
     for (const entry of entriesWithDeps) {
-      entry.afterArray = entry.afterArray.filter(dep => handlerIds.has(dep))
+      entry.afterArray = entry.afterArray.filter((dep) => handlerIds.has(dep))
     }
 
     // Assign dependency levels
-    const levelMap = new Map()
-    const assignLevel = (entry, visited = new Set()) => {
+    const levelMap = new Map<HookEntryWithDeps, number>()
+    const assignLevel = (entry: HookEntryWithDeps, visited: Set<HookEntryWithDeps> = new Set()): number => {
       if (levelMap.has(entry)) {
-        return levelMap.get(entry)
+        return levelMap.get(entry)!
       }
       if (visited.has(entry)) {
         // Circular dependency - treat as level 0
@@ -310,7 +347,7 @@ export class HookRegistry {
       // Find max level of dependencies
       let maxDepLevel = 0
       for (const depId of entry.afterArray) {
-        const depEntry = entriesWithDeps.find(e => e.id === depId)
+        const depEntry = entriesWithDeps.find((e) => e.id === depId)
         if (depEntry) {
           const depLevel = assignLevel(depEntry, new Set(visited))
           maxDepLevel = Math.max(maxDepLevel, depLevel)
@@ -323,7 +360,7 @@ export class HookRegistry {
     }
 
     // Assign levels to all entries
-    entriesWithDeps.forEach(e => assignLevel(e))
+    entriesWithDeps.forEach((e) => assignLevel(e))
 
     // Sort by level, then by priority within level
     return [...entriesWithDeps].sort((a, b) => {
@@ -338,20 +375,17 @@ export class HookRegistry {
 
   /**
    * Get all registered hook names
-   *
-   * @returns {string[]} Array of hook names
    */
-  getRegisteredHooks() {
+  getRegisteredHooks(): string[] {
     return Array.from(this._hooks.keys())
   }
 
   /**
    * Get handler count for a hook
    *
-   * @param {string} [name] - Hook name (optional, total if omitted)
-   * @returns {number} Handler count
+   * @param name - Hook name (optional, total if omitted)
    */
-  getHandlerCount(name) {
+  getHandlerCount(name?: string): number {
     if (name) {
       return this._hooks.get(name)?.length ?? 0
     }
@@ -365,12 +399,9 @@ export class HookRegistry {
 
   /**
    * Check if a hook has any registered handlers
-   *
-   * @param {string} name - Hook name
-   * @returns {boolean}
    */
-  hasHook(name) {
-    return this._hooks.has(name) && this._hooks.get(name).length > 0
+  hasHook(name: string): boolean {
+    return this._hooks.has(name) && this._hooks.get(name)!.length > 0
   }
 
   /**
@@ -378,7 +409,7 @@ export class HookRegistry {
    *
    * Removes all handlers and clears internal state.
    */
-  dispose() {
+  dispose(): void {
     // Unbind all handlers
     for (const handlers of this._hooks.values()) {
       for (const entry of handlers) {
@@ -392,20 +423,15 @@ export class HookRegistry {
 
   /**
    * Enable/disable debug mode
-   *
-   * @param {boolean} enabled - Enable debug logging
    */
-  debug(enabled) {
+  debug(enabled: boolean): void {
     this._kernel.debug(enabled)
   }
 }
 
 /**
  * Factory function to create a HookRegistry instance
- *
- * @param {object} [options] - HookRegistry options
- * @returns {HookRegistry}
  */
-export function createHookRegistry(options = {}) {
+export function createHookRegistry(options: HookRegistryOptions = {}): HookRegistry {
   return new HookRegistry(options)
 }

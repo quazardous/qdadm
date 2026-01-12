@@ -8,7 +8,7 @@ import {
   LocalStorage,
   createLocalStorage,
   getStorageCapabilities
-} from '../../../src/entity/storage/index.js'
+} from '../../../src/entity/storage/index'
 
 describe('LocalStorage', () => {
   describe('static capabilities', () => {

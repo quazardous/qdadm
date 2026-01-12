@@ -26,7 +26,7 @@
  * // Later: cleanup()  // Removes all bundle hooks
  */
 
-import { HOOK_PRIORITY } from '../hooks/index.js'
+import { HOOK_PRIORITY } from '../hooks/index'
 
 /**
  * Create a hook bundle factory

@@ -9,7 +9,7 @@ import pkg from '../package.json'
 export const version = pkg.version
 
 // Kernel (simplified bootstrap)
-export * from './kernel/index.js'
+export * from './kernel/index'
 
 // Plugin (manual bootstrap)
 export { createQdadm } from './plugin.js'
@@ -42,7 +42,7 @@ export * from './zones/index.js'
 export * from './chain/index.js'
 
 // Hooks
-export * from './hooks/index.js'
+export * from './hooks/index'
 
 // Deferred (async service loading)
 export * from './deferred/index.js'

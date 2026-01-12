@@ -9,6 +9,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { ref, nextTick } from 'vue'
 import { mount, flushPromises } from '@vue/test-utils'
 import { useListPage } from '../../src/composables/useListPage.js'
+import { createHookRegistry } from '../../src/hooks'
 
 // Mock route state that can be changed per test
 let mockRouteState = { name: 'book', params: {}, query: {}, meta: {} }
@@ -428,8 +429,7 @@ describe('useListPage - Permission features', () => {
 })
 
 describe('useListPage - list:alter hook', () => {
-  // Import HookRegistry for these tests
-  const { createHookRegistry } = require('../../src/hooks/HookRegistry.js')
+  // HookRegistry imported at top of file
 
   let mockHookRegistry
 
@@ -675,8 +675,7 @@ describe('useListPage - list:alter hook', () => {
 })
 
 describe('useListPage - filter:alter hook', () => {
-  // Import HookRegistry for these tests
-  const { createHookRegistry } = require('../../src/hooks/HookRegistry.js')
+  // HookRegistry imported at top of file
 
   let mockHookRegistry
 

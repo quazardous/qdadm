@@ -9,7 +9,7 @@ import {
   createMemoryStorage,
   getStorageCapabilities,
   DEFAULT_STORAGE_CAPABILITIES
-} from '../../../src/entity/storage/index.js'
+} from '../../../src/entity/storage/index'
 
 describe('MemoryStorage', () => {
   describe('static capabilities', () => {

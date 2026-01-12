@@ -15,7 +15,7 @@ import {
   ModuleLoadError,
 } from '../../src/kernel/ModuleLoader.js'
 import { KernelContext, createKernelContext } from '../../src/kernel/KernelContext.js'
-import { createSignalBus } from '../../src/kernel/SignalBus.js'
+import { createSignalBus } from '../../src/kernel/SignalBus'
 import { Kernel } from '../../src/kernel/Kernel.js'
 import { EntityManager } from '../../src/entity/EntityManager.js'
 

@@ -1,4 +1,4 @@
-import { IStorage } from './IStorage.js'
+import { IStorage } from './IStorage'
 import { QueryExecutor } from '../../query/index'
 
 /**
