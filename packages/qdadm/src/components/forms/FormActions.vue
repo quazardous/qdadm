@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 /**
  * FormActions - Reusable form action buttons
  *
@@ -15,26 +15,25 @@
 
 import Button from 'primevue/button'
 
-defineProps({
-  isEdit: {
-    type: Boolean,
-    default: false
-  },
-  saving: {
-    type: Boolean,
-    default: false
-  },
-  dirty: {
-    type: Boolean,
-    default: true  // Default true for backwards compatibility
-  },
-  showSaveAndClose: {
-    type: Boolean,
-    default: true
-  }
+interface Props {
+  isEdit?: boolean
+  saving?: boolean
+  dirty?: boolean
+  showSaveAndClose?: boolean
+}
+
+withDefaults(defineProps<Props>(), {
+  isEdit: false,
+  saving: false,
+  dirty: true,  // Default true for backwards compatibility
+  showSaveAndClose: true
 })
 
-const emit = defineEmits(['save', 'saveAndClose', 'cancel'])
+const emit = defineEmits<{
+  'save': []
+  'saveAndClose': []
+  'cancel': []
+}>()
 </script>
 
 <template>

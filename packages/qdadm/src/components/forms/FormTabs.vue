@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 /**
  * FormTabs - Normalized tab container for forms
  *
@@ -34,10 +34,12 @@ defineProps({
   }
 })
 
-const emit = defineEmits(['update:modelValue'])
+const emit = defineEmits<{
+  'update:modelValue': [value: string]
+}>()
 
-function onTabChange(value) {
-  emit('update:modelValue', value)
+function onTabChange(value: string | number): void {
+  emit('update:modelValue', String(value))
 }
 </script>
 

@@ -1,12 +1,23 @@
-<script setup>
+<script setup lang="ts">
 /**
  * ToastsPanel - Toasts collector display (vertical mode)
  */
-defineProps({
-  entries: { type: Array, required: true }
-})
+interface ToastEntry {
+  timestamp: number
+  severity: string
+  summary?: string
+  detail?: string
+  emitter?: string
+  _isNew?: boolean
+}
 
-function formatTime(ts) {
+interface Props {
+  entries: ToastEntry[]
+}
+
+defineProps<Props>()
+
+function formatTime(ts: number): string {
   return new Date(ts).toLocaleTimeString('en-US', {
     hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit'
   })

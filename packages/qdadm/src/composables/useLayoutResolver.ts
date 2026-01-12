@@ -28,7 +28,7 @@
  * ```
  */
 import { computed, inject, getCurrentInstance, type ComputedRef, type Component } from 'vue'
-import { useRoute, type RouteLocationNormalizedLoaded } from 'vue-router'
+import { useRoute } from 'vue-router'
 
 // Layout type constants
 export const LAYOUT_TYPES = {

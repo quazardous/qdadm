@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 /**
  * EmptyState - Reusable empty state display
  *
@@ -14,6 +14,8 @@
  *     <Button label="Create Item" @click="create" />
  *   </EmptyState>
  */
+
+type SizeVariant = 'sm' | 'md' | 'lg'
 
 defineProps({
   // PrimeIcon name (without "pi-" prefix if you want, both work)
@@ -33,14 +35,14 @@ defineProps({
   },
   // Size variant
   size: {
-    type: String,
+    type: String as () => SizeVariant,
     default: 'md', // sm, md, lg
-    validator: (v) => ['sm', 'md', 'lg'].includes(v)
+    validator: (v: string) => ['sm', 'md', 'lg'].includes(v)
   }
 })
 
 // Normalize icon name (accept both "pi-inbox" and "inbox")
-function getIconClass(icon) {
+function getIconClass(icon: string): string {
   if (icon.startsWith('pi-')) {
     return `pi ${icon}`
   }

@@ -58,8 +58,8 @@ describe('DebugModule', () => {
   })
 
   describe('static properties', () => {
-    it('has static name set to "debug"', () => {
-      expect(DebugModule.name).toBe('debug')
+    it('has static moduleName set to "debug"', () => {
+      expect(DebugModule.moduleName).toBe('debug')
     })
 
     it('has empty requires array', () => {

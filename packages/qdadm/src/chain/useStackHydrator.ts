@@ -28,11 +28,6 @@ import { inject, ref, computed, onUnmounted, type Ref, type ComputedRef } from '
 import type { SignalBus } from '../kernel/SignalBus'
 
 /**
- * Signal handler type (matches ListenerCallback from quarkernel)
- */
-type SignalHandler = (event: unknown) => void | Promise<void>
-
-/**
  * Hydrated level data
  */
 export interface HydratedLevel {

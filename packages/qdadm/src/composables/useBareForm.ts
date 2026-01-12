@@ -31,7 +31,7 @@
  */
 import { ref, computed, provide, inject, onUnmounted, type Ref, type ComputedRef } from 'vue'
 import { useRoute, useRouter, type Router, type RouteLocationNormalizedLoaded } from 'vue-router'
-import { useDirtyState, type UseDirtyStateReturn } from './useDirtyState'
+import { useDirtyState } from './useDirtyState'
 import { useUnsavedChangesGuard, type GuardDialogState } from './useUnsavedChangesGuard'
 import { useBreadcrumb, type BreadcrumbDisplayItem } from './useBreadcrumb'
 import { registerGuardDialog, unregisterGuardDialog } from './useGuardStore'

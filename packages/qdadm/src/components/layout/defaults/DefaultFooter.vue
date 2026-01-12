@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 /**
  * DefaultFooter - Default footer component for BaseLayout
  *
@@ -12,7 +12,12 @@ import { inject } from 'vue'
 import qdadmLogo from '../../../assets/logo.svg'
 import { version as qdadmVersion } from '../../../../package.json'
 
-const features = inject('qdadmFeatures', { poweredBy: true })
+interface Features {
+  poweredBy?: boolean
+  [key: string]: boolean | undefined
+}
+
+const features = inject<Features>('qdadmFeatures', { poweredBy: true })
 </script>
 
 <template>

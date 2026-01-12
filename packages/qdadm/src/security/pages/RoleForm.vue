@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 /**
  * RoleForm - Role create/edit form (standard FormPage pattern)
  */
@@ -8,24 +8,82 @@ import { useEntityItemFormPage, FormPage, useOrchestrator, PermissionEditor } fr
 import InputText from 'primevue/inputtext'
 import AutoComplete from 'primevue/autocomplete'
 import Chip from 'primevue/chip'
+import type { PermissionRegistry } from '../PermissionRegistry'
+
+/**
+ * Role option for autocomplete
+ */
+interface RoleOption {
+  name: string
+  label: string
+  display: string
+}
+
+/**
+ * Role data from role granter
+ */
+interface RoleData {
+  label?: string
+  [key: string]: unknown
+}
+
+/**
+ * Role granter interface
+ */
+interface RoleGranter {
+  getRoles: () => string[]
+  getRole?: (name: string) => RoleData | null
+}
+
+/**
+ * Roles manager interface
+ */
+interface RolesManager {
+  roleGranter?: RoleGranter
+}
+
+/**
+ * Autocomplete search event
+ */
+interface AutocompleteSearchEvent {
+  query?: string
+}
+
+/**
+ * Autocomplete select event
+ */
+interface AutocompleteSelectEvent {
+  value: RoleOption
+}
+
+/**
+ * Role form data structure
+ */
+interface RoleFormData {
+  name: string
+  label: string
+  inherits: string[]
+  permissions: string[]
+  [key: string]: unknown
+}
 
 // ============ FORM BUILDER ============
 const form = useEntityItemFormPage({ entity: 'roles' })
 
 // ============ HELPERS ============
 const { getManager } = useOrchestrator()
-const manager = getManager('roles')
+const manager = getManager('roles') as RolesManager | null
 
 // Get permissionRegistry directly from Kernel (via provide/inject)
-const permissionRegistry = inject('qdadmPermissionRegistry', null)
+const permissionRegistry = inject<PermissionRegistry | null>('qdadmPermissionRegistry', null)
 
 // Role options for inheritance (exclude self)
-const allRoles = computed(() => {
-  const currentName = form.data.value?.name
+const allRoles = computed<RoleOption[]>(() => {
+  const currentName = form.data.value?.name as string | undefined
   const roles = manager?.roleGranter?.getRoles() || []
   return roles
-    .filter(name => name !== currentName)
-    .map(name => {
+    .filter((name: string) => name !== currentName)
+    .map((name: string) => {
       const role = manager?.roleGranter?.getRole?.(name)
       return {
         name,
@@ -36,36 +94,38 @@ const allRoles = computed(() => {
 })
 
 // Autocomplete for roles
-const roleInput = ref('')
-const roleSuggestions = ref([])
+const roleInput = ref<string>('')
+const roleSuggestions = ref<RoleOption[]>([])
 
-function searchRoles(event) {
+function searchRoles(event: AutocompleteSearchEvent): void {
   const query = (event.query || '').toLowerCase()
-  const selected = form.data.value.inherits || []
+  const selected = (form.data.value.inherits as string[]) || []
 
   roleSuggestions.value = allRoles.value
-    .filter(r => !selected.includes(r.name))
-    .filter(r =>
+    .filter((r: RoleOption) => !selected.includes(r.name))
+    .filter((r: RoleOption) =>
       query === '' ||
       r.name.toLowerCase().includes(query) ||
       r.label.toLowerCase().includes(query)
     )
 }
 
-function onRoleSelect(event) {
+function onRoleSelect(event: AutocompleteSelectEvent): void {
   const role = event.value
-  if (role && !form.data.value.inherits?.includes(role.name)) {
-    form.data.value.inherits = [...(form.data.value.inherits || []), role.name]
+  const inherits = (form.data.value.inherits as string[]) || []
+  if (role && !inherits.includes(role.name)) {
+    form.data.value.inherits = [...inherits, role.name]
   }
   roleInput.value = ''
 }
 
-function removeRole(roleName) {
-  form.data.value.inherits = (form.data.value.inherits || []).filter(r => r !== roleName)
+function removeRole(roleName: string): void {
+  const inherits = (form.data.value.inherits as string[]) || []
+  form.data.value.inherits = inherits.filter((r: string) => r !== roleName)
 }
 
-function getRoleLabel(roleName) {
-  const role = allRoles.value.find(r => r.name === roleName)
+function getRoleLabel(roleName: string): string {
+  const role = allRoles.value.find((r: RoleOption) => r.name === roleName)
   return role?.label || roleName
 }
 </script>
@@ -78,7 +138,7 @@ function getRoleLabel(roleName) {
         <div class="form-field">
           <label class="font-medium">Role Name</label>
           <InputText
-            v-model="form.data.value.name"
+            v-model="(form.data.value as RoleFormData).name"
             :disabled="form.isEdit.value"
             placeholder="ROLE_ADMIN"
             class="w-full"
@@ -90,7 +150,7 @@ function getRoleLabel(roleName) {
         <div class="form-field">
           <label class="font-medium">Display Label</label>
           <InputText
-            v-model="form.data.value.label"
+            v-model="(form.data.value as RoleFormData).label"
             placeholder="Administrator"
             class="w-full"
           />
@@ -100,9 +160,9 @@ function getRoleLabel(roleName) {
         <div class="form-field">
           <label class="font-medium">Inherits From</label>
           <div class="inherits-editor">
-            <div v-if="(form.data.value.inherits || []).length > 0" class="inherits-chips">
+            <div v-if="((form.data.value as RoleFormData).inherits || []).length > 0" class="inherits-chips">
               <Chip
-                v-for="roleName in form.data.value.inherits"
+                v-for="roleName in (form.data.value as RoleFormData).inherits"
                 :key="roleName"
                 removable
                 @remove="removeRole(roleName)"
@@ -140,10 +200,10 @@ function getRoleLabel(roleName) {
         <!-- Permissions -->
         <div class="form-field">
           <label class="font-medium">
-            Permissions ({{ (form.data.value.permissions || []).length }})
+            Permissions ({{ ((form.data.value as RoleFormData).permissions || []).length }})
           </label>
           <PermissionEditor
-            v-model="form.data.value.permissions"
+            v-model="(form.data.value as RoleFormData).permissions"
             :permissionRegistry="permissionRegistry"
             placeholder="Type namespace:action..."
           />

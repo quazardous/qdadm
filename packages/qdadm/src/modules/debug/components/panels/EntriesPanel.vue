@@ -1,30 +1,47 @@
-<script setup>
+<script setup lang="ts">
 /**
  * EntriesPanel - Default entries display (horizontal/vertical)
  */
-import { ref } from 'vue'
+import { ref, type Ref } from 'vue'
 import ObjectTree from '../ObjectTree.vue'
 
-defineProps({
-  entries: { type: Array, required: true },
-  mode: { type: String, default: 'vertical' }, // 'horizontal' or 'vertical'
-  maxEntries: { type: Number, default: 10 }
+interface DebugEntry {
+  timestamp: number
+  _isNew?: boolean
+  name?: string
+  message?: string
+  [key: string]: unknown
+}
+
+type EntriesPanelMode = 'horizontal' | 'vertical'
+
+interface Props {
+  entries: DebugEntry[]
+  mode?: EntriesPanelMode
+  maxEntries?: number
+}
+
+withDefaults(defineProps<Props>(), {
+  mode: 'vertical',
+  maxEntries: 10
 })
 
-const copiedIdx = ref(null)
+const copiedIdx: Ref<number | null> = ref(null)
 
-function formatTime(ts) {
+function formatTime(ts: number): string {
   return new Date(ts).toLocaleTimeString('en-US', {
     hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit'
   })
 }
 
-function getEntryData(entry) {
-  const { timestamp, _isNew, ...rest } = entry
+function getEntryData(entry: DebugEntry): Record<string, unknown> {
+  const { timestamp: _, _isNew: __, ...rest } = entry
+  void _
+  void __
   return rest
 }
 
-async function copyEntry(entry, idx) {
+async function copyEntry(entry: DebugEntry, idx: number): Promise<void> {
   try {
     const data = getEntryData(entry)
     await navigator.clipboard.writeText(JSON.stringify(data, null, 2))

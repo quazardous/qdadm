@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 /**
  * RouterPanel - Debug panel for Vue Router state
  *
@@ -11,26 +11,98 @@
 import { ref, computed, watch } from 'vue'
 import ObjectTree from '../ObjectTree.vue'
 
-const props = defineProps({
-  collector: { type: Object, required: true },
-  entries: { type: Array, required: true }
-})
+interface RouteLocation {
+  name?: string
+  path: string
+  fullPath: string
+  params?: Record<string, string>
+  query?: Record<string, string>
+  hash?: string
+  meta?: Record<string, unknown>
+  matched?: MatchedRoute[]
+}
+
+interface MatchedRoute {
+  name?: string
+  path: string
+  meta?: Record<string, unknown>
+}
+
+interface NavigationEntry {
+  id: string | number
+  timestamp: number
+  from?: RouteLocation
+  to: RouteLocation
+  seen?: boolean
+}
+
+interface RouteEntry {
+  name: string
+  path: string
+  meta?: Record<string, unknown>
+  hasComponent?: boolean
+}
+
+interface StackLevel {
+  entity: string
+  param: string
+  id?: string
+  foreignKey?: string
+  loading?: boolean
+  hydrated?: boolean
+  hasData?: boolean
+  label?: string
+}
+
+interface ActiveStack {
+  depth: number
+  levels: StackLevel[]
+}
+
+interface BreadcrumbItem {
+  kind: 'route' | 'entity'
+  route?: string
+  entity?: string
+  id?: string
+}
+
+interface Tab {
+  id: string
+  label: string
+  icon: string
+}
+
+interface RouterCollector {
+  navigate: (path: string) => Promise<void>
+  getActiveStack: () => ActiveStack | null
+  getCurrentRoute: () => RouteLocation | null
+  getBreadcrumb: () => BreadcrumbItem[]
+  getRoutes: () => RouteEntry[]
+  markSeen: () => void
+  getBadge: () => number
+  [key: string]: unknown
+}
+
+const props = defineProps<{
+  collector: RouterCollector
+  entries: NavigationEntry[]
+}>()
 
 // Active tab
-const activeTab = ref('current')
-const tabs = [
+const activeTab = ref<string>('current')
+const tabs: Tab[] = [
   { id: 'current', label: 'Current', icon: 'pi-map-marker' },
   { id: 'history', label: 'History', icon: 'pi-history' },
   { id: 'routes', label: 'Routes', icon: 'pi-sitemap' }
 ]
 
 // Route filter for routes tab
-const routeFilter = ref('')
+const routeFilter = ref<string>('')
 
 // Address bar for navigation
-const addressInput = ref('')
+const addressInput = ref<string>('')
 
-async function navigateTo() {
+async function navigateTo(): Promise<void> {
   const path = addressInput.value.trim()
   if (!path) return
   await props.collector.navigate(path)
@@ -38,41 +110,41 @@ async function navigateTo() {
 }
 
 // ActiveStack state
-const activeStack = computed(() => {
-  props.entries.length // trigger reactivity
+const activeStack = computed<ActiveStack | null>(() => {
+  void props.entries.length // trigger reactivity
   return props.collector.getActiveStack()
 })
 
 // Max history - persisted in localStorage
 const STORAGE_KEY_MAX = 'qdadm-router-max'
-const maxHistory = ref(parseInt(localStorage.getItem(STORAGE_KEY_MAX)) || 20)
+const maxHistory = ref<number>(parseInt(localStorage.getItem(STORAGE_KEY_MAX) || '20') || 20)
 
 watch(maxHistory, (val) => {
   localStorage.setItem(STORAGE_KEY_MAX, String(val))
 })
 
 // Current route (reactive via entries change)
-const currentRoute = computed(() => {
+const currentRoute = computed<RouteLocation | null>(() => {
   // Trigger reactivity from entries
-  props.entries.length
+  void props.entries.length
   return props.collector.getCurrentRoute()
 })
 
 // Breadcrumb
-const breadcrumb = computed(() => {
-  props.entries.length
+const breadcrumb = computed<BreadcrumbItem[]>(() => {
+  void props.entries.length
   return props.collector.getBreadcrumb()
 })
 
 // Matched routes with their individual metas
-const matchedRoutes = computed(() => {
-  props.entries.length
+const matchedRoutes = computed<MatchedRoute[]>(() => {
+  void props.entries.length
   return currentRoute.value?.matched ?? []
 })
 
 // Navigation history (already newest-first from collector, apply max limit)
-const history = computed(() => {
-  let result = props.entries
+const history = computed<NavigationEntry[]>(() => {
+  let result: NavigationEntry[] = props.entries
   if (maxHistory.value > 0 && result.length > maxHistory.value) {
     result = result.slice(0, maxHistory.value)
   }
@@ -80,47 +152,47 @@ const history = computed(() => {
 })
 
 // All routes filtered
-const routes = computed(() => {
-  props.entries.length // trigger
+const routes = computed<RouteEntry[]>(() => {
+  void props.entries.length // trigger
   const all = props.collector.getRoutes()
   if (!routeFilter.value) return all
   const filter = routeFilter.value.toLowerCase()
-  return all.filter(r =>
+  return all.filter((r: RouteEntry) =>
     r.name.toLowerCase().includes(filter) ||
     r.path.toLowerCase().includes(filter)
   )
 })
 
 // Mark history as seen when viewing history tab
-watch(activeTab, (tab) => {
+watch(activeTab, (tab: string) => {
   if (tab === 'history') {
     props.collector.markSeen()
   }
 })
 
-function formatTime(ts) {
+function formatTime(ts: number): string {
   const d = new Date(ts)
   return d.toLocaleTimeString('en-US', { hour12: false }) + '.' + String(d.getMilliseconds()).padStart(3, '0')
 }
 
-function hasParams(obj) {
-  return obj && Object.keys(obj).length > 0
+function hasParams(obj: Record<string, unknown> | undefined): boolean {
+  return obj !== undefined && obj !== null && Object.keys(obj).length > 0
 }
 
 // Hydration state helpers
-function getHydrationIcon(level) {
+function getHydrationIcon(level: StackLevel): string {
   if (level.loading) return '⏳'
   if (level.hydrated) return level.hasData ? '✓' : '○'
   return '…'
 }
 
-function getHydrationClass(level) {
+function getHydrationClass(level: StackLevel): string {
   if (level.loading) return 'hydration-badge-loading'
   if (level.hydrated) return level.hasData ? 'hydration-badge-data' : 'hydration-badge-ready'
   return 'hydration-badge-pending'
 }
 
-function getHydrationTitle(level) {
+function getHydrationTitle(level: StackLevel): string {
   if (level.loading) return 'Loading entity data...'
   if (level.hydrated && level.hasData) return 'Hydrated with data'
   if (level.hydrated) return 'Hydrated (no data to fetch)'
@@ -356,9 +428,9 @@ function getHydrationTitle(level) {
           </div>
           <div class="route-entry-path">{{ route.path }}</div>
           <div v-if="hasParams(route.meta)" class="route-entry-meta">
-            <span v-if="route.meta.public" class="meta-tag meta-public">public</span>
-            <span v-if="route.meta.entity" class="meta-tag meta-entity">{{ route.meta.entity }}</span>
-            <span v-if="route.meta.permission" class="meta-tag meta-permission">{{ route.meta.permission }}</span>
+            <span v-if="route.meta?.public" class="meta-tag meta-public">public</span>
+            <span v-if="route.meta?.entity" class="meta-tag meta-entity">{{ route.meta.entity }}</span>
+            <span v-if="route.meta?.permission" class="meta-tag meta-permission">{{ route.meta.permission }}</span>
           </div>
         </div>
       </div>

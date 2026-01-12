@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 /**
  * DefaultUserInfo - Default user info component for sidebar
  *
@@ -7,29 +7,40 @@
  *
  * This component is used when auth is enabled.
  */
-import { computed, inject } from 'vue'
+import { computed, type ComputedRef } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuth } from '../../../composables/useAuth'
 import Button from 'primevue/button'
 
-const router = useRouter()
-const { isAuthenticated, user, logout, authEnabled } = useAuth()
+interface UserData {
+  username?: string
+  name?: string
+  email?: string
+  role?: string
+  [key: string]: unknown
+}
 
-const userInitials = computed(() => {
-  const username = user.value?.username
+const router = useRouter()
+const { user, logout, authEnabled } = useAuth()
+
+// Cast user to expected shape (useAuth returns unknown)
+const userData = computed<UserData | null>(() => user.value as UserData | null)
+
+const userInitials: ComputedRef<string> = computed(() => {
+  const username = userData.value?.username
   if (!username) return '?'
   return username.substring(0, 2).toUpperCase()
 })
 
-const userDisplayName = computed(() => {
-  return user.value?.username || user.value?.name || 'User'
+const userDisplayName: ComputedRef<string> = computed(() => {
+  return userData.value?.username || userData.value?.name || 'User'
 })
 
-const userSubtitle = computed(() => {
-  return user.value?.email || user.value?.role || ''
+const userSubtitle: ComputedRef<string> = computed(() => {
+  return userData.value?.email || userData.value?.role || ''
 })
 
-function handleLogout() {
+function handleLogout(): void {
   logout()
   router.push({ name: 'login' })
 }

@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 /**
  * DefaultTable - Default table component for ListLayout
  *
@@ -13,16 +13,16 @@
  * - loading: Boolean loading state
  * - Columns via default slot
  */
-import { computed, useSlots } from 'vue'
-import DataTable from 'primevue/datatable'
+import { computed, useSlots, type PropType } from 'vue'
+import DataTable, { type DataTableSortEvent } from 'primevue/datatable'
 import Column from 'primevue/column'
 
-const props = defineProps({
+defineProps({
   /**
    * Data items to display in the table
    */
   items: {
-    type: Array,
+    type: Array as PropType<unknown[]>,
     default: () => []
   },
   /**
@@ -43,7 +43,7 @@ const props = defineProps({
    * Current selection (for selectable tables)
    */
   selection: {
-    type: Array,
+    type: Array as PropType<unknown[] | undefined>,
     default: undefined
   },
   /**
@@ -71,28 +71,31 @@ const props = defineProps({
    * Current sort field
    */
   sortField: {
-    type: String,
-    default: null
+    type: String as PropType<string | undefined>,
+    default: undefined
   },
   /**
    * Current sort order (1 = asc, -1 = desc)
    */
   sortOrder: {
-    type: Number,
+    type: Number as PropType<1 | -1>,
     default: 1
   }
 })
 
-const emit = defineEmits(['update:selection', 'sort'])
+const emit = defineEmits<{
+  'update:selection': [value: unknown[]]
+  'sort': [event: DataTableSortEvent]
+}>()
 
 const slots = useSlots()
-const hasDefaultSlot = computed(() => !!slots.default)
+const hasDefaultSlot = computed<boolean>(() => !!slots.default)
 
-function onSelectionChange(value) {
+function onSelectionChange(value: unknown[]): void {
   emit('update:selection', value)
 }
 
-function onSort(event) {
+function onSort(event: DataTableSortEvent): void {
   emit('sort', event)
 }
 </script>

@@ -4,7 +4,7 @@ import {
   defaultManagerResolver,
   createManagerFactory,
   createManagers
-} from './factory.js'
+} from './factory'
 import { EntityManager } from './EntityManager'
 import { ApiStorage } from './storage/ApiStorage'
 import { MemoryStorage } from './storage/MemoryStorage'

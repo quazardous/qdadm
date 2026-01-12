@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 /**
  * ListPage - Unified list page component
  *
@@ -14,7 +14,7 @@
  * - 'select' (default): Standard dropdown
  * - 'autocomplete': Searchable dropdown with type-ahead
  */
-import { computed, ref, watch, onMounted, onUnmounted } from 'vue'
+import { computed, ref, watch, onMounted, onUnmounted, type PropType } from 'vue'
 import PageHeader from '../layout/PageHeader.vue'
 import CardsGrid from '../display/CardsGrid.vue'
 import FilterBar from './FilterBar.vue'
@@ -25,35 +25,90 @@ import Button from 'primevue/button'
 import Select from 'primevue/select'
 import AutoComplete from 'primevue/autocomplete'
 import SplitButton from 'primevue/splitbutton'
+import type { FilterConfig, CardConfig, ResolvedAction, ResolvedHeaderAction as BaseResolvedHeaderAction } from '../../composables/useListPage'
+
+/**
+ * Header action state for label function (matches useListPage)
+ */
+interface HeaderActionState {
+  hasSelection: boolean
+  selectionCount: number
+  deleting: boolean
+}
+
+/**
+ * Label type from HeaderActionConfig
+ */
+type LabelType = string | ((state: HeaderActionState) => string)
+
+/**
+ * Extended header action with optional size property used in template
+ */
+interface ResolvedHeaderAction extends BaseResolvedHeaderAction {
+  size?: string
+}
+
+/**
+ * Autocomplete event interface
+ */
+interface AutocompleteEvent {
+  query?: string
+}
+
+/**
+ * Autocomplete select event interface
+ */
+interface AutocompleteSelectEvent {
+  value: FilterOption | string | null
+}
+
+/**
+ * Filter option interface
+ */
+interface FilterOption {
+  label: string
+  value: unknown
+  [key: string]: unknown
+}
+
+/**
+ * SplitButton menu item
+ */
+interface SplitButtonMenuItem {
+  label: string
+  icon?: string
+  disabled?: boolean
+  command?: () => void
+}
 
 const props = defineProps({
   // Header
-  title: { type: String, required: true },
-  subtitle: { type: String, default: null },
-  headerActions: { type: Array, default: () => [] },
+  title: { type: String, default: '' },
+  subtitle: { type: String as PropType<string | null>, default: null },
+  headerActions: { type: Array as PropType<ResolvedHeaderAction[]>, default: () => [] },
 
   // Cards
-  cards: { type: Array, default: () => [] },
-  cardsColumns: { type: [Number, String], default: 'auto' },
+  cards: { type: Array as PropType<CardConfig[]>, default: () => [] },
+  cardsColumns: { type: [Number, String] as PropType<number | 'auto'>, default: 'auto' },
 
   // Table data
-  items: { type: Array, required: true },
+  items: { type: Array as PropType<unknown[]>, required: true },
   loading: { type: Boolean, default: false },
   dataKey: { type: String, default: 'id' },
 
   // Selection
-  selected: { type: Array, default: () => [] },
+  selected: { type: Array as PropType<unknown[]>, default: () => [] },
   selectable: { type: Boolean, default: false },
 
   // Pagination
   paginator: { type: Boolean, default: true },
   rows: { type: Number, default: 10 },
-  rowsPerPageOptions: { type: Array, default: () => [10, 50, 100] },
+  rowsPerPageOptions: { type: Array as PropType<number[]>, default: () => [10, 50, 100] },
   totalRecords: { type: Number, default: 0 },
   lazy: { type: Boolean, default: false },
 
   // Sorting
-  sortField: { type: String, default: null },
+  sortField: { type: String as PropType<string | null>, default: null },
   sortOrder: { type: Number, default: 1 },
 
   // Search
@@ -61,43 +116,51 @@ const props = defineProps({
   searchPlaceholder: { type: String, default: 'Search...' },
 
   // Filters
-  filters: { type: Array, default: () => [] },
-  filterValues: { type: Object, default: () => ({}) },
+  filters: { type: Array as PropType<FilterConfig[]>, default: () => [] },
+  filterValues: { type: Object as PropType<Record<string, unknown>>, default: () => ({}) },
 
   // Row Actions
-  getActions: { type: Function, default: null },
+  getActions: { type: Function as unknown as PropType<((row: unknown) => ResolvedAction[]) | null>, default: null },
   actionsWidth: { type: String, default: '120px' },
 
   // Mobile row tap
   hasRowTapAction: { type: Boolean, default: false }
 })
 
-function resolveLabel(label, _action) {
-  return typeof label === 'function' ? label({ selectionCount: props.selected?.length || 0 }) : label
+function resolveLabel(label: LabelType): string {
+  if (typeof label === 'function') {
+    const state: HeaderActionState = {
+      hasSelection: (props.selected?.length || 0) > 0,
+      selectionCount: props.selected?.length || 0,
+      deleting: false
+    }
+    return label(state)
+  }
+  return label
 }
 
 // Local copy of filterValues for proper v-model binding
 // PrimeVue Select needs v-model to fire change events reliably
-const localFilterValues = ref({})
+const localFilterValues = ref<Record<string, unknown>>({})
 
 // Autocomplete suggestions per filter (keyed by filter name)
-const autocompleteSuggestions = ref({})
+const autocompleteSuggestions = ref<Record<string, FilterOption[]>>({})
 
 // For autocomplete filters, we store the selected option object (not just value)
 // to display the label properly. This maps filter.name -> selected option object
-const autocompleteSelected = ref({})
+const autocompleteSelected = ref<Record<string, FilterOption | null>>({})
 
 // Sync from prop to local (when parent updates)
-watch(() => props.filterValues, (newVal) => {
+watch(() => props.filterValues, (newVal: Record<string, unknown>) => {
   localFilterValues.value = { ...newVal }
   // Sync autocomplete selections - find matching option by value
   for (const filter of props.filters) {
     if (filter.type === 'autocomplete' && newVal[filter.name] != null) {
-      const option = filter.options?.find(opt =>
+      const option = filter.options?.find((opt: FilterOption) =>
         (opt.value ?? opt) === newVal[filter.name]
       )
       if (option) {
-        autocompleteSelected.value[filter.name] = option
+        autocompleteSelected.value[filter.name] = option as FilterOption
       }
     } else if (filter.type === 'autocomplete' && newVal[filter.name] == null) {
       autocompleteSelected.value[filter.name] = null
@@ -107,23 +170,23 @@ watch(() => props.filterValues, (newVal) => {
 
 // Check if any filter or search has a non-null value
 const hasActiveFilters = computed(() => {
-  const hasFilters = Object.values(props.filterValues).some(v => v !== null && v !== undefined && v !== '')
+  const hasFilters = Object.values(props.filterValues).some((v: unknown) => v !== null && v !== undefined && v !== '')
   const hasSearch = props.searchQuery && props.searchQuery.trim() !== ''
   return hasFilters || hasSearch
 })
 
-const emit = defineEmits([
-  'update:selected',
-  'update:searchQuery',
-  'update:filterValues',
-  'page',
-  'sort',
-  'row-click'
-])
+const emit = defineEmits<{
+  (e: 'update:selected', value: unknown[]): void
+  (e: 'update:searchQuery', value: string): void
+  (e: 'update:filterValues', values: Record<string, unknown>): void
+  (e: 'page', event: { page: number; rows: number }): void
+  (e: 'sort', event: { sortField: string; sortOrder: number }): void
+  (e: 'row-click', data: unknown, originalEvent: MouseEvent): void
+}>()
 
 // Mobile detection for header actions dropdown
-const isMobile = ref(window.innerWidth < 768)
-function handleResize() {
+const isMobile = ref<boolean>(window.innerWidth < 768)
+function handleResize(): void {
   isMobile.value = window.innerWidth < 768
 }
 onMounted(() => window.addEventListener('resize', handleResize))
@@ -133,21 +196,21 @@ onUnmounted(() => window.removeEventListener('resize', handleResize))
 // Primary action = last (rightmost, e.g. Delete selected), dropdown = rest (e.g. Create)
 const primaryHeaderAction = computed(() => {
   if (props.headerActions.length === 0) return null
-  return props.headerActions[props.headerActions.length - 1]
+  return props.headerActions[props.headerActions.length - 1] as ResolvedHeaderAction
 })
 const dropdownHeaderActions = computed(() => {
-  if (props.headerActions.length <= 1) return []
-  return props.headerActions.slice(0, -1).map(action => ({
+  if (props.headerActions.length <= 1) return [] as SplitButtonMenuItem[]
+  return props.headerActions.slice(0, -1).map((action) => ({
     label: resolveLabel(action.label),
     icon: action.icon,
     disabled: action.isLoading,
     command: action.onClick
-  }))
+  })) as SplitButtonMenuItem[]
 })
 
-function clearAllFilters() {
+function clearAllFilters(): void {
   // Build empty filter values object
-  const cleared = {}
+  const cleared: Record<string, null> = {}
   for (const key of Object.keys(localFilterValues.value)) {
     cleared[key] = null
   }
@@ -161,54 +224,54 @@ function clearAllFilters() {
   emit('update:searchQuery', '')
 }
 
-function onSelectionChange(value) {
+function onSelectionChange(value: unknown[]): void {
   emit('update:selected', value)
 }
 
-function onSearchChange(value) {
+function onSearchChange(value: string): void {
   emit('update:searchQuery', value)
 }
 
-function onFilterChange(_name) {
+function onFilterChange(_name: string): void {
   emit('update:filterValues', { ...localFilterValues.value })
 }
 
 /**
  * Handle autocomplete search/filter
- * @param {Object} event - PrimeVue autocomplete event with query property
- * @param {Object} filter - Filter definition from props.filters
+ * @param event - PrimeVue autocomplete event with query property
+ * @param filter - Filter definition from props.filters
  */
-function onAutocompleteSearch(event, filter) {
+function onAutocompleteSearch(event: AutocompleteEvent, filter: FilterConfig): void {
   const query = (event.query || '').toLowerCase()
   const labelField = filter.optionLabel || 'label'
 
   if (!query) {
     // Show all options when query is empty
-    autocompleteSuggestions.value[filter.name] = [...(filter.options || [])]
+    autocompleteSuggestions.value[filter.name] = [...(filter.options || [])] as FilterOption[]
   } else {
     // Filter options by label
-    autocompleteSuggestions.value[filter.name] = (filter.options || []).filter(opt => {
-      const label = typeof opt === 'string' ? opt : (opt[labelField] || '')
-      return label.toLowerCase().includes(query)
-    })
+    autocompleteSuggestions.value[filter.name] = (filter.options || []).filter((opt: FilterOption) => {
+      const label = typeof opt === 'string' ? opt : ((opt as FilterOption)[labelField] || '')
+      return String(label).toLowerCase().includes(query)
+    }) as FilterOption[]
   }
 }
 
 /**
  * Handle autocomplete selection
- * @param {Object} event - PrimeVue event with value property (selected option)
- * @param {Object} filter - Filter definition
+ * @param event - PrimeVue event with value property (selected option)
+ * @param filter - Filter definition
  */
-function onAutocompleteSelect(event, filter) {
+function onAutocompleteSelect(event: AutocompleteSelectEvent, filter: FilterConfig): void {
   const selected = event.value
   const valueField = filter.optionValue || 'value'
 
   // Store the selected option for display
-  autocompleteSelected.value[filter.name] = selected
+  autocompleteSelected.value[filter.name] = selected as FilterOption | null
 
   // Extract the actual value to send to API
   const value = selected != null
-    ? (typeof selected === 'string' ? selected : selected[valueField])
+    ? (typeof selected === 'string' ? selected : (selected as FilterOption)[valueField])
     : null
 
   localFilterValues.value[filter.name] = value
@@ -218,23 +281,24 @@ function onAutocompleteSelect(event, filter) {
 /**
  * Handle autocomplete clear (user clears the input)
  */
-function onAutocompleteClear(filter) {
+function onAutocompleteClear(filter: FilterConfig): void {
   autocompleteSelected.value[filter.name] = null
   localFilterValues.value[filter.name] = null
   emit('update:filterValues', { ...localFilterValues.value })
 }
 
-function onPage(event) {
+function onPage(event: { page: number; rows: number }): void {
   emit('page', event)
 }
 
-function onSort(event) {
-  emit('sort', event)
+function onSort(event: unknown): void {
+  const e = event as { sortField?: string | null; sortOrder?: number | null }
+  emit('sort', { sortField: String(e.sortField ?? ''), sortOrder: e.sortOrder ?? 1 })
 }
 
-function onRowClick(event) {
-  // event.data = row data, event.originalEvent = MouseEvent
-  emit('row-click', event.data, event.originalEvent)
+function onRowClick(event: { data: unknown; originalEvent: Event }): void {
+  // event.data = row data, event.originalEvent = Event
+  emit('row-click', event.data, event.originalEvent as MouseEvent)
 }
 </script>
 
@@ -247,7 +311,7 @@ function onRowClick(event) {
       <template #actions>
         <slot name="header-actions" ></slot>
         <!-- Mobile: split button (primary action + dropdown) -->
-        <template v-if="isMobile && headerActions.length > 0">
+        <template v-if="isMobile && headerActions.length > 0 && primaryHeaderAction">
           <!-- Single action: just a button -->
           <Button
             v-if="headerActions.length === 1"
@@ -355,7 +419,7 @@ function onRowClick(event) {
         :rowsPerPageOptions="rowsPerPageOptions"
         :totalRecords="totalRecords"
         :lazy="lazy"
-        :sortField="sortField"
+        :sortField="sortField ?? undefined"
         :sortOrder="sortOrder"
         :selection="selected"
         @update:selection="onSelectionChange"

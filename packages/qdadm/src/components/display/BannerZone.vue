@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 /**
  * BannerZone - Renders programmatic banners from useInfoBanner
  *
@@ -13,7 +13,7 @@
  *   </div>
  * </template>
  */
-import { useInfoBanner } from '../../composables/useInfoBanner.js'
+import { useInfoBanner } from '../../composables/useInfoBanner'
 import InfoBanner from '../InfoBanner.vue'
 
 const { banners, hideBanner } = useInfoBanner()

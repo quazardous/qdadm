@@ -335,7 +335,7 @@ describe('Kernel', () => {
       const connectFn = vi.fn()
 
       class TestModule extends Module {
-        static name = 'test'
+        static moduleName = 'test'
         connect(ctx) {
           connectFn(ctx)
         }
@@ -387,7 +387,7 @@ describe('Kernel', () => {
       let receivedCtx = null
 
       class TestModule extends Module {
-        static name = 'test'
+        static moduleName = 'test'
         connect(ctx) {
           receivedCtx = ctx
         }
@@ -420,7 +420,7 @@ describe('Kernel', () => {
       const loadOrder = []
 
       class ModuleA extends Module {
-        static name = 'A'
+        static moduleName = 'A'
         static requires = ['B']
         connect() {
           loadOrder.push('A')
@@ -428,7 +428,7 @@ describe('Kernel', () => {
       }
 
       class ModuleB extends Module {
-        static name = 'B'
+        static moduleName = 'B'
         connect() {
           loadOrder.push('B')
         }
@@ -457,7 +457,7 @@ describe('Kernel', () => {
       const connectFn = vi.fn()
 
       class DisabledModule extends Module {
-        static name = 'disabled'
+        static moduleName = 'disabled'
         enabled() {
           return false
         }
@@ -516,7 +516,7 @@ describe('Kernel', () => {
       const connectFn = vi.fn()
 
       class AsyncModule extends Module {
-        static name = 'async'
+        static moduleName = 'async'
         async connect(ctx) {
           await new Promise(resolve => setTimeout(resolve, 10))
           connectFn(ctx)
@@ -546,7 +546,7 @@ describe('Kernel', () => {
       const readyHandler = vi.fn()
 
       class TestModule extends Module {
-        static name = 'test'
+        static moduleName = 'test'
         connect(ctx) {
           ctx.signals.on('kernel:ready', readyHandler)
         }
@@ -589,7 +589,7 @@ describe('Kernel', () => {
       }
 
       class NewModule extends Module {
-        static name = 'new'
+        static moduleName = 'new'
         connect(ctx) {
           newConnectFn(ctx)
         }

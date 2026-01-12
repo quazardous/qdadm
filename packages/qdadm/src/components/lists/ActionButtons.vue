@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 /**
  * ActionButtons - Renders action buttons from useTableActions
  *
@@ -14,12 +14,20 @@
  */
 import Button from 'primevue/button'
 
-defineProps({
-  actions: {
-    type: Array,
-    required: true
-  }
-})
+interface Action {
+  name: string
+  icon?: string
+  tooltip?: string
+  severity: string
+  handler: () => void | Promise<void>
+  isDisabled?: boolean
+}
+
+interface Props {
+  actions: Action[]
+}
+
+defineProps<Props>()
 </script>
 
 <template>

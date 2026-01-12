@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 /**
  * ObjectTree - VSCode-style collapsible object explorer
  *
@@ -7,39 +7,48 @@
  */
 import { ref, computed } from 'vue'
 
-const props = defineProps({
-  data: { type: [Object, Array, String, Number, Boolean, null], default: null },
-  depth: { type: Number, default: 0 },
-  maxDepth: { type: Number, default: 10 },
-  name: { type: String, default: null },
-  defaultExpanded: { type: Boolean, default: false }
+type DataValue = Record<string, unknown> | unknown[] | string | number | boolean | null | undefined
+
+const props = withDefaults(defineProps<{
+  data?: DataValue
+  depth?: number
+  maxDepth?: number
+  name?: string | null
+  defaultExpanded?: boolean
+}>(), {
+  data: null,
+  depth: 0,
+  maxDepth: 10,
+  name: null,
+  defaultExpanded: false
 })
 
-const expanded = ref(props.defaultExpanded && props.depth < 2)
+const expanded = ref<boolean>(props.defaultExpanded && props.depth < 2)
 
-const isObject = computed(() => props.data !== null && typeof props.data === 'object')
-const isArray = computed(() => Array.isArray(props.data))
-const isEmpty = computed(() => {
+const isObject = computed<boolean>(() => props.data !== null && typeof props.data === 'object')
+const isArray = computed<boolean>(() => Array.isArray(props.data))
+const isEmpty = computed<boolean>(() => {
   if (!isObject.value) return false
-  return isArray.value ? props.data.length === 0 : Object.keys(props.data).length === 0
+  return isArray.value ? (props.data as unknown[]).length === 0 : Object.keys(props.data as object).length === 0
 })
 
-const keys = computed(() => {
+const keys = computed<string[]>(() => {
   if (!isObject.value) return []
-  return Object.keys(props.data).slice(0, 100)
+  return Object.keys(props.data as object).slice(0, 100)
 })
 
-const preview = computed(() => {
+const preview = computed<string>(() => {
   if (!isObject.value) return ''
   if (isArray.value) {
-    return `Array(${props.data.length})`
+    return `Array(${(props.data as unknown[]).length})`
   }
-  const keyCount = Object.keys(props.data).length
-  const firstKeys = Object.keys(props.data).slice(0, 3).join(', ')
+  const dataObj = props.data as Record<string, unknown>
+  const keyCount = Object.keys(dataObj).length
+  const firstKeys = Object.keys(dataObj).slice(0, 3).join(', ')
   return keyCount <= 3 ? `{${firstKeys}}` : `{${firstKeys}, ...}`
 })
 
-const valueClass = computed(() => {
+const valueClass = computed<string>(() => {
   if (props.data === null) return 'obj-null'
   if (props.data === undefined) return 'obj-undefined'
   switch (typeof props.data) {
@@ -51,7 +60,7 @@ const valueClass = computed(() => {
   }
 })
 
-function formatValue(val) {
+function formatValue(val: DataValue): string {
   if (val === null) return 'null'
   if (val === undefined) return 'undefined'
   if (typeof val === 'string') {
@@ -62,7 +71,7 @@ function formatValue(val) {
   return String(val)
 }
 
-function toggleExpand() {
+function toggleExpand(): void {
   if (isObject.value && !isEmpty.value) {
     expanded.value = !expanded.value
   }
@@ -82,13 +91,13 @@ function toggleExpand() {
         <ObjectTree
           v-for="key in keys"
           :key="key"
-          :data="data[key]"
+          :data="data && typeof data === 'object' ? (data as any)[key] : undefined"
           :name="key"
           :depth="depth + 1"
           :maxDepth="maxDepth"
         />
-        <div v-if="Object.keys(data).length > 100" class="obj-truncated">
-          ... {{ Object.keys(data).length - 100 }} more
+        <div v-if="data && typeof data === 'object' && Object.keys(data).length > 100" class="obj-truncated">
+          ... {{ Object.keys(data as object).length - 100 }} more
         </div>
       </div>
       <div v-else-if="expanded" class="obj-max-depth">[Max depth]</div>

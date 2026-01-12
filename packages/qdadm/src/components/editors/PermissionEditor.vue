@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 /**
  * PermissionEditor - Fragmented autocomplete for permissions
  *
@@ -12,43 +12,60 @@
  * - auth:impersonate (namespace=auth, action=impersonate)
  */
 
-import { ref, computed, watch, nextTick } from 'vue'
+import { ref, computed, nextTick, type ComponentPublicInstance } from 'vue'
 import AutoComplete from 'primevue/autocomplete'
 import Chip from 'primevue/chip'
-import Button from 'primevue/button'
 
-const props = defineProps({
-  modelValue: {
-    type: Array,
-    default: () => []
-  },
-  disabled: {
-    type: Boolean,
-    default: false
-  },
-  /**
-   * Permission registry instance
-   * @type {import('../../security/PermissionRegistry.js').PermissionRegistry}
-   */
-  permissionRegistry: {
-    type: Object,
-    required: true
-  },
-  placeholder: {
-    type: String,
-    default: 'Type permission...'
-  }
+interface Permission {
+  key: string
+  namespace: string
+  action: string
+  label: string
+}
+
+interface PermissionRegistry {
+  getAll(): Permission[]
+  get(key: string): Permission | undefined
+}
+
+interface Suggestion {
+  label: string
+  value: string
+  type: 'namespace' | 'permission' | 'wildcard' | 'wildcard-action'
+  description: string
+}
+
+interface PermissionInfo {
+  namespace: string
+  action: string
+  label: string
+  isWildcard?: boolean
+}
+
+interface Props {
+  modelValue?: string[]
+  disabled?: boolean
+  permissionRegistry?: PermissionRegistry | null
+  placeholder?: string
+}
+
+const props = withDefaults(defineProps<Props>(), {
+  modelValue: () => [],
+  disabled: false,
+  placeholder: 'Type permission...'
 })
 
-const emit = defineEmits(['update:modelValue'])
+const emit = defineEmits<{
+  'update:modelValue': [value: string[]]
+}>()
 
 // Current input value
-const inputValue = ref('')
-const suggestions = ref([])
-const autocompleteRef = ref(null)
+const inputValue = ref<string>('')
+const suggestions = ref<Suggestion[]>([])
+const autocompleteRef = ref<ComponentPublicInstance | null>(null)
 
 // Get all permissions from registry
-const allPermissions = computed(() => {
+const allPermissions = computed<Permission[]>(() => {
   if (!props.permissionRegistry) {
     console.warn('[PermissionEditor] No permissionRegistry provided')
     return []
@@ -58,33 +75,36 @@ const allPermissions = computed(() => {
 })
 
 // Check if registry is available
-const hasRegistry = computed(() => {
-  return props.permissionRegistry && allPermissions.value.length > 0
+const hasRegistry = computed<boolean>(() => {
+  return !!props.permissionRegistry && allPermissions.value.length > 0
 })
 
 // Get all permission keys
-const allPermissionKeys = computed(() => {
+const allPermissionKeys = computed<string[]>(() => {
   return allPermissions.value.map(p => p.key)
 })
 
 // Get all unique prefixes at each level
 // e.g., from "entity:books:read" we get ["entity", "entity:books", "entity:books:read"]
-const allPrefixes = computed(() => {
-  const prefixes = new Set()
+const allPrefixes = computed<string[]>(() => {
+  const prefixes = new Set<string>()
   for (const key of allPermissionKeys.value) {
     const parts = key.split(':')
     let current = ''
     for (let i = 0; i < parts.length; i++) {
-      current = current ? current + ':' + parts[i] : parts[i]
-      prefixes.add(current)
+      const part = parts[i]
+      if (part !== undefined) {
+        current = current ? current + ':' + part : part
+        prefixes.add(current)
+      }
     }
   }
   return [...prefixes].sort()
 })
 
 // Get unique actions across all namespaces
-const allActions = computed(() => {
-  const actions = new Set()
+const allActions = computed<string[]>(() => {
+  const actions = new Set<string>()
   for (const perm of allPermissions.value) {
     actions.add(perm.action)
   }
@@ -98,7 +118,7 @@ const allActions = computed(() => {
  * - "entity:bo" → "entity:books:"
  * - "entity:books:re" → "entity:books:read"
  */
-function searchSuggestions(event) {
+function searchSuggestions(event: { query?: string }): void {
   const query = event.query ?? ''
   const queryLower = query.toLowerCase()
 
@@ -121,9 +141,8 @@ function searchSuggestions(event) {
 
   // Check if query ends with ':'  - user wants next level suggestions
   const endsWithColon = query.endsWith(':')
-  const baseQuery = endsWithColon ? query.slice(0, -1) : query
 
-  const results = []
+  const results: Suggestion[] = []
 
   // Add wildcard option if at start or after colon
   if (query === '' || endsWithColon) {
@@ -187,8 +206,8 @@ function searchSuggestions(event) {
 /**
  * Generate wildcard suggestions
  */
-function generateWildcardSuggestions(query) {
-  const results = []
+function generateWildcardSuggestions(query: string): Suggestion[] {
+  const results: Suggestion[] = []
 
   // *: pattern - suggest actions
   if (query === '*:' || query.startsWith('*:')) {
@@ -227,14 +246,14 @@ function generateWildcardSuggestions(query) {
 /**
  * Count children of a prefix
  */
-function countChildren(prefix) {
+function countChildren(prefix: string): number {
   return allPrefixes.value.filter(p => p.startsWith(prefix + ':') || p === prefix).length
 }
 
 /**
  * Get permission label
  */
-function getPermissionLabel(key) {
+function getPermissionLabel(key: string): string {
   const perm = props.permissionRegistry?.get(key)
   return perm?.label || key
 }
@@ -242,7 +261,7 @@ function getPermissionLabel(key) {
 /**
  * Handle selection from dropdown
  */
-function onSelect(event) {
+function onSelect(event: { value: Suggestion }): void {
   const selected = event.value
 
   if (!selected) return
@@ -251,12 +270,12 @@ function onSelect(event) {
   if (selected.value.endsWith(':')) {
     inputValue.value = selected.value
     nextTick(() => {
-      const input = autocompleteRef.value?.$el?.querySelector('input')
+      const input = (autocompleteRef.value as ComponentPublicInstance & { $el: HTMLElement })?.$el?.querySelector('input') as HTMLInputElement | null
       input?.focus()
       // Trigger new search for next level and show dropdown
       searchSuggestions({ query: selected.value })
       // Force show the dropdown with new suggestions
-      autocompleteRef.value?.show()
+      ;(autocompleteRef.value as ComponentPublicInstance & { show: () => void })?.show()
     })
   } else {
     // Complete permission or wildcard - add to list
@@ -271,11 +290,11 @@ function onSelect(event) {
  * Handle click on input - show suggestions if input ends with ':'
  * This ensures the dropdown appears when clicking back into the field
  */
-function onInputClick() {
+function onInputClick(): void {
   if (inputValue.value.endsWith(':')) {
     searchSuggestions({ query: inputValue.value })
     nextTick(() => {
-      autocompleteRef.value?.show()
+      ;(autocompleteRef.value as ComponentPublicInstance & { show: () => void })?.show()
     })
   }
 }
@@ -283,7 +302,7 @@ function onInputClick() {
 /**
  * Handle keyboard events for Tab completion
  */
-function onKeydown(event) {
+function onKeydown(event: KeyboardEvent): void {
   if (event.key === 'Tab' && suggestions.value.length > 0) {
     event.preventDefault()
     // Select first suggestion
@@ -302,7 +321,7 @@ function onKeydown(event) {
         emit('update:modelValue', [...props.modelValue, value])
       }
       inputValue.value = ''
-    } else if (suggestions.value.length > 0) {
+    } else if (suggestions.value.length > 0 && suggestions.value[0]) {
       // Select first suggestion on Enter
       onSelect({ value: suggestions.value[0] })
     }
@@ -312,14 +331,14 @@ function onKeydown(event) {
 /**
  * Remove a permission
  */
-function removePermission(permKey) {
+function removePermission(permKey: string): void {
   emit('update:modelValue', props.modelValue.filter(p => p !== permKey))
 }
 
 /**
  * Get display info for a permission
  */
-function getPermissionInfo(permKey) {
+function getPermissionInfo(permKey: string): PermissionInfo {
   // Handle super wildcard
   if (permKey === '**') {
     return {
@@ -333,7 +352,7 @@ function getPermissionInfo(permKey) {
   // Handle wildcard patterns
   if (permKey.includes('*')) {
     const parts = permKey.split(':')
-    const action = parts.pop()
+    const action = parts.pop() || ''
     const namespace = parts.join(':')
     return {
       namespace: namespace || '*',
@@ -355,7 +374,7 @@ function getPermissionInfo(permKey) {
   const parts = permKey.split(':')
   return {
     namespace: parts.slice(0, -1).join(':'),
-    action: parts[parts.length - 1],
+    action: parts[parts.length - 1] || '',
     label: permKey
   }
 }
@@ -363,7 +382,7 @@ function getPermissionInfo(permKey) {
 /**
  * Custom template for suggestions
  */
-function getSuggestionClass(item) {
+function getSuggestionClass(item: Suggestion): string {
   return item.type === 'namespace' ? 'suggestion-namespace' : 'suggestion-permission'
 }
 </script>

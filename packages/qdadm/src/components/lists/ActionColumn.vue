@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 /**
  * ActionColumn - Reusable table action buttons (edit, delete)
  *
@@ -11,7 +11,10 @@
  */
 import Button from 'primevue/button'
 
-defineEmits(['edit', 'delete'])
+defineEmits<{
+  edit: []
+  delete: []
+}>()
 </script>
 
 <template>

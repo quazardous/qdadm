@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 /**
  * BoolCell - Standardized boolean display for list columns
  *
@@ -16,11 +16,12 @@
  */
 import { computed } from 'vue'
 
-const props = defineProps({
-  value: {
-    type: [Boolean, String, Number],
-    default: null
-  }
+interface Props {
+  value?: boolean | string | number | null
+}
+
+const props = withDefaults(defineProps<Props>(), {
+  value: null
 })
 
 const isTrue = computed(() => props.value === true || props.value === 'true' || props.value === 1)

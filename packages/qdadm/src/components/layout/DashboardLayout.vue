@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 /**
  * DashboardLayout - Second level of layout inheritance for dashboard pages
  *

@@ -1,4 +1,5 @@
-<script setup>
+<!-- eslint-disable vue/multi-word-component-names -->
+<script setup lang="ts">
 /**
  * Breadcrumb - Navigation breadcrumb component
  *
@@ -7,13 +8,18 @@
  *
  * Last item is always rendered as current page (no link)
  */
-import { RouterLink } from 'vue-router'
+import { RouterLink, type RouteLocationRaw } from 'vue-router'
 
-defineProps({
-  items: {
-    type: Array,
-    default: () => []
-  }
+interface BreadcrumbItem {
+  label: string
+  to?: RouteLocationRaw
+  icon?: string
+}
+
+withDefaults(defineProps<{
+  items?: BreadcrumbItem[]
+}>(), {
+  items: () => []
 })
 </script>
 

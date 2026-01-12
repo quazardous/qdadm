@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 /**
  * VanillaJsonEditor - JSON editor using vanilla-jsoneditor
  *
@@ -9,49 +9,43 @@
  */
 
 import { ref, watch, onMounted, onUnmounted, nextTick } from 'vue'
-import { JSONEditor } from 'vanilla-jsoneditor'
+import { JSONEditor, type Content, type ContentErrors, type OnChangeStatus, type Mode } from 'vanilla-jsoneditor'
 
-const props = defineProps({
-  modelValue: {
-    type: [Object, Array, String, null],
-    default: () => ({})
-  },
-  mode: {
-    type: String,
-    default: 'tree', // 'tree', 'text', 'table'
-    validator: (v) => ['tree', 'text', 'table'].includes(v)
-  },
-  height: {
-    type: String,
-    default: '400px'
-  },
-  readOnly: {
-    type: Boolean,
-    default: false
-  },
-  mainMenuBar: {
-    type: Boolean,
-    default: true
-  },
-  navigationBar: {
-    type: Boolean,
-    default: true
-  },
-  statusBar: {
-    type: Boolean,
-    default: true
-  }
+type JsonValue = Record<string, unknown> | unknown[] | string | null
+
+interface Props {
+  modelValue?: JsonValue
+  mode?: Mode
+  height?: string
+  readOnly?: boolean
+  mainMenuBar?: boolean
+  navigationBar?: boolean
+  statusBar?: boolean
+}
+
+const props = withDefaults(defineProps<Props>(), {
+  modelValue: () => ({}),
+  mode: 'tree' as Mode,
+  height: '400px',
+  readOnly: false,
+  mainMenuBar: true,
+  navigationBar: true,
+  statusBar: true
 })
 
-const emit = defineEmits(['update:modelValue', 'change', 'error'])
+const emit = defineEmits<{
+  'update:modelValue': [value: JsonValue]
+  'change': [value: JsonValue]
+  'error': [errors: ContentErrors]
+}>()
 
-const containerRef = ref(null)
-let editor = null
+const containerRef = ref<HTMLElement | null>(null)
+let editor: JSONEditor | null = null
 // Flag to prevent onChange from firing during programmatic updates (instance-specific)
-const updatingFromProp = ref(false)
+const updatingFromProp = ref<boolean>(false)
 
 // Parse value to ensure it's an object/array
-function parseValue(val) {
+function parseValue(val: JsonValue): Record<string, unknown> | unknown[] {
   if (val === null || val === undefined) {
     return {}
   }
@@ -62,14 +56,14 @@ function parseValue(val) {
       return {}
     }
   }
-  return val
+  return val as Record<string, unknown> | unknown[]
 }
 
 // Initialize editor
 onMounted(() => {
   if (!containerRef.value) return
 
-  const content = {
+  const content: Content = {
     json: parseValue(props.modelValue)
   }
 
@@ -82,7 +76,7 @@ onMounted(() => {
       mainMenuBar: props.mainMenuBar,
       navigationBar: props.navigationBar,
       statusBar: props.statusBar,
-      onChange: (updatedContent, previousContent, { contentErrors, patchResult: _patchResult }) => {
+      onChange: (updatedContent: Content, _previousContent: Content, { contentErrors }: OnChangeStatus) => {
         // Skip if this change came from a programmatic prop update
         if (updatingFromProp.value) return
 
@@ -92,10 +86,10 @@ onMounted(() => {
         }
 
         // Extract JSON from content
-        let newValue
-        if (updatedContent.json !== undefined) {
-          newValue = updatedContent.json
-        } else if (updatedContent.text !== undefined) {
+        let newValue: JsonValue | undefined
+        if ('json' in updatedContent && updatedContent.json !== undefined) {
+          newValue = updatedContent.json as JsonValue
+        } else if ('text' in updatedContent && updatedContent.text !== undefined) {
           try {
             newValue = JSON.parse(updatedContent.text)
           } catch {
@@ -114,16 +108,16 @@ onMounted(() => {
 })
 
 // Watch for external changes
-watch(() => props.modelValue, (newVal) => {
+watch(() => props.modelValue, (newVal: JsonValue | undefined) => {
   if (!editor) return
 
   const currentContent = editor.get()
-  const newParsed = parseValue(newVal)
+  const newParsed = parseValue(newVal ?? null)
 
   // Only update if different (avoid loops)
-  const currentJson = currentContent.json !== undefined
+  const currentJson = 'json' in currentContent && currentContent.json !== undefined
     ? currentContent.json
-    : (currentContent.text ? JSON.parse(currentContent.text) : null)
+    : ('text' in currentContent && currentContent.text ? JSON.parse(currentContent.text) : null)
 
   if (JSON.stringify(currentJson) !== JSON.stringify(newParsed)) {
     // Set flag to prevent onChange from emitting during this update
@@ -137,14 +131,14 @@ watch(() => props.modelValue, (newVal) => {
 }, { deep: true })
 
 // Watch mode changes
-watch(() => props.mode, (newMode) => {
-  if (editor) {
+watch(() => props.mode, (newMode: Mode | undefined) => {
+  if (editor && newMode) {
     editor.updateProps({ mode: newMode })
   }
 })
 
 // Watch readOnly changes
-watch(() => props.readOnly, (newReadOnly) => {
+watch(() => props.readOnly, (newReadOnly: boolean) => {
   if (editor) {
     editor.updateProps({ readOnly: newReadOnly })
   }

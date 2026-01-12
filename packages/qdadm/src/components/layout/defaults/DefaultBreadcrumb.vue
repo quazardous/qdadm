@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 /**
  * DefaultBreadcrumb - Default breadcrumb component for BaseLayout
  *
@@ -8,27 +8,32 @@
  * This is the default component rendered in the "breadcrumb" zone
  * when no blocks are registered.
  */
-import { computed, inject, ref } from 'vue'
+import { computed, inject, ref, type Ref } from 'vue'
 import { RouterLink, useRoute } from 'vue-router'
-import { useNavContext } from '../../../composables/useNavContext'
+import { useNavContext, type BreadcrumbItem, type NavLinkItem } from '../../../composables/useNavContext'
 import Breadcrumb from 'primevue/breadcrumb'
 
+interface FeaturesConfig {
+  breadcrumb?: boolean
+  [key: string]: unknown
+}
+
 const route = useRoute()
-const features = inject('qdadmFeatures', { breadcrumb: true })
+const features = inject<FeaturesConfig>('qdadmFeatures', { breadcrumb: true })
 
 // Navigation context (breadcrumb + navlinks from route config)
 const { breadcrumb: defaultBreadcrumb, navlinks: defaultNavlinks } = useNavContext()
 
 // Allow child pages to override breadcrumb/navlinks via provide/inject
-const breadcrumbOverride = inject('qdadmBreadcrumbOverride', ref(null))
-const navlinksOverride = inject('qdadmNavlinksOverride', ref(null))
+const breadcrumbOverride = inject<Ref<BreadcrumbItem[] | null>>('qdadmBreadcrumbOverride', ref(null))
+const navlinksOverride = inject<Ref<NavLinkItem[] | null>>('qdadmNavlinksOverride', ref(null))
 
 // Use override if provided, otherwise default from useNavContext
-const breadcrumbItems = computed(() => breadcrumbOverride.value || defaultBreadcrumb.value)
-const navlinks = computed(() => navlinksOverride.value || defaultNavlinks.value)
+const breadcrumbItems = computed<BreadcrumbItem[]>(() => breadcrumbOverride.value || defaultBreadcrumb.value)
+const navlinks = computed<NavLinkItem[]>(() => navlinksOverride.value || defaultNavlinks.value)
 
 // Show breadcrumb if enabled, has items, and not on home page
-const showBreadcrumb = computed(() => {
+const showBreadcrumb = computed<boolean>(() => {
   if (!features.breadcrumb || breadcrumbItems.value.length === 0) return false
   // Don't show on home page (just "Dashboard" with no parents)
   if (route.name === 'dashboard') return false

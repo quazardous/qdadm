@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 /**
  * FilterBar - Reusable filter bar with search field
  *
@@ -17,22 +17,23 @@ import InputText from 'primevue/inputtext'
 import InputIcon from 'primevue/inputicon'
 import IconField from 'primevue/iconfield'
 
-const props = defineProps({
-  modelValue: {
-    type: String,
-    default: ''
-  },
-  placeholder: {
-    type: String,
-    default: 'Search...'
-  }
+interface Props {
+  modelValue?: string
+  placeholder?: string
+}
+
+const props = withDefaults(defineProps<Props>(), {
+  modelValue: '',
+  placeholder: 'Search...'
 })
 
-const emit = defineEmits(['update:modelValue'])
+const emit = defineEmits<{
+  'update:modelValue': [value: string]
+}>()
 
 const searchModel = computed({
   get: () => props.modelValue,
-  set: (value) => emit('update:modelValue', value)
+  set: (value: string) => emit('update:modelValue', value)
 })
 </script>
 

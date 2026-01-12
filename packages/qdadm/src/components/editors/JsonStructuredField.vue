@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 /**
  * JsonStructuredField - Reusable field with structured/JSON toggle
  *
@@ -36,53 +36,52 @@
 import { ref, computed, watch } from 'vue'
 import SelectButton from 'primevue/selectbutton'
 import VanillaJsonEditor from './VanillaJsonEditor.vue'
+import type { Mode } from 'vanilla-jsoneditor'
 
-const props = defineProps({
-  modelValue: {
-    type: [Object, Array],
-    default: () => ({})
-  },
-  jsonValue: {
-    type: [Object, Array],
-    default: null
-  },
-  mode: {
-    type: String,
-    default: null
-  },
-  label: {
-    type: String,
-    default: null
-  },
-  jsonHeight: {
-    type: String,
-    default: '400px'
-  },
-  jsonMode: {
-    type: String,
-    default: 'text',
-    validator: (v) => ['tree', 'text'].includes(v)
-  },
-  defaultMode: {
-    type: String,
-    default: 'structured',
-    validator: (v) => ['structured', 'json'].includes(v)
-  },
-  showToggle: {
-    type: Boolean,
-    default: true
-  }
+type JsonValue = Record<string, unknown> | unknown[] | string | null
+type ViewMode = 'structured' | 'json'
+
+interface ViewModeOption {
+  label: string
+  value: ViewMode
+  icon: string
+}
+
+interface Props {
+  modelValue?: JsonValue
+  jsonValue?: JsonValue | null
+  mode?: ViewMode | null
+  label?: string | null
+  jsonHeight?: string
+  jsonMode?: Mode
+  defaultMode?: ViewMode
+  showToggle?: boolean
+}
+
+const props = withDefaults(defineProps<Props>(), {
+  modelValue: () => ({}),
+  jsonValue: null,
+  mode: null,
+  label: null,
+  jsonHeight: '400px',
+  jsonMode: 'text' as Mode,
+  defaultMode: 'structured',
+  showToggle: true
 })
 
-const emit = defineEmits(['update:modelValue', 'update:jsonValue', 'update:mode'])
+const emit = defineEmits<{
+  'update:modelValue': [value: JsonValue]
+  'update:jsonValue': [value: JsonValue]
+  'update:mode': [value: ViewMode]
+}>()
 
 // Internal view mode (used when not controlled externally)
-const internalMode = ref(props.defaultMode)
+const internalMode = ref<ViewMode>(props.defaultMode)
 
 // Computed view mode - use external if provided, else internal
-const viewMode = computed({
+const viewMode = computed<ViewMode>({
   get: () => props.mode ?? internalMode.value,
-  set: (val) => {
+  set: (val: ViewMode) => {
     if (props.mode !== null) {
       emit('update:mode', val)
     } else {
@@ -91,18 +90,18 @@ const viewMode = computed({
   }
 })
 
-const viewModeOptions = [
+const viewModeOptions: ViewModeOption[] = [
   { label: 'Structured', value: 'structured', icon: 'pi pi-list' },
   { label: 'JSON', value: 'json', icon: 'pi pi-code' }
 ]
 
 // Computed JSON value - use separate jsonValue if provided, else modelValue
-const effectiveJsonValue = computed(() => {
+const effectiveJsonValue = computed<JsonValue>(() => {
   return props.jsonValue !== null ? props.jsonValue : props.modelValue
 })
 
 // Handle JSON editor updates
-function onJsonUpdate(newValue) {
+function onJsonUpdate(newValue: JsonValue): void {
   if (props.jsonValue !== null) {
     // Using separate jsonValue binding
     emit('update:jsonValue', newValue)
@@ -112,15 +111,9 @@ function onJsonUpdate(newValue) {
   }
 }
 
-// Forward modelValue updates (for structured view)
-// eslint-disable-next-line no-unused-vars
-function emitUpdate(newValue) {
-  emit('update:modelValue', newValue)
-}
-
 // Sync internal mode with prop if it changes
-watch(() => props.mode, (newMode) => {
-  if (newMode !== null) {
+watch(() => props.mode, (newMode: ViewMode | null | undefined) => {
+  if (newMode !== null && newMode !== undefined) {
     internalMode.value = newMode
   }
 })

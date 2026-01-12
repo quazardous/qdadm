@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 /**
  * LanguageEditor - Reusable component for editing language capabilities
  *
@@ -14,31 +14,36 @@ import InputText from 'primevue/inputtext'
 import Slider from 'primevue/slider'
 import Checkbox from 'primevue/checkbox'
 
-const props = defineProps({
-  modelValue: {
-    type: Array,
-    default: () => []
-  },
-  label: {
-    type: String,
-    default: 'Languages'
-  },
-  help: {
-    type: String,
-    default: ''
-  }
+interface LanguageItem {
+  code: string
+  fluency: number
+  primary: boolean
+}
+
+interface Props {
+  modelValue?: LanguageItem[]
+  label?: string
+  help?: string
+}
+
+const props = withDefaults(defineProps<Props>(), {
+  modelValue: () => [],
+  label: 'Languages',
+  help: ''
 })
 
-const emit = defineEmits(['update:modelValue'])
+const emit = defineEmits<{
+  'update:modelValue': [value: LanguageItem[]]
+}>()
 
-const languages = computed({
+const languages = computed<LanguageItem[]>({
   get: () => props.modelValue || [],
-  set: (value) => emit('update:modelValue', value)
+  set: (value: LanguageItem[]) => emit('update:modelValue', value)
 })
 
-const newLanguage = ref({ code: '', fluency: 0.8, primary: false })
+const newLanguage = ref<LanguageItem>({ code: '', fluency: 0.8, primary: false })
 
-function addLanguage() {
+function addLanguage(): void {
   if (!newLanguage.value.code) return
   let updated = [...languages.value]
 
@@ -57,18 +62,19 @@ function addLanguage() {
   newLanguage.value = { code: '', fluency: 0.8, primary: false }
 }
 
-function removeLanguage(index) {
+function removeLanguage(index: number): void {
   const updated = [...languages.value]
-  const wasPrimary = updated[index].primary
+  const item = updated[index]
+  const wasPrimary = item?.primary ?? false
   updated.splice(index, 1)
   // If we removed the primary, make the first one primary
-  if (wasPrimary && updated.length > 0) {
+  if (wasPrimary && updated.length > 0 && updated[0]) {
     updated[0].primary = true
   }
   emit('update:modelValue', updated)
 }
 
-function setPrimaryLanguage(index) {
+function setPrimaryLanguage(index: number): void {
   const updated = languages.value.map((l, i) => ({
     ...l,
     primary: i === index
@@ -76,10 +82,14 @@ function setPrimaryLanguage(index) {
   emit('update:modelValue', updated)
 }
 
-function updateFluency(index, fluency) {
+function updateFluency(index: number, fluency: number | number[]): void {
   const updated = [...languages.value]
-  updated[index] = { ...updated[index], fluency }
-  emit('update:modelValue', updated)
+  const item = updated[index]
+  if (item) {
+    const fluencyValue = Array.isArray(fluency) ? (fluency[0] ?? 0) : fluency
+    updated[index] = { code: item.code, fluency: fluencyValue, primary: item.primary }
+    emit('update:modelValue', updated)
+  }
 }
 </script>
 

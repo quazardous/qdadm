@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 /**
  * DefaultMenu - Default navigation menu for BaseLayout
  *
@@ -10,30 +10,34 @@
  * when no blocks are registered.
  */
 import { ref, watch, onMounted, computed, inject } from 'vue'
-import { RouterLink, useRouter, useRoute } from 'vue-router'
-import { useNavigation } from '../../../composables/useNavigation'
+import { RouterLink, useRoute } from 'vue-router'
+import { useNavigation, type NavSection } from '../../../composables/useNavigation'
 
-const router = useRouter()
+interface AppConfig {
+  shortName: string
+  [key: string]: unknown
+}
+
 const route = useRoute()
 const { navSections, isNavActive, sectionHasActiveItem, handleNavClick } = useNavigation()
 
 // App config for storage key namespacing
-const app = inject('qdadmApp', { shortName: 'qdadm' })
+const app = inject<AppConfig>('qdadmApp', { shortName: 'qdadm' })
 
 // LocalStorage key for collapsed sections state
-const STORAGE_KEY = computed(() => `${app.shortName.toLowerCase()}_nav_collapsed`)
+const STORAGE_KEY = computed<string>(() => `${app.shortName.toLowerCase()}_nav_collapsed`)
 
 // Collapsed sections state (section title -> boolean)
-const collapsedSections = ref({})
+const collapsedSections = ref<Record<string, boolean>>({})
 
 /**
  * Load collapsed state from localStorage
  */
-function loadCollapsedState() {
+function loadCollapsedState(): void {
   try {
     const stored = localStorage.getItem(STORAGE_KEY.value)
     if (stored) {
-      collapsedSections.value = JSON.parse(stored)
+      collapsedSections.value = JSON.parse(stored) as Record<string, boolean>
     }
   } catch (e) {
     console.warn('Failed to load nav state:', e)
@@ -43,7 +47,7 @@ function loadCollapsedState() {
 /**
  * Save collapsed state to localStorage
  */
-function saveCollapsedState() {
+function saveCollapsedState(): void {
   try {
     localStorage.setItem(STORAGE_KEY.value, JSON.stringify(collapsedSections.value))
   } catch (e) {
@@ -54,7 +58,7 @@ function saveCollapsedState() {
 /**
  * Toggle section collapsed state
  */
-function toggleSection(sectionTitle) {
+function toggleSection(sectionTitle: string): void {
   collapsedSections.value[sectionTitle] = !collapsedSections.value[sectionTitle]
   saveCollapsedState()
 }
@@ -64,11 +68,12 @@ function toggleSection(sectionTitle) {
  * - Never collapsed if it contains active item
  * - Otherwise respect user preference
  */
-function isSectionExpanded(section) {
+function isSectionExpanded(section: NavSection): boolean {
   if (sectionHasActiveItem(section)) {
     return true
   }
-  return !collapsedSections.value[section.title]
+  const title = section.title || section.label || ''
+  return !collapsedSections.value[title]
 }
 
 // Load state on mount
@@ -80,9 +85,10 @@ onMounted(() => {
 watch(() => route?.path, () => {
   if (!route) return
   for (const section of navSections.value) {
-    if (sectionHasActiveItem(section) && collapsedSections.value[section.title]) {
+    const title = section.title || section.label || ''
+    if (sectionHasActiveItem(section) && collapsedSections.value[title]) {
       // Auto-expand but don't save (user can collapse again if they want)
-      collapsedSections.value[section.title] = false
+      collapsedSections.value[title] = false
     }
   }
 })
@@ -90,11 +96,11 @@ watch(() => route?.path, () => {
 
 <template>
   <nav class="default-menu">
-    <div v-for="section in navSections" :key="section.title" class="nav-section">
+    <div v-for="section in navSections" :key="section.title || section.label" class="nav-section">
       <div
         class="nav-section-title"
         :class="{ 'nav-section-active': sectionHasActiveItem(section) }"
-        @click="toggleSection(section.title)"
+        @click="toggleSection(section.title || section.label || '')"
       >
         <span>{{ section.title }}</span>
         <i

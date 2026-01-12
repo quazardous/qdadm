@@ -12,7 +12,7 @@
  *
  * 1. Class-based (full control):
  *    class MyModule extends Module {
- *      static name = 'mymodule'
+ *      static moduleName = 'mymodule'
  *      static requires = ['auth']
  *      static priority = 50
  *      enabled(ctx) { return ctx.isDev }
@@ -39,7 +39,7 @@ export interface KernelContextLike {
  * Module static properties interface
  */
 export interface ModuleStatic {
-  name: string
+  moduleName: string
   requires: string[]
   priority: number
   styles: (() => Promise<unknown>) | null
@@ -57,7 +57,7 @@ export class Module {
   /**
    * Unique module name (used for dependency resolution)
    */
-  static name = 'base'
+  static moduleName = 'base'
 
   /**
    * Module dependencies - names of modules that must be loaded first
@@ -92,9 +92,23 @@ export class Module {
 
   /**
    * Get the module name (from static property or options)
+   * Priority: options.name > own static moduleName > own static name > inherited moduleName
    */
   get name(): string {
-    return this.options.name || (this.constructor as typeof Module).name
+    if (this.options.name) {
+      return this.options.name
+    }
+    const ctor = this.constructor as typeof Module
+    // Check for OWN moduleName property (not inherited from Module base class)
+    if (Object.hasOwn(ctor, 'moduleName')) {
+      return ctor.moduleName
+    }
+    // Check for OWN static name property (legacy pattern: static name = 'xxx')
+    if (Object.hasOwn(ctor, 'name')) {
+      return ctor.name as unknown as string
+    }
+    // Fallback to inherited moduleName (should be 'base' only for Module itself)
+    return ctor.moduleName
   }
 
   /**
@@ -118,7 +132,7 @@ export class Module {
       await stylesLoader()
       this._stylesLoaded = true
     } catch (e) {
-      console.warn(`[${(this.constructor as typeof Module).name}] Failed to load styles:`, e)
+      console.warn(`[${(this.constructor as typeof Module).moduleName}] Failed to load styles:`, e)
     }
   }
 

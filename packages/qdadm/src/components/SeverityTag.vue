@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 /**
  * SeverityTag - Auto-discovers severity from EntityManager
  *
@@ -16,49 +16,49 @@
  */
 import { computed, inject } from 'vue'
 import Tag from 'primevue/tag'
+import type { Orchestrator } from '../orchestrator/Orchestrator'
+import type { EntityManager } from '../entity/EntityManager'
 
-const props = defineProps({
-  // Entity name (e.g., 'jobs', 'stories') - optional if inside ListPage context
-  entity: {
-    type: String,
-    default: null
-  },
-  // Field name for severity lookup (e.g., 'status')
-  field: {
-    type: String,
-    required: true
-  },
-  // Field value
-  value: {
-    type: [String, Number, Boolean],
-    default: null
-  },
-  // Optional custom label (defaults to value)
-  label: {
-    type: String,
-    default: null
-  },
-  // Default severity if no mapping found
-  defaultSeverity: {
-    type: String,
-    default: 'secondary'
-  }
+interface Props {
+  /** Entity name (e.g., 'jobs', 'stories') - optional if inside ListPage context */
+  entity?: string | null
+  /** Field name for severity lookup (e.g., 'status') */
+  field: string
+  /** Field value */
+  value?: string | number | boolean | null
+  /** Optional custom label (defaults to value) */
+  label?: string | null
+  /** Default severity if no mapping found */
+  defaultSeverity?: string
+}
+
+const props = withDefaults(defineProps<Props>(), {
+  entity: null,
+  value: null,
+  label: null,
+  defaultSeverity: 'secondary'
 })
 
-const orchestrator = inject('qdadmOrchestrator')
+const orchestrator = inject<Orchestrator | null>('qdadmOrchestrator', null)
 // Auto-discover entity from page context (provided by useListPage, useBareForm, etc.)
-const mainEntity = inject('mainEntity', null)
+const mainEntity = inject<string | null>('mainEntity', null)
 
 const resolvedEntity = computed(() => props.entity || mainEntity)
 
-const manager = computed(() => {
+const manager = computed<EntityManager | null>(() => {
   if (!resolvedEntity.value) return null
-  return orchestrator?.get(resolvedEntity.value)
+  return orchestrator?.get(resolvedEntity.value) ?? null
 })
 
 const severity = computed(() => {
   if (!manager.value) return props.defaultSeverity
-  return manager.value.getSeverity(props.field, props.value, props.defaultSeverity)
+  // getSeverity expects string | number, but value can be boolean | null too
+  const fieldValue = props.value === null || props.value === undefined
+    ? ''
+    : typeof props.value === 'boolean'
+      ? String(props.value)
+      : props.value
+  return manager.value.getSeverity(props.field, fieldValue, props.defaultSeverity)
 })
 
 const displayLabel = computed(() => {

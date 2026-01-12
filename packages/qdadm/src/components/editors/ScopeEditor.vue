@@ -1,77 +1,89 @@
-<script setup>
+<script setup lang="ts">
 import { ref, computed, onMounted, watch, inject } from 'vue'
 import AutoComplete from 'primevue/autocomplete'
 import Select from 'primevue/select'
 import Button from 'primevue/button'
 
-const props = defineProps({
-  modelValue: {
-    type: Array,
-    default: () => []
-  },
-  disabled: {
-    type: Boolean,
-    default: false
-  },
-  // Scope configuration (can be overridden globally via provide('scopeConfig', {...}))
-  scopeEndpoint: {
-    type: String,
-    default: null
-  },
-  scopePrefix: {
-    type: String,
-    default: null
-  },
-  // Default resources/actions if API not available
-  defaultResources: {
-    type: Array,
-    default: null
-  },
-  defaultActions: {
-    type: Array,
-    default: null
-  }
+interface ScopeRow {
+  resource: string
+  action: string
+}
+
+interface ScopeDefinition {
+  resources: string[]
+  actions: string[]
+}
+
+interface ScopeConfig {
+  endpoint?: string
+  prefix?: string
+  resources?: string[]
+  actions?: string[]
+}
+
+interface ApiAdapter {
+  request: (method: string, url: string) => Promise<ScopeDefinition>
+}
+
+interface Props {
+  modelValue?: string[]
+  disabled?: boolean
+  scopeEndpoint?: string | null
+  scopePrefix?: string | null
+  defaultResources?: string[] | null
+  defaultActions?: string[] | null
+}
+
+const props = withDefaults(defineProps<Props>(), {
+  modelValue: () => [],
+  disabled: false,
+  scopeEndpoint: null,
+  scopePrefix: null,
+  defaultResources: null,
+  defaultActions: null
 })
 
 // Get API adapter (optional)
-const api = inject('apiAdapter', null)
+const api = inject<ApiAdapter | null>('apiAdapter', null)
 
 // Get global scope config (optional) - allows app-level configuration
-const globalScopeConfig = inject('scopeConfig', {})
+const globalScopeConfig = inject<ScopeConfig>('scopeConfig', {})
 
 // Computed config with priority: props > globalConfig > defaults
-const config = computed(() => ({
+const config = computed<Required<ScopeConfig>>(() => ({
   endpoint: props.scopeEndpoint ?? globalScopeConfig.endpoint ?? '/reference/scopes',
   prefix: props.scopePrefix ?? globalScopeConfig.prefix ?? 'app',
   resources: props.defaultResources ?? globalScopeConfig.resources ?? ['api', 'users', 'roles', 'apikeys'],
   actions: props.defaultActions ?? globalScopeConfig.actions ?? ['read', 'write', 'grant']
 }))
 
-const emit = defineEmits(['update:modelValue'])
+const emit = defineEmits<{
+  'update:modelValue': [value: string[]]
+}>()
 
 // Scope structure from API
-const scopeDefinition = ref({
+const scopeDefinition = ref<ScopeDefinition>({
   resources: [],
   actions: [],
 })
-const loading = ref(true)
+const loading = ref<boolean>(true)
 
 // Local scopes state
-const scopeRows = ref([])
+const scopeRows = ref<ScopeRow[]>([])
 
 // Resource suggestions for autocomplete
-const resourceSuggestions = ref([])
+const resourceSuggestions = ref<string[]>([])
 
 // All resources with * prefix
-const allResources = computed(() => ['*', ...scopeDefinition.value.resources])
+const allResources = computed<string[]>(() => ['*', ...scopeDefinition.value.resources])
 
 // All actions with access prefix
-const allActions = computed(() => ['access', ...scopeDefinition.value.actions])
+const allActions = computed<string[]>(() => ['access', ...scopeDefinition.value.actions])
 
 /**
  * Search resources for autocomplete
  */
-function searchResources(event) {
+function searchResources(event: { query: string }): void {
   const query = (event.query || '').toLowerCase()
   if (!query) {
     resourceSuggestions.value = [...allResources.value]
@@ -85,12 +97,12 @@ function searchResources(event) {
 /**
  * Parse a scope string into resource and action
  */
-function parseScope(scope) {
+function parseScope(scope: string): ScopeRow {
   if (!scope) return { resource: '', action: '' }
   // prefix.resource:action
   const regex = new RegExp(`^${config.value.prefix}\\.([^:]+):(.+)$`)
   const match = scope.match(regex)
-  if (match) {
+  if (match && match[1] && match[2]) {
     return { resource: match[1], action: match[2] }
   }
   return { resource: '', action: '' }
@@ -99,13 +111,13 @@ function parseScope(scope) {
 /**
  * Build scope string from resource and action
  */
-function buildScope(resource, action) {
+function buildScope(resource: string, action: string): string {
   if (!resource || !action) return ''
   return `${config.value.prefix}.${resource}:${action}`
 }
 
 // Initialize from modelValue
-function initFromValue() {
+function initFromValue(): void {
   if (!props.modelValue || props.modelValue.length === 0) {
     scopeRows.value = []
     return
@@ -117,7 +129,7 @@ function initFromValue() {
 }
 
 // Emit changes - only complete scopes
-function emitChanges() {
+function emitChanges(): void {
   const scopes = scopeRows.value
     .map(row => buildScope(row.resource, row.action))
     .filter(s => s) // Filter out empty
@@ -125,39 +137,45 @@ function emitChanges() {
 }
 
 // Add new scope row
-function addRow() {
+function addRow(): void {
   scopeRows.value.push({ resource: '', action: 'read' })
 }
 
 // Remove scope row
-function removeRow(index) {
+function removeRow(index: number): void {
   scopeRows.value.splice(index, 1)
   emitChanges()
 }
 
 // Update resource
-function updateResource(index, value) {
-  scopeRows.value[index].resource = value
-  if (value && scopeRows.value[index].action) {
-    emitChanges()
+function updateResource(index: number, value: string): void {
+  const row = scopeRows.value[index]
+  if (row) {
+    row.resource = value
+    if (value && row.action) {
+      emitChanges()
+    }
   }
 }
 
 // Update action
-function updateAction(index, value) {
-  scopeRows.value[index].action = value
-  if (scopeRows.value[index].resource && value) {
-    emitChanges()
+function updateAction(index: number, value: string): void {
+  const row = scopeRows.value[index]
+  if (row) {
+    row.action = value
+    if (row.resource && value) {
+      emitChanges()
+    }
   }
 }
 
 // Check if row is complete
-function isRowComplete(row) {
-  return row.resource && row.action
+function isRowComplete(row: ScopeRow): boolean {
+  return !!row.resource && !!row.action
 }
 
 // Load scope definition from API
-async function loadScopeDefinition() {
+async function loadScopeDefinition(): Promise<void> {
   loading.value = true
   try {
     if (!api) {
@@ -186,7 +204,7 @@ async function loadScopeDefinition() {
 }
 
 // Watch for external changes
-watch(() => props.modelValue, (newVal) => {
+watch(() => props.modelValue, (newVal: string[] | undefined) => {
   // Compare to avoid loops
   const currentScopes = scopeRows.value
     .map(row => buildScope(row.resource, row.action))

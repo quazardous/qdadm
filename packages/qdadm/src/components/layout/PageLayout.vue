@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 /**
  * PageLayout - Base layout for dashboard pages
  *
@@ -19,19 +19,56 @@ import PageHeader from './PageHeader.vue'
 import CardsGrid from '../display/CardsGrid.vue'
 import Button from 'primevue/button'
 
-const props = defineProps({
-  // Header - use title OR titleParts (for decorated entity label)
-  title: { type: String, default: null },
-  titleParts: { type: Object, default: null },  // { action, entityName, entityLabel }
-  subtitle: { type: String, default: null },
-  headerActions: { type: Array, default: () => [] },
+interface TitleParts {
+  action?: string
+  entityName?: string
+  entityLabel?: string
+}
 
-  // Cards
-  cards: { type: Array, default: () => [] },
-  cardsColumns: { type: [Number, String], default: 'auto' }
+interface HeaderAction {
+  name: string
+  label: string | (() => string)
+  icon?: string
+  severity?: string
+  isLoading?: boolean
+  onClick: () => void
+}
+
+type Severity = 'success' | 'danger' | 'warning' | 'info'
+
+interface Card {
+  name: string
+  value?: string | number
+  label?: string
+  severity?: Severity
+  icon?: string
+  custom?: boolean
+  class?: string
+  onClick?: () => void
+}
+
+interface Props {
+  /** Page title (use title OR titleParts) */
+  title?: string
+  /** Title parts for decorated entity label */
+  titleParts?: TitleParts
+  /** Page subtitle */
+  subtitle?: string
+  /** Header action buttons */
+  headerActions?: HeaderAction[]
+  /** Cards configuration */
+  cards?: Card[]
+  /** Number of card columns or 'auto' */
+  cardsColumns?: number | 'auto'
+}
+
+withDefaults(defineProps<Props>(), {
+  headerActions: () => [],
+  cards: () => [],
+  cardsColumns: 'auto'
 })
 
-function resolveLabel(label) {
+function resolveLabel(label: string | (() => string)): string {
   return typeof label === 'function' ? label() : label
 }
 </script>

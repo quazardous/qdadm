@@ -8,7 +8,7 @@
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 import { EntityManager } from '../entity/EntityManager'
 import { RoleGranterStorage } from './RoleGranterStorage'
-import type { RoleGranterAdapter, RoleData } from './RoleGranterAdapter'
+import type { RoleGranterAdapter } from './RoleGranterAdapter'
 import type { PermissionRegistry } from './PermissionRegistry'
 import type { IStorage, EntityRecord } from '../types'
 

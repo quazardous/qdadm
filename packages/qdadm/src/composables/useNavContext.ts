@@ -17,7 +17,7 @@
  *   Path: /books/stats        → [{ kind: 'entity-list', entity: 'books' }, { kind: 'route', route: 'book-stats' }]
  */
 import { ref, computed, watch, inject, type Ref, type ComputedRef } from 'vue'
-import { useRoute, useRouter, type RouteLocationNormalizedLoaded, type Router } from 'vue-router'
+import { useRoute, useRouter, type RouteParamsRawGeneric } from 'vue-router'
 import { getSiblingRoutes } from '../module/moduleRegistry'
 import { useSemanticBreadcrumb, type SemanticBreadcrumbItem } from './useSemanticBreadcrumb'
 import { useStackHydrator, type HydratedLevel } from '../chain/useStackHydrator'
@@ -64,7 +64,7 @@ interface Orchestrator {
  */
 export interface BreadcrumbItem {
   label: string
-  to?: { name: string; params?: Record<string, unknown> } | null
+  to?: { name: string; params?: RouteParamsRawGeneric } | null
   icon?: string
 }
 
@@ -73,7 +73,7 @@ export interface BreadcrumbItem {
  */
 export interface NavLinkItem {
   label: string
-  to: { name: string; params?: Record<string, unknown> }
+  to: { name: string; params?: RouteParamsRawGeneric }
   active: boolean
 }
 
@@ -376,7 +376,7 @@ export function useNavContext(_options: UseNavContextOptions = {}): UseNavContex
       links.push({
         label:
           (sibling.meta?.navLabel as string) || sibManager?.labelPlural || (sibling.name as string),
-        to: { name: sibling.name as string, params: route.params as Record<string, unknown> },
+        to: { name: sibling.name as string, params: route.params as RouteParamsRawGeneric },
         active: route.name === sibling.name,
       })
     }

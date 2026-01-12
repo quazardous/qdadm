@@ -1,44 +1,74 @@
-<script setup>
+<script setup lang="ts">
 /**
  * ZonesPanel - Zones collector display
  */
-const props = defineProps({
-  collector: { type: Object, required: true },
-  entries: { type: Array, required: true }
-})
 
-const emit = defineEmits(['update'])
+interface ZoneBlock {
+  id: string
+  component: string
+  weight: number
+  hasWrappers?: boolean
+  wrappersCount?: number
+}
 
-function toggleFilter() {
+interface ZoneEntry {
+  name: string
+  blocksCount: number
+  blocks: ZoneBlock[]
+  hasDefault?: boolean
+  defaultName?: string
+}
+
+interface ZonesCollector {
+  toggleFilter?: () => void
+  toggleInternalFilter?: () => void
+  toggleHighlight?: (zoneName: string) => void
+  getHighlightedZone?: () => string | null
+  showCurrentPageOnly?: boolean
+  showInternalZones?: boolean
+}
+
+interface Props {
+  collector: ZonesCollector
+  entries: ZoneEntry[]
+}
+
+const props = defineProps<Props>()
+
+const emit = defineEmits<{
+  update: []
+}>()
+
+function toggleFilter(): void {
   if (props.collector.toggleFilter) {
     props.collector.toggleFilter()
     emit('update')
   }
 }
 
-function isFilterActive() {
+function isFilterActive(): boolean {
   return props.collector.showCurrentPageOnly ?? true
 }
 
-function toggleInternalFilter() {
+function toggleInternalFilter(): void {
   if (props.collector.toggleInternalFilter) {
     props.collector.toggleInternalFilter()
     emit('update')
   }
 }
 
-function showInternalZones() {
+function showInternalZones(): boolean {
   return props.collector.showInternalZones ?? false
 }
 
-function highlightZone(zoneName) {
+function highlightZone(zoneName: string): void {
   if (props.collector.toggleHighlight) {
     props.collector.toggleHighlight(zoneName)
     emit('update')
   }
 }
 
-function isHighlighted(zoneName) {
+function isHighlighted(zoneName: string): boolean {
   return props.collector.getHighlightedZone?.() === zoneName
 }
 </script>

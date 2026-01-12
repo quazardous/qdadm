@@ -46,9 +46,9 @@ interface ModuleContext {
 }
 
 export class SecurityModule extends Module {
-  static name = 'security'
-  static requires: string[] = []
-  static priority = 100 // Load late (after other modules register permissions)
+  static override moduleName = 'security'
+  static override requires: string[] = []
+  static override priority = 100 // Load late (after other modules register permissions)
 
   async connect(ctx: ModuleContext): Promise<void> {
     // ════════════════════════════════════════════════════════════════════════

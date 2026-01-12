@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 /**
  * MultiStepDialog - Reusable multi-step form dialog
  *
@@ -56,7 +56,7 @@
  *   - step-{n}-header: optional header content for step n (shown above step content)
  *   - actions: override action buttons (receives { step, isFirst, isLast, canProceed, goNext, goPrev, submit, cancel })
  */
-import { computed, watch } from 'vue'
+import { computed, watch, type PropType } from 'vue'
 import Dialog from 'primevue/dialog'
 import Button from 'primevue/button'
 import Stepper from 'primevue/stepper'
@@ -64,6 +64,29 @@ import StepList from 'primevue/steplist'
 import Step from 'primevue/step'
 import StepPanels from 'primevue/steppanels'
 import StepPanel from 'primevue/steppanel'
+
+export interface StepDefinition {
+  label: string
+  valid?: boolean
+}
+
+export interface StepChangeEvent {
+  from: number
+  to: number
+}
+
+export interface SlotActions {
+  step: number
+  isFirst: boolean
+  isLast: boolean
+  canProceed: boolean
+  canSubmit: boolean
+  goNext: () => void
+  goPrev: () => void
+  goToStep: (stepNumber: number) => void
+  submit: () => void
+  cancel: () => void
+}
 
 const props = defineProps({
   visible: {
@@ -79,9 +102,9 @@ const props = defineProps({
     default: ''
   },
   steps: {
-    type: Array,
+    type: Array as PropType<StepDefinition[]>,
     required: true,
-    validator: (v) => v.every(s => typeof s.label === 'string')
+    validator: (v: StepDefinition[]) => v.every(s => typeof s.label === 'string')
   },
   loading: {
     type: Boolean,
@@ -121,34 +144,40 @@ const props = defineProps({
   }
 })
 
-const emit = defineEmits(['update:visible', 'update:step', 'submit', 'cancel', 'step-change'])
+const emit = defineEmits<{
+  'update:visible': [value: boolean]
+  'update:step': [value: number]
+  'submit': []
+  'cancel': []
+  'step-change': [event: StepChangeEvent]
+}>()
 
 // Current step (1-indexed)
-const currentStep = computed({
-  get: () => props.step,
-  set: (v) => emit('update:step', v)
+const currentStep = computed<number>({
+  get: (): number => props.step,
+  set: (v: number): void => emit('update:step', v)
 })
 
 // Step helpers
-const isFirstStep = computed(() => currentStep.value === 1)
-const isLastStep = computed(() => currentStep.value === props.steps.length)
+const isFirstStep = computed<boolean>(() => currentStep.value === 1)
+const isLastStep = computed<boolean>(() => currentStep.value === props.steps.length)
 
 // Current step definition
-const currentStepDef = computed(() => props.steps[currentStep.value - 1] || {})
+const currentStepDef = computed<StepDefinition>(() => props.steps[currentStep.value - 1] || { label: '' })
 
 // Can proceed to next step (validation)
-const canProceed = computed(() => {
+const canProceed = computed<boolean>(() => {
   if (!props.linear) return true
   return currentStepDef.value.valid !== false
 })
 
 // Can submit (last step validation)
-const canSubmit = computed(() => {
+const canSubmit = computed<boolean>(() => {
   return currentStepDef.value.valid !== false
 })
 
 // Navigation
-function goNext() {
+function goNext(): void {
   if (!isLastStep.value && canProceed.value) {
     const from = currentStep.value
     const to = currentStep.value + 1
@@ -157,7 +186,7 @@ function goNext() {
   }
 }
 
-function goPrev() {
+function goPrev(): void {
   if (!isFirstStep.value) {
     const from = currentStep.value
     const to = currentStep.value - 1
@@ -166,7 +195,7 @@ function goPrev() {
   }
 }
 
-function goToStep(stepNumber) {
+function goToStep(stepNumber: number): void {
   if (stepNumber >= 1 && stepNumber <= props.steps.length) {
     // In linear mode, can only go back or to current+1 if valid
     if (props.linear && stepNumber > currentStep.value) {
@@ -180,19 +209,19 @@ function goToStep(stepNumber) {
   }
 }
 
-function submit() {
+function submit(): void {
   if (canSubmit.value) {
     emit('submit')
   }
 }
 
-function cancel() {
+function cancel(): void {
   emit('cancel')
   emit('update:visible', false)
 }
 
 // Reset to first step when dialog opens
-watch(() => props.visible, (newVal, oldVal) => {
+watch(() => props.visible, (newVal: boolean, oldVal: boolean) => {
   if (newVal && !oldVal) {
     // Don't reset if step is explicitly set
     // currentStep.value = 1
@@ -200,7 +229,7 @@ watch(() => props.visible, (newVal, oldVal) => {
 })
 
 // Expose for slot actions
-const slotActions = computed(() => ({
+const slotActions = computed<SlotActions>(() => ({
   step: currentStep.value,
   isFirst: isFirstStep.value,
   isLast: isLastStep.value,

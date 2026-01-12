@@ -1,17 +1,34 @@
-<script setup>
+<script setup lang="ts">
 import SimpleDialog from './SimpleDialog.vue'
 import Select from 'primevue/select'
 
-defineProps({
-  visible: Boolean,
-  title: { type: String, default: 'Change Status' },
-  options: { type: Array, required: true },
-  modelValue: [String, Number],
-  loading: Boolean,
-  selectionCount: { type: Number, default: 0 }
+interface StatusOption {
+  label: string
+  value: string | number
+}
+
+interface Props {
+  visible?: boolean
+  title?: string
+  options: StatusOption[]
+  modelValue?: string | number
+  loading?: boolean
+  selectionCount?: number
+}
+
+withDefaults(defineProps<Props>(), {
+  visible: false,
+  title: 'Change Status',
+  loading: false,
+  selectionCount: 0
 })
 
-defineEmits(['update:visible', 'update:modelValue', 'confirm', 'cancel'])
+defineEmits<{
+  'update:visible': [value: boolean]
+  'update:modelValue': [value: string | number]
+  confirm: []
+  cancel: []
+}>()
 </script>
 
 <template>

@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 /**
  * UnsavedChangesDialog - Confirm leaving with unsaved changes
  *
@@ -10,25 +10,37 @@
 import SimpleDialog from './SimpleDialog.vue'
 import Button from 'primevue/button'
 
-const props = defineProps({
-  visible: { type: Boolean, default: false },
-  saving: { type: Boolean, default: false },
-  message: { type: String, default: 'You have unsaved changes that will be lost.' },
-  hasOnSave: { type: Boolean, default: false }
+interface Props {
+  visible?: boolean
+  saving?: boolean
+  message?: string
+  hasOnSave?: boolean
+}
+
+withDefaults(defineProps<Props>(), {
+  visible: false,
+  saving: false,
+  message: 'You have unsaved changes that will be lost.',
+  hasOnSave: false
 })
 
-const emit = defineEmits(['update:visible', 'saveAndLeave', 'leave', 'stay'])
+const emit = defineEmits<{
+  'update:visible': [value: boolean]
+  saveAndLeave: []
+  leave: []
+  stay: []
+}>()
 
-function onStay() {
+function onStay(): void {
   emit('stay')
   emit('update:visible', false)
 }
 
-function onLeave() {
+function onLeave(): void {
   emit('leave')
 }
 
-function onSaveAndLeave() {
+function onSaveAndLeave(): void {
   emit('saveAndLeave')
 }
 </script>

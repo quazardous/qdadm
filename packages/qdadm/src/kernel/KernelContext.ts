@@ -26,12 +26,11 @@
 
 import type { App, Component } from 'vue'
 import type { Router, RouteRecordRaw } from 'vue-router'
-import { managerFactory } from '../entity/factory.js'
+import { managerFactory, type ManagerFactoryContext } from '../entity/factory.js'
 import { registry, getRoutes } from '../module/moduleRegistry'
 import { UsersManager, type UsersManagerOptions } from '../security/UsersManager'
 import type { SignalBus } from './SignalBus'
 import type { ListenerOptions } from '@quazardous/quarkernel'
-import type { Module } from './Module'
 import type { Orchestrator } from '../orchestrator/Orchestrator'
 import type { HookRegistry } from '../hooks/HookRegistry'
 import type { ZoneRegistry } from '../zones/ZoneRegistry'
@@ -39,7 +38,6 @@ import type { DeferredRegistry } from '../deferred/DeferredRegistry.js'
 import type { SecurityChecker } from '../entity/auth/SecurityChecker'
 import type { PermissionRegistry } from '../security/PermissionRegistry'
 import type { EntityManager } from '../entity/EntityManager'
-import type { EntityRecord } from '../types'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -348,10 +346,11 @@ export class KernelContext {
       storageResolver: this._kernel.options.storageResolver,
       managerResolver: this._kernel.options.managerResolver,
       managerRegistry: this._kernel.options.managerRegistry || {},
-    }
+    } as ManagerFactoryContext
 
     // Create manager via factory
-    const manager = managerFactory(config, name, factoryContext)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const manager = managerFactory(config as any, name, factoryContext)
 
     // Register with orchestrator
     if (this._kernel.orchestrator) {

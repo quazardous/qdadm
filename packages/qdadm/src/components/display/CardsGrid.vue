@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 /**
  * CardsGrid - Dynamic card zone component
  *
@@ -16,19 +16,31 @@
  *
  * If no cards provided, renders nothing.
  */
-defineProps({
-  cards: {
-    type: Array,
-    default: () => []
-  },
-  columns: {
-    type: [Number, String],
-    default: 'auto',
-    validator: (v) => ['auto', 2, 3, 4].includes(v)
-  }
+
+type Severity = 'success' | 'danger' | 'warning' | 'info'
+
+interface Card {
+  name: string
+  value?: string | number
+  label?: string
+  severity?: Severity
+  icon?: string
+  custom?: boolean
+  class?: string
+  onClick?: () => void
+}
+
+interface Props {
+  cards?: Card[]
+  columns?: number | 'auto'
+}
+
+withDefaults(defineProps<Props>(), {
+  cards: () => [],
+  columns: 'auto'
 })
 
-function getSeverityClass(severity) {
+function getSeverityClass(severity?: Severity): string {
   if (!severity) return ''
   return `stat-value--${severity}`
 }

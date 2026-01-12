@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 /**
  * FormField - Wrapper for form fields with automatic dirty state and error display
  *
@@ -13,59 +13,49 @@
  * - handleFieldBlur: function to trigger validation on blur
  * - formSubmitted: ref indicating if form was submitted
  */
-import { inject, computed } from 'vue'
+import { inject, computed, type Ref, type CSSProperties } from 'vue'
 
-const props = defineProps({
-  name: {
-    type: String,
-    required: true
-  },
-  label: {
-    type: String,
-    default: ''
-  },
-  hint: {
-    type: String,
-    default: ''
-  },
-  fullWidth: {
-    type: Boolean,
-    default: false
-  },
+interface Props {
+  name: string
+  label?: string
+  hint?: string
+  fullWidth?: boolean
   /** Override error message (useful for custom validation) */
-  error: {
-    type: String,
-    default: null
-  },
+  error?: string | null
   /** Show error only after form submission */
-  showErrorOnSubmit: {
-    type: Boolean,
-    default: false
-  }
+  showErrorOnSubmit?: boolean
+}
+
+const props = withDefaults(defineProps<Props>(), {
+  label: '',
+  hint: '',
+  fullWidth: false,
+  error: null,
+  showErrorOnSubmit: false
 })
 
 // Inject from parent form (provided by useEntityItemFormPage)
-const isFieldDirty = inject('isFieldDirty', () => false)
-const getFieldError = inject('getFieldError', () => null)
-const handleFieldBlur = inject('handleFieldBlur', () => {})
-const formSubmitted = inject('formSubmitted', { value: false })
+const isFieldDirty = inject<(name: string) => boolean>('isFieldDirty', () => false)
+const getFieldError = inject<(name: string) => string | null>('getFieldError', () => null)
+const handleFieldBlur = inject<(name: string) => void>('handleFieldBlur', () => {})
+const formSubmitted = inject<Ref<boolean>>('formSubmitted', { value: false } as Ref<boolean>)
 
-const isDirty = computed(() => isFieldDirty(props.name))
+const isDirty = computed((): boolean => isFieldDirty(props.name))
 
 // Get error from prop or from form validation
-const fieldError = computed(() => {
+const fieldError = computed((): string | null => {
   if (props.error) return props.error
   return getFieldError(props.name)
 })
 
 // Show error if: form submitted OR field was touched (validated on blur)
-const showError = computed(() => {
+const showError = computed((): boolean => {
   if (!fieldError.value) return false
   if (props.showErrorOnSubmit) return formSubmitted.value
   return true
 })
 
-const fieldClasses = computed(() => [
+const fieldClasses = computed((): (string | Record<string, boolean>)[] => [
   'form-field',
   {
     'field-dirty': isDirty.value,
@@ -73,11 +63,11 @@ const fieldClasses = computed(() => [
   }
 ])
 
-const fieldStyle = computed(() =>
+const fieldStyle = computed((): CSSProperties =>
   props.fullWidth ? { gridColumn: '1 / -1' } : {}
 )
 
-function onBlur() {
+function onBlur(): void {
   handleFieldBlur(props.name)
 }
 </script>

@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 /**
  * SignalsPanel - Debug panel for signals with pattern filter
  *
@@ -12,16 +12,33 @@ import { ref, computed, watch } from 'vue'
 import InputText from 'primevue/inputtext'
 import ObjectTree from '../ObjectTree.vue'
 
-const props = defineProps({
-  collector: { type: Object, required: true },
-  entries: { type: Array, required: true }
-})
+interface SignalEntry {
+  name: string
+  timestamp: number
+  data?: Record<string, unknown>
+  _isNew?: boolean
+}
+
+interface SignalCollector {
+  // Collector interface - minimal typing for now
+  [key: string]: unknown
+}
+
+interface FilterPreset {
+  label: string
+  pattern: string
+}
+
+const props = defineProps<{
+  collector: SignalCollector
+  entries: SignalEntry[]
+}>()
 
 // Filter state - persisted in localStorage
 const STORAGE_KEY = 'qdadm-signals-filter'
 const STORAGE_KEY_MAX = 'qdadm-signals-max'
-const filterPattern = ref(localStorage.getItem(STORAGE_KEY) || '')
-const maxSignals = ref(parseInt(localStorage.getItem(STORAGE_KEY_MAX)) || 50)
+const filterPattern = ref<string>(localStorage.getItem(STORAGE_KEY) || '')
+const maxSignals = ref<number>(parseInt(localStorage.getItem(STORAGE_KEY_MAX) || '50') || 50)
 
 watch(filterPattern, (val) => {
   localStorage.setItem(STORAGE_KEY, val)
@@ -32,11 +49,11 @@ watch(maxSignals, (val) => {
 })
 
 // Convert wildcard pattern to regex
-function wildcardToRegex(pattern) {
+function wildcardToRegex(pattern: string): RegExp | null {
   if (!pattern || pattern === '**') return null // No filter
 
   // Escape regex special chars except * and :
-  let regex = pattern
+  const regex = pattern
     .replace(/[.+^${}()|[\]\\]/g, '\\$&')
     // ** matches anything (including colons)
     .replace(/\*\*/g, '.*')
@@ -46,13 +63,13 @@ function wildcardToRegex(pattern) {
   return new RegExp(`^${regex}$`)
 }
 
-const filterRegex = computed(() => wildcardToRegex(filterPattern.value.trim()))
+const filterRegex = computed<RegExp | null>(() => wildcardToRegex(filterPattern.value.trim()))
 
 // Apply filter, max limit, and reverse for top-down (newest first)
-const filteredEntries = computed(() => {
-  let result = props.entries
+const filteredEntries = computed<SignalEntry[]>(() => {
+  let result: SignalEntry[] = props.entries
   if (filterRegex.value) {
-    result = result.filter(e => filterRegex.value.test(e.name))
+    result = result.filter((e: SignalEntry) => filterRegex.value!.test(e.name))
   }
   // Apply max limit (slice from end to keep newest)
   if (maxSignals.value > 0 && result.length > maxSignals.value) {
@@ -62,14 +79,14 @@ const filteredEntries = computed(() => {
   return [...result].reverse()
 })
 
-const filterStats = computed(() => {
+const filterStats = computed<string>(() => {
   const total = props.entries.length
   const shown = filteredEntries.value.length
   return total !== shown ? `${shown}/${total}` : `${total}`
 })
 
 // Preset filters
-const presets = [
+const presets: FilterPreset[] = [
   { label: 'All', pattern: '' },
   { label: 'data', pattern: 'entity:data-invalidate' },
   { label: 'datalayer', pattern: 'entity:datalayer-invalidate' },
@@ -78,21 +95,21 @@ const presets = [
   { label: 'toast', pattern: 'toast:**' }
 ]
 
-function applyPreset(pattern) {
+function applyPreset(pattern: string): void {
   filterPattern.value = pattern
 }
 
-function formatTime(ts) {
+function formatTime(ts: number): string {
   const d = new Date(ts)
   return d.toLocaleTimeString('en-US', { hour12: false }) + '.' + String(d.getMilliseconds()).padStart(3, '0')
 }
 
 // Extract domain from signal name (first segment)
-function getDomain(name) {
-  return name.split(':')[0]
+function getDomain(name: string): string {
+  return name.split(':')[0] ?? ''
 }
 
-const domainColors = {
+const domainColors: Record<string, string> = {
   auth: '#10b981',
   cache: '#f59e0b',
   entity: '#3b82f6',
@@ -101,7 +118,7 @@ const domainColors = {
   error: '#ef4444'
 }
 
-function getDomainColor(name) {
+function getDomainColor(name: string): string {
   const domain = getDomain(name)
   return domainColors[domain] || '#6b7280'
 }

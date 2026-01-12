@@ -1,22 +1,22 @@
-<script setup>
+<script setup lang="ts">
 /**
  * NotFoundPage - Default 404 page
  *
  * Simple page with link to home. Can be replaced via pages.notFound option.
  */
-import { computed } from 'vue'
-import { useRouter } from 'vue-router'
+import { computed, type ComputedRef } from 'vue'
+import { useRouter, type RouteRecordName } from 'vue-router'
 
 const router = useRouter()
 
-const homeRoute = computed(() => {
+const homeRoute: ComputedRef<RouteRecordName | string> = computed(() => {
   // Find home route (first route or named 'home'/'dashboard')
   const routes = router.getRoutes()
   const home = routes.find(r => r.name === 'home' || r.name === 'dashboard')
   return home?.name || '/'
 })
 
-function goHome() {
+function goHome(): void {
   if (typeof homeRoute.value === 'string' && homeRoute.value.startsWith('/')) {
     router.push(homeRoute.value)
   } else {

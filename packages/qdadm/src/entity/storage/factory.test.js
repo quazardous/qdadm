@@ -6,7 +6,6 @@ import {
   createStorageFactory,
   storageTypes
 } from './factory'
-import { IStorage } from './IStorage'
 import { ApiStorage } from './ApiStorage'
 import { LocalStorage } from './LocalStorage'
 import { MemoryStorage } from './MemoryStorage'

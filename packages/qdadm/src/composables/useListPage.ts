@@ -29,7 +29,7 @@ import {
   type Ref,
   type ComputedRef,
 } from 'vue'
-import { useRouter, useRoute, type Router, type RouteLocationNormalizedLoaded } from 'vue-router'
+import { useRouter, useRoute, type Router } from 'vue-router'
 import { useConfirm } from 'primevue/useconfirm'
 import { useHooks } from './useHooks.js'
 import { useEntityItemPage, type ParentConfig, type UseEntityItemPageReturn } from './useEntityItemPage.js'
@@ -545,13 +545,10 @@ export function useListPage(config: UseListPageOptions): UseListPageReturn {
     dataKey,
     defaultSort = null,
     defaultSortOrder = -1,
-    serverSide = false,
     pageSize: defaultPageSize = 10,
     loadOnMount = true,
     persistFilters = true,
     syncUrlParams = true,
-    filterMode = 'auto',
-    autoFilterThreshold = 100,
     autoLoadFilters = true,
     onBeforeLoad = null,
     onAfterLoad = null,
@@ -596,7 +593,7 @@ export function useListPage(config: UseListPageOptions): UseListPageReturn {
   )
 
   // Use ActiveStack for synchronous route-based context
-  const activeStack = useActiveStack()
+  useActiveStack()
 
   // Create useEntityItemPage for PARENT entity (not for list's own entity)
   let parentPage: UseEntityItemPageReturn | null = null

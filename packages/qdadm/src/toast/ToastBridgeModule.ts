@@ -36,7 +36,7 @@ export class ToastBridgeModule extends Module {
   /**
    * Module identifier
    */
-  static override name = 'toast-bridge'
+  static override moduleName = 'toast-bridge'
 
   /**
    * No dependencies

@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 /**
  * PageNav - Navigation provider for navlinks (child/sibling routes)
  *
@@ -15,45 +15,53 @@
  * Props:
  * - showDetailsLink: Show "Details" link in navlinks (default: false)
  */
-import { computed, watch, inject } from 'vue'
+import { computed, watch, inject, type Ref } from 'vue'
 import { useRoute } from 'vue-router'
-import { getSiblingRoutes, getChildRoutes } from '../../module/moduleRegistry'
+import { getSiblingRoutes, getChildRoutes, type ModuleRoute, type ParentConfig } from '../../module/moduleRegistry'
 import { useOrchestrator } from '../../orchestrator/useOrchestrator.js'
+import type { EntityManager } from '../../entity/EntityManager'
+import type { EntityRecord } from '../../types'
+
+interface NavLink {
+  label: string
+  to: { name: string | undefined; params: Record<string, unknown> }
+  active: boolean
+}
 
 // Inject override ref from AppLayout
-const navlinksOverride = inject('qdadmNavlinksOverride', null)
+const navlinksOverride = inject<Ref<NavLink[] | null> | null>('qdadmNavlinksOverride', null)
 
-const props = defineProps({
+const props = defineProps<{
   // Show "Details" link in navlinks (default: false since breadcrumb shows current page)
-  showDetailsLink: { type: Boolean, default: false }
-})
+  showDetailsLink?: boolean
+}>()
 
 const route = useRoute()
 const { getManager } = useOrchestrator()
 
 // Parent config from route meta
-const parentConfig = computed(() => route.meta?.parent)
+const parentConfig = computed<ParentConfig | undefined>(() => route.meta?.parent as ParentConfig | undefined)
 
 /**
  * Get default item route for an entity manager
  * - Read-only entities: use -show suffix
  * - Editable entities: use -edit suffix
  */
-function getDefaultItemRoute(manager) {
+function getDefaultItemRoute(manager: EntityManager<EntityRecord> | null): string | null {
   if (!manager) return null
   const suffix = manager.readOnly ? '-show' : '-edit'
   return `${manager.routePrefix}${suffix}`
 }
 
 // Sibling navlinks (routes with same parent)
-const siblingNavlinks = computed(() => {
+const siblingNavlinks = computed<NavLink[]>(() => {
   if (!parentConfig.value) return []
 
   const { entity: parentEntityName, param } = parentConfig.value
   const siblings = getSiblingRoutes(parentEntityName, param)
 
   // Filter out action routes (create, edit) - they're not navigation tabs
-  const navRoutes = siblings.filter(r => {
+  const navRoutes = siblings.filter((r: ModuleRoute) => {
     const name = r.name || ''
     const path = r.path || ''
     // Exclude routes ending with -create, -edit, -new or paths with /create, /edit, /new
@@ -61,29 +69,29 @@ const siblingNavlinks = computed(() => {
   })
 
   // Build navlinks with current route params
-  return navRoutes.map(siblingRoute => {
+  return navRoutes.map((siblingRoute: ModuleRoute): NavLink => {
     const manager = siblingRoute.meta?.entity ? getManager(siblingRoute.meta.entity) : null
-    const label = siblingRoute.meta?.navLabel || manager?.labelPlural || siblingRoute.name
+    const label = (siblingRoute.meta?.navLabel as string) || manager?.labelPlural || siblingRoute.name || ''
 
     return {
       label,
-      to: { name: siblingRoute.name, params: route.params },
+      to: { name: siblingRoute.name, params: route.params as Record<string, unknown> },
       active: route.name === siblingRoute.name
     }
   })
 })
 
 // Child navlinks (when on parent detail page, show links to children)
-const childNavlinks = computed(() => {
+const childNavlinks = computed<NavLink[]>(() => {
   // Only when NOT on a child route (no parentConfig)
   if (parentConfig.value) return []
 
-  const entityName = route.meta?.entity
+  const entityName = route.meta?.entity as string | undefined
   if (!entityName) return []
 
   // Get current entity's manager to determine idField
   const currentManager = getManager(entityName)
-  const entityId = route.params[currentManager?.idField || 'id']
+  const entityId = route.params[currentManager?.idField || 'id'] as string | undefined
 
   // Only show children when we have an entity ID (not on create pages)
   if (!entityId) return []
@@ -92,7 +100,7 @@ const childNavlinks = computed(() => {
   if (children.length === 0) return []
 
   // Filter out action routes (create, edit) - they're not navigation tabs
-  const navRoutes = children.filter(r => {
+  const navRoutes = children.filter((r: ModuleRoute) => {
     const name = r.name || ''
     const path = r.path || ''
     return !name.match(/-(create|edit|new)$/) && !path.match(/\/(create|edit|new)$/)
@@ -101,10 +109,10 @@ const childNavlinks = computed(() => {
   if (navRoutes.length === 0) return []
 
   // Build navlinks to child routes
-  return navRoutes.map(childRoute => {
+  return navRoutes.map((childRoute: ModuleRoute): NavLink => {
     const childManager = childRoute.meta?.entity ? getManager(childRoute.meta.entity) : null
-    const label = childRoute.meta?.navLabel || childManager?.labelPlural || childRoute.name
-    const parentParam = childRoute.meta?.parent?.param || currentManager?.idField || 'id'
+    const label = (childRoute.meta?.navLabel as string) || childManager?.labelPlural || childRoute.name || ''
+    const parentParam = (childRoute.meta?.parent as ParentConfig)?.param || currentManager?.idField || 'id'
 
     return {
       label,
@@ -115,11 +123,11 @@ const childNavlinks = computed(() => {
 })
 
 // Combined navlinks with optional "Details" link
-const allNavlinks = computed(() => {
+const allNavlinks = computed<NavLink[]>(() => {
   // Case 1: On a child route - show siblings + optional Details link to parent
   if (parentConfig.value) {
     const { entity: parentEntityName, param, itemRoute } = parentConfig.value
-    const parentId = route.params[param]
+    const parentId = route.params[param] as string | undefined
     const parentManager = getManager(parentEntityName)
 
     // Guard: need valid manager and parentId to build links
@@ -131,9 +139,9 @@ const allNavlinks = computed(() => {
       const isOnParentRoute = route.name === parentRouteName
 
       // Details link to parent item page
-      const detailsLink = {
+      const detailsLink: NavLink = {
         label: 'Details',
-        to: { name: parentRouteName, params: { [parentManager.idField]: parentId } },
+        to: { name: parentRouteName ?? undefined, params: { [parentManager.idField]: parentId } },
         active: isOnParentRoute
       }
 
@@ -147,9 +155,9 @@ const allNavlinks = computed(() => {
   if (childNavlinks.value.length > 0) {
     // Details link is optional since breadcrumb already shows current page
     if (props.showDetailsLink) {
-      const detailsLink = {
+      const detailsLink: NavLink = {
         label: 'Details',
-        to: { name: route.name, params: route.params },
+        to: { name: route.name as string | undefined, params: route.params as Record<string, unknown> },
         active: true
       }
       return [detailsLink, ...childNavlinks.value]
@@ -163,11 +171,12 @@ const allNavlinks = computed(() => {
 // Sync navlinks to AppLayout via provide/inject
 watch([allNavlinks, () => route.fullPath], ([links]) => {
   if (navlinksOverride) {
-    navlinksOverride.value = links
+    navlinksOverride.value = links as NavLink[]
   }
 }, { immediate: true })
 </script>
 
 <template>
   <!-- PageNav provides navlinks to AppLayout via inject, renders nothing -->
+  <span v-if="false"></span>
 </template>

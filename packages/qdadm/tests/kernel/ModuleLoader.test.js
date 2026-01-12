@@ -31,7 +31,7 @@ describe('ModuleLoader', () => {
 
     it('accepts Module instance', () => {
       class TestModule extends Module {
-        static name = 'test'
+        static moduleName = 'test'
       }
       const instance = new TestModule()
 
@@ -41,7 +41,7 @@ describe('ModuleLoader', () => {
 
     it('accepts Module class and instantiates it', () => {
       class TestModule extends Module {
-        static name = 'test'
+        static moduleName = 'test'
       }
 
       loader.add(TestModule)
@@ -637,7 +637,7 @@ describe('ModuleLoader', () => {
 
     it('works with full Module subclass', async () => {
       class UsersModule extends Module {
-        static name = 'users'
+        static moduleName = 'users'
         static requires = []
         static priority = 10
 
@@ -666,20 +666,20 @@ describe('ModuleLoader', () => {
       const order = []
 
       class ConfigModule extends Module {
+        static moduleName = 'config'
         async connect() {
           order.push('config')
         }
       }
-      Object.defineProperty(ConfigModule, 'name', { value: 'config', writable: true })
 
       class AuthModule extends Module {
+        static moduleName = 'auth'
+        static requires = ['config']
+        static priority = -10
         async connect() {
           order.push('auth')
         }
       }
-      Object.defineProperty(AuthModule, 'name', { value: 'auth', writable: true })
-      AuthModule.requires = ['config']
-      AuthModule.priority = -10
 
       loader.add(AuthModule)
       loader.add(ConfigModule)

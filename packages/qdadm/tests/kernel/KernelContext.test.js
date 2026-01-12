@@ -507,7 +507,7 @@ describe('KernelContext', () => {
       let receivedCtx = null
 
       class TestModule extends Module {
-        static name = 'test'
+        static moduleName = 'test'
 
         async connect(ctx) {
           receivedCtx = ctx
@@ -535,7 +535,7 @@ describe('KernelContext', () => {
       const handler = vi.fn()
 
       class TestModule extends Module {
-        static name = 'test'
+        static moduleName = 'test'
 
         async connect(ctx) {
           ctx.on('test:signal', handler)

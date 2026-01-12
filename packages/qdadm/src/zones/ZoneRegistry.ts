@@ -513,7 +513,7 @@ export class ZoneRegistry {
     }
 
     // Start with add blocks
-    let result: InternalBlock[] = [...addBlocks]
+    const result: InternalBlock[] = [...addBlocks]
 
     // Apply replace operations first
     for (const replaceBlock of replaceBlocks) {

@@ -34,8 +34,7 @@
  * modules to modify form configuration dynamically.
  */
 import { ref, computed, watch, onMounted, inject, provide, type Ref, type ComputedRef } from 'vue'
-import type { Router } from 'vue-router'
-import { useBareForm, type UseBareFormReturn } from './useBareForm'
+import { useBareForm } from './useBareForm'
 import { useHooks } from './useHooks'
 import { useStackHydrator } from '../chain/useStackHydrator'
 import { deepClone } from '../utils/transformers'

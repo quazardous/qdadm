@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 /**
  * SimpleDialog - Wrapper for common dialog patterns
  *
@@ -30,46 +30,60 @@
  *     </template>
  *   </SimpleDialog>
  */
+import { computed } from 'vue'
 import Dialog from 'primevue/dialog'
 import Button from 'primevue/button'
 
-const props = defineProps({
-  visible: { type: Boolean, default: false },
-  title: { type: String, required: true },
-  width: { type: String, default: '500px' },
-
+interface Props {
+  visible?: boolean
+  title: string
+  width?: string
   // Footer buttons
-  showCancel: { type: Boolean, default: true },
-  showConfirm: { type: Boolean, default: true },
-  cancelLabel: { type: String, default: 'Cancel' },
-  confirmLabel: { type: String, default: 'Confirm' },
-  confirmIcon: { type: String, default: null },
-  confirmSeverity: { type: String, default: null },
-  confirmDisabled: { type: Boolean, default: false },
-  loading: { type: Boolean, default: false },
-
+  showCancel?: boolean
+  showConfirm?: boolean
+  cancelLabel?: string
+  confirmLabel?: string
+  confirmIcon?: string
+  confirmSeverity?: string
+  confirmDisabled?: boolean
+  loading?: boolean
   // Dialog behavior
-  closable: { type: Boolean, default: true },
-  dismissableMask: { type: Boolean, default: false }
+  closable?: boolean
+  dismissableMask?: boolean
+}
+
+const props = withDefaults(defineProps<Props>(), {
+  visible: false,
+  width: '500px',
+  showCancel: true,
+  showConfirm: true,
+  cancelLabel: 'Cancel',
+  confirmLabel: 'Confirm',
+  confirmIcon: undefined,
+  confirmSeverity: undefined,
+  confirmDisabled: false,
+  loading: false,
+  closable: true,
+  dismissableMask: false
 })
 
-const emit = defineEmits(['update:visible', 'confirm', 'cancel'])
+const emit = defineEmits<{
+  'update:visible': [value: boolean]
+  'confirm': []
+  'cancel': []
+}>()
 
-function onCancel() {
+function onCancel(): void {
   emit('cancel')
   emit('update:visible', false)
 }
 
-function onConfirm() {
+function onConfirm(): void {
   emit('confirm')
 }
 
 // Allow closing via escape/mask only when not loading
-const canClose = computed(() => props.closable && !props.loading)
-</script>
-
-<script>
-import { computed } from 'vue'
+const canClose = computed((): boolean => props.closable && !props.loading)
 </script>
 
 <template>

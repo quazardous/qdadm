@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 /**
  * JsonViewer - Reusable JSON viewer component
  *
@@ -11,22 +11,23 @@
 import { computed } from 'vue'
 import { highlightJson } from '../../composables/useJsonSyntax'
 
-const props = defineProps({
-  modelValue: {
-    type: [Object, Array, String, null],
-    default: () => ({})
-  },
-  height: {
-    type: String,
-    default: '300px'
-  }
+type JsonValue = Record<string, unknown> | unknown[] | string | number | boolean | null
+
+interface Props {
+  modelValue?: JsonValue
+  height?: string
+}
+
+const props = withDefaults(defineProps<Props>(), {
+  modelValue: () => ({}),
+  height: '300px'
 })
 
 // Parse value if string
-const parsedValue = computed(() => {
+const parsedValue = computed<JsonValue>(() => {
   if (typeof props.modelValue === 'string') {
     try {
-      return JSON.parse(props.modelValue)
+      return JSON.parse(props.modelValue) as JsonValue
     } catch {
       return props.modelValue
     }
@@ -35,7 +36,7 @@ const parsedValue = computed(() => {
 })
 
 // Format JSON with syntax highlighting
-const formattedJson = computed(() => {
+const formattedJson = computed<string>(() => {
   if (parsedValue.value === null || parsedValue.value === undefined) {
     return '<span class="json-null">null</span>'
   }

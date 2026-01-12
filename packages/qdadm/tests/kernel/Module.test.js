@@ -9,8 +9,8 @@ import { Module } from '../../src/kernel/Module'
 
 describe('Module', () => {
   describe('static properties', () => {
-    it('has default static name', () => {
-      expect(Module.name).toBe('base')
+    it('has default static moduleName', () => {
+      expect(Module.moduleName).toBe('base')
     })
 
     it('has default empty requires array', () => {
@@ -51,22 +51,26 @@ describe('Module', () => {
       expect(module.name).toBe('custom-name')
     })
 
-    it('falls back to constructor.name (static name) if options.name not provided', () => {
+    it('falls back to static moduleName if options.name not provided', () => {
       const module = new Module()
-      // Falls back to this.constructor.name which is the static 'name' property ('base')
+      // Falls back to static moduleName property ('base')
       expect(module.name).toBe('base')
     })
 
-    it('prefers options.name over constructor name', () => {
-      class CustomModule extends Module {}
+    it('prefers options.name over static moduleName', () => {
+      class CustomModule extends Module {
+        static moduleName = 'custom'
+      }
       const module = new CustomModule({ name: 'override' })
       expect(module.name).toBe('override')
     })
 
-    it('uses subclass constructor name when no options.name', () => {
-      class MyCustomModule extends Module {}
+    it('uses subclass static moduleName when no options.name', () => {
+      class MyCustomModule extends Module {
+        static moduleName = 'my-custom'
+      }
       const module = new MyCustomModule()
-      expect(module.name).toBe('MyCustomModule')
+      expect(module.name).toBe('my-custom')
     })
   })
 
@@ -170,16 +174,16 @@ describe('Module', () => {
   })
 
   describe('subclass inheritance', () => {
-    it('allows overriding static name', () => {
+    it('allows overriding static moduleName', () => {
       class UsersModule extends Module {
-        static name = 'users'
+        static moduleName = 'users'
       }
-      expect(UsersModule.name).toBe('users')
+      expect(UsersModule.moduleName).toBe('users')
     })
 
     it('allows overriding static requires', () => {
       class DependentModule extends Module {
-        static name = 'dependent'
+        static moduleName = 'dependent'
         static requires = ['auth', 'api']
       }
       expect(DependentModule.requires).toEqual(['auth', 'api'])
@@ -187,7 +191,7 @@ describe('Module', () => {
 
     it('allows overriding static priority', () => {
       class HighPriorityModule extends Module {
-        static name = 'high-priority'
+        static moduleName = 'high-priority'
         static priority = 100
       }
       expect(HighPriorityModule.priority).toBe(100)
@@ -195,7 +199,7 @@ describe('Module', () => {
 
     it('allows overriding enabled() method', () => {
       class DevOnlyModule extends Module {
-        static name = 'dev-only'
+        static moduleName = 'dev-only'
         enabled(ctx) {
           return ctx.isDev === true
         }
@@ -211,7 +215,7 @@ describe('Module', () => {
       const connectFn = vi.fn()
 
       class CustomModule extends Module {
-        static name = 'custom'
+        static moduleName = 'custom'
         async connect(ctx) {
           this.ctx = ctx
           connectFn(ctx)
@@ -231,7 +235,7 @@ describe('Module', () => {
       const signalCleanup = vi.fn()
 
       class CustomModule extends Module {
-        static name = 'custom'
+        static moduleName = 'custom'
         async disconnect() {
           customCleanup()
           await super.disconnect()
@@ -248,7 +252,7 @@ describe('Module', () => {
 
     it('full Module subclass with all features', async () => {
       class FullModule extends Module {
-        static name = 'full'
+        static moduleName = 'full'
         static requires = ['auth']
         static priority = 50
 
@@ -267,7 +271,7 @@ describe('Module', () => {
         }
       }
 
-      expect(FullModule.name).toBe('full')
+      expect(FullModule.moduleName).toBe('full')
       expect(FullModule.requires).toEqual(['auth'])
       expect(FullModule.priority).toBe(50)
 
@@ -289,7 +293,7 @@ describe('Module', () => {
   describe('signal cleanup lifecycle', () => {
     it('tracks cleanups registered during connect', async () => {
       class TrackingModule extends Module {
-        static name = 'tracking'
+        static moduleName = 'tracking'
 
         async connect(ctx) {
           // Simulate what KernelContext.on() does
@@ -310,7 +314,7 @@ describe('Module', () => {
       const order = []
 
       class OrderedModule extends Module {
-        static name = 'ordered'
+        static moduleName = 'ordered'
 
         async connect() {
           this._addSignalCleanup(() => order.push('first'))

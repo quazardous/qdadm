@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 /**
  * FormLayout - Second level of the 3-level layout inheritance chain
  *
@@ -35,60 +35,51 @@ import { FORM_ZONES } from '../../zones/zones'
 // Default components for form zones
 import DefaultFormActions from './defaults/DefaultFormActions.vue'
 
-const props = defineProps({
-  /**
-   * Form loading state (displays spinner instead of fields)
-   */
-  loading: {
-    type: Boolean,
-    default: false
-  },
-  /**
-   * Form saving state (passed to actions)
-   */
-  saving: {
-    type: Boolean,
-    default: false
-  },
-  /**
-   * Form has unsaved changes (passed to actions)
-   */
-  dirty: {
-    type: Boolean,
-    default: false
-  },
-  /**
-   * Edit mode (changes action button labels)
-   */
-  isEdit: {
-    type: Boolean,
-    default: false
-  },
-  /**
-   * Whether to wrap form in a card component
-   */
-  cardWrapper: {
-    type: Boolean,
-    default: true
-  },
-  /**
-   * Whether to show the actions zone
-   */
-  showActions: {
-    type: Boolean,
-    default: true
-  }
+interface Props {
+  /** Form loading state (displays spinner instead of fields) */
+  loading?: boolean
+  /** Form saving state (passed to actions) */
+  saving?: boolean
+  /** Form has unsaved changes (passed to actions) */
+  dirty?: boolean
+  /** Edit mode (changes action button labels) */
+  isEdit?: boolean
+  /** Whether to wrap form in a card component */
+  cardWrapper?: boolean
+  /** Whether to show the actions zone */
+  showActions?: boolean
+}
+
+interface FormEmit {
+  save: () => void
+  saveAndClose: () => void
+  cancel: () => void
+  delete: () => void
+}
+
+const props = withDefaults(defineProps<Props>(), {
+  loading: false,
+  saving: false,
+  dirty: false,
+  isEdit: false,
+  cardWrapper: true,
+  showActions: true
 })
 
-const emit = defineEmits(['save', 'saveAndClose', 'cancel', 'delete'])
+const emit = defineEmits<{
+  'save': []
+  'saveAndClose': []
+  'cancel': []
+  'delete': []
+}>()
 
 const slots = useSlots()
 
 // Check which slots are provided by the parent
-const hasFormHeaderSlot = computed(() => !!slots['form-header'])
-const hasFormFieldsSlot = computed(() => !!slots['form-fields'])
-const hasFormTabsSlot = computed(() => !!slots['form-tabs'])
-const hasActionsSlot = computed(() => !!slots.actions)
+const hasFormHeaderSlot = computed((): boolean => !!slots['form-header'])
+const hasFormFieldsSlot = computed((): boolean => !!slots['form-fields'])
+const hasFormTabsSlot = computed((): boolean => !!slots['form-tabs'])
+const hasActionsSlot = computed((): boolean => !!slots.actions)
 
 // Provide form state to child zones (DefaultFormActions needs these)
 provide('qdadmFormState', computed(() => ({
@@ -99,7 +90,7 @@ provide('qdadmFormState', computed(() => ({
 })))
 
 // Provide form events for child zones to emit
-provide('qdadmFormEmit', {
+provide<FormEmit>('qdadmFormEmit', {
   save: () => emit('save'),
   saveAndClose: () => emit('saveAndClose'),
   cancel: () => emit('cancel'),

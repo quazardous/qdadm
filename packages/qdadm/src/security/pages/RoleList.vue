@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 /**
  * RoleList - Role listing page (standard ListPage pattern)
  */
@@ -7,6 +7,20 @@ import { useListPage, ListPage, useOrchestrator } from '../../index.js'
 import Column from 'primevue/column'
 import Message from 'primevue/message'
 import Chip from 'primevue/chip'
+
+/**
+ * Role granter interface
+ */
+interface RoleGranter {
+  canPersist?: boolean
+}
+
+/**
+ * Roles manager interface
+ */
+interface RolesManager {
+  roleGranter?: RoleGranter
+}
 
 // ============ LIST BUILDER ============
 const list = useListPage({ entity: 'roles' })
@@ -26,9 +40,9 @@ list.addDeleteAction({ labelField: 'label' })
 
 // ============ HELPERS ============
 const { getManager } = useOrchestrator()
-const manager = getManager('roles')
+const manager = getManager('roles') as RolesManager | null
 // Storage capability (not user permission) - for showing read-only warning
-const storageCanPersist = manager?.roleGranter?.canPersist ?? false
+const storageCanPersist: boolean = manager?.roleGranter?.canPersist ?? false
 </script>
 
 <template>

@@ -10,9 +10,9 @@
  */
 
 import { computed, inject, ref, onMounted, type ComputedRef, type Ref } from 'vue'
-import { useRoute, useRouter, type RouteLocationNormalized, type RouteLocationRaw } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { getNavSections, alterMenuSections, isMenuAltered } from '../module/moduleRegistry'
-import { useSemanticBreadcrumb, type SemanticBreadcrumbItem } from './useSemanticBreadcrumb'
+import { useSemanticBreadcrumb } from './useSemanticBreadcrumb'
 import type { HookRegistry } from '../hooks/HookRegistry'
 
 /**

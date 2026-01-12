@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 /**
  * InfoBanner - Consistent message banner component
  *
@@ -23,27 +23,25 @@
 import Message from 'primevue/message'
 import { computed } from 'vue'
 
-const props = defineProps({
-  // Severity level: info, success, warn, error, secondary, contrast
-  severity: {
-    type: String,
-    default: 'info',
-    validator: (v) => ['info', 'success', 'warn', 'error', 'secondary', 'contrast'].includes(v)
-  },
-  // Custom icon class (e.g., 'pi-user'). Set to false to hide icon.
-  icon: {
-    type: [String, Boolean],
-    default: null
-  },
-  // Allow closing the banner (default: true)
-  closable: {
-    type: Boolean,
-    default: true
-  }
+type Severity = 'info' | 'success' | 'warn' | 'error' | 'secondary' | 'contrast'
+
+interface Props {
+  /** Severity level: info, success, warn, error, secondary, contrast */
+  severity?: Severity
+  /** Custom icon class (e.g., 'pi-user'). Set to false to hide icon. */
+  icon?: string | boolean | null
+  /** Allow closing the banner (default: true) */
+  closable?: boolean
+}
+
+const props = withDefaults(defineProps<Props>(), {
+  severity: 'info',
+  icon: null,
+  closable: true
 })
 
 // Default icons per severity
-const defaultIcons = {
+const defaultIcons: Record<Severity, string> = {
   info: 'pi-info-circle',
   success: 'pi-check-circle',
   warn: 'pi-exclamation-triangle',
@@ -54,7 +52,7 @@ const defaultIcons = {
 
 const iconClass = computed(() => {
   if (props.icon === false) return null
-  if (props.icon) return `pi ${props.icon}`
+  if (props.icon && typeof props.icon === 'string') return `pi ${props.icon}`
   return `pi ${defaultIcons[props.severity]}`
 })
 </script>

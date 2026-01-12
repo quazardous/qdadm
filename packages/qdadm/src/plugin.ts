@@ -4,30 +4,107 @@
  * Creates and configures the qdadm framework for Vue applications.
  */
 
+import type { App } from 'vue'
+import type { Router, RouteLocationNormalized, NavigationGuardNext } from 'vue-router'
 import { Orchestrator } from './orchestrator/Orchestrator'
+import { EntityManager } from './entity/EntityManager'
 import qdadmLogo from './assets/logo.svg'
 
 /**
- * Creates the qdadm plugin with the given configuration
- *
- * @param {object} options - Configuration options
- * @param {function} options.entityFactory - Factory function: (entityName, entityConfig) => EntityManager
- * @param {object} options.managers - Pre-registered managers to override defaults (e.g., { users: myUsersManager })
- * @param {object} options.orchestrator - Or provide a pre-configured Orchestrator instance
- * @param {object} options.authAdapter - Optional: Auth adapter for login/logout
- * @param {object} options.router - Required: Vue Router instance
- * @param {object} options.toast - Required: Toast notification service
- * @param {object} options.app - Optional: App branding configuration
- * @param {object} options.modules - Optional: Module system configuration
- * @param {object} options.features - Optional: Feature toggles (auth, poweredBy)
- * @param {object} options.builtinModules - Optional: Builtin modules configuration
- * @param {object} options.endpoints - Optional: API endpoints configuration
- * @param {string} options.homeRoute - Optional: Home route name for breadcrumb
- * @returns {object} Vue plugin
+ * Toast service interface
  */
-export function createQdadm(options) {
+export interface ToastService {
+  add: (options: {
+    severity: string
+    summary: string
+    detail: string
+    life?: number
+  }) => void
+}
+
+/**
+ * Auth adapter interface
+ */
+export interface AuthAdapter {
+  login?: (credentials: unknown) => Promise<unknown>
+  logout?: () => void | Promise<void>
+  isAuthenticated?: () => boolean
+  getUser?: () => unknown
+  [key: string]: unknown
+}
+
+/**
+ * App theme configuration
+ */
+export interface AppTheme {
+  primary?: string
+  surface?: string
+  [key: string]: string | undefined
+}
+
+/**
+ * App configuration
+ */
+export interface AppConfig {
+  name?: string
+  shortName?: string
+  logo?: string | null
+  logoSmall?: string | null
+  favicon?: string | null
+  version?: string | null
+  theme?: AppTheme
+  [key: string]: unknown
+}
+
+/**
+ * Features configuration
+ */
+export interface FeaturesConfig {
+  auth?: boolean
+  poweredBy?: boolean
+  breadcrumb?: boolean
+  [key: string]: boolean | undefined
+}
+
+/**
+ * Module system configuration
+ */
+export interface ModulesConfig {
+  sectionOrder?: string[]
+  [key: string]: unknown
+}
+
+/**
+ * qdadm plugin options
+ */
+export interface QdadmOptions {
+  entityFactory?: (entityName: string, entityConfig: unknown) => EntityManager
+  managers?: Record<string, EntityManager>
+  orchestrator?: Orchestrator
+  authAdapter?: AuthAdapter
+  router: Router
+  toast: ToastService
+  app?: AppConfig
+  modules?: ModulesConfig
+  features?: FeaturesConfig
+  builtinModules?: Record<string, boolean>
+  endpoints?: Record<string, string>
+  homeRoute?: string
+}
+
+/**
+ * Vue plugin interface
+ */
+export interface QdadmPlugin {
+  install: (app: App) => void
+}
+
+/**
+ * Creates the qdadm plugin with the given configuration
+ */
+export function createQdadm(options: QdadmOptions): QdadmPlugin {
   return {
-    install(app) {
+    install(app: App) {
       // Validation des contrats requis
       if (!options.entityFactory && !options.orchestrator && !options.managers) {
         throw new Error('[qdadm] entityFactory, orchestrator, or managers required')
@@ -54,7 +131,7 @@ export function createQdadm(options) {
       }
 
       // Features config avec défauts
-      const features = {
+      const features: FeaturesConfig = {
         auth: true,
         poweredBy: true,
         breadcrumb: true,
@@ -62,7 +139,7 @@ export function createQdadm(options) {
       }
 
       // App config avec défauts
-      const appConfig = {
+      const appConfig: AppConfig = {
         name: 'Admin',
         shortName: 'Admin',
         logo: null,
@@ -78,16 +155,16 @@ export function createQdadm(options) {
       }
 
       // Endpoints config
-      const endpoints = {
+      const endpoints: Record<string, string> = {
         users: '/users',
         roles: '/roles',
         ...options.endpoints
       }
 
       // Builtin modules config
-      const builtinModules = {
-        users: features.auth,
-        roles: features.auth,
+      const builtinModules: Record<string, boolean> = {
+        users: features.auth || false,
+        roles: features.auth || false,
         ...options.builtinModules
       }
 
@@ -118,11 +195,15 @@ export function createQdadm(options) {
       }
 
       // Add route guard for entity permissions
-      options.router.beforeEach((to, from, next) => {
-        const entity = to.meta?.entity
-        if (entity) {
-          const manager = orchestrator.get(entity)
-          if (manager && !manager.canRead()) {
+      options.router.beforeEach((
+        to: RouteLocationNormalized,
+        _from: RouteLocationNormalized,
+        next: NavigationGuardNext
+      ) => {
+        const entity = to.meta?.entity as string | undefined
+        if (entity && orchestrator) {
+          const manager = orchestrator.get(entity) as EntityManager & { canRead?: () => boolean }
+          if (manager && manager.canRead && !manager.canRead()) {
             // Show visible error via toast
             console.warn(`[qdadm] Access denied to ${to.path} (entity: ${entity})`)
             options.toast.add({
@@ -147,16 +228,23 @@ export function createQdadm(options) {
 
       // Appliquer le thème via CSS variables
       if (appConfig.theme) {
-        document.documentElement.style.setProperty('--qdadm-primary', appConfig.theme.primary)
-        document.documentElement.style.setProperty('--qdadm-surface', appConfig.theme.surface)
+        if (appConfig.theme.primary) {
+          document.documentElement.style.setProperty('--qdadm-primary', appConfig.theme.primary)
+        }
+        if (appConfig.theme.surface) {
+          document.documentElement.style.setProperty('--qdadm-surface', appConfig.theme.surface)
+        }
       }
 
       // Appliquer le favicon
       if (appConfig.favicon) {
-        const link = document.querySelector("link[rel~='icon']") || document.createElement('link')
-        link.rel = 'icon'
-        link.href = appConfig.favicon
-        document.head.appendChild(link)
+        const existingLink = document.querySelector("link[rel~='icon']")
+        const link = existingLink || document.createElement('link')
+        link.setAttribute('rel', 'icon')
+        link.setAttribute('href', appConfig.favicon)
+        if (!existingLink) {
+          document.head.appendChild(link)
+        }
       }
     }
   }

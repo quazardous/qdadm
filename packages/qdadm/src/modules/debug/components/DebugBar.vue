@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 /**
  * DebugBar - Floating debug toolbar for qdadm
  *
@@ -9,27 +9,83 @@
  * - fullscreen: covers entire viewport
  * - minimized: small corner button
  */
-import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted, type Ref } from 'vue'
 import Badge from 'primevue/badge'
 import Button from 'primevue/button'
 import { ZonesPanel, AuthPanel, EntitiesPanel, ToastsPanel, EntriesPanel, SignalsPanel, RouterPanel } from './panels'
 
-const props = defineProps({
-  bridge: { type: Object, required: true },
-  zIndex: { type: Number, default: 9999 }
+type DisplayMode = 'bottom' | 'right' | 'window'
+
+interface WindowBounds {
+  x: number
+  y: number
+  width: number
+  height: number
+}
+
+interface PanelSizes {
+  bottomHeight: number
+  rightWidth: number
+}
+
+interface SavedState {
+  minimized: boolean
+  expanded: boolean
+  mode: DisplayMode
+  fullscreen: boolean
+  windowBounds: WindowBounds
+  panelSizes: PanelSizes
+  countAllBadges?: boolean
+}
+
+interface Collector {
+  getBadge: (countAll?: boolean) => number
+  getEntries: () => unknown[]
+  records?: boolean
+  enabled?: boolean
+  clear: () => void
+  toggle: () => void
+  markAsSeen?: () => void
+  [key: string]: unknown
+}
+
+interface CollectorEntry {
+  name: string
+  collector: Collector
+  badge: number
+  entries: unknown[]
+  records?: boolean
+  enabled?: boolean
+}
+
+interface DebugBridge {
+  enabled?: Ref<boolean>
+  tick?: Ref<number>
+  collectors?: Map<string, Collector>
+  toggle: () => void
+  clearAll: () => void
+  notify: () => void
+  [key: string]: unknown
+}
+
+const props = withDefaults(defineProps<{
+  bridge: DebugBridge
+  zIndex?: number
+}>(), {
+  zIndex: 9999
 })
 
 // Persistence
 const STORAGE_KEY = 'qdadm-debug-bar'
 
-const defaultWindowBounds = { x: 100, y: 100, width: 500, height: 400 }
-const defaultPanelSizes = { bottomHeight: 180, rightWidth: 420 }
+const defaultWindowBounds: WindowBounds = { x: 100, y: 100, width: 500, height: 400 }
+const defaultPanelSizes: PanelSizes = { bottomHeight: 180, rightWidth: 420 }
 
-function loadState() {
+function loadState(): SavedState {
   try {
     const saved = localStorage.getItem(STORAGE_KEY)
     if (saved) {
-      const state = JSON.parse(saved)
+      const state = JSON.parse(saved) as SavedState
       // Validate windowBounds (min 280x200)
       if (state.windowBounds) {
         const b = state.windowBounds
@@ -53,11 +109,11 @@ function loadState() {
       }
       return state
     }
-  } catch (e) { /* ignore */ }
+  } catch { /* ignore */ }
   return { minimized: true, expanded: false, mode: 'bottom', fullscreen: false, windowBounds: { ...defaultWindowBounds }, panelSizes: { ...defaultPanelSizes } }
 }
 
-function saveState() {
+function saveState(): void {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify({
       minimized: minimized.value,
@@ -68,59 +124,59 @@ function saveState() {
       panelSizes: panelSizes.value,
       countAllBadges: countAllBadges.value
     }))
-  } catch (e) { /* ignore */ }
+  } catch { /* ignore */ }
 }
 
 const savedState = loadState()
 
 // State
-const minimized = ref(savedState.minimized)
-const expanded = ref(savedState.expanded)
-const displayMode = ref(savedState.mode) // 'bottom', 'right', or 'window'
-const fullscreen = ref(savedState.fullscreen || false)
-const activeCollector = ref(0)
-const countAllBadges = ref(savedState.countAllBadges ?? false) // false = show unseen only
+const minimized = ref<boolean>(savedState.minimized)
+const expanded = ref<boolean>(savedState.expanded)
+const displayMode = ref<DisplayMode>(savedState.mode) // 'bottom', 'right', or 'window'
+const fullscreen = ref<boolean>(savedState.fullscreen || false)
+const activeCollector = ref<number>(0)
+const countAllBadges = ref<boolean>(savedState.countAllBadges ?? false) // false = show unseen only
 
 // Reactive tick from bridge - collectors notify when they have new data
-const bridgeTick = computed(() => props.bridge?.tick?.value ?? 0)
+const bridgeTick = computed<number>(() => props.bridge?.tick?.value ?? 0)
 
 // Window mode state
-const windowBounds = ref(savedState.windowBounds || defaultWindowBounds)
-const isDragging = ref(false)
-const isResizing = ref(false)
-const dragOffset = ref({ x: 0, y: 0 })
-const resizeStart = ref({ x: 0, y: 0, width: 0, height: 0 })
+const windowBounds = ref<WindowBounds>(savedState.windowBounds || defaultWindowBounds)
+const isDragging = ref<boolean>(false)
+const isResizing = ref<boolean>(false)
+const dragOffset = ref<{ x: number; y: number }>({ x: 0, y: 0 })
+const resizeStart = ref<{ x: number; y: number; width: number; height: number }>({ x: 0, y: 0, width: 0, height: 0 })
 
 // Docked panel sizes (resizable)
-const panelSizes = ref(savedState.panelSizes || defaultPanelSizes)
-const isPanelResizing = ref(false)
-const panelResizeStart = ref({ y: 0, x: 0, height: 0, width: 0 })
+const panelSizes = ref<PanelSizes>(savedState.panelSizes || defaultPanelSizes)
+const isPanelResizing = ref<boolean>(false)
+const panelResizeStart = ref<{ y: number; x: number; height: number; width: number }>({ y: 0, x: 0, height: 0, width: 0 })
 
 // Mobile detection
 const MOBILE_BREAKPOINT = 768
-const isMobile = ref(window.innerWidth < MOBILE_BREAKPOINT)
+const isMobile = ref<boolean>(window.innerWidth < MOBILE_BREAKPOINT)
 
-function updateMobileState() {
+function updateMobileState(): void {
   isMobile.value = window.innerWidth < MOBILE_BREAKPOINT
 }
 
 
 // Responsive tabs state (applies to bottom and window modes with horizontal header, not mobile)
-const headerRef = ref(null)
-const headerWidth = ref(1000)
-const isHorizontalHeader = computed(() => !isMobile.value && (displayMode.value === 'bottom' || displayMode.value === 'window' || fullscreen.value) && displayMode.value !== 'right')
-const tabsCompact = computed(() => isHorizontalHeader.value && headerWidth.value < 600)
-const tabsDropdown = computed(() => isHorizontalHeader.value && headerWidth.value < 400)
-const showTabsDropdown = ref(false)
+const headerRef = ref<HTMLElement | null>(null)
+const headerWidth = ref<number>(1000)
+const isHorizontalHeader = computed<boolean>(() => !isMobile.value && (displayMode.value === 'bottom' || displayMode.value === 'window' || fullscreen.value) && displayMode.value !== 'right')
+const tabsCompact = computed<boolean>(() => isHorizontalHeader.value && headerWidth.value < 600)
+const tabsDropdown = computed<boolean>(() => isHorizontalHeader.value && headerWidth.value < 400)
+const showTabsDropdown = ref<boolean>(false)
 
 // Close dropdown when exiting dropdown mode
-watch(tabsDropdown, (isDropdown) => {
+watch(tabsDropdown, (isDropdown: boolean) => {
   if (!isDropdown) showTabsDropdown.value = false
 })
 
-let resizeObserver = null
+let resizeObserver: ResizeObserver | null = null
 onMounted(() => {
-  resizeObserver = new ResizeObserver((entries) => {
+  resizeObserver = new ResizeObserver((entries: ResizeObserverEntry[]) => {
     for (const entry of entries) {
       headerWidth.value = entry.contentRect.width
     }
@@ -135,30 +191,29 @@ onUnmounted(() => {
   document.removeEventListener('click', onDocumentClick)
   window.removeEventListener('resize', updateMobileState)
 })
-watch(headerRef, (el) => {
+watch(headerRef, (el: HTMLElement | null) => {
   resizeObserver?.disconnect()
   if (el) resizeObserver?.observe(el)
 }, { immediate: true })
 
-function onDocumentClick(e) {
-  if (showTabsDropdown.value && !e.target.closest('.debug-tabs-dropdown')) {
+function onDocumentClick(e: MouseEvent): void {
+  if (showTabsDropdown.value && !(e.target as Element).closest('.debug-tabs-dropdown')) {
     showTabsDropdown.value = false
   }
 }
 
 // Computed
-const isEnabled = computed(() => props.bridge?.enabled?.value ?? false)
+const isEnabled = computed<boolean>(() => props.bridge?.enabled?.value ?? false)
 
-const collectors = computed(() => {
-  bridgeTick.value // Reactive dependency on bridge tick
-  const result = []
+const collectors = computed<CollectorEntry[]>(() => {
+  void bridgeTick.value // Reactive dependency on bridge tick
+  const result: CollectorEntry[] = []
   if (props.bridge?.collectors) {
     for (const [name, collector] of props.bridge.collectors) {
       result.push({
         name,
         collector,
         badge: collector.getBadge(countAllBadges.value),
-        totalBadge: collector.getTotalCount?.() ?? collector.getBadge(true),
         entries: collector.getEntries(),
         records: collector.records, // Does this collector record events?
         enabled: collector.enabled   // Per-collector enabled state
@@ -168,56 +223,52 @@ const collectors = computed(() => {
   return result
 })
 
-const currentCollector = computed(() => collectors.value[activeCollector.value])
-const totalBadge = computed(() => {
-  bridgeTick.value // Reactive dependency
-  return props.bridge?.getTotalBadge?.(countAllBadges.value) ?? 0
-})
+const currentCollector = computed<CollectorEntry | undefined>(() => collectors.value[activeCollector.value])
 
 // Separate badges for minimized state (always show unseen)
-const errorBadge = computed(() => {
-  bridgeTick.value // Reactive dependency
-  const c = collectors.value.find(c => c.name === 'ErrorCollector' || c.name === 'errors')
+const errorBadge = computed<number>(() => {
+  void bridgeTick.value // Reactive dependency
+  const c = collectors.value.find((c: CollectorEntry) => c.name === 'ErrorCollector' || c.name === 'errors')
   return c?.badge || 0
 })
-const signalBadge = computed(() => {
-  bridgeTick.value // Reactive dependency
-  const c = collectors.value.find(c => c.name === 'SignalCollector' || c.name === 'signals')
+const signalBadge = computed<number>(() => {
+  void bridgeTick.value // Reactive dependency
+  const c = collectors.value.find((c: CollectorEntry) => c.name === 'SignalCollector' || c.name === 'signals')
   return c?.badge || 0
 })
 
 // Mark previous collector as seen when leaving tab
-watch(activeCollector, (newIdx, oldIdx) => {
+watch(activeCollector, (newIdx: number, oldIdx: number | undefined) => {
   if (oldIdx !== undefined && collectors.value[oldIdx]?.collector?.markAsSeen) {
-    collectors.value[oldIdx].collector.markAsSeen()
+    collectors.value[oldIdx].collector.markAsSeen!()
     props.bridge?.notify()
   }
 })
 
 // Mark current collector as seen when collapsing panel
-watch(expanded, (isExpanded, wasExpanded) => {
+watch(expanded, (isExpanded: boolean, wasExpanded: boolean) => {
   if (wasExpanded && !isExpanded) {
     const idx = activeCollector.value
     if (collectors.value[idx]?.collector?.markAsSeen) {
-      collectors.value[idx].collector.markAsSeen()
+      collectors.value[idx].collector.markAsSeen!()
       props.bridge?.notify()
     }
   }
 })
 
-function toggleCountMode() {
+function toggleCountMode(): void {
   countAllBadges.value = !countAllBadges.value
   saveState()
   props.bridge?.notify()
 }
 
 // Actions
-function toggle() {
+function toggle(): void {
   expanded.value = !expanded.value
   saveState()
 }
 
-function expand() {
+function expand(): void {
   minimized.value = false
   // On mobile, go directly to fullscreen
   if (isMobile.value) {
@@ -229,14 +280,14 @@ function expand() {
   saveState()
 }
 
-function minimize() {
+function minimize(): void {
   minimized.value = true
   // Keep expanded state - will be restored when un-minimizing
   fullscreen.value = false
   saveState()
 }
 
-function toggleMode() {
+function toggleMode(): void {
   // Toggle between bottom and right (not window)
   if (displayMode.value === 'window') {
     displayMode.value = 'bottom'
@@ -246,7 +297,7 @@ function toggleMode() {
   saveState()
 }
 
-function enterWindowMode() {
+function enterWindowMode(): void {
   displayMode.value = 'window'
   expanded.value = true
   // Ensure window is visible within viewport with min size
@@ -264,23 +315,18 @@ function enterWindowMode() {
   saveState()
 }
 
-function exitWindowMode() {
+function exitWindowMode(): void {
   displayMode.value = 'bottom'
   saveState()
 }
 
-function getModeIcon() {
-  if (displayMode.value === 'window') return 'pi pi-window-maximize'
-  return null // Using custom SVG icons instead
-}
-
-function getModeTitle() {
+function getModeTitle(): string {
   if (displayMode.value === 'window') return 'Docked mode'
   return displayMode.value === 'bottom' ? 'Dock to right side' : 'Dock to bottom'
 }
 
 // Window drag handlers
-function startDrag(e) {
+function startDrag(e: MouseEvent): void {
   if (displayMode.value !== 'window') return
   isDragging.value = true
   dragOffset.value = {
@@ -292,7 +338,7 @@ function startDrag(e) {
   e.preventDefault()
 }
 
-function onDrag(e) {
+function onDrag(e: MouseEvent): void {
   if (!isDragging.value) return
   windowBounds.value = {
     ...windowBounds.value,
@@ -301,7 +347,7 @@ function onDrag(e) {
   }
 }
 
-function stopDrag() {
+function stopDrag(): void {
   if (isDragging.value) {
     isDragging.value = false
     document.removeEventListener('mousemove', onDrag)
@@ -311,7 +357,7 @@ function stopDrag() {
 }
 
 // Window resize handlers
-function startResize(e) {
+function startResize(e: MouseEvent): void {
   if (displayMode.value !== 'window') return
   isResizing.value = true
   resizeStart.value = {
@@ -329,7 +375,7 @@ function startResize(e) {
 const MIN_WINDOW_WIDTH = 280
 const MIN_WINDOW_HEIGHT = 200
 
-function onResize(e) {
+function onResize(e: MouseEvent): void {
   if (!isResizing.value) return
   const deltaX = e.clientX - resizeStart.value.x
   const deltaY = e.clientY - resizeStart.value.y
@@ -340,7 +386,7 @@ function onResize(e) {
   }
 }
 
-function stopResize() {
+function stopResize(): void {
   if (isResizing.value) {
     isResizing.value = false
     document.removeEventListener('mousemove', onResize)
@@ -355,7 +401,7 @@ const MAX_PANEL_HEIGHT = 600
 const MIN_PANEL_WIDTH = 200
 const MAX_PANEL_WIDTH = 800
 
-function startPanelResize(e, direction) {
+function startPanelResize(e: MouseEvent, direction: 'vertical' | 'horizontal'): void {
   if (displayMode.value === 'window' || fullscreen.value) return
   isPanelResizing.value = true
   panelResizeStart.value = {
@@ -371,7 +417,7 @@ function startPanelResize(e, direction) {
   e.preventDefault()
 }
 
-function onPanelResizeVertical(e) {
+function onPanelResizeVertical(e: MouseEvent): void {
   if (!isPanelResizing.value) return
   const deltaY = panelResizeStart.value.y - e.clientY
   panelSizes.value = {
@@ -380,7 +426,7 @@ function onPanelResizeVertical(e) {
   }
 }
 
-function onPanelResizeHorizontal(e) {
+function onPanelResizeHorizontal(e: MouseEvent): void {
   if (!isPanelResizing.value) return
   const deltaX = panelResizeStart.value.x - e.clientX
   panelSizes.value = {
@@ -389,7 +435,7 @@ function onPanelResizeHorizontal(e) {
   }
 }
 
-function stopPanelResize(moveHandler, upHandler) {
+function stopPanelResize(moveHandler: (e: MouseEvent) => void, upHandler: () => void): void {
   if (isPanelResizing.value) {
     isPanelResizing.value = false
     document.removeEventListener('mousemove', moveHandler)
@@ -401,7 +447,7 @@ function stopPanelResize(moveHandler, upHandler) {
 // State before entering fullscreen (to restore on exit)
 let preFullscreenExpanded = false
 
-function toggleFullscreen() {
+function toggleFullscreen(): void {
   if (!fullscreen.value) {
     // Entering fullscreen - save current state
     preFullscreenExpanded = expanded.value
@@ -415,31 +461,31 @@ function toggleFullscreen() {
   saveState()
 }
 
-function toggleEnabled() {
+function toggleEnabled(): void {
   props.bridge?.toggle()
 }
 
-function clearAll() {
+function clearAll(): void {
   props.bridge?.clearAll()
   props.bridge?.notify()
 }
 
-function clearCollector(collector) {
+function clearCollector(collector: Collector): void {
   collector.clear()
   props.bridge?.notify()
 }
 
-function toggleCollector(collector) {
+function toggleCollector(collector: Collector): void {
   collector.toggle()
   props.bridge?.notify()
 }
 
-function notifyBridge() {
+function notifyBridge(): void {
   props.bridge?.notify()
 }
 
-function getCollectorIcon(name) {
-  const icons = {
+function getCollectorIcon(name: string | undefined): string {
+  const icons: Record<string, string> = {
     errors: 'pi-exclamation-triangle',
     signals: 'pi-bolt',
     toasts: 'pi-bell',
@@ -455,11 +501,11 @@ function getCollectorIcon(name) {
     EntitiesCollector: 'pi-database',
     RouterCollector: 'pi-directions'
   }
-  return icons[name] || 'pi-database'
+  return (name && icons[name]) || 'pi-database'
 }
 
-function getCollectorLabel(name) {
-  const labels = {
+function getCollectorLabel(name: string | undefined): string {
+  const labels: Record<string, string> = {
     errors: 'Errors',
     signals: 'Signals',
     toasts: 'Toasts',
@@ -475,11 +521,11 @@ function getCollectorLabel(name) {
     EntitiesCollector: 'Entities',
     RouterCollector: 'Router'
   }
-  return labels[name] || name
+  return (name && labels[name]) || name || ''
 }
 
-function getCollectorColor(name) {
-  const colors = {
+function getCollectorColor(name: string | undefined): string {
+  const colors: Record<string, string> = {
     errors: '#ef4444',
     toasts: '#f59e0b',
     signals: '#8b5cf6',
@@ -488,7 +534,7 @@ function getCollectorColor(name) {
     entities: '#3b82f6',
     router: '#ec4899'
   }
-  return colors[name] || '#6b7280'
+  return (name && colors[name]) || '#6b7280'
 }
 </script>
 
@@ -552,7 +598,7 @@ function getCollectorColor(name) {
         <button class="debug-dropdown-trigger" @click="showTabsDropdown = !showTabsDropdown">
           <i :class="['pi', getCollectorIcon(currentCollector?.name)]" :style="{ color: getCollectorColor(currentCollector?.name) }" />
           <span>{{ getCollectorLabel(currentCollector?.name) }}</span>
-          <Badge v-if="currentCollector?.badge > 0" :value="currentCollector.badge" severity="secondary" />
+          <Badge v-if="currentCollector && currentCollector.badge > 0" :value="currentCollector.badge" severity="secondary" />
           <i class="pi pi-chevron-down" />
         </button>
         <div v-if="showTabsDropdown" class="debug-dropdown-menu" @click="showTabsDropdown = false">
@@ -675,44 +721,44 @@ function getCollectorColor(name) {
       <!-- Zones collector - always render for toolbar access -->
       <ZonesPanel
         v-if="currentCollector.name === 'zones' || currentCollector.name === 'ZonesCollector'"
-        :collector="currentCollector.collector"
-        :entries="currentCollector.entries"
+        :collector="(currentCollector.collector as any)"
+        :entries="(currentCollector.entries as any[])"
         @update="notifyBridge"
       />
 
       <!-- Signals collector -->
       <SignalsPanel
         v-else-if="currentCollector.name === 'signals' || currentCollector.name === 'SignalCollector'"
-        :collector="currentCollector.collector"
-        :entries="currentCollector.entries"
+        :collector="(currentCollector.collector as any)"
+        :entries="(currentCollector.entries as any[])"
       />
 
       <!-- Auth collector -->
       <AuthPanel
         v-else-if="currentCollector.name === 'auth' || currentCollector.name === 'AuthCollector'"
-        :collector="currentCollector.collector"
-        :entries="currentCollector.entries"
+        :collector="(currentCollector.collector as any)"
+        :entries="(currentCollector.entries as any[])"
       />
 
       <!-- Entities collector -->
       <EntitiesPanel
         v-else-if="currentCollector.name === 'entities' || currentCollector.name === 'EntitiesCollector'"
-        :collector="currentCollector.collector"
-        :entries="currentCollector.entries"
+        :collector="(currentCollector.collector as any)"
+        :entries="(currentCollector.entries as any[])"
         @update="notifyBridge"
       />
 
       <!-- Router collector -->
       <RouterPanel
         v-else-if="currentCollector.name === 'router' || currentCollector.name === 'RouterCollector'"
-        :collector="currentCollector.collector"
-        :entries="currentCollector.entries"
+        :collector="(currentCollector.collector as any)"
+        :entries="(currentCollector.entries as any[])"
       />
 
       <!-- Toasts collector (vertical modes) -->
       <ToastsPanel
         v-else-if="(currentCollector.name === 'toasts' || currentCollector.name === 'ToastCollector') && (isMobile || displayMode !== 'bottom' || fullscreen)"
-        :entries="currentCollector.entries"
+        :entries="(currentCollector.entries as any[])"
       />
 
       <!-- Empty state for generic collectors without entries -->
@@ -724,14 +770,14 @@ function getCollectorColor(name) {
       <!-- Default entries - horizontal (bottom mode, not mobile) -->
       <EntriesPanel
         v-else-if="!isMobile && displayMode === 'bottom' && !fullscreen"
-        :entries="currentCollector.entries"
+        :entries="(currentCollector.entries as any[])"
         mode="horizontal"
       />
 
       <!-- Default entries - vertical (right/fullscreen/mobile mode) -->
       <EntriesPanel
         v-else
-        :entries="currentCollector.entries"
+        :entries="(currentCollector.entries as any[])"
         mode="vertical"
       />
     </div>

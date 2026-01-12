@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 /**
  * JsonEditorFoldable - JSON editor with collapsible sections
  *
@@ -16,36 +16,35 @@ import InputText from 'primevue/inputtext'
 import Message from 'primevue/message'
 import { getJsonValueType, getJsonPreview } from '../../composables/useJsonSyntax'
 
-const props = defineProps({
-  modelValue: {
-    type: [Object, null],
-    default: () => ({})
-  },
-  defaultExpanded: {
-    type: Array,
-    default: () => ['content'] // "content" expanded by default
-  },
-  height: {
-    type: String,
-    default: '400px'
-  }
+interface Props {
+  modelValue?: Record<string, unknown> | null
+  defaultExpanded?: string[]
+  height?: string
+}
+
+const props = withDefaults(defineProps<Props>(), {
+  modelValue: () => ({}),
+  defaultExpanded: () => ['content'],
+  height: '400px'
 })
 
-const emit = defineEmits(['update:modelValue'])
+const emit = defineEmits<{
+  'update:modelValue': [value: Record<string, unknown>]
+}>()
 
 // Internal state: track which sections are expanded
-const expandedSections = ref(new Set(props.defaultExpanded))
+const expandedSections = ref<Set<string>>(new Set(props.defaultExpanded))
 
 // Internal copy of data for editing
-const localData = ref({})
+const localData = ref<Record<string, unknown>>({})
 
 // Parse error for raw JSON mode
-const parseError = ref(null)
-const rawJsonMode = ref(false)
-const rawJsonText = ref('')
+const parseError = ref<string | null>(null)
+const rawJsonMode = ref<boolean>(false)
+const rawJsonText = ref<string>('')
 
 // Sync from modelValue
-watch(() => props.modelValue, (newVal) => {
+watch(() => props.modelValue, (newVal: Record<string, unknown> | null | undefined) => {
   if (newVal && typeof newVal === 'object') {
     localData.value = JSON.parse(JSON.stringify(newVal))
     rawJsonText.value = JSON.stringify(newVal, null, 2)
@@ -56,7 +55,7 @@ watch(() => props.modelValue, (newVal) => {
 }, { immediate: true, deep: true })
 
 // Computed: sorted keys with "content" first if present
-const sortedKeys = computed(() => {
+const sortedKeys = computed<string[]>(() => {
   const keys = Object.keys(localData.value || {})
   // Put 'content' first, then sort rest alphabetically
   return keys.sort((a, b) => {
@@ -66,11 +65,11 @@ const sortedKeys = computed(() => {
   })
 })
 
-function isExpanded(key) {
+function isExpanded(key: string): boolean {
   return expandedSections.value.has(key)
 }
 
-function toggleSection(key) {
+function toggleSection(key: string): void {
   if (expandedSections.value.has(key)) {
     expandedSections.value.delete(key)
   } else {
@@ -80,28 +79,28 @@ function toggleSection(key) {
   expandedSections.value = new Set(expandedSections.value)
 }
 
-function expandAll() {
+function expandAll(): void {
   expandedSections.value = new Set(sortedKeys.value)
 }
 
-function collapseAll() {
+function collapseAll(): void {
   expandedSections.value = new Set()
 }
 
 // Update a specific field
-function updateField(key, newValue) {
+function updateField(key: string, newValue: unknown): void {
   const type = getJsonValueType(localData.value[key])
 
   if (type === 'string') {
     localData.value[key] = newValue
   } else if (type === 'number') {
-    localData.value[key] = parseFloat(newValue) || 0
+    localData.value[key] = parseFloat(String(newValue)) || 0
   } else if (type === 'boolean') {
     localData.value[key] = newValue === 'true' || newValue === true
   } else if (type === 'array' || type === 'object') {
     // Parse as JSON for complex types
     try {
-      localData.value[key] = JSON.parse(newValue)
+      localData.value[key] = JSON.parse(String(newValue))
     } catch {
       // Invalid JSON, don't update
       return
@@ -111,12 +110,12 @@ function updateField(key, newValue) {
   emitUpdate()
 }
 
-function emitUpdate() {
+function emitUpdate(): void {
   emit('update:modelValue', JSON.parse(JSON.stringify(localData.value)))
 }
 
 // Raw JSON mode handling
-function toggleRawMode() {
+function toggleRawMode(): void {
   if (rawJsonMode.value) {
     // Switching from raw to structured - parse the raw JSON
     try {
@@ -124,7 +123,7 @@ function toggleRawMode() {
       parseError.value = null
       emitUpdate()
     } catch (e) {
-      parseError.value = e.message
+      parseError.value = (e as Error).message
       return // Don't switch if invalid
     }
   } else {
@@ -134,28 +133,28 @@ function toggleRawMode() {
   rawJsonMode.value = !rawJsonMode.value
 }
 
-function onRawJsonInput(event) {
-  rawJsonText.value = event.target.value
+function onRawJsonInput(event: Event): void {
+  rawJsonText.value = (event.target as HTMLTextAreaElement).value
   try {
     JSON.parse(rawJsonText.value)
     parseError.value = null
   } catch (e) {
-    parseError.value = e.message
+    parseError.value = (e as Error).message
   }
 }
 
-function saveRawJson() {
+function saveRawJson(): void {
   try {
     localData.value = JSON.parse(rawJsonText.value)
     parseError.value = null
     emitUpdate()
   } catch (e) {
-    parseError.value = e.message
+    parseError.value = (e as Error).message
   }
 }
 
 // Get appropriate editor for value type
-function isMultiline(value) {
+function isMultiline(value: unknown): boolean {
   if (typeof value !== 'string') return false
   return value.length > 100 || value.includes('\n')
 }
@@ -217,7 +216,7 @@ function isMultiline(value) {
           <!-- String (multiline) -->
           <Textarea
             v-if="getJsonValueType(localData[key]) === 'string' && isMultiline(localData[key])"
-            :modelValue="localData[key]"
+            :modelValue="String(localData[key])"
             @update:modelValue="updateField(key, $event)"
             rows="8"
             class="w-full field-textarea"
@@ -227,7 +226,7 @@ function isMultiline(value) {
           <!-- String (single line) -->
           <InputText
             v-else-if="getJsonValueType(localData[key]) === 'string'"
-            :modelValue="localData[key]"
+            :modelValue="String(localData[key])"
             @update:modelValue="updateField(key, $event)"
             class="w-full"
           />
@@ -245,7 +244,7 @@ function isMultiline(value) {
           <select
             v-else-if="getJsonValueType(localData[key]) === 'boolean'"
             :value="String(localData[key])"
-            @change="updateField(key, $event.target.value)"
+            @change="updateField(key, ($event.target as HTMLSelectElement)?.value)"
             class="field-select"
           >
             <option value="true">true</option>

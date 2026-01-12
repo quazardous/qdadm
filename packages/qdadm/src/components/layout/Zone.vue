@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 /**
  * Zone - Renders blocks registered in a zone from ZoneRegistry
  *
@@ -17,7 +17,8 @@
  * <Zone name="sidebar" :default-component="DefaultSidebar" />
  * <Zone name="main"><RouterView /></Zone>
  */
-import { computed, inject, h, defineComponent, useSlots } from 'vue'
+import { computed, inject, h, defineComponent, useSlots, type Component, type VNode, type PropType, type Slot } from 'vue'
+import type { ZoneRegistry, BlockConfig } from '../../zones/ZoneRegistry'
 
 const props = defineProps({
   /**
@@ -31,29 +32,29 @@ const props = defineProps({
    * Default component to render when no blocks are registered
    */
   defaultComponent: {
-    type: Object,
+    type: Object as PropType<Component | null>,
     default: null
   },
   /**
    * Props to pass to all blocks
    */
   blockProps: {
-    type: Object,
+    type: Object as PropType<Record<string, unknown>>,
     default: () => ({})
   }
 })
 
 const slots = useSlots()
-const hasDefaultSlot = computed(() => !!slots.default)
+const hasDefaultSlot = computed<boolean>(() => !!slots.default)
 
-const registry = inject('qdadmZoneRegistry')
+const registry = inject<ZoneRegistry | null>('qdadmZoneRegistry', null)
 
 // Get the reactive version ref for tracking changes
 const version = registry?.getVersionRef?.()
 
-const blocks = computed(() => {
+const blocks = computed<BlockConfig[]>(() => {
   if (!registry) {
-    if (import.meta.env.DEV) {
+    if ((import.meta as { env?: { DEV?: boolean } }).env?.DEV) {
       console.warn(`[Zone] ZoneRegistry not injected. Zone "${props.name}" will render nothing.`)
     }
     return []
@@ -61,24 +62,23 @@ const blocks = computed(() => {
   // Access version.value to create reactive dependency
   // This ensures the computed re-evaluates when blocks change
   if (version) {
-    // eslint-disable-next-line no-unused-expressions
-    version.value
+    void version.value
   }
   return registry.getBlocks(props.name)
 })
 
-const hasBlocks = computed(() => blocks.value.length > 0)
+const hasBlocks = computed<boolean>(() => blocks.value.length > 0)
 
-const showDefault = computed(() => {
-  return !hasBlocks.value && (props.defaultComponent || registry?.getDefault(props.name))
+const showDefault = computed<boolean>(() => {
+  return !hasBlocks.value && (props.defaultComponent !== null || registry?.getDefault(props.name) !== null)
 })
 
-const showSlot = computed(() => {
+const showSlot = computed<boolean>(() => {
   return !hasBlocks.value && !showDefault.value && hasDefaultSlot.value
 })
 
-const defaultComp = computed(() => {
-  return props.defaultComponent || registry?.getDefault(props.name)
+const defaultComp = computed<Component | null>(() => {
+  return props.defaultComponent || registry?.getDefault(props.name) || null
 })
 
 /**
@@ -90,24 +90,24 @@ const defaultComp = computed(() => {
  * Slot content from the Zone is passed to the innermost block component,
  * allowing the block to render Zone's children (e.g., form fields).
  *
- * @param {object} block - Block config with wrappers array
- * @param {object} mergedProps - Props to pass to the innermost component
- * @param {Function} slotFn - Slot function to pass to innermost component
- * @returns {object} - Vue component definition
+ * @param block - Block config with wrappers array
+ * @param mergedProps - Props to pass to the innermost component
+ * @param slotFn - Slot function to pass to innermost component
+ * @returns Vue component definition
  */
-function createWrappedComponent(block, mergedProps, slotFn) {
+function createWrappedComponent(block: BlockConfig, mergedProps: Record<string, unknown>, slotFn: Slot | undefined): Component {
   return defineComponent({
     name: 'WrappedBlock',
-    render() {
+    render(): VNode {
       // Start with the innermost component (the original block)
       // Pass Zone's slot content to allow block to render it
       const innerSlots = slotFn ? { default: slotFn } : {}
-      let current = h(block.component, mergedProps, innerSlots)
+      let current: VNode = h(block.component, mergedProps, innerSlots)
 
       // Build from inside out: last wrapper in array wraps the innermost
       // Wrappers are already sorted by weight (lower = outer)
       // So we reverse to build from inside out
-      const reversedWrappers = [...block.wrappers].reverse()
+      const reversedWrappers = [...(block.wrappers || [])].reverse()
 
       for (const wrapper of reversedWrappers) {
         const inner = current
@@ -128,8 +128,8 @@ function createWrappedComponent(block, mergedProps, slotFn) {
  * Note: Slot function is passed to allow Zone's children to be rendered
  * inside the innermost block component.
  */
-const wrappedComponents = computed(() => {
-  const map = new Map()
+const wrappedComponents = computed<Map<string | number | null | undefined, Component>>(() => {
+  const map = new Map<string | number | null | undefined, Component>()
   // Get slot function to pass to innermost block
   const slotFn = slots.default
   for (const block of blocks.value) {
@@ -145,7 +145,7 @@ const wrappedComponents = computed(() => {
 /**
  * Get the wrapped component for a block
  */
-function getWrappedComponent(block) {
+function getWrappedComponent(block: BlockConfig): Component | undefined {
   const key = block.id || block.weight
   return wrappedComponents.value.get(key)
 }

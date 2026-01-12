@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 /**
  * LoginPage - Generic login page component
  *
@@ -17,19 +17,75 @@
  *     </template>
  *   </LoginPage>
  */
-import { ref, inject, computed } from 'vue'
+import { ref, inject, computed, type PropType, type Component } from 'vue'
 import { useRouter } from 'vue-router'
 import Card from 'primevue/card'
 import InputText from 'primevue/inputtext'
 import Password from 'primevue/password'
 import Button from 'primevue/button'
 
+/**
+ * Auth adapter interface
+ */
+interface AuthAdapter {
+  login: (credentials: { username: string; password: string }) => Promise<LoginResult>
+}
+
+/**
+ * Login result from auth adapter
+ */
+interface LoginResult {
+  user?: {
+    username?: string
+    email?: string
+    [key: string]: unknown
+  }
+  [key: string]: unknown
+}
+
+/**
+ * Orchestrator interface
+ */
+interface Orchestrator {
+  toast: {
+    success: (summary: string, detail?: string, emitter?: string) => void
+    error: (summary: string, detail?: string, emitter?: string) => void
+  }
+  signals: {
+    emit: (signal: string, payload: unknown) => void
+  }
+}
+
+/**
+ * App config interface
+ */
+interface AppConfig {
+  name?: string
+  [key: string]: unknown
+}
+
+/**
+ * Axios-like error interface
+ */
+interface AxiosError {
+  response?: {
+    data?: {
+      error?: {
+        message?: string
+      }
+      message?: string
+    }
+    status?: number
+  }
+  message?: string
+}
+
 const props = defineProps({
   /**
    * Override app title (defaults to qdadm app.name config)
    */
   title: {
-    type: String,
+    type: String as PropType<string | null>,
     default: null
   },
   /**
@@ -43,7 +99,7 @@ const props = defineProps({
    * Custom logo component (replaces icon)
    */
   logo: {
-    type: Object,
+    type: Object as PropType<Component | null>,
     default: null
   },
   /**
@@ -98,20 +154,23 @@ const props = defineProps({
   }
 })
 
-const emit = defineEmits(['login', 'error'])
+const emit = defineEmits<{
+  (e: 'login', result: LoginResult): void
+  (e: 'error', error: unknown): void
+}>()
 
 const router = useRouter()
-const authAdapter = inject('authAdapter', null)
-const orchestrator = inject('qdadmOrchestrator', null)
-const appConfig = inject('qdadmApp', {})
+const authAdapter = inject<AuthAdapter | null>('authAdapter', null)
+const orchestrator = inject<Orchestrator | null>('qdadmOrchestrator', null)
+const appConfig = inject<AppConfig>('qdadmApp', {})
 
-const username = ref(props.defaultUsername)
-const password = ref(props.defaultPassword)
-const loading = ref(false)
+const username = ref<string>(props.defaultUsername)
+const password = ref<string>(props.defaultPassword)
+const loading = ref<boolean>(false)
 
-const displayTitle = computed(() => props.title || appConfig.name || 'Admin')
+const displayTitle = computed<string>(() => props.title || appConfig.name || 'Admin')
 
-async function handleLogin() {
+async function handleLogin(): Promise<void> {
   if (!authAdapter?.login) {
     orchestrator?.toast.error('Configuration Error', 'No auth adapter configured', 'LoginPage')
     return
@@ -137,15 +196,16 @@ async function handleLogin() {
   } catch (error) {
     password.value = ''
 
-    const message = error.response?.data?.error?.message
-      || error.response?.data?.message
-      || error.message
+    const axiosError = error as AxiosError
+    const message = axiosError.response?.data?.error?.message
+      || axiosError.response?.data?.message
+      || axiosError.message
       || 'Invalid credentials'
 
     orchestrator?.signals.emit('auth:login:error', {
       username: username.value,
       error: message,
-      status: error.response?.status
+      status: axiosError.response?.status
     })
     orchestrator?.toast.error('Login Failed', message, 'LoginPage')
 

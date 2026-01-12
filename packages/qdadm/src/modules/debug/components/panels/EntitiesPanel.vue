@@ -1,30 +1,136 @@
-<script setup>
+<script setup lang="ts">
 /**
  * EntitiesPanel - Entities collector display with expandable details
  */
 import { ref, onMounted } from 'vue'
 import ObjectTree from '../ObjectTree.vue'
 
-const props = defineProps({
-  collector: { type: Object, required: true },
-  entries: { type: Array, required: true }
-})
+interface StorageCapabilities {
+  supportsTotal?: boolean
+  supportsFilters?: boolean
+  supportsPagination?: boolean
+  supportsCaching?: boolean
+  requiresAuth?: boolean
+  [key: string]: boolean | undefined
+}
 
-const emit = defineEmits(['update'])
+interface StorageInfo {
+  type: string
+  endpoint?: string
+  capabilities?: StorageCapabilities
+  hasNormalize?: boolean
+  hasDenormalize?: boolean
+}
+
+interface MultiStorage {
+  enabled: boolean
+  storages: Array<{
+    name: string
+    type: string
+    endpoint?: string
+    capabilities?: StorageCapabilities
+    hasNormalize?: boolean
+    hasDenormalize?: boolean
+  }>
+}
+
+interface CacheInfo {
+  enabled: boolean
+  valid?: boolean
+  itemCount?: number
+  total?: number
+  threshold?: number
+  items?: Record<string, unknown>[]
+}
+
+interface RelationInfo {
+  key: string
+  entity: string
+}
+
+interface ReferenceInfo {
+  field: string
+  entity: string
+}
+
+interface EntityPermissions {
+  canCreate: boolean
+  canUpdate: boolean
+  canDelete: boolean
+  readOnly?: boolean
+}
+
+interface EntityStats {
+  list: number
+  get: number
+  create: number
+  update: number
+  delete: number
+  cacheHits: number
+  cacheMisses: number
+  maxItemsSeen: number
+  maxTotal: number
+}
+
+interface EntityEntry {
+  type?: string
+  message?: string
+  name: string
+  label?: string
+  hasActivity?: boolean
+  system?: boolean
+  authSensitive?: boolean
+  permissions: EntityPermissions
+  storage: StorageInfo
+  multiStorage?: MultiStorage
+  cache: CacheInfo
+  fields: {
+    count: number
+    required: string[]
+  }
+  relations: {
+    parents: RelationInfo[]
+    children: RelationInfo[]
+    references?: ReferenceInfo[]
+  }
+  stats?: EntityStats
+  [key: string]: unknown
+}
+
+interface StorageTestResult {
+  success: boolean
+  count?: number
+  error?: string
+  status?: number | string
+}
+
+interface EntitiesCollector {
+  markSeen?: () => void
+  refreshCache: (entityName: string, reload: boolean) => Promise<void> | void
+  testStorageFetch: (entityName: string, storageName: string) => Promise<StorageTestResult>
+  [key: string]: unknown
+}
+
+const props = defineProps<{
+  collector: EntitiesCollector
+  entries: EntityEntry[]
+}>()
+
+const emit = defineEmits<{
+  (e: 'update'): void
+}>()
 
 // Mark all entities as seen when panel is viewed
 onMounted(() => {
   props.collector.markSeen?.()
 })
 
-const expandedEntities = ref(new Set())
-const loadingCache = ref(new Set())
-const testingFetch = ref(new Set())
-const testResults = ref(new Map()) // entityName -> { success, count, error, status }
-const testingStorages = ref(new Set()) // "entityName:storageName"
-const storageTestResults = ref(new Map()) // "entityName:storageName" -> { success, count, error, status }
+const expandedEntities = ref<Set<string>>(new Set())
+const loadingCache = ref<Set<string>>(new Set())
+const testingStorages = ref<Set<string>>(new Set()) // "entityName:storageName"
+const storageTestResults = ref<Map<string, StorageTestResult>>(new Map()) // "entityName:storageName" -> { success, count, error, status }
 
-function toggleExpand(name) {
+function toggleExpand(name: string): void {
   if (expandedEntities.value.has(name)) {
     expandedEntities.value.delete(name)
   } else {
@@ -34,11 +140,11 @@ function toggleExpand(name) {
   expandedEntities.value = new Set(expandedEntities.value)
 }
 
-function isExpanded(name) {
+function isExpanded(name: string): boolean {
   return expandedEntities.value.has(name)
 }
 
-async function loadCache(entityName) {
+async function loadCache(entityName: string): Promise<void> {
   if (loadingCache.value.has(entityName)) return
   loadingCache.value.add(entityName)
   loadingCache.value = new Set(loadingCache.value)
@@ -51,48 +157,24 @@ async function loadCache(entityName) {
   }
 }
 
-function invalidateCache(entityName) {
+function invalidateCache(entityName: string): void {
   props.collector.refreshCache(entityName, false) // just invalidate
   emit('update')
 }
 
-function isLoading(name) {
+function isLoading(name: string): boolean {
   return loadingCache.value.has(name)
 }
 
-function isTesting(name) {
-  return testingFetch.value.has(name)
-}
-
-function getTestResult(name) {
-  return testResults.value.get(name)
-}
-
-async function testFetch(entityName) {
-  if (testingFetch.value.has(entityName)) return
-  testingFetch.value.add(entityName)
-  testingFetch.value = new Set(testingFetch.value)
-  testResults.value.delete(entityName)
-  testResults.value = new Map(testResults.value)
-  try {
-    const result = await props.collector.testFetch(entityName)
-    testResults.value.set(entityName, result)
-    testResults.value = new Map(testResults.value)
-  } finally {
-    testingFetch.value.delete(entityName)
-    testingFetch.value = new Set(testingFetch.value)
-  }
-}
-
-function isTestingStorage(entityName, storageName) {
+function isTestingStorage(entityName: string, storageName: string): boolean {
   return testingStorages.value.has(`${entityName}:${storageName}`)
 }
 
-function getStorageTestResult(entityName, storageName) {
+function getStorageTestResult(entityName: string, storageName: string): StorageTestResult | undefined {
   return storageTestResults.value.get(`${entityName}:${storageName}`)
 }
 
-async function testStorageFetch(entityName, storageName) {
+async function testStorageFetch(entityName: string, storageName: string): Promise<void> {
   const key = `${entityName}:${storageName}`
   if (testingStorages.value.has(key)) return
   testingStorages.value.add(key)
@@ -109,8 +191,8 @@ async function testStorageFetch(entityName, storageName) {
   }
 }
 
-function getCapabilityIcon(cap) {
-  const icons = {
+function getCapabilityIcon(cap: string): string {
+  const icons: Record<string, string> = {
     supportsTotal: 'pi-hashtag',
     supportsFilters: 'pi-filter',
     supportsPagination: 'pi-ellipsis-h',
@@ -120,8 +202,8 @@ function getCapabilityIcon(cap) {
   return icons[cap] || 'pi-question-circle'
 }
 
-function getCapabilityLabel(cap) {
-  const labels = {
+function getCapabilityLabel(cap: string): string {
+  const labels: Record<string, string> = {
     supportsTotal: 'Total count',
     supportsFilters: 'Filters',
     supportsPagination: 'Pagination',
@@ -234,12 +316,12 @@ function getCapabilityLabel(cap) {
                   <i :class="['pi', getCapabilityIcon(cap)]" />
                 </span>
               </div>
-              <span v-if="getStorageTestResult(entity.name, 'storage')" class="entity-storage-test-result" :class="getStorageTestResult(entity.name, 'storage').success ? 'test-success' : 'test-error'">
-                <template v-if="getStorageTestResult(entity.name, 'storage').success">
-                  <i class="pi pi-check-circle" /> {{ getStorageTestResult(entity.name, 'storage').count }}
+              <span v-if="getStorageTestResult(entity.name, 'storage')" class="entity-storage-test-result" :class="getStorageTestResult(entity.name, 'storage')?.success ? 'test-success' : 'test-error'">
+                <template v-if="getStorageTestResult(entity.name, 'storage')?.success">
+                  <i class="pi pi-check-circle" /> {{ getStorageTestResult(entity.name, 'storage')?.count }}
                 </template>
                 <template v-else>
-                  <i class="pi pi-times-circle" /> {{ getStorageTestResult(entity.name, 'storage').status || 'ERR' }}
+                  <i class="pi pi-times-circle" /> {{ getStorageTestResult(entity.name, 'storage')?.status || 'ERR' }}
                 </template>
               </span>
             </div>
@@ -277,12 +359,12 @@ function getCapabilityLabel(cap) {
                   <i :class="['pi', getCapabilityIcon(cap)]" />
                 </span>
               </div>
-              <span v-if="getStorageTestResult(entity.name, s.name)" class="entity-storage-test-result" :class="getStorageTestResult(entity.name, s.name).success ? 'test-success' : 'test-error'">
-                <template v-if="getStorageTestResult(entity.name, s.name).success">
-                  <i class="pi pi-check-circle" /> {{ getStorageTestResult(entity.name, s.name).count }}
+              <span v-if="getStorageTestResult(entity.name, s.name)" class="entity-storage-test-result" :class="getStorageTestResult(entity.name, s.name)?.success ? 'test-success' : 'test-error'">
+                <template v-if="getStorageTestResult(entity.name, s.name)?.success">
+                  <i class="pi pi-check-circle" /> {{ getStorageTestResult(entity.name, s.name)?.count }}
                 </template>
                 <template v-else>
-                  <i class="pi pi-times-circle" /> {{ getStorageTestResult(entity.name, s.name).status || 'ERR' }}
+                  <i class="pi pi-times-circle" /> {{ getStorageTestResult(entity.name, s.name)?.status || 'ERR' }}
                 </template>
               </span>
             </div>
@@ -325,7 +407,7 @@ function getCapabilityLabel(cap) {
             {{ entity.fields.required.length }} required
           </span>
         </div>
-        <div v-if="entity.relations.parents.length > 0 || entity.relations.children.length > 0 || entity.relations.references?.length > 0" class="entity-row">
+        <div v-if="entity.relations.parents.length > 0 || entity.relations.children.length > 0 || (entity.relations.references?.length ?? 0) > 0" class="entity-row">
           <span class="entity-key">Relations:</span>
           <span class="entity-value">
             <span v-for="p in entity.relations.parents" :key="p.key" class="entity-relation" title="Parent relation">

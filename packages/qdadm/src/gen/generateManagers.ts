@@ -97,19 +97,7 @@ function serializeValue(value: unknown, indent: number = 0): string {
   return String(value)
 }
 
-/**
- * Manager options for EntityManager constructor
- */
-interface ManagerOptions {
-  name: string
-  idField: string
-  label?: string
-  labelPlural?: string
-  labelField?: string
-  routePrefix?: string
-  readOnly?: boolean
-  fields: Record<string, UnifiedFieldSchema>
-}
+// Note: ManagerOptions interface removed - using inline Record<string, unknown> type instead
 
 /**
  * Generate the source code for a single entity manager file

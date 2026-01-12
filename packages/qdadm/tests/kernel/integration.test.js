@@ -118,7 +118,7 @@ describe('Module System Integration', () => {
       const connectFn = vi.fn()
 
       class DisabledModule extends Module {
-        static name = 'disabled'
+        static moduleName = 'disabled'
         enabled() {
           return false
         }
@@ -128,7 +128,7 @@ describe('Module System Integration', () => {
       }
 
       class EnabledModule extends Module {
-        static name = 'enabled'
+        static moduleName = 'enabled'
         async connect(ctx) {
           connectFn(ctx)
         }
@@ -150,7 +150,7 @@ describe('Module System Integration', () => {
       let receivedCtx = null
 
       class ContextAwareModule extends Module {
-        static name = 'context-aware'
+        static moduleName = 'context-aware'
         enabled(ctx) {
           receivedCtx = ctx
           return ctx.isDev === true
@@ -177,7 +177,7 @@ describe('Module System Integration', () => {
       let receivedCtx = null
 
       class ReceivingModule extends Module {
-        static name = 'receiving'
+        static moduleName = 'receiving'
         async connect(ctx) {
           receivedCtx = ctx
         }
@@ -202,7 +202,7 @@ describe('Module System Integration', () => {
       const signalHandler = vi.fn()
 
       class SignalModule extends Module {
-        static name = 'signal-module'
+        static moduleName = 'signal-module'
 
         async connect(ctx) {
           // Simulate KernelContext behavior
@@ -233,7 +233,7 @@ describe('Module System Integration', () => {
       const connectFn = vi.fn()
 
       class ClassModule extends Module {
-        static name = 'class-module'
+        static moduleName = 'class-module'
         static requires = []
         static priority = 10
 
@@ -297,7 +297,7 @@ describe('Module System Integration', () => {
       const order = []
 
       class ClassModule extends Module {
-        static name = 'class'
+        static moduleName = 'class'
         static priority = 0
         async connect() {
           order.push('class')
@@ -346,14 +346,14 @@ describe('Module System Integration', () => {
       const order = []
 
       class ConfigModule extends Module {
-        static name = 'config'
+        static moduleName = 'config'
         async connect() {
           order.push('config')
         }
       }
 
       class AuthModule extends Module {
-        static name = 'auth'
+        static moduleName = 'auth'
         static requires = ['config']
         async connect() {
           order.push('auth')
@@ -361,7 +361,7 @@ describe('Module System Integration', () => {
       }
 
       class UsersModule extends Module {
-        static name = 'users'
+        static moduleName = 'users'
         static requires = ['auth']
         async connect() {
           order.push('users')
@@ -389,14 +389,14 @@ describe('Module System Integration', () => {
       //       D
 
       class ModuleA extends Module {
-        static name = 'A'
+        static moduleName = 'A'
         async connect() {
           order.push('A')
         }
       }
 
       class ModuleB extends Module {
-        static name = 'B'
+        static moduleName = 'B'
         static requires = ['A']
         async connect() {
           order.push('B')
@@ -404,7 +404,7 @@ describe('Module System Integration', () => {
       }
 
       class ModuleC extends Module {
-        static name = 'C'
+        static moduleName = 'C'
         static requires = ['A']
         async connect() {
           order.push('C')
@@ -412,7 +412,7 @@ describe('Module System Integration', () => {
       }
 
       class ModuleD extends Module {
-        static name = 'D'
+        static moduleName = 'D'
         static requires = ['B', 'C']
         async connect() {
           order.push('D')
@@ -437,13 +437,13 @@ describe('Module System Integration', () => {
 
     it('Circular dependency is detected', async () => {
       class ModuleA extends Module {
-        static name = 'A'
+        static moduleName = 'A'
         static requires = ['B']
         async connect() {}
       }
 
       class ModuleB extends Module {
-        static name = 'B'
+        static moduleName = 'B'
         static requires = ['A']
         async connect() {}
       }
@@ -457,19 +457,19 @@ describe('Module System Integration', () => {
 
     it('Indirect circular dependency is detected', async () => {
       class ModuleA extends Module {
-        static name = 'A'
+        static moduleName = 'A'
         static requires = ['B']
         async connect() {}
       }
 
       class ModuleB extends Module {
-        static name = 'B'
+        static moduleName = 'B'
         static requires = ['C']
         async connect() {}
       }
 
       class ModuleC extends Module {
-        static name = 'C'
+        static moduleName = 'C'
         static requires = ['A']
         async connect() {}
       }
@@ -484,7 +484,7 @@ describe('Module System Integration', () => {
 
     it('Missing dependency throws ModuleNotFoundError', async () => {
       class DependentModule extends Module {
-        static name = 'dependent'
+        static moduleName = 'dependent'
         static requires = ['nonexistent']
         async connect() {}
       }
@@ -497,7 +497,7 @@ describe('Module System Integration', () => {
 
     it('Missing dependency error contains details', async () => {
       class DependentModule extends Module {
-        static name = 'dependent'
+        static moduleName = 'dependent'
         static requires = ['missing-module']
         async connect() {}
       }
@@ -582,7 +582,7 @@ describe('Module System Integration', () => {
       const connectFn = vi.fn()
 
       class TestModule extends Module {
-        static name = 'test'
+        static moduleName = 'test'
         connect(ctx) {
           connectFn(ctx)
         }
@@ -610,7 +610,7 @@ describe('Module System Integration', () => {
       const readyHandler = vi.fn()
 
       class TestModule extends Module {
-        static name = 'test'
+        static moduleName = 'test'
         connect(ctx) {
           ctx.signals.on('kernel:ready', readyHandler)
         }
@@ -652,7 +652,7 @@ describe('Module System Integration', () => {
       }
 
       class NewModule extends Module {
-        static name = 'new'
+        static moduleName = 'new'
         connect(ctx) {
           newConnectFn(ctx)
         }
@@ -693,7 +693,7 @@ describe('Module System Integration', () => {
       const handler3 = vi.fn()
 
       class MultiSignalModule extends Module {
-        static name = 'multi-signal'
+        static moduleName = 'multi-signal'
 
         async connect(ctx) {
           // Simulate KernelContext.on() behavior
@@ -742,14 +742,14 @@ describe('Module System Integration', () => {
       const order = []
 
       class ModuleA extends Module {
-        static name = 'A'
+        static moduleName = 'A'
         async disconnect() {
           order.push('A')
         }
       }
 
       class ModuleB extends Module {
-        static name = 'B'
+        static moduleName = 'B'
         static requires = ['A']
         async disconnect() {
           order.push('B')
@@ -757,7 +757,7 @@ describe('Module System Integration', () => {
       }
 
       class ModuleC extends Module {
-        static name = 'C'
+        static moduleName = 'C'
         static requires = ['B']
         async disconnect() {
           order.push('C')
@@ -784,7 +784,7 @@ describe('Module System Integration', () => {
   describe('Error handling across components', () => {
     it('ModuleLoadError when connect() throws', async () => {
       class FailingModule extends Module {
-        static name = 'failing'
+        static moduleName = 'failing'
         async connect() {
           throw new Error('Connection failed')
         }
@@ -800,7 +800,7 @@ describe('Module System Integration', () => {
       const originalError = new Error('Original failure')
 
       class FailingModule extends Module {
-        static name = 'failing'
+        static moduleName = 'failing'
         async connect() {
           throw originalError
         }
@@ -821,17 +821,17 @@ describe('Module System Integration', () => {
 
     it('CircularDependencyError contains cycle path', async () => {
       class ModuleA extends Module {
-        static name = 'A'
+        static moduleName = 'A'
         static requires = ['B']
       }
 
       class ModuleB extends Module {
-        static name = 'B'
+        static moduleName = 'B'
         static requires = ['C']
       }
 
       class ModuleC extends Module {
-        static name = 'C'
+        static moduleName = 'C'
         static requires = ['A']
       }
 
@@ -867,7 +867,7 @@ describe('Module System Integration', () => {
       // ui (priority 50) → admin (priority 60, requires ui, api)
 
       class CoreModule extends Module {
-        static name = 'core'
+        static moduleName = 'core'
         static priority = 0
         async connect() {
           order.push('core')
@@ -875,7 +875,7 @@ describe('Module System Integration', () => {
       }
 
       class ConfigModule extends Module {
-        static name = 'config'
+        static moduleName = 'config'
         static requires = ['core']
         static priority = 0
         async connect() {
@@ -884,7 +884,7 @@ describe('Module System Integration', () => {
       }
 
       class AuthModule extends Module {
-        static name = 'auth'
+        static moduleName = 'auth'
         static requires = ['config']
         static priority = 10
         async connect() {
@@ -893,7 +893,7 @@ describe('Module System Integration', () => {
       }
 
       class ApiModule extends Module {
-        static name = 'api'
+        static moduleName = 'api'
         static requires = ['auth']
         static priority = 20
         async connect() {
@@ -902,7 +902,7 @@ describe('Module System Integration', () => {
       }
 
       class UiModule extends Module {
-        static name = 'ui'
+        static moduleName = 'ui'
         static priority = 50
         async connect() {
           order.push('ui')
@@ -910,7 +910,7 @@ describe('Module System Integration', () => {
       }
 
       class AdminModule extends Module {
-        static name = 'admin'
+        static moduleName = 'admin'
         static requires = ['ui', 'api']
         static priority = 60
         async connect() {
@@ -943,14 +943,14 @@ describe('Module System Integration', () => {
       const order = []
 
       class ModuleA extends Module {
-        static name = 'A'
+        static moduleName = 'A'
         async connect() {
           order.push('A')
         }
       }
 
       class ModuleB extends Module {
-        static name = 'B'
+        static moduleName = 'B'
         static requires = ['A']
         enabled() {
           return false // Disabled
@@ -961,7 +961,7 @@ describe('Module System Integration', () => {
       }
 
       class ModuleC extends Module {
-        static name = 'C'
+        static moduleName = 'C'
         static requires = ['A'] // Does NOT require B
         async connect() {
           order.push('C')
@@ -983,7 +983,7 @@ describe('Module System Integration', () => {
       const order = []
 
       class AsyncModuleA extends Module {
-        static name = 'async-a'
+        static moduleName = 'async-a'
         async connect() {
           await new Promise((resolve) => setTimeout(resolve, 20))
           order.push('A')
@@ -991,7 +991,7 @@ describe('Module System Integration', () => {
       }
 
       class AsyncModuleB extends Module {
-        static name = 'async-b'
+        static moduleName = 'async-b'
         static requires = ['async-a']
         async connect() {
           await new Promise((resolve) => setTimeout(resolve, 10))
@@ -1020,7 +1020,7 @@ describe('Module System Integration', () => {
       const signals = createSignalBus()
 
       class TestModule extends Module {
-        static name = 'lifecycle-test'
+        static moduleName = 'lifecycle-test'
 
         async connect(ctx) {
           lifecycle.push('connect')

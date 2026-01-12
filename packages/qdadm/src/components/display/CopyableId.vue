@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 /**
  * CopyableId - Read-only ID field with copy-to-clipboard functionality
  *
@@ -8,22 +8,21 @@
  */
 import { ref, inject } from 'vue'
 import Button from 'primevue/button'
+import type { Orchestrator } from '../../orchestrator/Orchestrator'
 
-const props = defineProps({
-  value: {
-    type: String,
-    required: true
-  },
-  label: {
-    type: String,
-    default: 'ID'
-  }
+interface Props {
+  value: string
+  label?: string
+}
+
+const props = withDefaults(defineProps<Props>(), {
+  label: 'ID'
 })
 
-const orchestrator = inject('qdadmOrchestrator', null)
+const orchestrator = inject<Orchestrator | null>('qdadmOrchestrator', null)
 const copied = ref(false)
 
-async function copyToClipboard() {
+async function copyToClipboard(): Promise<void> {
   try {
     await navigator.clipboard.writeText(props.value)
     copied.value = true

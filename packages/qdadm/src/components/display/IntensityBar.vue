@@ -1,5 +1,20 @@
-<script setup>
+<script setup lang="ts">
 import { ref, computed, onMounted, inject } from 'vue'
+
+type SizeVariant = 'sm' | 'md' | 'lg'
+type Severity = 'success' | 'warning' | 'danger'
+
+interface ApiAdapter {
+  request: (method: string, endpoint: string) => Promise<Record<string, unknown>>
+}
+
+interface BarProps {
+  percentage: number
+  tier: number
+  color: string
+  severity: Severity
+  threshold: number
+}
 
 const props = defineProps({
   value: {
@@ -11,17 +26,17 @@ const props = defineProps({
     default: true
   },
   size: {
-    type: String,
+    type: String as () => SizeVariant,
     default: 'md', // sm, md, lg
-    validator: (v) => ['sm', 'md', 'lg'].includes(v)
+    validator: (v: string) => ['sm', 'md', 'lg'].includes(v)
   },
   // Threshold configuration
   threshold: {
-    type: Number,
+    type: Number as () => number | null,
     default: null // If provided, use static threshold instead of loading from API
   },
   configEndpoint: {
-    type: String,
+    type: String as () => string | null,
     default: null // Endpoint to load threshold config from API
   },
   configThresholdKey: {
@@ -31,19 +46,19 @@ const props = defineProps({
 })
 
 // Get API adapter (optional - only needed if loading from endpoint)
-const api = inject('apiAdapter', null)
+const api = inject<ApiAdapter | null>('apiAdapter', null)
 
 // Threshold value
-const loadedThreshold = ref(8) // default fallback
-const configLoaded = ref(false)
+const loadedThreshold = ref<number>(8) // default fallback
+const configLoaded = ref<boolean>(false)
 
 // Computed threshold - use prop if provided, otherwise loaded value
-const currentThreshold = computed(() => props.threshold ?? loadedThreshold.value)
+const currentThreshold = computed<number>(() => props.threshold ?? loadedThreshold.value)
 
 // Singleton pattern - load config once for all instances
-let configPromise = null
+let configPromise: Promise<void> | null = null
 
-async function loadConfig() {
+async function loadConfig(): Promise<void> {
   // Skip if using static threshold or no endpoint configured
   if (props.threshold !== null || !props.configEndpoint) {
     configLoaded.value = true
@@ -60,9 +75,9 @@ async function loadConfig() {
   if (configPromise) return configPromise
 
   configPromise = api.request('GET', props.configEndpoint)
-    .then(data => {
+    .then((data: Record<string, unknown>) => {
       if (data?.[props.configThresholdKey]) {
-        loadedThreshold.value = data[props.configThresholdKey]
+        loadedThreshold.value = data[props.configThresholdKey] as number
       }
       configLoaded.value = true
     })
@@ -75,7 +90,7 @@ async function loadConfig() {
 }
 
 // Calculate bar properties based on threshold tiers
-const barProps = computed(() => {
+const barProps = computed<BarProps>(() => {
   const threshold = currentThreshold.value
   const tier = Math.floor(props.value / threshold)
   const withinTier = props.value % threshold
@@ -83,7 +98,7 @@ const barProps = computed(() => {
 
   // Color: green (tier 0), orange (tier 1), red (tier 2+)
   let color = 'var(--p-green-500)'
-  let severity = 'success'
+  let severity: Severity = 'success'
   if (tier === 1) {
     color = 'var(--p-orange-500)'
     severity = 'warning'
@@ -96,7 +111,7 @@ const barProps = computed(() => {
 })
 
 // Size classes
-const sizeClass = computed(() => `intensity-bar--${props.size}`)
+const sizeClass = computed<string>(() => `intensity-bar--${props.size}`)
 
 onMounted(() => {
   loadConfig()

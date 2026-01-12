@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 /**
  * FormTab - Normalized tab header component
  *
@@ -21,8 +21,11 @@
  *   <FormTab value="advanced" label="Advanced" :visible="isEdit" />
  */
 
+import { type PropType } from 'vue'
 import Tab from 'primevue/tab'
 import Tag from 'primevue/tag'
+
+type BadgeSeverity = 'secondary' | 'info' | 'success' | 'warn' | 'danger' | 'contrast'
 
 const props = defineProps({
   /**
@@ -46,7 +49,7 @@ const props = defineProps({
    * Examples: 'pi-cog', 'cog', 'pi pi-cog'
    */
   icon: {
-    type: String,
+    type: String as () => string | null,
     default: null
   },
 
@@ -54,7 +57,7 @@ const props = defineProps({
    * Count to display as badge (shows only if > 0)
    */
   count: {
-    type: Number,
+    type: Number as () => number | null,
     default: null
   },
 
@@ -62,7 +65,7 @@ const props = defineProps({
    * Custom badge text (alternative to count)
    */
   badge: {
-    type: [String, Number],
+    type: [String, Number] as unknown as PropType<string | number | null>,
     default: null
   },
 
@@ -70,9 +73,9 @@ const props = defineProps({
    * Badge severity/color
    */
   badgeSeverity: {
-    type: String,
+    type: String as () => BadgeSeverity,
     default: 'secondary',
-    validator: (v) => ['secondary', 'info', 'success', 'warn', 'danger', 'contrast'].includes(v)
+    validator: (v: string) => ['secondary', 'info', 'success', 'warn', 'danger', 'contrast'].includes(v)
   },
 
   /**
@@ -95,7 +98,7 @@ const props = defineProps({
 /**
  * Normalize icon class
  */
-function getIconClass() {
+function getIconClass(): string | null {
   if (!props.icon) return null
   // Already has 'pi' prefix
   if (props.icon.startsWith('pi')) {
@@ -108,7 +111,7 @@ function getIconClass() {
 /**
  * Get count value to display
  */
-function getCountValue() {
+function getCountValue(): number | null {
   if (props.count !== null && props.count > 0) return props.count
   return null
 }
@@ -116,7 +119,7 @@ function getCountValue() {
 /**
  * Get badge value to display (separate from count)
  */
-function getBadgeValue() {
+function getBadgeValue(): string | number | null {
   if (props.badge !== null) return props.badge
   // If no badge but count provided, show count as badge (legacy behavior)
   if (props.count !== null && props.count > 0 && props.badge === null) return props.count
@@ -126,7 +129,7 @@ function getBadgeValue() {
 /**
  * Check if we should show count and badge separately
  */
-function showBothCountAndBadge() {
+function showBothCountAndBadge(): boolean {
   return props.count !== null && props.count > 0 && props.badge !== null
 }
 </script>

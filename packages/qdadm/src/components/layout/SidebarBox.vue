@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 /**
  * SidebarBox - Reusable sidebar footer item component
  *
@@ -32,30 +32,26 @@
  *   </SidebarBox>
  */
 
-import { useSlots, computed } from 'vue'
+import { useSlots, computed, type ComputedRef } from 'vue'
 
-const props = defineProps({
-  icon: {
-    type: String,
-    default: null
-  },
-  title: {
-    type: String,
-    default: ''
-  },
-  subtitle: {
-    type: String,
-    default: ''
-  },
-  variant: {
-    type: String,
-    default: 'default',
-    validator: (v) => ['default', 'impersonator'].includes(v)
-  }
+type SidebarBoxVariant = 'default' | 'impersonator'
+
+interface Props {
+  icon?: string | null
+  title?: string
+  subtitle?: string
+  variant?: SidebarBoxVariant
+}
+
+withDefaults(defineProps<Props>(), {
+  icon: null,
+  title: '',
+  subtitle: '',
+  variant: 'default'
 })
 
 const slots = useSlots()
-const hasFullSlot = computed(() => !!slots.full)
+const hasFullSlot: ComputedRef<boolean> = computed(() => !!slots.full)
 </script>
 
 <template>

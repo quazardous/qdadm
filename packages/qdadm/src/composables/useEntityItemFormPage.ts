@@ -25,7 +25,7 @@
  * ```
  */
 import { ref, computed, watch, onMounted, onUnmounted, provide, type Ref, type ComputedRef } from 'vue'
-import { useRouter, useRoute, type Router, type RouteLocationNormalizedLoaded } from 'vue-router'
+import { useRouter, useRoute, type RouteLocationNormalizedLoaded, type Router } from 'vue-router'
 import { useConfirm } from 'primevue/useconfirm'
 import { useDirtyState } from './useDirtyState'
 import { useUnsavedChangesGuard, type GuardDialogState } from './useUnsavedChangesGuard'
@@ -33,7 +33,6 @@ import { useBreadcrumb, type BreadcrumbDisplayItem } from './useBreadcrumb'
 import {
   useEntityItemPage,
   type ParentConfig,
-  type UseEntityItemPageReturn,
   type EntityManager,
   type CreateContext,
 } from './useEntityItemPage'
@@ -138,7 +137,7 @@ interface ErrorSummaryItem {
 interface PageTitleParts {
   action: string
   entityName: string | undefined
-  entityLabel: string | null
+  entityLabel: string | undefined
 }
 
 /**
@@ -495,7 +494,7 @@ export function useEntityItemFormPage(
     // Mode detection
     getId = null,
     createRouteSuffix = 'create',
-    editRouteSuffix = 'edit',
+    editRouteSuffix: _editRouteSuffix = 'edit', // eslint-disable-line @typescript-eslint/no-unused-vars
     // Form options
     loadOnMount = true,
     enableGuard = true,
@@ -1088,7 +1087,8 @@ export function useEntityItemFormPage(
     }
 
     if (errors.value[name]) {
-      const { [name]: _, ...rest } = errors.value
+      const { [name]: _removed, ...rest } = errors.value
+      void _removed // Intentionally unused - destructuring to omit
       errors.value = rest
     }
 
@@ -1138,7 +1138,8 @@ export function useEntityItemFormPage(
 
   function clearFieldError(name: string): void {
     if (errors.value[name]) {
-      const { [name]: _, ...rest } = errors.value
+      const { [name]: _removed, ...rest } = errors.value
+      void _removed // Intentionally unused - destructuring to omit
       errors.value = rest
     }
   }
@@ -1250,7 +1251,7 @@ export function useEntityItemFormPage(
   const pageTitleParts = computed<PageTitleParts>(() => ({
     action: isEdit.value ? 'Edit' : 'Create',
     entityName,
-    entityLabel: isEdit.value ? entityLabel.value : null,
+    entityLabel: isEdit.value ? entityLabel.value : undefined,
   }))
 
   provide('qdadmPageTitleParts', pageTitleParts)

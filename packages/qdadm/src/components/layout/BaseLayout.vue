@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 /**
  * BaseLayout - Root of the 3-level layout inheritance chain
  *
@@ -30,13 +30,14 @@
  * Or with RouterView for nested routes:
  * <BaseLayout />
  */
-import { useSlots, provide, ref, inject } from 'vue'
+import { useSlots, provide, ref } from 'vue'
 import { RouterView } from 'vue-router'
 import ConfirmDialog from 'primevue/confirmdialog'
 import Zone from './Zone.vue'
 import { LAYOUT_ZONES } from '../../zones/zones'
 import { useGuardDialog } from '../../composables/useGuardStore'
 import UnsavedChangesDialog from '../dialogs/UnsavedChangesDialog.vue'
+import type { BreadcrumbItem, NavLinkItem } from '../../composables/useNavContext'
 
 // Default components for zones
 import DefaultHeader from './defaults/DefaultHeader.vue'
@@ -47,14 +48,14 @@ import DefaultBreadcrumb from './defaults/DefaultBreadcrumb.vue'
 // DefaultToaster removed - Toast is now provided by Kernel at root level
 
 const slots = useSlots()
-const hasMainSlot = !!slots.main
+const hasMainSlot: boolean = !!slots.main
 
 // Guard dialog from shared store (registered by useBareForm/useForm when a form is active)
 const guardDialog = useGuardDialog()
 
 // Provide breadcrumb/navlinks override mechanism for child pages
-const breadcrumbOverride = ref(null)
-const navlinksOverride = ref(null)
+const breadcrumbOverride = ref<BreadcrumbItem[] | null>(null)
+const navlinksOverride = ref<NavLinkItem[] | null>(null)
 provide('qdadmBreadcrumbOverride', breadcrumbOverride)
 provide('qdadmNavlinksOverride', navlinksOverride)
 </script>
@@ -119,7 +120,7 @@ provide('qdadmNavlinksOverride', navlinksOverride)
     <UnsavedChangesDialog
       v-if="guardDialog"
       :visible="guardDialog.visible.value"
-      :saving="guardDialog.saving.value"
+      :saving="guardDialog.saving?.value ?? false"
       :message="guardDialog.message"
       :hasOnSave="guardDialog.hasOnSave"
       @saveAndLeave="guardDialog.onSaveAndLeave"

@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 /**
  * FormPage - Unified form page component
  *
@@ -32,18 +32,46 @@
  * - #error: Custom error display
  * - #loading: Custom loading display
  */
-import { computed } from 'vue'
+import { computed, type PropType } from 'vue'
 import PageHeader from '../layout/PageHeader.vue'
 import FormActions from './FormActions.vue'
 import UnsavedChangesDialog from '../dialogs/UnsavedChangesDialog.vue'
 import Card from 'primevue/card'
 import Button from 'primevue/button'
 import Message from 'primevue/message'
+import type { ResolvedAction, ResolvedFieldConfig } from '../../composables/useEntityItemFormPage'
+import type { GuardDialogState } from '../../composables/useUnsavedChangesGuard'
+
+/**
+ * Page title parts for PageHeader
+ */
+interface PageTitleParts {
+  action: string
+  entityName: string | undefined
+  entityLabel: string | undefined
+}
+
+/**
+ * Error summary item
+ */
+interface ErrorSummaryItem {
+  field: string
+  label: string
+  message: string
+}
+
+/**
+ * Fetch error type
+ */
+interface FetchError {
+  message?: string
+  detail?: string
+}
 
 const props = defineProps({
   // Mode
   isEdit: { type: Boolean, default: false },
-  mode: { type: String, default: 'create' },
+  mode: { type: String as PropType<'create' | 'edit'>, default: 'create' },
 
   // State
   loading: { type: Boolean, default: false },
@@ -51,26 +79,26 @@ const props = defineProps({
   dirty: { type: Boolean, default: false },
 
   // Title (use title OR titleParts)
-  title: { type: String, default: null },
-  titleParts: { type: Object, default: null },
+  title: { type: String as PropType<string | null>, default: null },
+  titleParts: { type: Object as PropType<PageTitleParts | null>, default: null },
 
   // Fields (for auto-rendering - optional, can use #fields slot instead)
-  fields: { type: Array, default: () => [] },
+  fields: { type: Array as PropType<ResolvedFieldConfig[]>, default: () => [] },
 
   // Actions (from builder.actions)
-  actions: { type: Array, default: () => [] },
+  actions: { type: Array as PropType<ResolvedAction[]>, default: () => [] },
 
   // Validation state
-  errors: { type: Object, default: () => ({}) },
+  errors: { type: Object as PropType<Record<string, string>>, default: () => ({}) },
   hasErrors: { type: Boolean, default: false },
-  errorSummary: { type: Array, default: null },
+  errorSummary: { type: Array as PropType<ErrorSummaryItem[] | null>, default: null },
   submitted: { type: Boolean, default: false },
 
   // Guard dialog (from useUnsavedChangesGuard)
-  guardDialog: { type: Object, default: null },
+  guardDialog: { type: Object as PropType<GuardDialogState | null>, default: null },
 
   // Error for fetch failures (separate from validation errors)
-  fetchError: { type: [String, Object], default: null },
+  fetchError: { type: [String, Object] as PropType<string | FetchError | null>, default: null },
 
   // UI options
   showFormActions: { type: Boolean, default: true },
@@ -78,52 +106,39 @@ const props = defineProps({
   cardWrapper: { type: Boolean, default: true }
 })
 
-const emit = defineEmits(['save', 'saveAndClose', 'cancel', 'delete'])
-
-// Computed: has any action buttons to show
-const hasActions = computed(() => props.actions.length > 0)
-
-// Get action by name
-function getAction(name) {
-  return props.actions.find(a => a.name === name)
-}
-
-// Check if action exists and is visible
-function hasAction(name) {
-  return props.actions.some(a => a.name === name)
-}
-
-// Extract specific actions for FormActions component
-const saveAction = computed(() => getAction('save'))
-const deleteAction = computed(() => getAction('delete'))
-const cancelAction = computed(() => getAction('cancel'))
+const emit = defineEmits<{
+  (e: 'save'): void
+  (e: 'saveAndClose'): void
+  (e: 'cancel'): void
+  (e: 'delete'): void
+}>()
 
 // Header actions: all actions except save, delete, cancel (those go in footer)
-const headerActions = computed(() =>
-  props.actions.filter(a => !['save', 'delete', 'cancel'].includes(a.name))
+const headerActions = computed<ResolvedAction[]>(() =>
+  props.actions.filter((a: ResolvedAction) => !['save', 'delete', 'cancel'].includes(a.name))
 )
 
 // Get error message from fetchError
-const fetchErrorMessage = computed(() => {
+const fetchErrorMessage = computed<string | null>(() => {
   if (!props.fetchError) return null
   if (typeof props.fetchError === 'string') return props.fetchError
   return props.fetchError.message || props.fetchError.detail || 'Failed to load entity'
 })
 
 // Guard dialog handlers
-function onGuardSaveAndLeave() {
-  if (props.guardDialog?.onSave) {
-    props.guardDialog.onSave()
+function onGuardSaveAndLeave(): void {
+  if (props.guardDialog?.onSaveAndLeave) {
+    props.guardDialog.onSaveAndLeave()
   }
 }
 
-function onGuardLeave() {
+function onGuardLeave(): void {
   if (props.guardDialog?.onLeave) {
     props.guardDialog.onLeave()
   }
 }
 
-function onGuardStay() {
+function onGuardStay(): void {
   if (props.guardDialog?.onStay) {
     props.guardDialog.onStay()
   }
@@ -236,7 +251,7 @@ function onGuardStay() {
       v-if="guardDialog"
       :visible="guardDialog.visible.value"
       :saving="saving"
-      :hasOnSave="!!guardDialog.onSave"
+      :hasOnSave="guardDialog.hasOnSave"
       @saveAndLeave="onGuardSaveAndLeave"
       @leave="onGuardLeave"
       @stay="onGuardStay"

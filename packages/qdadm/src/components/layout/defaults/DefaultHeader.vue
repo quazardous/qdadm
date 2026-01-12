@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 /**
  * DefaultHeader - Default header component for BaseLayout
  *
@@ -8,12 +8,17 @@
  * This is the default component rendered in the "header" zone
  * when no blocks are registered.
  */
-import { inject, computed } from 'vue'
+import { inject } from 'vue'
 
-const features = inject('qdadmFeatures', { poweredBy: true })
+interface AppConfig {
+  name: string
+  shortName: string
+  version: string | null
+  logo: string | null
+}
 
 // App config from useApp (injected by createQdadm plugin)
-const app = inject('qdadmApp', {
+const app = inject<AppConfig>('qdadmApp', {
   name: 'Admin',
   shortName: 'adm',
   version: null,

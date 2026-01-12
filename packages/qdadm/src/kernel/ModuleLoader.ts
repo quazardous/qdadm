@@ -57,7 +57,8 @@ export interface ObjectModuleDefinition {
  */
 export interface ModuleClassConstructor {
   new (): ModuleLike
-  name: string
+  name: string // Function.name (class name)
+  moduleName?: string // Static moduleName property
   requires?: string[]
   priority?: number
   enabled?: (ctx: ModuleContext) => boolean
@@ -208,6 +209,12 @@ class ClassModuleAdapter implements ModuleLike {
   }
 
   get name(): string {
+    // Check for OWN moduleName property first (not inherited from Module base class)
+    // This prevents inheriting 'base' from Module when subclass uses 'static name' instead
+    if (Object.hasOwn(this._ClassDef, 'moduleName') && this._ClassDef.moduleName) {
+      return this._ClassDef.moduleName
+    }
+    // Fall back to name property (could be static name = 'xxx' or Function.name)
     return this._ClassDef.name || 'anonymous'
   }
 
@@ -534,7 +541,7 @@ export class ModuleLoader {
 
     // Initialize queue with modules that have no dependencies
     // Sort by priority (lower first) for consistent ordering
-    let queue = names
+    const queue = names
       .filter((name) => inDegree.get(name) === 0)
       .sort((a, b) => {
         const modA = modules.get(a)

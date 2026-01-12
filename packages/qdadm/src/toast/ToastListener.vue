@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 /**
  * ToastListener - Bridges signal bus to PrimeVue Toast
  *
@@ -9,11 +9,18 @@
  */
 import { onMounted, onUnmounted, inject } from 'vue'
 import { useToast } from 'primevue/usetoast'
+import type { SignalBus } from '../kernel/SignalBus'
+
+interface ToastEventData {
+  summary?: string
+  detail?: string
+  life?: number
+}
 
 const toast = useToast()
-const signals = inject('qdadmSignals')
+const signals = inject<SignalBus | null>('qdadmSignals', null)
 
-let unsubscribe = null
+let unsubscribe: (() => void) | null = null
 
 onMounted(() => {
   if (!signals) {
@@ -23,12 +30,13 @@ onMounted(() => {
 
   // Listen to all toast signals
   unsubscribe = signals.on('toast:*', (event) => {
+    const data = event.data as ToastEventData | undefined
     const severity = event.name.split(':')[1] // toast:success -> success
     toast.add({
       severity,
-      summary: event.data?.summary,
-      detail: event.data?.detail,
-      life: event.data?.life ?? 3000
+      summary: data?.summary,
+      detail: data?.detail,
+      life: data?.life ?? 3000
     })
   })
 })

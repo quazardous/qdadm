@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 /**
  * DefaultPagination - Default pagination component for ListLayout
  *
@@ -15,47 +15,39 @@
  */
 import Paginator from 'primevue/paginator'
 
-const props = defineProps({
-  /**
-   * First record index (0-based)
-   */
-  first: {
-    type: Number,
-    default: 0
-  },
-  /**
-   * Number of rows per page
-   */
-  rows: {
-    type: Number,
-    default: 10
-  },
-  /**
-   * Total number of records
-   */
-  totalRecords: {
-    type: Number,
-    default: 0
-  },
-  /**
-   * Options for rows per page dropdown
-   */
-  rowsPerPageOptions: {
-    type: Array,
-    default: () => [10, 25, 50, 100]
-  },
-  /**
-   * Template for the paginator layout
-   */
-  template: {
-    type: String,
-    default: 'FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink RowsPerPageDropdown'
-  }
+interface PageEvent {
+  first: number
+  rows: number
+  page: number
+  pageCount?: number
+}
+
+interface Props {
+  /** First record index (0-based) */
+  first?: number
+  /** Number of rows per page */
+  rows?: number
+  /** Total number of records */
+  totalRecords?: number
+  /** Options for rows per page dropdown */
+  rowsPerPageOptions?: number[]
+  /** Template for the paginator layout */
+  template?: string
+}
+
+withDefaults(defineProps<Props>(), {
+  first: 0,
+  rows: 10,
+  totalRecords: 0,
+  rowsPerPageOptions: () => [10, 25, 50, 100],
+  template: 'FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink RowsPerPageDropdown'
 })
 
-const emit = defineEmits(['page'])
+const emit = defineEmits<{
+  page: [event: PageEvent]
+}>()
 
-function onPage(event) {
+function onPage(event: PageEvent): void {
   emit('page', event)
 }
 </script>

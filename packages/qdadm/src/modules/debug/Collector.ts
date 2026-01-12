@@ -30,8 +30,8 @@ import type { Orchestrator } from '../../orchestrator/Orchestrator'
  * Context provided to collectors during install
  */
 export interface CollectorContext {
-  signals?: SignalBus
-  orchestrator?: Orchestrator
+  signals?: SignalBus | null
+  orchestrator?: Orchestrator | null
   router?: unknown
   kernel?: unknown
   [key: string]: unknown

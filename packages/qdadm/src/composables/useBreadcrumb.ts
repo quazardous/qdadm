@@ -1,5 +1,5 @@
 import { computed, inject, type ComputedRef, type Ref } from 'vue'
-import { useRouter, type Router } from 'vue-router'
+import { useRouter } from 'vue-router'
 import { useSemanticBreadcrumb, type SemanticBreadcrumbItem } from './useSemanticBreadcrumb'
 import { useStackHydrator, type HydratedLevel } from '../chain/useStackHydrator'
 
@@ -210,7 +210,8 @@ export function useBreadcrumb(options: UseBreadcrumbOptions = {}): UseBreadcrumb
     // This ensures breadcrumb recomputes when hydration completes
     // We need to touch each level's label to track changes
     const _hydratorLevels = hydrator.levels.value
-    const _labelsDep = _hydratorLevels.map((l: HydratedLevel) => l.label).join()
+    // Touch labels to track changes (result intentionally unused for reactivity)
+    _hydratorLevels.map((l: HydratedLevel) => l.label).join()
 
     // Add home first (display concern, not in semantic breadcrumb)
     const homeItem = getHomeItem()

@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 /**
  * RichCardsGrid - Grid of rich stat cards with title, value, subtitle
  *
@@ -20,22 +20,39 @@
  * }
  */
 import { useRouter } from 'vue-router'
+import type { PropType } from 'vue'
+
+type CardSeverity = 'success' | 'danger' | 'warning' | 'info'
+type ColumnsType = 'auto' | 2 | 3 | 4 | 5 | 6
+
+export interface RichCard {
+  name: string
+  title?: string
+  value?: string | number
+  subtitle?: string
+  icon?: string
+  severity?: CardSeverity
+  onClick?: () => void
+  to?: string
+  custom?: boolean
+  class?: string
+}
 
 const router = useRouter()
 
 defineProps({
   cards: {
-    type: Array,
+    type: Array as PropType<RichCard[]>,
     default: () => []
   },
   columns: {
-    type: [Number, String],
+    type: [Number, String] as PropType<ColumnsType>,
     default: 'auto',
-    validator: (v) => ['auto', 2, 3, 4, 5, 6].includes(v)
+    validator: (v: ColumnsType) => ['auto', 2, 3, 4, 5, 6].includes(v)
   }
 })
 
-function handleClick(card) {
+function handleClick(card: RichCard): void {
   if (card.onClick) {
     card.onClick()
   } else if (card.to) {
@@ -43,11 +60,11 @@ function handleClick(card) {
   }
 }
 
-function isClickable(card) {
-  return card.onClick || card.to
+function isClickable(card: RichCard): boolean {
+  return !!(card.onClick || card.to)
 }
 
-function getSeverityClass(severity) {
+function getSeverityClass(severity: CardSeverity | undefined): string {
   if (!severity) return ''
   return `rich-card--${severity}`
 }

@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 /**
  * AppLayout - Generic admin layout with sidebar navigation
  *
@@ -14,11 +14,11 @@
 
 import { ref, watch, onMounted, onUnmounted, computed, inject, provide, useSlots } from 'vue'
 import { RouterLink, RouterView, useRouter, useRoute } from 'vue-router'
-import { useNavigation } from '../../composables/useNavigation'
+import { useNavigation, type NavSection } from '../../composables/useNavigation'
 import { useApp } from '../../composables/useApp'
 import { useAuth } from '../../composables/useAuth'
 import { useGuardDialog } from '../../composables/useGuardStore'
-import { useNavContext } from '../../composables/useNavContext'
+import { useNavContext, type BreadcrumbItem, type NavLinkItem } from '../../composables/useNavContext'
 import Button from 'primevue/button'
 import Breadcrumb from 'primevue/breadcrumb'
 import UnsavedChangesDialog from '../dialogs/UnsavedChangesDialog.vue'
@@ -26,7 +26,26 @@ import SidebarBox from './SidebarBox.vue'
 import qdadmLogo from '../../assets/logo.svg'
 import { version as qdadmVersion } from '../../../package.json'
 
-const features = inject('qdadmFeatures', { poweredBy: true, breadcrumb: true })
+interface FeaturesConfig {
+  poweredBy?: boolean
+  breadcrumb?: boolean
+  [key: string]: unknown
+}
+
+interface SignalBus {
+  emit: (event: string, payload: unknown) => void
+  [key: string]: unknown
+}
+
+interface UserData {
+  username?: string
+  name?: string
+  email?: string
+  role?: string
+  [key: string]: unknown
+}
+
+const features = inject<FeaturesConfig>('qdadmFeatures', { poweredBy: true, breadcrumb: true })
 
 // Guard dialog from shared store (registered by useBareForm/useForm when a form is active)
 const guardDialog = useGuardDialog()
@@ -35,62 +54,62 @@ const router = useRouter()
 const route = useRoute()
 const app = useApp()
 const { navSections, isNavActive, sectionHasActiveItem, handleNavClick } = useNavigation()
-const { isAuthenticated, user, logout, authEnabled } = useAuth()
-const signals = inject('qdadmSignals', null)
+const { user, logout, authEnabled } = useAuth()
+const signals = inject<SignalBus | null>('qdadmSignals', null)
 
 // LocalStorage key for collapsed sections state (namespaced by app)
-const STORAGE_KEY = computed(() => `${app.shortName.toLowerCase()}_nav_collapsed`)
+const STORAGE_KEY = computed<string>(() => `${app.shortName.toLowerCase()}_nav_collapsed`)
 
 // Collapsed sections state (section title -> boolean)
-const collapsedSections = ref({})
+const collapsedSections = ref<Record<string, boolean>>({})
 
 // Mobile sidebar state
-const sidebarOpen = ref(false)
+const sidebarOpen = ref<boolean>(false)
 const MOBILE_BREAKPOINT = 768
 
 // Desktop sidebar collapsed state
-const sidebarCollapsed = ref(false)
-const COLLAPSED_STORAGE_KEY = computed(() => `${app.shortName.toLowerCase()}_sidebar_collapsed`)
+const sidebarCollapsed = ref<boolean>(false)
+const COLLAPSED_STORAGE_KEY = computed<string>(() => `${app.shortName.toLowerCase()}_sidebar_collapsed`)
 
-function toggleSidebar() {
+function toggleSidebar(): void {
   sidebarOpen.value = !sidebarOpen.value
 }
 
-function closeSidebar() {
+function closeSidebar(): void {
   sidebarOpen.value = false
 }
 
-function toggleSidebarCollapse() {
+function toggleSidebarCollapse(): void {
   sidebarCollapsed.value = !sidebarCollapsed.value
   saveSidebarCollapsed()
 }
 
-function loadSidebarCollapsed() {
+function loadSidebarCollapsed(): void {
   try {
     const stored = localStorage.getItem(COLLAPSED_STORAGE_KEY.value)
     if (stored === 'true') {
       sidebarCollapsed.value = true
     }
-  } catch (e) {
+  } catch {
     // Ignore
   }
 }
 
-function saveSidebarCollapsed() {
+function saveSidebarCollapsed(): void {
   try {
     localStorage.setItem(COLLAPSED_STORAGE_KEY.value, String(sidebarCollapsed.value))
-  } catch (e) {
+  } catch {
     // Ignore
   }
 }
 
 // Check if we're on mobile
-function isMobile() {
+function isMobile(): boolean {
   return window.innerWidth < MOBILE_BREAKPOINT
 }
 
 // Close sidebar on resize to desktop
-function handleResize() {
+function handleResize(): void {
   if (!isMobile() && sidebarOpen.value) {
     sidebarOpen.value = false
   }
@@ -99,11 +118,11 @@ function handleResize() {
 /**
  * Load collapsed state from localStorage
  */
-function loadCollapsedState() {
+function loadCollapsedState(): void {
   try {
     const stored = localStorage.getItem(STORAGE_KEY.value)
     if (stored) {
-      collapsedSections.value = JSON.parse(stored)
+      collapsedSections.value = JSON.parse(stored) as Record<string, boolean>
     }
   } catch (e) {
     console.warn('Failed to load nav state:', e)
@@ -113,7 +132,7 @@ function loadCollapsedState() {
 /**
  * Save collapsed state to localStorage
  */
-function saveCollapsedState() {
+function saveCollapsedState(): void {
   try {
     localStorage.setItem(STORAGE_KEY.value, JSON.stringify(collapsedSections.value))
   } catch (e) {
@@ -124,7 +143,7 @@ function saveCollapsedState() {
 /**
  * Toggle section collapsed state
  */
-function toggleSection(sectionTitle) {
+function toggleSection(sectionTitle: string): void {
   collapsedSections.value[sectionTitle] = !collapsedSections.value[sectionTitle]
   saveCollapsedState()
 }
@@ -134,11 +153,12 @@ function toggleSection(sectionTitle) {
  * - Never collapsed if it contains active item
  * - Otherwise respect user preference
  */
-function isSectionExpanded(section) {
+function isSectionExpanded(section: NavSection): boolean {
   if (sectionHasActiveItem(section)) {
     return true
   }
-  return !collapsedSections.value[section.title]
+  const title = section.title || section.label || ''
+  return !collapsedSections.value[title]
 }
 
 // Load state on mount + setup resize listener
@@ -158,28 +178,32 @@ watch(() => route.path, () => {
   closeSidebar()
 
   for (const section of navSections.value) {
-    if (sectionHasActiveItem(section) && collapsedSections.value[section.title]) {
+    const title = section.title || section.label || ''
+    if (sectionHasActiveItem(section) && collapsedSections.value[title]) {
       // Auto-expand but don't save (user can collapse again if they want)
-      collapsedSections.value[section.title] = false
+      collapsedSections.value[title] = false
     }
   }
 })
 
-const userInitials = computed(() => {
-  const username = user.value?.username
+const userInitials = computed<string>(() => {
+  const userData = user.value as UserData | null
+  const username = userData?.username
   if (!username) return '?'
   return username.substring(0, 2).toUpperCase()
 })
 
-const userDisplayName = computed(() => {
-  return user.value?.username || user.value?.name || 'User'
+const userDisplayName = computed<string>(() => {
+  const userData = user.value as UserData | null
+  return userData?.username || userData?.name || 'User'
 })
 
-const userSubtitle = computed(() => {
-  return user.value?.email || user.value?.role || ''
+const userSubtitle = computed<string>(() => {
+  const userData = user.value as UserData | null
+  return userData?.email || userData?.role || ''
 })
 
-function handleLogout() {
+function handleLogout(): void {
   logout()
   signals?.emit('auth:logout', { reason: 'user' })
   router.push({ name: 'login' })
@@ -190,7 +214,7 @@ function handleLogout() {
  * Mobile: close sidebar drawer
  * Desktop: navigate to home
  */
-function handleHeaderClick() {
+function handleHeaderClick(): void {
   if (isMobile()) {
     closeSidebar()
   } else {
@@ -200,7 +224,7 @@ function handleHeaderClick() {
 
 // Check if slot content is provided
 const slots = useSlots()
-const hasSlotContent = computed(() => !!slots.default)
+const hasSlotContent = computed<boolean>(() => !!slots.default)
 
 // Clear overrides on route change (before new page mounts)
 // This ensures list pages get default breadcrumb, detail pages can override via PageNav
@@ -214,17 +238,17 @@ watch(() => route.fullPath, () => {
 const { breadcrumb: defaultBreadcrumb, navlinks: defaultNavlinks } = useNavContext()
 
 // Allow child pages to override breadcrumb/navlinks via provide/inject
-const breadcrumbOverride = ref(null)
-const navlinksOverride = ref(null)
+const breadcrumbOverride = ref<BreadcrumbItem[] | null>(null)
+const navlinksOverride = ref<NavLinkItem[] | null>(null)
 provide('qdadmBreadcrumbOverride', breadcrumbOverride)
 provide('qdadmNavlinksOverride', navlinksOverride)
 
 // Use override if provided, otherwise default from useNavContext
-const breadcrumbItems = computed(() => breadcrumbOverride.value || defaultBreadcrumb.value)
-const navlinks = computed(() => navlinksOverride.value || defaultNavlinks.value)
+const breadcrumbItems = computed<BreadcrumbItem[]>(() => breadcrumbOverride.value || defaultBreadcrumb.value)
+const navlinks = computed<NavLinkItem[]>(() => navlinksOverride.value || defaultNavlinks.value)
 
 // Show breadcrumb if enabled, has items, and not on home page
-const showBreadcrumb = computed(() => {
+const showBreadcrumb = computed<boolean>(() => {
   if (!features.breadcrumb || breadcrumbItems.value.length === 0) return false
   // Don't show on home page (just "Dashboard" with no parents)
   if (route.name === 'dashboard') return false
@@ -260,11 +284,11 @@ const showBreadcrumb = computed(() => {
       </div>
 
       <nav class="sidebar-nav">
-        <div v-for="section in navSections" :key="section.title" class="nav-section">
+        <div v-for="section in navSections" :key="section.title || section.label" class="nav-section">
           <div
             class="nav-section-title"
             :class="{ 'nav-section-active': sectionHasActiveItem(section) }"
-            @click="toggleSection(section.title)"
+            @click="toggleSection(section.title || section.label || '')"
           >
             <span>{{ section.title }}</span>
             <i
@@ -373,7 +397,7 @@ const showBreadcrumb = computed(() => {
     <UnsavedChangesDialog
       v-if="guardDialog"
       :visible="guardDialog.visible.value"
-      :saving="guardDialog.saving.value"
+      :saving="guardDialog.saving?.value ?? false"
       :message="guardDialog.message"
       :hasOnSave="guardDialog.hasOnSave"
       @saveAndLeave="guardDialog.onSaveAndLeave"

@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 /**
  * KeyValueEditor - Reusable component for editing key-value pairs
  *
@@ -23,76 +23,61 @@ import InputText from 'primevue/inputtext'
 import AutoComplete from 'primevue/autocomplete'
 import Slider from 'primevue/slider'
 
-const props = defineProps({
-  modelValue: {
-    type: Array,
-    default: () => []
-  },
-  label: {
-    type: String,
-    default: 'Key-Value Pairs'
-  },
-  help: {
-    type: String,
-    default: ''
-  },
-  keyPlaceholder: {
-    type: String,
-    default: 'Key'
-  },
-  valuePlaceholder: {
-    type: String,
-    default: 'Value'
-  },
-  keySuggestions: {
-    type: Array,
-    default: () => []
-  },
-  valueType: {
-    type: String,
-    default: 'number',
-    validator: (v) => ['number', 'text'].includes(v)
-  },
-  min: {
-    type: Number,
-    default: 0
-  },
-  max: {
-    type: Number,
-    default: 1
-  },
-  step: {
-    type: Number,
-    default: 0.1
-  },
-  showSign: {
-    type: Boolean,
-    default: false
-  },
-  colorize: {
-    type: Boolean,
-    default: false
-  }
+interface KeyValueItem {
+  key: string
+  value: string | number
+}
+
+interface Props {
+  modelValue?: KeyValueItem[]
+  label?: string
+  help?: string
+  keyPlaceholder?: string
+  valuePlaceholder?: string
+  keySuggestions?: string[]
+  valueType?: 'number' | 'text'
+  min?: number
+  max?: number
+  step?: number
+  showSign?: boolean
+  colorize?: boolean
+}
+
+const props = withDefaults(defineProps<Props>(), {
+  modelValue: () => [],
+  label: 'Key-Value Pairs',
+  help: '',
+  keyPlaceholder: 'Key',
+  valuePlaceholder: 'Value',
+  keySuggestions: () => [],
+  valueType: 'number',
+  min: 0,
+  max: 1,
+  step: 0.1,
+  showSign: false,
+  colorize: false
 })
 
-const emit = defineEmits(['update:modelValue'])
+const emit = defineEmits<{
+  'update:modelValue': [value: KeyValueItem[]]
+}>()
 
-const items = computed({
+const items = computed<KeyValueItem[]>({
   get: () => props.modelValue || [],
-  set: (value) => emit('update:modelValue', value)
+  set: (value: KeyValueItem[]) => emit('update:modelValue', value)
 })
 
-const isTextMode = computed(() => props.valueType === 'text')
-const hasKeySuggestions = computed(() => props.keySuggestions.length > 0)
-const filteredKeySuggestions = ref([])
+const isTextMode = computed<boolean>(() => props.valueType === 'text')
+const hasKeySuggestions = computed<boolean>(() => props.keySuggestions.length > 0)
+const filteredKeySuggestions = ref<string[]>([])
 
-const newItem = ref({
+const newItem = ref<KeyValueItem>({
   key: '',
   value: props.valueType === 'text' ? '' : (props.min + props.max) / 2
 })
 
 // Filter key suggestions for autocomplete (exclude already used keys)
-function searchKeys(event) {
+function searchKeys(event: { query: string }): void {
   const query = event.query.toLowerCase()
   const usedKeys = items.value.map(item => item.key)
   filteredKeySuggestions.value = props.keySuggestions
@@ -100,18 +85,18 @@ function searchKeys(event) {
     .filter(k => k.toLowerCase().includes(query))
 }
 
-function formatValue(value) {
+function formatValue(value: string | number): string {
   if (isTextMode.value) {
-    return value
+    return String(value)
   }
   const formatted = Number(value).toFixed(2)
-  if (props.showSign && value > 0) {
+  if (props.showSign && Number(value) > 0) {
     return '+' + formatted
   }
   return formatted
 }
 
-function addItem() {
+function addItem(): void {
   if (!newItem.value.key) return
   if (isTextMode.value && !newItem.value.value) return
   const updated = [...items.value, { ...newItem.value }]
@@ -122,15 +107,18 @@ function addItem() {
   }
 }
 
-function removeItem(index) {
+function removeItem(index: number): void {
   const updated = items.value.filter((_, i) => i !== index)
   emit('update:modelValue', updated)
 }
 
-function updateItemValue(index, value) {
+function updateItemValue(index: number, value: string | number): void {
   const updated = [...items.value]
-  updated[index] = { ...updated[index], value }
-  emit('update:modelValue', updated)
+  const item = updated[index]
+  if (item) {
+    updated[index] = { key: item.key, value }
+    emit('update:modelValue', updated)
+  }
 }
 </script>
 
@@ -147,8 +135,8 @@ function updateItemValue(index, value) {
           <!-- Text mode: show text input -->
           <template v-if="isTextMode">
             <InputText
-              :modelValue="item.value"
-              @update:modelValue="(v) => updateItemValue(index, v)"
+              :modelValue="String(item.value)"
+              @update:modelValue="(v: string | undefined) => v !== undefined && updateItemValue(index, v)"
               class="kv-text-input"
             />
           </template>
@@ -157,15 +145,15 @@ function updateItemValue(index, value) {
             <span
               class="kv-value"
               :class="{
-                negative: colorize && item.value < 0,
-                positive: colorize && item.value > 0
+                negative: colorize && Number(item.value) < 0,
+                positive: colorize && Number(item.value) > 0
               }"
             >
               {{ formatValue(item.value) }}
             </span>
             <Slider
-              :modelValue="item.value"
-              @update:modelValue="(v) => updateItemValue(index, v)"
+              :modelValue="Number(item.value)"
+              @update:modelValue="(v: number | number[]) => updateItemValue(index, Array.isArray(v) ? v[0] ?? 0 : v)"
               :min="min"
               :max="max"
               :step="step"
@@ -211,7 +199,8 @@ function updateItemValue(index, value) {
       <!-- Text mode: show text input for value -->
       <template v-if="isTextMode">
         <InputText
-          v-model="newItem.value"
+          :modelValue="String(newItem.value)"
+          @update:modelValue="(v: string | undefined) => newItem.value = v ?? ''"
           :placeholder="valuePlaceholder"
           class="kv-add-value"
           @keyup.enter="addItem"
@@ -221,7 +210,14 @@ function updateItemValue(index, value) {
       <template v-else>
         <div class="kv-slider">
           <span>{{ formatValue(newItem.value) }}</span>
-          <Slider v-model="newItem.value" :min="min" :max="max" :step="step" style="width: 100px" />
+          <Slider
+            :modelValue="Number(newItem.value)"
+            @update:modelValue="(v: number | number[]) => newItem.value = Array.isArray(v) ? v[0] ?? 0 : v"
+            :min="min"
+            :max="max"
+            :step="step"
+            style="width: 100px"
+          />
         </div>
       </template>
     </div>

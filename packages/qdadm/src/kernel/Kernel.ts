@@ -45,24 +45,18 @@ import Toast from 'primevue/toast'
 import ToastListener from '../toast/ToastListener.vue'
 
 import { createQdadm } from '../plugin.js'
-import {
-  initModules,
-  getRoutes,
-  setSectionOrder,
-  registry,
-} from '../module/moduleRegistry'
+import { initModules, getRoutes, setSectionOrder } from '../module/moduleRegistry'
 import { createModuleLoader, type ModuleLoader, type ModuleLike } from './ModuleLoader'
 import { createKernelContext, type KernelContext } from './KernelContext'
 import { Orchestrator } from '../orchestrator/Orchestrator'
 import { createSignalBus, type SignalBus } from './SignalBus'
 import { createZoneRegistry, type ZoneRegistry } from '../zones/ZoneRegistry'
-import { registerStandardZones } from '../zones/zones'
 import { createHookRegistry, type HookRegistry } from '../hooks/HookRegistry'
 import { createSecurityChecker, type SecurityChecker } from '../entity/auth/SecurityChecker'
 import { authFactory, CompositeAuthAdapter } from '../entity/auth'
 import { PermissionRegistry } from '../security/PermissionRegistry'
 import { StaticRoleGranterAdapter } from '../security/StaticRoleGranterAdapter'
-import { createManagers } from '../entity/factory.js'
+import { createManagers, type ManagerFactoryContext } from '../entity/factory.js'
 import { defaultStorageResolver } from '../entity/storage/factory'
 import { createDeferredRegistry, type DeferredRegistry } from '../deferred/DeferredRegistry.js'
 import { createEventRouter, type EventRouter, type RoutesConfig } from './EventRouter'
@@ -306,7 +300,9 @@ export class Kernel {
     // Auto-inject DebugModule if debugBar.module is provided
     if (options.debugBar?.module) {
       const DebugModuleClass = options.debugBar.module
-      const { module: _, component: __, ...debugModuleOptions } = options.debugBar
+      const { module: _module, component: _component, ...debugModuleOptions } = options.debugBar
+      void _module // Intentionally unused - destructuring to omit
+      void _component // Intentionally unused - destructuring to omit
       // Enable by default when using debugBar shorthand
       if (debugModuleOptions.enabled === undefined) {
         debugModuleOptions.enabled = true
@@ -942,10 +938,10 @@ export class Kernel {
       storageResolver: this.options.storageResolver || defaultStorageResolver,
       managerResolver: this.options.managerResolver,
       managerRegistry: this.options.managerRegistry || {},
-    }
+    } as ManagerFactoryContext
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const managers = createManagers(this.options.managers || {}, factoryContext) as any
+    const managers = createManagers((this.options.managers || {}) as any, factoryContext)
 
     this.orchestrator = new Orchestrator({
       managers,
