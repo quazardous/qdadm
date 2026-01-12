@@ -16,7 +16,12 @@
   "main": "src/index.js",
   "scripts": {
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "type-check": "vue-tsc --noEmit",
+    "lint": "eslint src/",
+    "lint:fix": "eslint src/ --fix",
+    "format": "prettier --write src/",
+    "build:types": "vue-tsc --declaration --emitDeclarationOnly --outDir dist/types"
   },
   "exports": {
     ".": "./src/index.js",
@@ -67,10 +72,21 @@
     "entity-manager"
   ],
   "devDependencies": {
+    "@eslint/js": "^9.39.2",
     "@vitejs/plugin-vue": "^5.2.1",
     "@vue/test-utils": "^2.4.6",
+    "@vue/tsconfig": "^0.8.1",
+    "eslint": "^9.39.2",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-prettier": "^5.5.4",
+    "eslint-plugin-vue": "^10.6.2",
+    "globals": "^17.0.0",
     "jsdom": "^25.0.1",
+    "prettier": "^3.7.4",
     "sass": "^1.97.1",
-    "vitest": "^2.1.8"
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.52.0",
+    "vitest": "^2.1.8",
+    "vue-tsc": "^3.2.2"
   }
 }
