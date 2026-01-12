@@ -11,7 +11,7 @@ import {
   ModuleNotFoundError,
   CircularDependencyError,
   ModuleLoadError,
-} from '../../src/kernel/ModuleLoader.js'
+} from '../../src/kernel/ModuleLoader'
 import { Module } from '../../src/kernel/Module'
 
 describe('ModuleLoader', () => {

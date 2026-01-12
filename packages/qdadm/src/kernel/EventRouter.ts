@@ -23,22 +23,63 @@
  * ```
  */
 
+import type { SignalBus } from './SignalBus'
+import type { Orchestrator } from '../orchestrator/Orchestrator'
+
+/**
+ * Route target with signal and optional transform
+ */
+export interface SignalTarget {
+  signal: string
+  transform?: (payload: unknown) => unknown
+}
+
+/**
+ * Route callback context
+ */
+export interface RouteContext {
+  signals: SignalBus
+  orchestrator: Orchestrator | null
+}
+
+/**
+ * Route callback function
+ */
+export type RouteCallback = (payload: unknown, context: RouteContext) => void
+
+/**
+ * Route target types
+ */
+export type RouteTarget = string | SignalTarget | RouteCallback
+
+/**
+ * Routes configuration
+ */
+export type RoutesConfig = Record<string, RouteTarget[]>
+
+/**
+ * EventRouter options
+ */
+export interface EventRouterOptions {
+  signals: SignalBus
+  orchestrator?: Orchestrator | null
+  routes?: RoutesConfig
+  debug?: boolean
+}
+
 /**
  * Detect cycles in route graph using DFS
- *
- * @param {object} routes - Route configuration
- * @returns {string[]|null} - Cycle path if found, null otherwise
  */
-function detectCycles(routes) {
+function detectCycles(routes: RoutesConfig): string[] | null {
   // Build adjacency list (only signal targets, not callbacks)
-  const graph = new Map()
+  const graph = new Map<string, string[]>()
 
   for (const [source, targets] of Object.entries(routes)) {
-    const signalTargets = []
+    const signalTargets: string[] = []
     for (const target of targets) {
       if (typeof target === 'string') {
         signalTargets.push(target)
-      } else if (target && typeof target === 'object' && target.signal) {
+      } else if (target && typeof target === 'object' && 'signal' in target) {
         signalTargets.push(target.signal)
       }
       // Functions don't create edges in the graph
@@ -47,11 +88,11 @@ function detectCycles(routes) {
   }
 
   // DFS cycle detection
-  const visited = new Set()
-  const recursionStack = new Set()
-  const path = []
+  const visited = new Set<string>()
+  const recursionStack = new Set<string>()
+  const path: string[] = []
 
-  function dfs(node) {
+  function dfs(node: string): string[] | null {
     visited.add(node)
     recursionStack.add(node)
     path.push(node)
@@ -85,14 +126,13 @@ function detectCycles(routes) {
 }
 
 export class EventRouter {
-  /**
-   * @param {object} options
-   * @param {SignalBus} options.signals - SignalBus instance
-   * @param {Orchestrator} [options.orchestrator] - Orchestrator (for callback context)
-   * @param {object} options.routes - Route configuration
-   * @param {boolean} [options.debug=false] - Enable debug logging
-   */
-  constructor(options = {}) {
+  private _signals: SignalBus
+  private _orchestrator: Orchestrator | null
+  private _routes: RoutesConfig
+  private _debug: boolean
+  private _cleanups: Array<() => void> = []
+
+  constructor(options: EventRouterOptions) {
     const { signals, orchestrator = null, routes = {}, debug = false } = options
 
     if (!signals) {
@@ -103,7 +143,6 @@ export class EventRouter {
     this._orchestrator = orchestrator
     this._routes = routes
     this._debug = debug
-    this._cleanups = []
 
     // Validate and setup
     this._validateRoutes()
@@ -112,15 +151,12 @@ export class EventRouter {
 
   /**
    * Validate routes configuration and check for cycles
-   * @private
    */
-  _validateRoutes() {
+  private _validateRoutes(): void {
     // Check for cycles
     const cycle = detectCycles(this._routes)
     if (cycle) {
-      throw new Error(
-        `[EventRouter] Cycle detected: ${cycle.join(' -> ')}`
-      )
+      throw new Error(`[EventRouter] Cycle detected: ${cycle.join(' -> ')}`)
     }
 
     // Validate each route
@@ -135,7 +171,8 @@ export class EventRouter {
         const target = targets[i]
         const isString = typeof target === 'string'
         const isFunction = typeof target === 'function'
-        const isObject = target && typeof target === 'object' && target.signal
+        const isObject =
+          target && typeof target === 'object' && 'signal' in target
 
         if (!isString && !isFunction && !isObject) {
           throw new Error(
@@ -148,33 +185,37 @@ export class EventRouter {
 
   /**
    * Setup signal listeners for all routes
-   * @private
    */
-  _setupListeners() {
+  private _setupListeners(): void {
     for (const [source, targets] of Object.entries(this._routes)) {
-      const cleanup = this._signals.on(source, (payload) => {
-        this._handleRoute(source, payload, targets)
+      const cleanup = this._signals.on(source, (event: { data: unknown }) => {
+        this._handleRoute(source, event.data, targets)
       })
       this._cleanups.push(cleanup)
     }
 
     if (this._debug) {
-      console.debug(`[EventRouter] Registered ${Object.keys(this._routes).length} routes`)
+      console.debug(
+        `[EventRouter] Registered ${Object.keys(this._routes).length} routes`
+      )
     }
   }
 
   /**
    * Handle a routed signal
-   * @private
    */
-  _handleRoute(source, payload, targets) {
+  private _handleRoute(
+    source: string,
+    payload: unknown,
+    targets: RouteTarget[]
+  ): void {
     if (this._debug) {
       console.debug(`[EventRouter] ${source} -> ${targets.length} targets`)
     }
 
-    const context = {
+    const context: RouteContext = {
       signals: this._signals,
-      orchestrator: this._orchestrator
+      orchestrator: this._orchestrator,
     }
 
     for (const target of targets) {
@@ -191,7 +232,7 @@ export class EventRouter {
           if (this._debug) {
             console.debug(`[EventRouter]   -> callback()`)
           }
-        } else if (target && target.signal) {
+        } else if (target && 'signal' in target) {
           // Object: emit signal with transformed payload
           const transformedPayload = target.transform
             ? target.transform(payload)
@@ -202,18 +243,18 @@ export class EventRouter {
           }
         }
       } catch (error) {
-        console.error(`[EventRouter] Error handling ${source} -> ${JSON.stringify(target)}:`, error)
+        console.error(
+          `[EventRouter] Error handling ${source} -> ${JSON.stringify(target)}:`,
+          error
+        )
       }
     }
   }
 
   /**
    * Add a route dynamically
-   *
-   * @param {string} source - Source signal
-   * @param {Array} targets - Target array
    */
-  addRoute(source, targets) {
+  addRoute(source: string, targets: RouteTarget[]): void {
     if (this._routes[source]) {
       throw new Error(`[EventRouter] Route "${source}" already exists`)
     }
@@ -222,30 +263,31 @@ export class EventRouter {
     const testRoutes = { ...this._routes, [source]: targets }
     const cycle = detectCycles(testRoutes)
     if (cycle) {
-      throw new Error(`[EventRouter] Adding route would create cycle: ${cycle.join(' -> ')}`)
+      throw new Error(
+        `[EventRouter] Adding route would create cycle: ${cycle.join(' -> ')}`
+      )
     }
 
     this._routes[source] = targets
 
     // Setup listener
-    const cleanup = this._signals.on(source, (payload) => {
-      this._handleRoute(source, payload, targets)
+    const cleanup = this._signals.on(source, (event: { data: unknown }) => {
+      this._handleRoute(source, event.data, targets)
     })
     this._cleanups.push(cleanup)
   }
 
   /**
    * Get all registered routes
-   * @returns {object}
    */
-  getRoutes() {
+  getRoutes(): RoutesConfig {
     return { ...this._routes }
   }
 
   /**
    * Dispose the router, cleaning up all listeners
    */
-  dispose() {
+  dispose(): void {
     for (const cleanup of this._cleanups) {
       if (typeof cleanup === 'function') {
         cleanup()
@@ -258,10 +300,7 @@ export class EventRouter {
 
 /**
  * Factory function for creating EventRouter
- *
- * @param {object} options
- * @returns {EventRouter}
  */
-export function createEventRouter(options) {
+export function createEventRouter(options: EventRouterOptions): EventRouter {
   return new EventRouter(options)
 }

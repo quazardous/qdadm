@@ -13,6 +13,87 @@
 import { Module } from './Module'
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Types
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Context passed to module connect() method
+ */
+export interface ModuleContext {
+  routes: (basePath: string, routes: unknown[], opts?: unknown) => void
+  navItem: (item: unknown) => void
+  routeFamily: (base: string, prefixes: string[]) => void
+  zones: unknown
+  [key: string]: unknown
+}
+
+/**
+ * Module-like interface that all adapters implement
+ */
+export interface ModuleLike {
+  name: string
+  requires: string[]
+  priority: number
+  enabled(ctx: ModuleContext): boolean
+  connect(ctx: ModuleContext): Promise<void>
+  disconnect?(): Promise<void>
+  loadStyles?(): Promise<void>
+}
+
+/**
+ * Plain object module definition
+ */
+export interface ObjectModuleDefinition {
+  name?: string
+  requires?: string[]
+  priority?: number
+  enabled?: boolean | ((ctx: ModuleContext) => boolean)
+  connect?: (ctx: ModuleContext) => void | Promise<void>
+  disconnect?: () => void | Promise<void>
+}
+
+/**
+ * Module class constructor with static properties
+ */
+export interface ModuleClassConstructor {
+  new (): ModuleLike
+  name: string
+  requires?: string[]
+  priority?: number
+  enabled?: (ctx: ModuleContext) => boolean
+  prototype: {
+    connect?: (ctx: ModuleContext) => void | Promise<void>
+    enabled?: (ctx: ModuleContext) => boolean
+    disconnect?: () => void | Promise<void>
+  }
+}
+
+/**
+ * Legacy init function signature
+ */
+export interface LegacyInitApi {
+  registry: {
+    addRoutes: (basePath: string, routes: unknown[], opts?: unknown) => void
+    addNavItem: (item: unknown) => void
+    addRouteFamily: (base: string, prefixes: string[]) => void
+  }
+  zones: unknown
+  ctx: ModuleContext
+}
+
+export type LegacyInitFunction = (api: LegacyInitApi) => void | Promise<void>
+
+/**
+ * Any valid module definition
+ */
+export type ModuleDefinition =
+  | Module
+  | ModuleLike
+  | ModuleClassConstructor
+  | ObjectModuleDefinition
+  | LegacyInitFunction
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Custom Errors
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -20,11 +101,10 @@ import { Module } from './Module'
  * Error thrown when a required module is not registered
  */
 export class ModuleNotFoundError extends Error {
-  /**
-   * @param {string} moduleName - Name of the missing module
-   * @param {string} requiredBy - Name of the module that requires it
-   */
-  constructor(moduleName, requiredBy) {
+  moduleName: string
+  requiredBy: string
+
+  constructor(moduleName: string, requiredBy: string) {
     super(`Module '${moduleName}' not found (required by '${requiredBy}')`)
     this.name = 'ModuleNotFoundError'
     this.moduleName = moduleName
@@ -36,10 +116,9 @@ export class ModuleNotFoundError extends Error {
  * Error thrown when circular dependencies are detected
  */
 export class CircularDependencyError extends Error {
-  /**
-   * @param {string[]} cycle - Array of module names forming the cycle
-   */
-  constructor(cycle) {
+  cycle: string[]
+
+  constructor(cycle: string[]) {
     const cyclePath = cycle.join(' → ')
     super(`Circular dependency detected: ${cyclePath}`)
     this.name = 'CircularDependencyError'
@@ -51,11 +130,10 @@ export class CircularDependencyError extends Error {
  * Error thrown when module connect() fails
  */
 export class ModuleLoadError extends Error {
-  /**
-   * @param {string} moduleName - Name of the module that failed
-   * @param {Error} cause - Original error
-   */
-  constructor(moduleName, cause) {
+  moduleName: string
+  override cause: Error
+
+  constructor(moduleName: string, cause: Error) {
     super(`Failed to load module '${moduleName}': ${cause.message}`)
     this.name = 'ModuleLoadError'
     this.moduleName = moduleName
@@ -70,42 +148,41 @@ export class ModuleLoadError extends Error {
 /**
  * Wraps a plain object with connect() into a Module-like interface
  */
-class ObjectModuleAdapter {
-  /**
-   * @param {object} def - Plain object module definition
-   */
-  constructor(def) {
+class ObjectModuleAdapter implements ModuleLike {
+  private _def: ObjectModuleDefinition
+  private _ctx: ModuleContext | null = null
+
+  constructor(def: ObjectModuleDefinition) {
     this._def = def
-    this._ctx = null
   }
 
-  get name() {
+  get name(): string {
     return this._def.name || 'anonymous'
   }
 
-  get requires() {
+  get requires(): string[] {
     return this._def.requires || []
   }
 
-  get priority() {
+  get priority(): number {
     return this._def.priority ?? 0
   }
 
-  enabled(ctx) {
+  enabled(ctx: ModuleContext): boolean {
     if (typeof this._def.enabled === 'function') {
       return this._def.enabled(ctx)
     }
     return this._def.enabled !== false
   }
 
-  async connect(ctx) {
+  async connect(ctx: ModuleContext): Promise<void> {
     this._ctx = ctx
     if (typeof this._def.connect === 'function') {
       await this._def.connect(ctx)
     }
   }
 
-  async disconnect() {
+  async disconnect(): Promise<void> {
     if (typeof this._def.disconnect === 'function') {
       await this._def.disconnect()
     }
@@ -120,29 +197,29 @@ class ObjectModuleAdapter {
 /**
  * Wraps a class with static name and connect method into a Module-like interface
  */
-class ClassModuleAdapter {
-  /**
-   * @param {Function} ClassDef - Class definition with static name
-   */
-  constructor(ClassDef) {
+class ClassModuleAdapter implements ModuleLike {
+  private _ClassDef: ModuleClassConstructor
+  private _instance: ModuleLike
+  private _ctx: ModuleContext | null = null
+
+  constructor(ClassDef: ModuleClassConstructor) {
     this._ClassDef = ClassDef
     this._instance = new ClassDef()
-    this._ctx = null
   }
 
-  get name() {
+  get name(): string {
     return this._ClassDef.name || 'anonymous'
   }
 
-  get requires() {
+  get requires(): string[] {
     return this._ClassDef.requires || []
   }
 
-  get priority() {
+  get priority(): number {
     return this._ClassDef.priority ?? 0
   }
 
-  enabled(ctx) {
+  enabled(ctx: ModuleContext): boolean {
     if (typeof this._instance.enabled === 'function') {
       return this._instance.enabled(ctx)
     }
@@ -152,14 +229,14 @@ class ClassModuleAdapter {
     return true
   }
 
-  async connect(ctx) {
+  async connect(ctx: ModuleContext): Promise<void> {
     this._ctx = ctx
     if (typeof this._instance.connect === 'function') {
       await this._instance.connect(ctx)
     }
   }
 
-  async disconnect() {
+  async disconnect(): Promise<void> {
     if (typeof this._instance.disconnect === 'function') {
       await this._instance.disconnect()
     }
@@ -174,39 +251,40 @@ class ClassModuleAdapter {
 /**
  * Wraps a legacy init function into a Module-like interface
  */
-class LegacyFunctionAdapter {
-  /**
-   * @param {Function} initFn - Legacy init function
-   */
-  constructor(initFn) {
+class LegacyFunctionAdapter implements ModuleLike {
+  private _initFn: LegacyInitFunction
+  private _name: string
+
+  constructor(initFn: LegacyInitFunction) {
     this._initFn = initFn
     this._name = initFn.name || 'legacyModule'
   }
 
-  get name() {
+  get name(): string {
     return this._name
   }
 
-  get requires() {
+  get requires(): string[] {
     return []
   }
 
-  get priority() {
+  get priority(): number {
     return 0
   }
 
-  enabled() {
+  enabled(): boolean {
     return true
   }
 
-  async connect(ctx) {
+  async connect(ctx: ModuleContext): Promise<void> {
     // Legacy pattern: init({ registry, zones })
     // Adapt KernelContext to legacy interface
-    const legacyApi = {
+    const legacyApi: LegacyInitApi = {
       registry: {
-        addRoutes: (basePath, routes, opts) => ctx.routes(basePath, routes, opts),
-        addNavItem: (item) => ctx.navItem(item),
-        addRouteFamily: (base, prefixes) => ctx.routeFamily(base, prefixes),
+        addRoutes: (basePath: string, routes: unknown[], opts?: unknown) =>
+          ctx.routes(basePath, routes, opts),
+        addNavItem: (item: unknown) => ctx.navItem(item),
+        addRouteFamily: (base: string, prefixes: string[]) => ctx.routeFamily(base, prefixes),
       },
       zones: ctx.zones,
       ctx,
@@ -214,7 +292,7 @@ class LegacyFunctionAdapter {
     await this._initFn(legacyApi)
   }
 
-  async disconnect() {
+  async disconnect(): Promise<void> {
     // Legacy functions don't support disconnect
   }
 }
@@ -227,16 +305,14 @@ class LegacyFunctionAdapter {
  * ModuleLoader - Loads and manages modules with dependency resolution
  */
 export class ModuleLoader {
-  constructor() {
-    /** @type {Map<string, object>} Registered module definitions (before normalization) */
-    this._registered = new Map()
+  /** Registered module definitions (before normalization) */
+  private _registered: Map<string, ModuleLike> = new Map()
 
-    /** @type {Map<string, object>} Loaded module instances */
-    this._loaded = new Map()
+  /** Loaded module instances */
+  private _loaded: Map<string, ModuleLike> = new Map()
 
-    /** @type {string[]} Load order for proper unloading */
-    this._loadOrder = []
-  }
+  /** Load order for proper unloading */
+  private _loadOrder: string[] = []
 
   /**
    * Register a module (any format)
@@ -247,8 +323,8 @@ export class ModuleLoader {
    * - Plain object with connect function
    * - Plain function (legacy init pattern)
    *
-   * @param {Module|Function|object} moduleDef - Module definition in any format
-   * @returns {this} For chaining
+   * @param moduleDef - Module definition in any format
+   * @returns this for chaining
    *
    * @example
    * loader.add(new UsersModule())
@@ -256,7 +332,7 @@ export class ModuleLoader {
    * loader.add({ name: 'simple', connect(ctx) { ... } })
    * loader.add(function initLegacy({ registry }) { ... })
    */
-  add(moduleDef) {
+  add(moduleDef: ModuleDefinition): this {
     const normalized = this._normalize(moduleDef)
     const name = normalized.name
 
@@ -275,19 +351,20 @@ export class ModuleLoader {
   /**
    * Load all registered modules in dependency order
    *
-   * @param {object} ctx - Context to pass to connect() (typically KernelContext-like)
-   * @returns {Promise<void>}
-   * @throws {ModuleNotFoundError} When a required module is not registered
-   * @throws {CircularDependencyError} When circular dependencies exist
-   * @throws {ModuleLoadError} When a module's connect() fails
+   * @param ctx - Context to pass to connect() (typically KernelContext-like)
+   * @throws ModuleNotFoundError When a required module is not registered
+   * @throws CircularDependencyError When circular dependencies exist
+   * @throws ModuleLoadError When a module's connect() fails
    */
-  async loadAll(ctx) {
+  async loadAll(ctx: ModuleContext): Promise<void> {
     // Get sorted modules
     const sorted = this._topologicalSort()
 
     // Load in order
     for (const name of sorted) {
       const module = this._registered.get(name)
+
+      if (!module) continue
 
       // Check if enabled
       if (!module.enabled(ctx)) {
@@ -304,17 +381,15 @@ export class ModuleLoader {
         this._loaded.set(name, module)
         this._loadOrder.push(name)
       } catch (err) {
-        throw new ModuleLoadError(name, err)
+        throw new ModuleLoadError(name, err as Error)
       }
     }
   }
 
   /**
    * Unload all modules in reverse order
-   *
-   * @returns {Promise<void>}
    */
-  async unloadAll() {
+  async unloadAll(): Promise<void> {
     // Unload in reverse order
     const reversed = [...this._loadOrder].reverse()
 
@@ -332,57 +407,55 @@ export class ModuleLoader {
   /**
    * Get loaded modules (for debug/introspection)
    *
-   * @returns {Map<string, object>} Map of module name to module instance
+   * @returns Map of module name to module instance
    */
-  getModules() {
+  getModules(): Map<string, ModuleLike> {
     return new Map(this._loaded)
   }
 
   /**
    * Normalize any module format to Module-like interface
-   *
-   * @param {Module|Function|object} moduleDef
-   * @returns {object} Normalized module with name, requires, priority, enabled, connect, disconnect
-   * @private
    */
-  _normalize(moduleDef) {
+  private _normalize(moduleDef: ModuleDefinition): ModuleLike {
     // 1. Already a Module instance
     if (moduleDef instanceof Module) {
-      return moduleDef
+      return moduleDef as unknown as ModuleLike
     }
 
     // 2. Module class (constructor that extends Module or has static name + connect method)
     if (typeof moduleDef === 'function') {
       // Check if it's a class extending Module
-      if (moduleDef.prototype instanceof Module) {
-        return new moduleDef()
+      const funcDef = moduleDef as ModuleClassConstructor
+      if (funcDef.prototype instanceof Module) {
+        return new funcDef()
       }
 
       // Check if it looks like a Module class:
       // - Has own static 'name' property (not just inherited function name)
       // - Prototype has connect method
-      const hasOwnStaticName = Object.prototype.hasOwnProperty.call(moduleDef, 'name')
+      const hasOwnStaticName = Object.prototype.hasOwnProperty.call(funcDef, 'name')
       if (
         hasOwnStaticName &&
-        typeof moduleDef.name === 'string' &&
-        moduleDef.name !== '' &&
-        typeof moduleDef.prototype?.connect === 'function'
+        typeof funcDef.name === 'string' &&
+        funcDef.name !== '' &&
+        typeof funcDef.prototype?.connect === 'function'
       ) {
         // Use adapter to properly expose static properties
-        return new ClassModuleAdapter(moduleDef)
+        return new ClassModuleAdapter(funcDef)
       }
 
       // Otherwise it's a legacy init function
-      return new LegacyFunctionAdapter(moduleDef)
+      return new LegacyFunctionAdapter(moduleDef as LegacyInitFunction)
     }
 
     // 3. Plain object with connect function
     if (
       moduleDef &&
       typeof moduleDef === 'object' &&
+      'connect' in moduleDef &&
       typeof moduleDef.connect === 'function'
     ) {
-      return new ObjectModuleAdapter(moduleDef)
+      return new ObjectModuleAdapter(moduleDef as ObjectModuleDefinition)
     }
 
     throw new Error(
@@ -392,38 +465,32 @@ export class ModuleLoader {
 
   /**
    * Get the requires array from a module (handles static vs instance properties)
-   *
-   * @param {object} module - Module instance
-   * @returns {string[]}
-   * @private
    */
-  _getRequires(module) {
+  private _getRequires(module: ModuleLike): string[] {
     // Check instance property first
     if (Array.isArray(module.requires)) {
       return module.requires
     }
     // Check constructor (static) property for Module subclasses
-    if (module.constructor && Array.isArray(module.constructor.requires)) {
-      return module.constructor.requires
+    const constructor = (module as { constructor?: { requires?: string[] } }).constructor
+    if (constructor && Array.isArray(constructor.requires)) {
+      return constructor.requires
     }
     return []
   }
 
   /**
    * Get the priority from a module (handles static vs instance properties)
-   *
-   * @param {object} module - Module instance
-   * @returns {number}
-   * @private
    */
-  _getPriority(module) {
+  private _getPriority(module: ModuleLike): number {
     // Check instance property first
     if (typeof module.priority === 'number') {
       return module.priority
     }
     // Check constructor (static) property for Module subclasses
-    if (module.constructor && typeof module.constructor.priority === 'number') {
-      return module.constructor.priority
+    const constructor = (module as { constructor?: { priority?: number } }).constructor
+    if (constructor && typeof constructor.priority === 'number') {
+      return constructor.priority
     }
     return 0
   }
@@ -433,20 +500,19 @@ export class ModuleLoader {
    *
    * Uses Kahn's algorithm for topological sort with priority tie-breaking.
    *
-   * @returns {string[]} Sorted module names
-   * @throws {ModuleNotFoundError} When a required module is not registered
-   * @throws {CircularDependencyError} When circular dependencies exist
-   * @private
+   * @returns Sorted module names
+   * @throws ModuleNotFoundError When a required module is not registered
+   * @throws CircularDependencyError When circular dependencies exist
    */
-  _topologicalSort() {
+  private _topologicalSort(): string[] {
     const modules = this._registered
     const names = Array.from(modules.keys())
 
     // Build dependency graph
     // inDegree: number of dependencies for each module
     // dependents: modules that depend on this module
-    const inDegree = new Map()
-    const dependents = new Map()
+    const inDegree = new Map<string, number>()
+    const dependents = new Map<string, string[]>()
 
     for (const name of names) {
       inDegree.set(name, 0)
@@ -461,8 +527,8 @@ export class ModuleLoader {
         if (!modules.has(req)) {
           throw new ModuleNotFoundError(req, name)
         }
-        inDegree.set(name, inDegree.get(name) + 1)
-        dependents.get(req).push(name)
+        inDegree.set(name, (inDegree.get(name) || 0) + 1)
+        dependents.get(req)?.push(name)
       }
     }
 
@@ -473,21 +539,22 @@ export class ModuleLoader {
       .sort((a, b) => {
         const modA = modules.get(a)
         const modB = modules.get(b)
-        return this._getPriority(modA) - this._getPriority(modB)
+        return this._getPriority(modA!) - this._getPriority(modB!)
       })
 
-    const result = []
+    const result: string[] = []
 
     while (queue.length > 0) {
       // Take first (lowest priority)
-      const current = queue.shift()
+      const current = queue.shift()!
       result.push(current)
 
       // Reduce in-degree for dependents
-      for (const dep of dependents.get(current)) {
-        inDegree.set(dep, inDegree.get(dep) - 1)
+      for (const dep of dependents.get(current) || []) {
+        const newDegree = (inDegree.get(dep) || 0) - 1
+        inDegree.set(dep, newDegree)
 
-        if (inDegree.get(dep) === 0) {
+        if (newDegree === 0) {
           queue.push(dep)
         }
       }
@@ -496,7 +563,7 @@ export class ModuleLoader {
       queue.sort((a, b) => {
         const modA = modules.get(a)
         const modB = modules.get(b)
-        return this._getPriority(modA) - this._getPriority(modB)
+        return this._getPriority(modA!) - this._getPriority(modB!)
       })
     }
 
@@ -512,17 +579,13 @@ export class ModuleLoader {
 
   /**
    * Find a cycle in the dependency graph for error reporting
-   *
-   * @param {Map<string, object>} modules
-   * @returns {string[]} Cycle path
-   * @private
    */
-  _findCycle(modules) {
-    const visited = new Set()
-    const stack = new Set()
-    const path = []
+  private _findCycle(modules: Map<string, ModuleLike>): string[] {
+    const visited = new Set<string>()
+    const stack = new Set<string>()
+    const path: string[] = []
 
-    const dfs = (name) => {
+    const dfs = (name: string): string[] | null => {
       if (stack.has(name)) {
         // Found cycle - extract it from path
         const cycleStart = path.indexOf(name)
@@ -567,10 +630,8 @@ export class ModuleLoader {
 
 /**
  * Factory function to create a ModuleLoader instance
- *
- * @returns {ModuleLoader}
  */
-export function createModuleLoader() {
+export function createModuleLoader(): ModuleLoader {
   return new ModuleLoader()
 }
 

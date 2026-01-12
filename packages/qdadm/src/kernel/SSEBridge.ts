@@ -45,27 +45,55 @@
  * ```
  */
 
+import type { SignalBus } from './SignalBus'
+
 export const SSE_SIGNALS = {
   CONNECTED: 'sse:connected',
   DISCONNECTED: 'sse:disconnected',
   ERROR: 'sse:error',
-  MESSAGE: 'sse:message'
+  MESSAGE: 'sse:message',
+} as const
+
+/**
+ * SSEBridge options
+ */
+export interface SSEBridgeOptions {
+  /** SignalBus instance */
+  signals: SignalBus
+  /** SSE endpoint URL */
+  url: string
+  /** Delay before reconnect (ms), 0 to disable */
+  reconnectDelay?: number
+  /** Prefix for emitted signals (default: 'sse') */
+  signalPrefix?: string
+  /** Connect immediately (default: false, waits for auth:login) */
+  autoConnect?: boolean
+  /** Include credentials in request */
+  withCredentials?: boolean
+  /** Query param name for auth token */
+  tokenParam?: string
+  /** Function to get auth token */
+  getToken?: (() => string | null) | null
+  /** Enable debug logging */
+  debug?: boolean
 }
 
 export class SSEBridge {
-  /**
-   * @param {object} options
-   * @param {SignalBus} options.signals - SignalBus instance
-   * @param {string} options.url - SSE endpoint URL
-   * @param {number} options.reconnectDelay - Delay before reconnect (ms), 0 to disable
-   * @param {string} options.signalPrefix - Prefix for emitted signals (default: 'sse')
-   * @param {boolean} options.autoConnect - Connect immediately (default: false, waits for auth:login)
-   * @param {boolean} options.withCredentials - Include credentials in request
-   * @param {string} options.tokenParam - Query param name for auth token
-   * @param {function} options.getToken - Function to get auth token
-   * @param {boolean} options.debug - Enable debug logging
-   */
-  constructor(options) {
+  private _signals: SignalBus
+  private _url: string
+  private _reconnectDelay: number
+  private _signalPrefix: string
+  private _withCredentials: boolean
+  private _tokenParam: string
+  private _getToken: (() => string | null) | null
+  private _debug: boolean
+
+  private _eventSource: EventSource | null = null
+  private _reconnectTimer: ReturnType<typeof setTimeout> | null = null
+  private _connected = false
+  private _reconnecting = false
+
+  constructor(options: SSEBridgeOptions) {
     const {
       signals,
       url,
@@ -75,7 +103,7 @@ export class SSEBridge {
       withCredentials = false,
       tokenParam = 'token',
       getToken = null,
-      debug = false
+      debug = false,
     } = options
 
     if (!signals) {
@@ -94,17 +122,12 @@ export class SSEBridge {
     this._getToken = getToken
     this._debug = debug
 
-    this._eventSource = null
-    this._reconnectTimer = null
-    this._connected = false
-    this._reconnecting = false
-
     // Auto-connect or wait for auth:login
     if (autoConnect) {
       this.connect()
     } else {
       // Wait for auth:login signal to connect
-      this._signals.once('auth:login').then(() => {
+      this._signals.once('auth:login', () => {
         this._log('Received auth:login, connecting SSE')
         this.connect()
       })
@@ -119,17 +142,15 @@ export class SSEBridge {
 
   /**
    * Build signal name with prefix
-   * @param {string} eventName - Event name
-   * @returns {string} Full signal name
    */
-  _buildSignal(eventName) {
+  private _buildSignal(eventName: string): string {
     return `${this._signalPrefix}:${eventName}`
   }
 
   /**
    * Debug logging
    */
-  _log(...args) {
+  private _log(...args: unknown[]): void {
     if (this._debug) {
       console.debug('[SSEBridge]', ...args)
     }
@@ -137,9 +158,8 @@ export class SSEBridge {
 
   /**
    * Build SSE URL with auth token
-   * @returns {string}
    */
-  _buildUrl() {
+  private _buildUrl(): string {
     const token = this._getToken?.()
     const sseUrl = new URL(this._url, window.location.origin)
 
@@ -153,7 +173,7 @@ export class SSEBridge {
   /**
    * Connect to SSE endpoint
    */
-  connect() {
+  connect(): void {
     // Clean up existing
     if (this._eventSource) {
       this._eventSource.close()
@@ -171,27 +191,27 @@ export class SSEBridge {
       this._log('Connecting to', url)
 
       this._eventSource = new EventSource(url, {
-        withCredentials: this._withCredentials
+        withCredentials: this._withCredentials,
       })
 
-      this._eventSource.onopen = () => {
+      this._eventSource.onopen = (): void => {
         this._connected = true
         this._reconnecting = false
         this._log('Connected')
 
         this._signals.emit(SSE_SIGNALS.CONNECTED, {
           url: this._url,
-          timestamp: new Date()
+          timestamp: new Date(),
         })
       }
 
-      this._eventSource.onerror = (err) => {
+      this._eventSource.onerror = (): void => {
         this._connected = false
         this._log('Connection error')
 
         this._signals.emit(SSE_SIGNALS.ERROR, {
           error: 'Connection error',
-          timestamp: new Date()
+          timestamp: new Date(),
         })
 
         // Close broken connection
@@ -201,7 +221,7 @@ export class SSEBridge {
         }
 
         this._signals.emit(SSE_SIGNALS.DISCONNECTED, {
-          timestamp: new Date()
+          timestamp: new Date(),
         })
 
         // Schedule reconnect
@@ -209,7 +229,7 @@ export class SSEBridge {
       }
 
       // Handle generic message events (event: message)
-      this._eventSource.onmessage = (event) => {
+      this._eventSource.onmessage = (event: MessageEvent): void => {
         this._handleEvent('message', event)
       }
 
@@ -221,12 +241,12 @@ export class SSEBridge {
       // To support arbitrary event names, the app should either:
       // 1. Use `message` event type and include event name in data
       // 2. Pre-register known event names via registerEvents()
-
     } catch (err) {
-      this._log('Connect error:', err.message)
+      const error = err as Error
+      this._log('Connect error:', error.message)
       this._signals.emit(SSE_SIGNALS.ERROR, {
-        error: err.message,
-        timestamp: new Date()
+        error: error.message,
+        timestamp: new Date(),
       })
       this._scheduleReconnect()
     }
@@ -235,10 +255,8 @@ export class SSEBridge {
   /**
    * Register listeners for specific SSE event types
    * Required because EventSource requires explicit addEventListener for named events.
-   *
-   * @param {string[]} eventNames - Event names to listen for
    */
-  registerEvents(eventNames) {
+  registerEvents(eventNames: string[]): void {
     if (!this._eventSource) {
       this._log('Cannot register events: not connected')
       return
@@ -246,7 +264,7 @@ export class SSEBridge {
 
     for (const eventName of eventNames) {
       this._eventSource.addEventListener(eventName, (event) => {
-        this._handleEvent(eventName, event)
+        this._handleEvent(eventName, event as MessageEvent)
       })
       this._log('Registered event:', eventName)
     }
@@ -254,13 +272,11 @@ export class SSEBridge {
 
   /**
    * Handle incoming SSE event
-   * @param {string} eventName - Event name
-   * @param {MessageEvent} event - SSE event
    */
-  _handleEvent(eventName, event) {
-    let data
+  private _handleEvent(eventName: string, event: MessageEvent): void {
+    let data: unknown
     try {
-      data = JSON.parse(event.data)
+      data = JSON.parse(event.data as string)
     } catch {
       data = event.data
     }
@@ -272,14 +288,14 @@ export class SSEBridge {
       event: eventName,
       data,
       timestamp: new Date(),
-      lastEventId: event.lastEventId
+      lastEventId: event.lastEventId,
     })
   }
 
   /**
    * Schedule reconnection
    */
-  _scheduleReconnect() {
+  private _scheduleReconnect(): void {
     if (this._reconnectDelay <= 0) return
     if (this._reconnectTimer) return
 
@@ -297,7 +313,7 @@ export class SSEBridge {
   /**
    * Disconnect from SSE endpoint
    */
-  disconnect() {
+  disconnect(): void {
     if (this._reconnectTimer) {
       clearTimeout(this._reconnectTimer)
       this._reconnectTimer = null
@@ -311,7 +327,7 @@ export class SSEBridge {
     if (this._connected) {
       this._connected = false
       this._signals.emit(SSE_SIGNALS.DISCONNECTED, {
-        timestamp: new Date()
+        timestamp: new Date(),
       })
     }
 
@@ -322,33 +338,29 @@ export class SSEBridge {
   /**
    * Reconnect (disconnect + connect)
    */
-  reconnect() {
+  reconnect(): void {
     this.disconnect()
     this.connect()
   }
 
   /**
    * Check if connected
-   * @returns {boolean}
    */
-  isConnected() {
+  isConnected(): boolean {
     return this._connected
   }
 
   /**
    * Check if reconnecting
-   * @returns {boolean}
    */
-  isReconnecting() {
+  isReconnecting(): boolean {
     return this._reconnecting
   }
 }
 
 /**
  * Factory function to create SSEBridge
- * @param {object} options - SSEBridge options
- * @returns {SSEBridge}
  */
-export function createSSEBridge(options) {
+export function createSSEBridge(options: SSEBridgeOptions): SSEBridge {
   return new SSEBridge(options)
 }

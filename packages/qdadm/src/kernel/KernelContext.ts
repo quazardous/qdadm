@@ -5,9 +5,9 @@
  * navigation items, zones, blocks, and signal handlers.
  *
  * Usage in a module:
- * ```js
+ * ```ts
  * class UsersModule extends Module {
- *   async connect(ctx) {
+ *   async connect(ctx: KernelContext) {
  *     ctx
  *       .entity('users', { storage: 'api:/api/users' })
  *       .routes('users', [
@@ -24,16 +24,190 @@
  * ```
  */
 
+import type { App, Component } from 'vue'
+import type { Router, RouteRecordRaw } from 'vue-router'
 import { managerFactory } from '../entity/factory.js'
 import { registry, getRoutes } from '../module/moduleRegistry.js'
-import { UsersManager } from '../security/UsersManager'
+import { UsersManager, type UsersManagerOptions } from '../security/UsersManager'
+import type { SignalBus } from './SignalBus'
+import type { ListenerOptions } from '@quazardous/quarkernel'
+import type { Module } from './Module'
+import type { Orchestrator } from '../orchestrator/Orchestrator'
+import type { HookRegistry } from '../hooks/HookRegistry'
+import type { ZoneRegistry } from '../zones/ZoneRegistry.js'
+import type { DeferredRegistry } from '../deferred/DeferredRegistry.js'
+import type { SecurityChecker } from '../entity/auth/SecurityChecker'
+import type { PermissionRegistry } from '../security/PermissionRegistry'
+import type { EntityManager } from '../entity/EntityManager'
+import type { EntityRecord } from '../types'
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Types
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Extended Module interface with internal cleanup method
+ */
+interface ModuleWithCleanup {
+  constructor?: { name?: string }
+  _addSignalCleanup?: (cleanup: () => void) => void
+}
+
+/**
+ * Auth adapter interface
+ */
+interface AuthAdapter {
+  getUser(): unknown
+  [key: string]: unknown
+}
+
+/**
+ * Kernel options interface
+ */
+interface KernelOptions {
+  debug?: boolean
+  authAdapter?: AuthAdapter | null
+  storageResolver?: unknown
+  managerResolver?: unknown
+  managerRegistry?: Record<string, unknown>
+  [key: string]: unknown
+}
+
+/**
+ * Kernel interface for type safety
+ */
+interface KernelInterface {
+  vueApp: App | null
+  router: Router | null
+  signals: SignalBus | null
+  orchestrator: Orchestrator | null
+  zoneRegistry: ZoneRegistry | null
+  hookRegistry: HookRegistry | null
+  deferred: DeferredRegistry | null
+  securityChecker: SecurityChecker | null
+  permissionRegistry: PermissionRegistry | null
+  activeStack: unknown
+  stackHydrator: unknown
+  options: KernelOptions
+  _pendingProvides: Map<string | symbol, unknown>
+  _pendingComponents: Map<string, Component>
+}
+
+/**
+ * Navigation item configuration
+ */
+export interface NavItem {
+  section: string
+  route: string
+  icon?: string
+  label?: string
+  exact?: boolean
+  entity?: string
+}
+
+/**
+ * Zone configuration
+ */
+export interface ZoneOptions {
+  default?: Component
+}
+
+/**
+ * Block configuration
+ */
+export interface BlockConfig {
+  component: Component
+  weight?: number
+  props?: Record<string, unknown>
+  id?: string
+  operation?: 'add' | 'replace' | 'extend' | 'wrap'
+}
+
+/**
+ * Route options
+ */
+export interface RouteOptions {
+  entity?: string
+  parent?: ParentConfig
+  label?: string
+  layout?: string
+}
+
+/**
+ * Parent route configuration
+ */
+interface ParentConfig {
+  entity: string
+  param: string
+  foreignKey: string
+}
+
+/**
+ * CRUD page components
+ */
+export interface CrudPages {
+  list?: () => Promise<{ default: Component }>
+  show?: () => Promise<{ default: Component }>
+  form?: () => Promise<{ default: Component }>
+  create?: () => Promise<{ default: Component }>
+  edit?: () => Promise<{ default: Component }>
+}
+
+/**
+ * CRUD options
+ */
+export interface CrudOptions {
+  nav?: {
+    section: string
+    icon?: string
+    label?: string
+  }
+  routePrefix?: string
+  parentRoute?: string
+  foreignKey?: string
+  label?: string
+}
+
+/**
+ * User entity options
+ */
+export type UserEntityOptions = UsersManagerOptions
+
+/**
+ * Permission metadata
+ */
+export interface PermissionMeta {
+  label: string
+  description?: string
+}
+
+/**
+ * Permission options
+ */
+export interface PermissionOptions {
+  isEntity?: boolean
+}
+
+/**
+ * Signal handler function type
+ */
+type SignalHandler = (event: { data: unknown; [key: string]: unknown }) => void
+
+/**
+ * Hook handler function type
+ */
+type HookHandler = (context: unknown) => unknown | Promise<unknown>
+
+/**
+ * Deferred factory function type
+ */
+type DeferredFactory = () => Promise<void>
 
 export class KernelContext {
-  /**
-   * @param {import('./Kernel.js').Kernel} kernel - Kernel instance
-   * @param {import('./Module.js').Module} module - Module instance
-   */
-  constructor(kernel, module) {
+  private _kernel: KernelInterface
+  private _module: ModuleWithCleanup | null
+
+  constructor(kernel: KernelInterface, module: ModuleWithCleanup | null) {
     this._kernel = kernel
     this._module = module
   }
@@ -44,121 +218,106 @@ export class KernelContext {
 
   /**
    * Get Vue app instance
-   * @returns {import('vue').App}
    */
-  get app() {
+  get app(): App | null {
     return this._kernel.vueApp
   }
 
   /**
    * Get Vue router instance
-   * @returns {import('vue-router').Router}
    */
-  get router() {
+  get router(): Router | null {
     return this._kernel.router
   }
 
   /**
    * Get SignalBus instance
-   * @returns {import('./SignalBus.js').SignalBus}
    */
-  get signals() {
+  get signals(): SignalBus | null {
     return this._kernel.signals
   }
 
   /**
    * Get Orchestrator instance (entity managers)
-   * @returns {import('../orchestrator/Orchestrator.js').Orchestrator}
    */
-  get orchestrator() {
+  get orchestrator(): Orchestrator | null {
     return this._kernel.orchestrator
   }
 
   /**
    * Get ZoneRegistry instance
-   * @returns {import('../zones/ZoneRegistry.js').ZoneRegistry}
    */
-  get zones() {
+  get zones(): ZoneRegistry | null {
     return this._kernel.zoneRegistry
   }
 
   /**
    * Get HookRegistry instance
-   * @returns {import('../hooks/HookRegistry.js').HookRegistry}
    */
-  get hooks() {
+  get hooks(): HookRegistry | null {
     return this._kernel.hookRegistry
   }
 
   /**
    * Get DeferredRegistry instance
-   * @returns {import('../deferred/DeferredRegistry.js').DeferredRegistry}
    */
-  get deferred() {
+  get deferred(): DeferredRegistry | null {
     return this._kernel.deferred
   }
 
   /**
    * Check if running in development mode
-   * @returns {boolean}
    */
-  get isDev() {
-    return import.meta.env?.DEV ?? false
+  get isDev(): boolean {
+    return (import.meta as unknown as { env?: { DEV?: boolean } }).env?.DEV ?? false
   }
 
   /**
    * Get debug mode from kernel options
-   * @returns {boolean}
    */
-  get debug() {
+  get debug(): boolean {
     return this._kernel.options?.debug ?? false
   }
 
   /**
    * Get auth adapter
-   * @returns {object|null}
    */
-  get authAdapter() {
+  get authAdapter(): AuthAdapter | null {
     return this._kernel.options?.authAdapter ?? null
   }
 
   /**
    * Get security checker (role hierarchy, permissions)
-   * @returns {import('../entity/auth/SecurityChecker.js').SecurityChecker|null}
    */
-  get security() {
+  get security(): SecurityChecker | null {
     return this._kernel.securityChecker
   }
 
   /**
    * Get permission registry
-   * @returns {import('../security/PermissionRegistry.js').PermissionRegistry|null}
    */
-  get permissionRegistry() {
+  get permissionRegistry(): PermissionRegistry | null {
     return this._kernel.permissionRegistry
   }
 
   /**
    * Get auth adapter shortcut
-   * @returns {object|null}
    */
-  get auth() {
+  get auth(): AuthAdapter | null {
     return this._kernel.options?.authAdapter ?? null
   }
 
   /**
    * Get ActiveStack instance (sync navigation context)
-   * @returns {import('../chain/ActiveStack.js').ActiveStack|null}
    */
-  get activeStack() {
+  get activeStack(): unknown {
     return this._kernel.activeStack ?? null
   }
 
   /**
    * Get StackHydrator instance (async data loading)
-   * @returns {import('../chain/StackHydrator.js').StackHydrator|null}
    */
-  get stackHydrator() {
+  get stackHydrator(): unknown {
     return this._kernel.stackHydrator ?? null
   }
 
@@ -172,24 +331,23 @@ export class KernelContext {
    * Uses managerFactory to resolve config into a manager instance.
    * Registers with Orchestrator for CRUD operations.
    *
-   * @param {string} name - Entity name (e.g., 'users', 'books')
-   * @param {string|object|import('../entity/EntityManager.js').EntityManager} config - Manager config
+   * @param name - Entity name (e.g., 'users', 'books')
+   * @param config - Manager config
    *   - String pattern: 'api:/api/users' → creates ApiStorage + EntityManager
    *   - Object: { storage: '...', label: '...', fields: {...} }
    *   - Manager instance: passed through directly
-   * @returns {this}
    *
    * @example
    * ctx.entity('users', 'api:/api/users')
    * ctx.entity('books', { storage: 'api:/api/books', label: 'Book' })
    * ctx.entity('settings', new SettingsManager({...}))
    */
-  entity(name, config) {
+  entity(name: string, config: string | Record<string, unknown> | EntityManager): this {
     // Build factory context from kernel options
     const factoryContext = {
       storageResolver: this._kernel.options.storageResolver,
       managerResolver: this._kernel.options.managerResolver,
-      managerRegistry: this._kernel.options.managerRegistry || {}
+      managerRegistry: this._kernel.options.managerRegistry || {},
     }
 
     // Create manager via factory
@@ -203,9 +361,9 @@ export class KernelContext {
     // Auto-register CRUD permissions for this entity
     if (this._kernel.permissionRegistry) {
       this._kernel.permissionRegistry.registerEntity(name, {
-        module: this._module?.constructor?.name || 'unknown',
+        module: (this._module?.constructor as { name?: string })?.name || 'unknown',
         // Register entity-own:* permissions if manager has isOwn configured
-        hasOwnership: !!manager._isOwn
+        hasOwnership: !!(manager as unknown as { _isOwn?: unknown })._isOwn,
       })
     }
 
@@ -220,39 +378,15 @@ export class KernelContext {
    * - System entity flag
    * - Admin-only access by default
    *
-   * @param {Object} options - Configuration options
-   * @param {Object} options.storage - Storage adapter (required)
-   * @param {Object} [options.extraFields={}] - Additional fields beyond username/password/role
-   * @param {string} [options.adminRole='ROLE_ADMIN'] - Role required for user management
-   * @param {boolean} [options.adminOnly=true] - Restrict access to admin role only
-   * @param {Object} [options.fieldOverrides={}] - Override default field configs
-   * @returns {this}
+   * @param options - Configuration options
    *
    * @example
    * // Basic usage with MockApiStorage
    * ctx.userEntity({
    *   storage: new MockApiStorage({ entityName: 'users', initialData: usersFixture })
    * })
-   *
-   * @example
-   * // With extra fields and API storage
-   * ctx.userEntity({
-   *   storage: new ApiStorage({ endpoint: '/api/users' }),
-   *   extraFields: {
-   *     email: { type: 'email', label: 'Email', required: true },
-   *     firstName: { type: 'text', label: 'First Name' },
-   *     lastName: { type: 'text', label: 'Last Name' }
-   *   }
-   * })
-   *
-   * @example
-   * // Allow non-admin access (e.g., for user profile editing)
-   * ctx.userEntity({
-   *   storage: usersStorage,
-   *   adminOnly: false
-   * })
    */
-  userEntity(options = {}) {
+  userEntity(options: UserEntityOptions): this {
     const manager = new UsersManager(options)
 
     // Register with orchestrator
@@ -263,7 +397,7 @@ export class KernelContext {
     // Auto-register CRUD permissions for users entity
     if (this._kernel.permissionRegistry) {
       this._kernel.permissionRegistry.registerEntity('users', {
-        module: this._module?.constructor?.name || 'unknown'
+        module: (this._module?.constructor as { name?: string })?.name || 'unknown',
       })
     }
 
@@ -275,14 +409,9 @@ export class KernelContext {
    *
    * Delegates to moduleRegistry.addRoutes with prefix application.
    *
-   * @param {string} basePath - Base path prefix (e.g., 'users')
-   * @param {Array} routes - Route definitions with relative paths
-   * @param {object} [opts={}] - Route options
-   * @param {string} [opts.entity] - Entity name for permission checking
-   * @param {object} [opts.parent] - Parent entity config for child routes
-   * @param {string} [opts.label] - Label for nav links
-   * @param {string} [opts.layout] - Default layout type
-   * @returns {this}
+   * @param basePath - Base path prefix (e.g., 'users')
+   * @param routes - Route definitions with relative paths
+   * @param opts - Route options
    *
    * @example
    * ctx.routes('users', [
@@ -290,7 +419,7 @@ export class KernelContext {
    *   { path: ':id', name: 'users-edit', component: UserEdit }
    * ], { entity: 'users' })
    */
-  routes(basePath, routes, opts = {}) {
+  routes(basePath: string, routes: RouteRecordRaw[], opts: RouteOptions = {}): this {
     registry.addRoutes(basePath, routes, opts)
     return this
   }
@@ -298,19 +427,12 @@ export class KernelContext {
   /**
    * Add a navigation item to a section
    *
-   * @param {object} item - Navigation item config
-   * @param {string} item.section - Section title (e.g., 'Admin', 'Content')
-   * @param {string} item.route - Route name
-   * @param {string} [item.icon] - Icon class (e.g., 'pi pi-users')
-   * @param {string} [item.label] - Display label
-   * @param {boolean} [item.exact] - Use exact route matching
-   * @param {string} [item.entity] - Entity for permission check
-   * @returns {this}
+   * @param item - Navigation item config
    *
    * @example
    * ctx.navItem({ section: 'Admin', route: 'users', icon: 'pi pi-users', label: 'Users' })
    */
-  navItem(item) {
+  navItem(item: NavItem): this {
     registry.addNavItem(item)
     return this
   }
@@ -318,14 +440,13 @@ export class KernelContext {
   /**
    * Add route family mapping for active state detection
    *
-   * @param {string} base - Parent route name (e.g., 'users')
-   * @param {string[]} prefixes - Child route prefixes (e.g., ['users-', 'user-'])
-   * @returns {this}
+   * @param base - Parent route name (e.g., 'users')
+   * @param prefixes - Child route prefixes (e.g., ['users-', 'user-'])
    *
    * @example
    * ctx.routeFamily('users', ['users-', 'user-'])
    */
-  routeFamily(base, prefixes) {
+  routeFamily(base: string, prefixes: string[]): this {
     registry.addRouteFamily(base, prefixes)
     return this
   }
@@ -342,34 +463,9 @@ export class KernelContext {
    *
    * Also registers route family and optional nav item.
    *
-   * @param {string} entity - Entity name (plural, e.g., 'books', 'users')
-   * @param {object} pages - Page components (lazy imports)
-   * @param {Function} pages.list - List page: () => import('./pages/List.vue')
-   * @param {Function} [pages.show] - Show page (read-only detail view)
-   * @param {Function} [pages.form] - Single form for create+edit (recommended)
-   * @param {Function} [pages.create] - Separate create page (alternative to form)
-   * @param {Function} [pages.edit] - Separate edit page (alternative to form)
-   * @param {object} [options={}] - Additional options
-   * @param {object} [options.nav] - Navigation config
-   * @param {string} options.nav.section - Nav section (e.g., 'Library')
-   * @param {string} [options.nav.icon] - Icon class (e.g., 'pi pi-book')
-   * @param {string} [options.nav.label] - Display label (default: capitalized entity)
-   * @param {string} [options.routePrefix] - Override route prefix (default: singularized entity, or parentPrefix-singularized for children)
-   * @param {string} [options.parentRoute] - Parent route name for child entities (e.g., 'book' to mount under books/:bookId)
-   * @param {string} [options.foreignKey] - Foreign key field linking to parent (e.g., 'book_id')
-   * @param {string} [options.label] - Label for navlinks (defaults to entity labelPlural from manager)
-   * @returns {this}
-   *
-   * @example
-   * // Minimal - list only (read-only entity)
-   * ctx.crud('countries', { list: () => import('./pages/CountriesList.vue') })
-   *
-   * @example
-   * // List + show (read-only with detail view)
-   * ctx.crud('countries', {
-   *   list: () => import('./pages/CountriesList.vue'),
-   *   show: () => import('./pages/CountryShow.vue')
-   * })
+   * @param entity - Entity name (plural, e.g., 'books', 'users')
+   * @param pages - Page components (lazy imports)
+   * @param options - Additional options
    *
    * @example
    * // Single form pattern (recommended)
@@ -379,29 +475,8 @@ export class KernelContext {
    * }, {
    *   nav: { section: 'Library', icon: 'pi pi-book' }
    * })
-   *
-   * @example
-   * // Child entity mounted under parent route
-   * ctx.crud('loans', {
-   *   list: () => import('./pages/BookLoans.vue'),
-   *   form: () => import('./pages/BookLoanForm.vue')
-   * }, {
-   *   parentRoute: 'book',
-   *   foreignKey: 'book_id',
-   *   routePrefix: 'book-loan'  // Optional: defaults to 'book-loan'
-   * })
-   *
-   * @example
-   * // Separate create/edit pages
-   * ctx.crud('users', {
-   *   list: () => import('./pages/UserList.vue'),
-   *   create: () => import('./pages/UserCreate.vue'),
-   *   edit: () => import('./pages/UserEdit.vue')
-   * }, {
-   *   nav: { section: 'Admin', icon: 'pi pi-users', label: 'Users' }
-   * })
    */
-  crud(entity, pages, options = {}) {
+  crud(entity: string, pages: CrudPages, options: CrudOptions = {}): this {
     // Entity name is always used for permission binding
     // Manager may not be registered yet (child entity before parent module loads)
     const entityBinding = entity
@@ -412,14 +487,16 @@ export class KernelContext {
 
     // Handle parent route configuration
     let basePath = entity
-    let parentConfig = null
-    let parentRoutePrefix = null
+    let parentConfig: ParentConfig | null = null
+    let parentRoutePrefix: string | null = null
 
     if (options.parentRoute) {
       // Find parent route info from registered routes
       const parentRouteName = options.parentRoute
       const allRoutes = getRoutes()
-      const parentRoute = allRoutes.find(r => r.name === parentRouteName)
+      const parentRoute = allRoutes.find(
+        (r: { name?: string }) => r.name === parentRouteName
+      ) as RouteRecordRaw & { meta?: { entity?: string }; path: string } | undefined
 
       if (parentRoute) {
         // Get parent entity from route meta
@@ -431,14 +508,18 @@ export class KernelContext {
 
         // Build base path: parentPath/:parentId/entity
         // e.g., books/:bookId/loans
-        const parentBasePath = parentRoute.path.replace(/\/(create|:.*)?$/, '') || parentEntityName
+        const parentBasePath =
+          parentRoute.path.replace(/\/(create|:.*)?$/, '') || parentEntityName
         basePath = `${parentBasePath}/:${parentIdParam}/${entity}`
 
-        // Build parent config for route meta
-        parentConfig = {
-          entity: parentEntityName,
-          param: parentIdParam,
-          foreignKey: options.foreignKey || `${this._singularize(parentEntityName)}_id`
+        // Build parent config for route meta (only if parent entity is defined)
+        if (parentEntityName) {
+          parentConfig = {
+            entity: parentEntityName,
+            param: parentIdParam,
+            foreignKey:
+              options.foreignKey || `${this._singularize(parentEntityName)}_id`,
+          }
         }
 
         // Store parent route prefix for derived naming
@@ -449,11 +530,14 @@ export class KernelContext {
     // Derive route prefix
     // - With parent: 'book' + '-loan' → 'book-loan'
     // - Without parent: 'books' → 'book'
-    const routePrefix = options.routePrefix
-      || (parentRoutePrefix ? `${parentRoutePrefix}-${this._singularize(entity)}` : this._singularize(entity))
+    const routePrefix =
+      options.routePrefix ||
+      (parentRoutePrefix
+        ? `${parentRoutePrefix}-${this._singularize(entity)}`
+        : this._singularize(entity))
 
     // Build routes array
-    const routes = []
+    const routes: RouteRecordRaw[] = []
 
     // List route
     if (pages.list) {
@@ -461,7 +545,7 @@ export class KernelContext {
         path: '',
         name: routePrefix,
         component: pages.list,
-        meta: { layout: 'list' }
+        meta: { layout: 'list' },
       })
     }
 
@@ -471,7 +555,7 @@ export class KernelContext {
         path: `:${idParam}`,
         name: `${routePrefix}-show`,
         component: pages.show,
-        meta: { layout: 'show' }
+        meta: { layout: 'show' },
       })
     }
 
@@ -481,12 +565,12 @@ export class KernelContext {
       routes.push({
         path: 'create',
         name: `${routePrefix}-create`,
-        component: pages.form
+        component: pages.form,
       })
       routes.push({
         path: `:${idParam}/edit`,
         name: `${routePrefix}-edit`,
-        component: pages.form
+        component: pages.form,
       })
     } else {
       // Separate create/edit pages
@@ -494,20 +578,20 @@ export class KernelContext {
         routes.push({
           path: 'create',
           name: `${routePrefix}-create`,
-          component: pages.create
+          component: pages.create,
         })
       }
       if (pages.edit) {
         routes.push({
           path: `:${idParam}/edit`,
           name: `${routePrefix}-edit`,
-          component: pages.edit
+          component: pages.edit,
         })
       }
     }
 
     // Build route options
-    const routeOpts = {}
+    const routeOpts: RouteOptions = {}
     // Set entity if:
     // 1. Entity is registered (manager exists), OR
     // 2. This is a child route (parentConfig) - needs entity binding for permission checks
@@ -530,11 +614,11 @@ export class KernelContext {
     // Register nav item if provided (typically not for child entities)
     if (options.nav) {
       const label = options.nav.label || this._capitalize(entity)
-      const navItem = {
+      const navItem: NavItem = {
         section: options.nav.section,
         route: routePrefix,
         icon: options.nav.icon,
-        label
+        label,
       }
       // Only set entity on nav item if registered (to avoid permission check failure)
       // Routes always get entity binding, but nav items need it to be resolvable
@@ -549,13 +633,14 @@ export class KernelContext {
 
   /**
    * Singularize a plural word (simple English rules)
-   * @param {string} plural - Plural word
-   * @returns {string} Singular form
-   * @private
    */
-  _singularize(plural) {
+  private _singularize(plural: string): string {
     if (plural.endsWith('ies')) return plural.slice(0, -3) + 'y'
-    if (plural.endsWith('ses') || plural.endsWith('xes') || plural.endsWith('zes')) {
+    if (
+      plural.endsWith('ses') ||
+      plural.endsWith('xes') ||
+      plural.endsWith('zes')
+    ) {
       return plural.slice(0, -2)
     }
     if (plural.endsWith('s') && !plural.endsWith('ss')) return plural.slice(0, -1)
@@ -564,27 +649,22 @@ export class KernelContext {
 
   /**
    * Capitalize first letter
-   * @param {string} str - String to capitalize
-   * @returns {string} Capitalized string
-   * @private
    */
-  _capitalize(str) {
+  private _capitalize(str: string): string {
     return str.charAt(0).toUpperCase() + str.slice(1)
   }
 
   /**
    * Define a zone for extensible UI composition
    *
-   * @param {string} name - Zone name (e.g., 'users-list-header')
-   * @param {object} [options={}] - Zone options
-   * @param {import('vue').Component} [options.default] - Default component when no blocks
-   * @returns {this}
+   * @param name - Zone name (e.g., 'users-list-header')
+   * @param options - Zone options
    *
    * @example
    * ctx.zone('users-list-header')
    * ctx.zone('users-sidebar', { default: DefaultSidebar })
    */
-  zone(name, options = {}) {
+  zone(name: string, options: ZoneOptions = {}): this {
     if (this._kernel.zoneRegistry) {
       this._kernel.zoneRegistry.defineZone(name, options)
     }
@@ -594,19 +674,13 @@ export class KernelContext {
   /**
    * Register a block in a zone
    *
-   * @param {string} zoneName - Target zone name
-   * @param {object} config - Block configuration
-   * @param {import('vue').Component} config.component - Vue component
-   * @param {number} [config.weight=50] - Ordering weight (lower = first)
-   * @param {object} [config.props={}] - Props to pass to component
-   * @param {string} [config.id] - Unique identifier
-   * @param {string} [config.operation='add'] - Block operation (add, replace, extend, wrap)
-   * @returns {this}
+   * @param zoneName - Target zone name
+   * @param config - Block configuration
    *
    * @example
    * ctx.block('users-list-header', { component: UserStats, weight: 10, id: 'user-stats' })
    */
-  block(zoneName, config) {
+  block(zoneName: string, config: BlockConfig): this {
     if (this._kernel.zoneRegistry) {
       this._kernel.zoneRegistry.registerBlock(zoneName, config)
     }
@@ -616,14 +690,13 @@ export class KernelContext {
   /**
    * Provide a value to Vue's dependency injection system
    *
-   * @param {string|symbol} key - Injection key
-   * @param {*} value - Value to provide
-   * @returns {this}
+   * @param key - Injection key
+   * @param value - Value to provide
    *
    * @example
    * ctx.provide('myService', new MyService())
    */
-  provide(key, value) {
+  provide(key: string | symbol, value: unknown): this {
     if (this._kernel.vueApp) {
       this._kernel.vueApp.provide(key, value)
     } else {
@@ -636,14 +709,13 @@ export class KernelContext {
   /**
    * Register a global Vue component
    *
-   * @param {string} name - Component name
-   * @param {import('vue').Component} component - Vue component
-   * @returns {this}
+   * @param name - Component name
+   * @param component - Vue component
    *
    * @example
    * ctx.component('MyGlobalComponent', MyComponent)
    */
-  component(name, component) {
+  component(name: string, component: Component): this {
     if (this._kernel.vueApp) {
       this._kernel.vueApp.component(name, component)
     } else {
@@ -659,19 +731,15 @@ export class KernelContext {
    * The handler will be automatically unsubscribed when the module's
    * disconnect() method is called.
    *
-   * @param {string} signal - Signal name (supports wildcards via SignalBus)
-   * @param {Function} handler - Handler function (event, ctx) => void
-   * @param {object} [options={}] - Listener options
-   * @param {number} [options.priority] - Listener priority (higher = earlier)
-   * @param {string} [options.id] - Unique listener ID
-   * @param {boolean} [options.once] - Remove after first call
-   * @returns {this}
+   * @param signal - Signal name (supports wildcards via SignalBus)
+   * @param handler - Handler function (event, ctx) => void
+   * @param options - Listener options
    *
    * @example
    * ctx.on('users:created', (event) => console.log('User created:', event.data))
    * ctx.on('entity:*', (event) => console.log('Entity event:', event))
    */
-  on(signal, handler, options = {}) {
+  on(signal: string, handler: SignalHandler, options: ListenerOptions = {}): this {
     if (this._kernel.signals) {
       const cleanup = this._kernel.signals.on(signal, handler, options)
       // Register cleanup with module for automatic unsubscribe on disconnect
@@ -685,10 +753,9 @@ export class KernelContext {
   /**
    * Register a hook handler
    *
-   * @param {string} hookName - Hook name (e.g., 'users:presave')
-   * @param {Function} handler - Handler function
-   * @param {object} [options={}] - Hook options
-   * @returns {this}
+   * @param hookName - Hook name (e.g., 'users:presave')
+   * @param handler - Handler function
+   * @param options - Hook options
    *
    * @example
    * ctx.hook('users:presave', (context) => {
@@ -696,7 +763,7 @@ export class KernelContext {
    *   return context
    * })
    */
-  hook(hookName, handler, options = {}) {
+  hook(hookName: string, handler: HookHandler, options: Record<string, unknown> = {}): this {
     if (this._kernel.hookRegistry) {
       this._kernel.hookRegistry.register(hookName, handler, options)
     }
@@ -706,16 +773,15 @@ export class KernelContext {
   /**
    * Queue a deferred task
    *
-   * @param {string} name - Deferred task name
-   * @param {Function} factory - Factory function returning a promise
-   * @returns {this}
+   * @param name - Deferred task name
+   * @param factory - Factory function returning a promise
    *
    * @example
    * ctx.deferred('users:warmup', async () => {
    *   await ctx.orchestrator.get('users').warmup()
    * })
    */
-  defer(name, factory) {
+  defer(name: string, factory: DeferredFactory): this {
     if (this._kernel.deferred) {
       this._kernel.deferred.queue(name, factory)
     }
@@ -736,11 +802,9 @@ export class KernelContext {
    * - For entity CRUD: automatically prefixed with 'entity:'
    * - For system features: use any namespace (auth:, admin:, feature:, etc.)
    *
-   * @param {string} namespace - Permission namespace (e.g., 'books', 'auth', 'admin:config')
-   * @param {Object<string, string|PermissionMeta>} permissions - Permission definitions
-   * @param {Object} [options={}]
-   * @param {boolean} [options.isEntity=false] - Auto-prefix with 'entity:'
-   * @returns {this}
+   * @param namespace - Permission namespace (e.g., 'books', 'auth', 'admin:config')
+   * @param permissions - Permission definitions
+   * @param options - Permission options
    *
    * @example
    * // Entity custom permissions (auto-prefixed with 'entity:')
@@ -749,28 +813,16 @@ export class KernelContext {
    *   reserve: { label: 'Reserve', description: 'Reserve a book for later' }
    * }, { isEntity: true })
    * // → entity:books:checkout, entity:books:reserve
-   *
-   * @example
-   * // System permissions (no prefix)
-   * ctx.permissions('auth', {
-   *   impersonate: 'Impersonate another user',
-   *   'manage-roles': 'Manage user roles'
-   * })
-   * // → auth:impersonate, auth:manage-roles
-   *
-   * @example
-   * // Admin permissions with nested namespace
-   * ctx.permissions('admin:config', {
-   *   view: 'View configuration',
-   *   edit: 'Edit configuration'
-   * })
-   * // → admin:config:view, admin:config:edit
    */
-  permissions(namespace, permissions, options = {}) {
+  permissions(
+    namespace: string,
+    permissions: Record<string, string | PermissionMeta>,
+    options: PermissionOptions = {}
+  ): this {
     if (this._kernel.permissionRegistry) {
       this._kernel.permissionRegistry.register(namespace, permissions, {
         ...options,
-        module: this._module?.constructor?.name || 'unknown'
+        module: (this._module?.constructor as { name?: string })?.name || 'unknown',
       })
     }
     return this
@@ -782,9 +834,8 @@ export class KernelContext {
    * Shorthand for registering entity-namespaced permissions.
    * Equivalent to: ctx.permissions(entity, perms, { isEntity: true })
    *
-   * @param {string} entity - Entity name
-   * @param {Object<string, string|PermissionMeta>} permissions - Permission definitions
-   * @returns {this}
+   * @param entity - Entity name
+   * @param permissions - Permission definitions
    *
    * @example
    * ctx.entityPermissions('books', {
@@ -792,18 +843,20 @@ export class KernelContext {
    * })
    * // → entity:books:checkout
    */
-  entityPermissions(entity, permissions) {
+  entityPermissions(
+    entity: string,
+    permissions: Record<string, string | PermissionMeta>
+  ): this {
     return this.permissions(entity, permissions, { isEntity: true })
   }
 }
 
 /**
  * Factory function to create a KernelContext instance
- *
- * @param {import('./Kernel.js').Kernel} kernel - Kernel instance
- * @param {import('./Module.js').Module} module - Module instance
- * @returns {KernelContext}
  */
-export function createKernelContext(kernel, module) {
+export function createKernelContext(
+  kernel: KernelInterface,
+  module: ModuleWithCleanup | null
+): KernelContext {
   return new KernelContext(kernel, module)
 }

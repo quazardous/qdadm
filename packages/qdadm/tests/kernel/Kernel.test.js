@@ -7,11 +7,11 @@
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { defineComponent, h } from 'vue'
-import { Kernel } from '../../src/kernel/Kernel.js'
+import { Kernel } from '../../src/kernel/Kernel'
 import { SignalBus } from '../../src/kernel/SignalBus'
 import { EntityManager } from '../../src/entity/EntityManager'
 import { Module } from '../../src/kernel/Module'
-import { ModuleLoader } from '../../src/kernel/ModuleLoader.js'
+import { ModuleLoader } from '../../src/kernel/ModuleLoader'
 
 /**
  * Minimal mock components for Kernel bootstrap

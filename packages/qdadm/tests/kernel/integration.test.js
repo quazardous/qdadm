@@ -13,10 +13,10 @@ import {
   ModuleNotFoundError,
   CircularDependencyError,
   ModuleLoadError,
-} from '../../src/kernel/ModuleLoader.js'
-import { KernelContext, createKernelContext } from '../../src/kernel/KernelContext.js'
+} from '../../src/kernel/ModuleLoader'
+import { KernelContext, createKernelContext } from '../../src/kernel/KernelContext'
 import { createSignalBus } from '../../src/kernel/SignalBus'
-import { Kernel } from '../../src/kernel/Kernel.js'
+import { Kernel } from '../../src/kernel/Kernel'
 import { EntityManager } from '../../src/entity/EntityManager'
 
 // ─────────────────────────────────────────────────────────────────────────────

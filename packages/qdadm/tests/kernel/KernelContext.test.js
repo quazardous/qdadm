@@ -5,7 +5,7 @@
  * getter delegation, registration methods, and signal cleanup.
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { KernelContext, createKernelContext } from '../../src/kernel/KernelContext.js'
+import { KernelContext, createKernelContext } from '../../src/kernel/KernelContext'
 import { Module } from '../../src/kernel/Module'
 import { SignalBus, createSignalBus } from '../../src/kernel/SignalBus'
 
