@@ -22,3 +22,4 @@ npm-debug.log*
 .env
 .env.local
 .env.*.local
+POSTIT.md
