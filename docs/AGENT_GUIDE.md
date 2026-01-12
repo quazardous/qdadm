@@ -3,7 +3,7 @@
 > Navigation index for AI agents. Read code directly for details.
 > Philosophy: see [QDADM_CREDO.md](../packages/qdadm/QDADM_CREDO.md)
 >
-> **Versions:** qdadm 0.45.0 | demo 0.17.3
+> **Versions:** qdadm 1.0.0 | demo 0.17.3
 
 ## Dev Commands
 
@@ -19,11 +19,11 @@ npm test             # Run tests (from packages/qdadm)
 
 | Concept | Location | Search Pattern |
 |---------|----------|----------------|
-| App bootstrap | `qdadm/src/kernel/Kernel.js` | `class Kernel` |
-| Module base class | `qdadm/src/module/Module.js` | `class Module` |
-| Module context | `qdadm/src/module/KernelContext.js` | `class KernelContext` |
-| Entity CRUD | `qdadm/src/entity/EntityManager.js` | `class EntityManager` |
-| Manager registry | `qdadm/src/orchestrator/Orchestrator.js` | `class Orchestrator` |
+| App bootstrap | `qdadm/src/kernel/Kernel.ts` | `class Kernel` |
+| Module base class | `qdadm/src/kernel/Module.ts` | `class Module` |
+| Module context | `qdadm/src/kernel/KernelContext.ts` | `class KernelContext` |
+| Entity CRUD | `qdadm/src/entity/EntityManager.ts` | `class EntityManager` |
+| Manager registry | `qdadm/src/orchestrator/Orchestrator.ts` | `class Orchestrator` |
 | Storage backends | `qdadm/src/entity/storage/` | `ApiStorage`, `MockApiStorage`, `SdkStorage` |
 | Permissions | `qdadm/src/entity/auth/` | `SecurityChecker`, `PermissionRegistry` |
 
@@ -31,10 +31,10 @@ npm test             # Run tests (from packages/qdadm)
 
 | Mechanism | Location | Search Pattern |
 |-----------|----------|----------------|
-| Signals (events) | `qdadm/src/kernel/SignalBus.js` | `signals.emit`, `signals.on` |
-| Hooks (alter/invoke) | `qdadm/src/hooks/HookRegistry.js` | `hooks.register`, `hooks.alter` |
-| Zones (UI blocks) | `qdadm/src/zones/ZoneRegistry.js` | `ctx.zone()`, `ctx.block()` |
-| Decorators | `qdadm/src/core/decorator.js` | `createDecoratedManager` |
+| Signals (events) | `qdadm/src/kernel/SignalBus.ts` | `signals.emit`, `signals.on` |
+| Hooks (alter/invoke) | `qdadm/src/hooks/HookRegistry.ts` | `hooks.register`, `hooks.alter` |
+| Zones (UI blocks) | `qdadm/src/zones/ZoneRegistry.ts` | `ctx.zone()`, `ctx.block()` |
+| Decorators | `qdadm/src/core/decorator.ts` | `createDecoratedManager` |
 
 ### UI Components
 
@@ -50,9 +50,9 @@ npm test             # Run tests (from packages/qdadm)
 
 | Composable | Location | Use Case |
 |------------|----------|----------|
-| useListPageBuilder | `qdadm/src/composables/useListPageBuilder.js` | Build list pages |
-| useForm | `qdadm/src/composables/useForm.js` | Form state management |
-| useOrchestrator | `qdadm/src/orchestrator/useOrchestrator.js` | Access managers |
+| useListPageBuilder | `qdadm/src/composables/useListPageBuilder.ts` | Build list pages |
+| useForm | `qdadm/src/composables/useForm.ts` | Form state management |
+| useOrchestrator | `qdadm/src/orchestrator/useOrchestrator.ts` | Access managers |
 
 ## Module Pattern (Current)
 
@@ -184,16 +184,16 @@ EntitiesPanel shows all relations:
 
 | Component | Location | Purpose |
 |-----------|----------|---------|
-| SecurityChecker | `qdadm/src/entity/auth/SecurityChecker.js` | Central permission checking |
-| PermissionRegistry | `qdadm/src/entity/auth/PermissionRegistry.js` | Register permission keys |
-| RoleGranter | `qdadm/src/entity/auth/RoleGranter.js` | Map roles → permissions |
-| RoleHierarchy | `qdadm/src/entity/auth/RoleHierarchy.js` | Role inheritance |
-| PermissionMatcher | `qdadm/src/entity/auth/PermissionMatcher.js` | Wildcard matching |
+| SecurityChecker | `qdadm/src/entity/auth/SecurityChecker.ts` | Central permission checking |
+| PermissionRegistry | `qdadm/src/security/PermissionRegistry.ts` | Register permission keys |
+| RolesProvider | `qdadm/src/security/RolesProvider.ts` | Map roles → permissions |
+| RolesManager | `qdadm/src/security/RolesManager.ts` | Role hierarchy & management |
+| PermissionMatcher | `qdadm/src/security/PermissionMatcher.ts` | Wildcard matching |
 
 ### Permission Flow
 
 ```
-User roles → RoleHierarchy (expand) → RoleGranter (get perms) → PermissionMatcher (check)
+User roles → RolesManager (expand) → RolesProvider (get perms) → PermissionMatcher (check)
 ```
 
 ### Key Patterns
@@ -246,13 +246,14 @@ AuthCollector shows: user, token, permissions, role hierarchy, impersonation eve
 
 | Domain | Test Files |
 |--------|------------|
-| EntityManager | `qdadm/tests/entity/EntityManager.test.js` |
-| Storage adapters | `qdadm/tests/entity/storage/*.test.js` |
-| Composables | `qdadm/tests/composables/*.test.js` |
-| Hooks | `qdadm/tests/hooks/HookRegistry.test.js` |
-| Zones | `qdadm/tests/zones/*.test.js` |
-| Kernel | `qdadm/tests/kernel/*.test.js` |
-| Debug | `qdadm/tests/debug/*.test.js` |
+| EntityManager | `qdadm/tests/entity/EntityManager.test.ts` |
+| Storage adapters | `qdadm/tests/entity/storage/*.test.ts` |
+| Composables | `qdadm/tests/composables/*.test.ts` |
+| Hooks | `qdadm/tests/hooks/HookRegistry.test.ts` |
+| Zones | `qdadm/tests/zones/*.test.ts` |
+| Kernel | `qdadm/tests/kernel/*.test.ts` |
+| Debug | `qdadm/tests/debug/*.test.ts` |
+| Security | `qdadm/tests/security/*.test.ts` |
 
 ## Documentation
 

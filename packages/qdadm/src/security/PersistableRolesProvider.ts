@@ -1,5 +1,5 @@
 /**
- * PersistableRoleProvider - Role granter with load/persist callbacks
+ * PersistableRoleProvider - Roles provider with load/persist callbacks
  *
  * Flexible adapter that can load role→permissions mapping from any source
  * (localStorage, API, entity) and persist changes back.
@@ -88,7 +88,7 @@ export type PersistCallback = (data: RoleConfig) => Promise<void> | void
 /**
  * Options for PersistableRoleProvider
  */
-export interface PersistableRoleGranterOptions {
+export interface PersistableRolesProviderOptions {
   load?: LoadCallback
   persist?: PersistCallback
   fixed?: RoleConfig
@@ -98,9 +98,9 @@ export interface PersistableRoleGranterOptions {
 }
 
 /**
- * Options for createLocalStorageRoleGranter
+ * Options for createLocalStorageRolesProvider
  */
-export interface LocalStorageRoleGranterOptions {
+export interface LocalStorageRolesProviderOptions {
   key?: string
   fixed?: RoleConfig
   defaults?: RoleConfig
@@ -125,15 +125,15 @@ export class PersistableRoleProvider extends RoleProvider {
   protected _labels: Record<string, string>
 
   // Loading state
-  // Note: _loaded is public to allow createLocalStorageRoleGranter to set it
+  // Note: _loaded is public to allow createLocalStorageRolesProvider to set it
   public _loaded: boolean = false
   private _loading: Promise<void> | null = null
   private _dirty: boolean = false
 
   /**
-   * Create a persistable role granter
+   * Create a persistable roles provider
    */
-  constructor(options: PersistableRoleGranterOptions = {}) {
+  constructor(options: PersistableRolesProviderOptions = {}) {
     super()
 
     this._loadFn = options.load || null
@@ -537,13 +537,13 @@ export class PersistableRoleProvider extends RoleProvider {
 }
 
 /**
- * Create a localStorage-backed role granter
+ * Create a localStorage-backed roles provider
  *
  * Unlike async sources, localStorage is synchronous so data is loaded
  * immediately at construction time. No need to call ensureReady().
  */
-export function createLocalStorageRoleGranter(
-  options: LocalStorageRoleGranterOptions = {}
+export function createLocalStorageRolesProvider(
+  options: LocalStorageRolesProviderOptions = {}
 ): PersistableRoleProvider {
   const key = options.key || 'qdadm_roles'
 

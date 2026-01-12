@@ -9,7 +9,7 @@ import type {
 /**
  * Options for EntityRoleProvider
  */
-export interface EntityRoleGranterOptions {
+export interface EntityRolesProviderOptions {
   entityName?: string
   nameField?: string
   labelField?: string
@@ -52,7 +52,7 @@ interface RoleCache {
 }
 
 /**
- * EntityRoleProvider - Role granter backed by an entity
+ * EntityRoleProvider - Roles provider backed by an entity
  *
  * Fetches roles and permissions from a 'roles' entity.
  * Auto-invalidates cache on entity:roles:* signals.
@@ -98,7 +98,7 @@ export class EntityRoleProvider extends RoleProvider {
   private _signalCleanup: (() => void) | null = null
   private _loading: Promise<void> | null = null
 
-  constructor(options: EntityRoleGranterOptions = {}) {
+  constructor(options: EntityRolesProviderOptions = {}) {
     super()
     this._entityName = options.entityName || 'roles'
     this._nameField = options.nameField || 'name'
@@ -156,7 +156,7 @@ export class EntityRoleProvider extends RoleProvider {
   private async _doLoad(): Promise<void> {
     const manager = this._orchestrator?.get(this._entityName)
     if (!manager) {
-      console.warn(`[EntityRoleGranter] Entity '${this._entityName}' not found`)
+      console.warn(`[EntityRolesProvider] Entity '${this._entityName}' not found`)
       this._cache = { permissions: {}, hierarchy: {}, labels: {} }
       return
     }
@@ -184,7 +184,7 @@ export class EntityRoleProvider extends RoleProvider {
 
       this._cache = { permissions, hierarchy, labels }
     } catch (error) {
-      console.error(`[EntityRoleGranter] Failed to load roles:`, error)
+      console.error(`[EntityRolesProvider] Failed to load roles:`, error)
       this._cache = { permissions: {}, hierarchy: {}, labels: {} }
     }
   }
@@ -195,7 +195,7 @@ export class EntityRoleProvider extends RoleProvider {
   private _getCache(): RoleCache {
     if (!this._cache) {
       throw new Error(
-        '[EntityRoleGranter] Roles not loaded. Call load() before using the adapter.'
+        '[EntityRolesProvider] Roles not loaded. Call load() before using the adapter.'
       )
     }
     return this._cache

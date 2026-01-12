@@ -9,9 +9,9 @@ import Message from 'primevue/message'
 import Chip from 'primevue/chip'
 
 /**
- * Role granter interface
+ * RolesProvider interface
  */
-interface RoleGranter {
+interface RolesProviderInterface {
   canPersist?: boolean
 }
 
@@ -19,7 +19,7 @@ interface RoleGranter {
  * Roles manager interface
  */
 interface RolesManager {
-  rolesProvider?: RoleGranter
+  rolesProvider?: RolesProviderInterface
 }
 
 // ============ LIST BUILDER ============

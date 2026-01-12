@@ -7,16 +7,16 @@ import type {
 } from './RolesProvider'
 
 /**
- * Static role granter configuration
+ * Static roles provider configuration
  */
-export interface StaticRoleGranterConfig {
+export interface StaticRolesProviderConfig {
   role_hierarchy?: RoleHierarchyMap
   role_permissions?: RolePermissionsMap
   role_labels?: RoleLabelsMap
 }
 
 /**
- * StaticRoleProvider - Role granter from config object
+ * StaticRoleProvider - Roles provider from config object
  *
  * Default implementation for simple apps and demos.
  * Auto-created when passing role_permissions object to Kernel.
@@ -34,7 +34,7 @@ export interface StaticRoleGranterConfig {
  * })
  *
  * // Or explicit creation
- * const granter = new StaticRoleProvider({
+ * const provider = new StaticRoleProvider({
  *   role_hierarchy: { ROLE_ADMIN: ['ROLE_USER'] },
  *   role_permissions: {
  *     ROLE_USER: ['entity:*:read'],
@@ -51,7 +51,7 @@ export class StaticRoleProvider extends RoleProvider {
   protected _permissions: RolePermissionsMap
   protected _labels: RoleLabelsMap
 
-  constructor(config: StaticRoleGranterConfig = {}) {
+  constructor(config: StaticRolesProviderConfig = {}) {
     super()
     this._hierarchy = config.role_hierarchy || {}
     this._permissions = config.role_permissions || {}

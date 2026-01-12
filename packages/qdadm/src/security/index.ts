@@ -5,8 +5,8 @@
  * - PermissionMatcher: Wildcard pattern matching (*, **)
  * - PermissionRegistry: Central registry for module permissions
  * - RoleProvider: Interface for role → permissions mapping
- * - StaticRoleProvider: Config-based role granter (default)
- * - EntityRoleProvider: Entity-based role granter (for UI management)
+ * - StaticRoleProvider: Config-based roles provider (default)
+ * - EntityRoleProvider: Entity-based roles provider (for UI management)
  * - PersistableRoleProvider: Load/persist from any source (localStorage, API)
  * - SecurityModule: System module for roles UI (uses RolesManager)
  * - RolesManager: System entity manager for roles
@@ -19,7 +19,7 @@
  *   StaticRoleProvider,
  *   EntityRoleProvider,
  *   PersistableRoleProvider,
- *   createLocalStorageRoleGranter,
+ *   createLocalStorageRolesProvider,
  *   UsersManager
  * } from 'qdadm/security'
  */
@@ -44,21 +44,21 @@ export {
 } from './RolesProvider'
 export {
   StaticRoleProvider,
-  type StaticRoleGranterConfig,
+  type StaticRolesProviderConfig,
 } from './StaticRolesProvider'
 export {
   EntityRoleProvider,
-  type EntityRoleGranterOptions,
+  type EntityRolesProviderOptions,
 } from './EntityRolesProvider'
 export {
   PersistableRoleProvider,
-  createLocalStorageRoleGranter,
+  createLocalStorageRolesProvider,
   type RoleConfig,
   type MergeStrategy,
   type LoadCallback,
   type PersistCallback,
-  type PersistableRoleGranterOptions,
-  type LocalStorageRoleGranterOptions,
+  type PersistableRolesProviderOptions,
+  type LocalStorageRolesProviderOptions,
 } from './PersistableRolesProvider'
 export { SecurityModule } from './SecurityModule'
 export { RolesManager, type RolesManagerOptions } from './RolesManager'

@@ -28,7 +28,7 @@ import { SessionAuthAdapter, LocalStorageSessionAuthAdapter } from 'qdadm'
 
 // Security (permissions, roles)
 import { SecurityChecker, PermissionMatcher, PermissionRegistry } from 'qdadm/security'
-import { PersistableRoleProvider, createLocalStorageRoleGranter } from 'qdadm/security'
+import { PersistableRoleProvider, createLocalStorageRolesProvider } from 'qdadm/security'
 
 // Composables
 import { useForm, useBareForm, useListPageBuilder } from 'qdadm/composables'

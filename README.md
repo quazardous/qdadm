@@ -198,12 +198,12 @@ const kernel = new Kernel({
 ### Add permissions
 
 ```js
-import { createLocalStorageRoleGranter } from 'qdadm/security'
+import { createLocalStorageRolesProvider } from 'qdadm/security'
 
 const kernel = new Kernel({
   // ...
   security: {
-    roleGranter: createLocalStorageRoleGranter({
+    rolesProvider: createLocalStorageRolesProvider({
       defaults: {
         role_hierarchy: { ROLE_ADMIN: ['ROLE_USER'] },
         role_permissions: {

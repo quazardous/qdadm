@@ -4,7 +4,7 @@ import { StaticRoleProvider } from '../../security/StaticRolesProvider'
 import type { AuthUser } from './EntityAuthAdapter'
 
 /**
- * Role granter adapter interface (from security module)
+ * RolesProvider adapter interface (from security module)
  */
 export interface RoleProvider {
   getPermissions(role: string): string[]
@@ -61,7 +61,7 @@ export class SecurityChecker {
       this._rolesProvider = rolesProvider
       this._legacyRoleHierarchy = null
     } else {
-      // Legacy: create static granter from rolePermissions
+      // Legacy: create static provider from rolePermissions
       const hierarchyConfig =
         roleHierarchy instanceof RoleHierarchy ? {} : (roleHierarchy as RoleHierarchyConfig) || {}
 
@@ -90,7 +90,7 @@ export class SecurityChecker {
   }
 
   /**
-   * Get role granter adapter
+   * Get roles provider adapter
    */
   get rolesProvider(): RoleProvider {
     return this._rolesProvider
@@ -191,7 +191,7 @@ export function createSecurityChecker(config: SecurityCheckerConfig): SecurityCh
     })
   }
 
-  // Legacy config: auto-create static granter
+  // Legacy config: auto-create static provider
   return new SecurityChecker({
     rolesProvider: new StaticRoleProvider({
       role_hierarchy: config.role_hierarchy || {},

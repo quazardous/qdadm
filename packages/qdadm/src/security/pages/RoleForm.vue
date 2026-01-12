@@ -20,7 +20,7 @@ interface RoleOption {
 }
 
 /**
- * Role data from role granter
+ * Role data from roles provider
  */
 interface RoleData {
   label?: string
@@ -28,9 +28,9 @@ interface RoleData {
 }
 
 /**
- * Role granter interface
+ * RolesProvider interface
  */
-interface RoleGranter {
+interface RolesProviderInterface {
   getRoles: () => string[]
   getRole?: (name: string) => RoleData | null
 }
@@ -39,7 +39,7 @@ interface RoleGranter {
  * Roles manager interface
  */
 interface RolesManager {
-  rolesProvider?: RoleGranter
+  rolesProvider?: RolesProviderInterface
 }
 
 /**

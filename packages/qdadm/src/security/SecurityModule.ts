@@ -17,7 +17,7 @@
  * const kernel = new Kernel({
  *   moduleDefs: [SecurityModule, ...],
  *   security: {
- *     rolesProvider: createLocalStorageRoleGranter({ ... })
+ *     rolesProvider: createLocalStorageRolesProvider({ ... })
  *   }
  * })
  */

@@ -10,7 +10,7 @@ qdadm provides a unified permission system with role hierarchy, permission match
 │  Central facade for all permission checks                       │
 ├─────────────────────────────────────────────────────────────────┤
 │  ┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐  │
-│  │  RoleHierarchy  │  │   RoleGranter   │  │PermissionMatcher│  │
+│  │  RolesManager   │  │  RolesProvider  │  │PermissionMatcher│  │
 │  │  Role → Roles   │  │  Role → Perms   │  │ Wildcard match  │  │
 │  └─────────────────┘  └─────────────────┘  └─────────────────┘  │
 ├─────────────────────────────────────────────────────────────────┤
@@ -49,37 +49,37 @@ ctx.permissionRegistry.register('reports:export', { label: 'Export Reports' })
 ctx.permissionRegistry.getKeys()  // ['entity:books:read', 'reports:export', ...]
 ```
 
-### RoleGranter
+### RolesProvider
 
 Maps roles to permissions:
 
-```js
-const roleProvider = new RoleGranter({
-  ROLE_ADMIN: ['*'],  // All permissions
-  ROLE_EDITOR: ['entity:books:*', 'entity:loans:read'],
-  ROLE_USER: ['entity:books:read']
+```ts
+const rolesProvider = new StaticRolesProvider({
+  role_permissions: {
+    ROLE_ADMIN: ['*'],  // All permissions
+    ROLE_EDITOR: ['entity:books:*', 'entity:loans:read'],
+    ROLE_USER: ['entity:books:read']
+  }
 })
 
 // With anonymous role
-const roleProvider = new RoleGranter({
-  ROLE_ANONYMOUS: ['entity:books:read'],  // Public read
-  ROLE_USER: ['entity:books:*']
+const rolesProvider = new StaticRolesProvider({
+  role_permissions: {
+    ROLE_ANONYMOUS: ['entity:books:read'],  // Public read
+    ROLE_USER: ['entity:books:*']
+  }
 }, { anonymousRole: 'ROLE_ANONYMOUS' })
 ```
 
-### RoleHierarchy
+### RolesManager
 
-Defines role inheritance:
+Manages role hierarchy and collects permissions from RolesProvider:
 
-```js
-const roleHierarchy = new RoleHierarchy({
-  ROLE_ADMIN: ['ROLE_EDITOR'],      // Admin inherits Editor
-  ROLE_EDITOR: ['ROLE_USER'],       // Editor inherits User
-  ROLE_USER: ['ROLE_ANONYMOUS']     // User inherits Anonymous
-})
+```ts
+const rolesManager = new RolesManager(rolesProvider)
 
 // Get all reachable roles
-roleHierarchy.getReachableRoles('ROLE_ADMIN')
+rolesManager.getReachableRoles('ROLE_ADMIN')
 // → ['ROLE_ADMIN', 'ROLE_EDITOR', 'ROLE_USER', 'ROLE_ANONYMOUS']
 ```
 
@@ -98,24 +98,29 @@ PermissionMatcher.matches('*', 'anything')                           // true
 
 ```
 1. User has roles: ['ROLE_EDITOR']
-2. RoleHierarchy expands: ['ROLE_EDITOR', 'ROLE_USER', 'ROLE_ANONYMOUS']
-3. RoleGranter collects permissions for all roles
+2. RolesManager expands via hierarchy: ['ROLE_EDITOR', 'ROLE_USER', 'ROLE_ANONYMOUS']
+3. RolesProvider collects permissions for all roles
 4. PermissionMatcher checks if requested permission matches any granted
 ```
 
 ## Integration with Kernel
 
-```js
+```ts
 const kernel = new Kernel({
   authAdapter,
   security: {
-    roleHierarchy: {
-      ROLE_ADMIN: ['ROLE_USER']
-    },
-    rolePermissions: {
-      ROLE_ADMIN: ['*'],
-      ROLE_USER: ['entity:books:read']
-    }
+    rolesProvider: createLocalStorageRolesProvider({
+      key: 'app_roles',
+      defaults: {
+        role_hierarchy: {
+          ROLE_ADMIN: ['ROLE_USER']
+        },
+        role_permissions: {
+          ROLE_ADMIN: ['*'],
+          ROLE_USER: ['entity:books:read']
+        }
+      }
+    })
   }
 })
 

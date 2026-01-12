@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import {
   PersistableRoleProvider,
-  createLocalStorageRoleGranter
+  createLocalStorageRolesProvider
 } from '../../src/security/PersistableRolesProvider'
 
 describe('PersistableRoleProvider', () => {
@@ -490,7 +490,7 @@ describe('PersistableRoleProvider', () => {
   })
 })
 
-describe('createLocalStorageRoleGranter', () => {
+describe('createLocalStorageRolesProvider', () => {
   beforeEach(() => {
     // Mock localStorage
     const store = {}
@@ -502,7 +502,7 @@ describe('createLocalStorageRoleGranter', () => {
   })
 
   it('creates adapter with localStorage callbacks', async () => {
-    const adapter = createLocalStorageRoleGranter({
+    const adapter = createLocalStorageRolesProvider({
       key: 'test_roles',
       defaults: { role_permissions: { ROLE_USER: ['default:*'] } }
     })
@@ -514,7 +514,7 @@ describe('createLocalStorageRoleGranter', () => {
   })
 
   it('persists to localStorage', async () => {
-    const adapter = createLocalStorageRoleGranter({
+    const adapter = createLocalStorageRolesProvider({
       key: 'test_roles'
     })
 
@@ -528,7 +528,7 @@ describe('createLocalStorageRoleGranter', () => {
   })
 
   it('uses default key qdadm_roles', () => {
-    const adapter = createLocalStorageRoleGranter()
+    const adapter = createLocalStorageRolesProvider()
     adapter.load()
     expect(localStorage.getItem).toHaveBeenCalledWith('qdadm_roles')
   })

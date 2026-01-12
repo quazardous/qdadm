@@ -276,7 +276,7 @@ ctx.security.isGranted('entity:*:read')  // wildcard
 
 **Permission flow:**
 ```
-User roles → RoleHierarchy (expand) → RoleGranter (get perms) → PermissionMatcher (check)
+User roles → RolesManager (expand) → RolesProvider (get perms) → PermissionMatcher (check)
 ```
 
 ### Token Expiration

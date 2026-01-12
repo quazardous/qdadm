@@ -9,7 +9,7 @@
 
 import { Kernel } from 'qdadm'
 import { debugBar } from 'qdadm/modules/debug'
-import { createLocalStorageRoleGranter } from 'qdadm/security'
+import { createLocalStorageRolesProvider } from 'qdadm/security'
 import PrimeVue from 'primevue/config'
 import Aura from '@primeuix/themes/aura'
 import 'qdadm/styles'
@@ -39,7 +39,7 @@ const kernel = new Kernel({
   authAdapter,
   entityAuthAdapter: () => authAdapter.getUser(), // Function → EntityAuthAdapter with getCurrentUser
   security: {
-    roleProvider: createLocalStorageRoleGranter({
+    rolesProvider: createLocalStorageRolesProvider({
       key: 'demo_roles',
       // Fixed: system permissions, cannot be edited
       fixed: {
