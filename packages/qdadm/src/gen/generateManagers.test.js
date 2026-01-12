@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
-import { generateManagers } from './generateManagers.js'
+import { generateManagers } from './generateManagers'
 import { rm, readFile, stat } from 'node:fs/promises'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'

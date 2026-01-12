@@ -11,19 +11,27 @@
  * @module gen/StorageProfileFactory
  */
 
+import type { IStorage } from '../entity/storage/IStorage'
+import type { EntityRecord } from '../types'
+
 /**
  * Storage Profile Factory Options
  *
  * Per-entity options passed when creating storage from a profile factory.
  * Allows overriding profile defaults for specific entities.
- *
- * @typedef {object} StorageProfileOptions
- * @property {string} [entity] - Entity name (e.g., 'users', 'posts')
- * @property {object} [client] - Override the profile's HTTP client for this entity
- * @property {object} [headers] - Additional headers for this entity
- * @property {boolean} [readOnly] - Force read-only mode (no create/update/delete)
- * @property {Record<string, *>} [extensions] - Custom per-entity options
  */
+export interface StorageProfileOptions {
+  /** Entity name (e.g., 'users', 'posts') */
+  entity?: string
+  /** Override the profile's HTTP client for this entity */
+  client?: unknown
+  /** Additional headers for this entity */
+  headers?: Record<string, string>
+  /** Force read-only mode (no create/update/delete) */
+  readOnly?: boolean
+  /** Custom per-entity options */
+  extensions?: Record<string, unknown>
+}
 
 /**
  * Storage Profile Factory
@@ -32,17 +40,13 @@
  * The factory encapsulates common storage configuration (API client, auth, base URL)
  * and creates properly-configured storage adapters for each entity.
  *
- * @callback StorageProfileFactory
- * @param {string} endpoint - Entity endpoint path (e.g., '/users', '/api/v1/posts')
- * @param {StorageProfileOptions} [options] - Per-entity options to override profile defaults
- * @returns {import('../entity/storage/IStorage.js').IStorage} Storage instance
- *
  * @example Basic factory using ApiStorage
+ * ```ts
  * import axios from 'axios'
  * import { ApiStorage } from 'qdadm'
  *
  * // Define profile factory with shared configuration
- * const apiProfile = (endpoint, options = {}) => {
+ * const apiProfile: StorageProfileFactory = (endpoint, options = {}) => {
  *   return new ApiStorage({
  *     endpoint,
  *     client: axios.create({
@@ -57,53 +61,33 @@
  * const managers = createManagers(schemas, {
  *   storageProfile: apiProfile
  * })
+ * ```
  *
  * @example Factory with dynamic client resolution
+ * ```ts
  * // For Vue/inject pattern - client resolved at call time
- * const lazyApiProfile = (endpoint, options = {}) => {
+ * const lazyApiProfile: StorageProfileFactory = (endpoint, options = {}) => {
  *   return new ApiStorage({
  *     endpoint,
  *     getClient: () => inject('apiClient'),
  *     ...options
  *   })
  * }
+ * ```
  *
  * @example Factory for local development
+ * ```ts
  * import { MemoryStorage } from 'qdadm'
  *
- * const memoryProfile = (endpoint, options = {}) => {
+ * const memoryProfile: StorageProfileFactory = (endpoint, options = {}) => {
  *   const entity = options.entity || endpoint.replace(/^\//, '')
  *   return new MemoryStorage({
  *     initialData: mockData[entity] || []
  *   })
  * }
- *
- * @example Factory with per-entity overrides
- * const hybridProfile = (endpoint, options = {}) => {
- *   // Some entities use SDK, others use REST
- *   if (options.useSdk) {
- *     return new SdkStorage({
- *       sdk: options.sdk,
- *       collection: options.entity
- *     })
- *   }
- *   return new ApiStorage({
- *     endpoint,
- *     client: defaultClient
- *   })
- * }
- *
- * @example Factory with environment-based switching
- * const envAwareProfile = (endpoint, options = {}) => {
- *   if (import.meta.env.MODE === 'development') {
- *     return new MockApiStorage({ endpoint })
- *   }
- *   return new ApiStorage({
- *     endpoint,
- *     client: productionClient
- *   })
- * }
+ * ```
  */
-
-// Type-only module - no runtime exports
-// Types are available via JSDoc when importing this module
+export type StorageProfileFactory = (
+  endpoint: string,
+  options?: StorageProfileOptions
+) => IStorage<EntityRecord>

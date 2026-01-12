@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { ManualConnector } from './ManualConnector.js'
+import { ManualConnector } from './ManualConnector'
 
 describe('ManualConnector', () => {
   describe('parse()', () => {

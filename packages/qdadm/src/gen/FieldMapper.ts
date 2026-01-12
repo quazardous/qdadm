@@ -13,60 +13,63 @@
  * @module gen/FieldMapper
  */
 
+import type { UnifiedFieldType } from './schema'
+
 /**
  * Base type mappings: JSON Schema type -> UnifiedFieldSchema type
- *
- * @type {Readonly<Record<string, import('./schema.js').UnifiedFieldType>>}
  */
-export const BASE_TYPE_MAPPINGS = Object.freeze({
+export const BASE_TYPE_MAPPINGS: Readonly<Record<string, UnifiedFieldType>> = Object.freeze({
   string: 'text',
   integer: 'number',
   number: 'number',
   boolean: 'boolean',
   array: 'array',
-  object: 'object'
+  object: 'object',
 })
 
 /**
  * Format-specific mappings: JSON Schema format -> UnifiedFieldSchema type
  *
  * These take precedence over base type mappings when a format is specified.
- *
- * @type {Readonly<Record<string, import('./schema.js').UnifiedFieldType>>}
  */
-export const FORMAT_MAPPINGS = Object.freeze({
+export const FORMAT_MAPPINGS: Readonly<Record<string, UnifiedFieldType>> = Object.freeze({
   email: 'email',
   'date-time': 'datetime',
   date: 'date',
   uri: 'url',
   url: 'url',
   uuid: 'uuid',
-  password: 'text'
+  password: 'text',
 })
 
 /**
  * Custom mappings override structure
- *
- * @typedef {object} CustomMappings
- * @property {Record<string, string>} [types] - Custom type mappings { jsonSchemaType: unifiedType }
- * @property {Record<string, string>} [formats] - Custom format mappings { jsonSchemaFormat: unifiedType }
  */
+export interface CustomMappings {
+  /** Custom type mappings { jsonSchemaType: unifiedType } */
+  types?: Record<string, string>
+  /** Custom format mappings { jsonSchemaFormat: unifiedType } */
+  formats?: Record<string, string>
+}
 
 /**
  * Minimal JSON Schema property definition for type detection
- *
- * @typedef {object} SchemaProperty
- * @property {string} [type] - JSON Schema type (string, integer, number, boolean, array, object)
- * @property {string} [format] - JSON Schema format (email, date-time, uuid, etc.)
- * @property {Array<*>} [enum] - Enumeration values
  */
+export interface SchemaProperty {
+  /** JSON Schema type (string, integer, number, boolean, array, object) */
+  type?: string
+  /** JSON Schema format (email, date-time, uuid, etc.) */
+  format?: string
+  /** Enumeration values */
+  enum?: unknown[]
+}
 
 /**
  * Get the UnifiedFieldSchema type for a JSON Schema property
  *
- * @param {SchemaProperty} schema - JSON Schema property definition
- * @param {CustomMappings} [customMappings] - Optional custom type/format mappings
- * @returns {import('./schema.js').UnifiedFieldType | 'select'} - Unified field type
+ * @param schema - JSON Schema property definition
+ * @param customMappings - Optional custom type/format mappings
+ * @returns Unified field type
  *
  * @example
  * // Basic type mapping
@@ -88,7 +91,10 @@ export const FORMAT_MAPPINGS = Object.freeze({
  *   formats: { phone: 'text' }
  * })  // 'text'
  */
-export function getDefaultType(schema, customMappings = {}) {
+export function getDefaultType(
+  schema: SchemaProperty | null | undefined,
+  customMappings: CustomMappings = {}
+): UnifiedFieldType | 'select' {
   const { type, format } = schema || {}
 
   // Check for enum pattern first (returns 'select')
@@ -98,7 +104,7 @@ export function getDefaultType(schema, customMappings = {}) {
 
   // Check custom format mapping
   if (format && customMappings.formats?.[format]) {
-    return customMappings.formats[format]
+    return customMappings.formats[format] as UnifiedFieldType
   }
 
   // Check default format mapping
@@ -108,9 +114,9 @@ export function getDefaultType(schema, customMappings = {}) {
 
   // Check custom type mapping
   if (type && customMappings.types?.[type]) {
-    return customMappings.types[type]
+    return customMappings.types[type] as UnifiedFieldType
   }
 
   // Fall back to base type mapping, default to 'text'
-  return BASE_TYPE_MAPPINGS[type] || 'text'
+  return (type && BASE_TYPE_MAPPINGS[type]) || 'text'
 }

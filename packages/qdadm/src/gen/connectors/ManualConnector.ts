@@ -8,47 +8,77 @@
  * @module gen/connectors/ManualConnector
  */
 
-import { BaseConnector } from './BaseConnector.js'
-import { UNIFIED_FIELD_TYPES, isValidFieldType } from '../schema.js'
-
-/**
- * Manual entity definition input
- *
- * @typedef {object} ManualEntityInput
- * @property {string} name - Entity name (required)
- * @property {string} endpoint - API endpoint path (required)
- * @property {string} [label] - Human-readable singular label
- * @property {string} [labelPlural] - Human-readable plural label
- * @property {string} [labelField] - Field used as display label
- * @property {string} [routePrefix] - Route prefix for admin UI
- * @property {string} [idField] - Primary key field name
- * @property {boolean} [readOnly] - Whether entity is read-only
- * @property {Record<string, ManualFieldInput>} [fields] - Field definitions
- * @property {Record<string, *>} [extensions] - Project-specific extensions
- */
+import { BaseConnector, type ConnectorOptions, type ParseResult, type ParseWarning } from './BaseConnector'
+import {
+  UNIFIED_FIELD_TYPES,
+  isValidFieldType,
+  type UnifiedEntitySchema,
+  type UnifiedFieldSchema,
+  type UnifiedFieldReference,
+  type UnifiedFieldType,
+} from '../schema'
 
 /**
  * Manual field definition input
- *
- * @typedef {object} ManualFieldInput
- * @property {string} name - Field name (required)
- * @property {string} type - Field type (required, must be valid UnifiedFieldType)
- * @property {string} [label] - Human-readable label
- * @property {boolean} [required] - Whether field is required
- * @property {boolean} [readOnly] - Whether field is read-only
- * @property {boolean} [hidden] - Whether field should be hidden in UI
- * @property {string} [format] - Original format hint
- * @property {string[]} [enum] - Allowed values for enumeration
- * @property {*} [default] - Default value
- * @property {import('../schema.js').UnifiedFieldReference} [reference] - Relation to another entity
- * @property {Record<string, *>} [extensions] - Project-specific extensions
  */
+export interface ManualFieldInput {
+  /** Field name (required) */
+  name: string
+  /** Field type (required, must be valid UnifiedFieldType) */
+  type: string
+  /** Human-readable label */
+  label?: string
+  /** Whether field is required */
+  required?: boolean
+  /** Whether field is read-only */
+  readOnly?: boolean
+  /** Whether field should be hidden in UI */
+  hidden?: boolean
+  /** Original format hint */
+  format?: string
+  /** Allowed values for enumeration */
+  enum?: string[]
+  /** Default value */
+  default?: unknown
+  /** Relation to another entity */
+  reference?: UnifiedFieldReference
+  /** Project-specific extensions */
+  extensions?: Record<string, unknown>
+}
+
+/**
+ * Manual entity definition input
+ */
+export interface ManualEntityInput {
+  /** Entity name (required) */
+  name: string
+  /** API endpoint path (required) */
+  endpoint: string
+  /** Human-readable singular label */
+  label?: string
+  /** Human-readable plural label */
+  labelPlural?: string
+  /** Field used as display label */
+  labelField?: string
+  /** Route prefix for admin UI */
+  routePrefix?: string
+  /** Primary key field name */
+  idField?: string
+  /** Whether entity is read-only */
+  readOnly?: boolean
+  /** Field definitions */
+  fields?: Record<string, ManualFieldInput>
+  /** Project-specific extensions */
+  extensions?: Record<string, unknown>
+}
 
 /**
  * Manual source input - array of entities or single entity
- *
- * @typedef {ManualEntityInput[] | ManualEntityInput | { entities: ManualEntityInput[] }} ManualSourceInput
  */
+export type ManualSourceInput =
+  | ManualEntityInput[]
+  | ManualEntityInput
+  | { entities: ManualEntityInput[] }
 
 /**
  * Manual Connector for parsing inline entity/field definitions.
@@ -85,16 +115,20 @@ import { UNIFIED_FIELD_TYPES, isValidFieldType } from '../schema.js'
  * connector.parse({ name: 'users' }) // throws: missing 'endpoint'
  */
 export class ManualConnector extends BaseConnector {
+  constructor(options: ConnectorOptions = {}) {
+    super(options)
+  }
+
   /**
    * Parse manual entity definitions into UnifiedEntitySchema format
    *
-   * @param {ManualSourceInput} source - Manual entity definitions
-   * @returns {import('../schema.js').UnifiedEntitySchema[]} - Parsed entity schemas
-   * @throws {Error} - If validation fails (always in strict mode, on critical errors otherwise)
+   * @param source - Manual entity definitions
+   * @returns Parsed entity schemas
+   * @throws If validation fails (always in strict mode, on critical errors otherwise)
    */
-  parse(source) {
+  parse(source: ManualSourceInput): UnifiedEntitySchema[] {
     const entities = this._normalizeSource(source)
-    const results = []
+    const results: UnifiedEntitySchema[] = []
 
     for (const entity of entities) {
       const validated = this._validateEntity(entity)
@@ -109,14 +143,13 @@ export class ManualConnector extends BaseConnector {
   /**
    * Parse with detailed result including warnings
    *
-   * @param {ManualSourceInput} source - Manual entity definitions
-   * @returns {import('./BaseConnector.js').ParseResult} - Schemas and warnings
+   * @param source - Manual entity definitions
+   * @returns Schemas and warnings
    */
-  parseWithWarnings(source) {
-    /** @type {import('./BaseConnector.js').ParseWarning[]} */
-    const warnings = []
+  parseWithWarnings(source: ManualSourceInput): ParseResult {
+    const warnings: ParseWarning[] = []
     const entities = this._normalizeSource(source)
-    const results = []
+    const results: UnifiedEntitySchema[] = []
 
     for (const entity of entities) {
       const entityWarnings = this._collectWarnings(entity)
@@ -135,10 +168,10 @@ export class ManualConnector extends BaseConnector {
    * Normalize various source formats into entity array
    *
    * @private
-   * @param {ManualSourceInput} source - Source in any supported format
-   * @returns {ManualEntityInput[]} - Normalized entity array
+   * @param source - Source in any supported format
+   * @returns Normalized entity array
    */
-  _normalizeSource(source) {
+  private _normalizeSource(source: ManualSourceInput): ManualEntityInput[] {
     if (!source) {
       return []
     }
@@ -149,13 +182,13 @@ export class ManualConnector extends BaseConnector {
     }
 
     // Object with entities array
-    if (source.entities && Array.isArray(source.entities)) {
+    if ('entities' in source && Array.isArray(source.entities)) {
       return source.entities
     }
 
     // Single entity object (may be missing name - validation will catch it)
     if (typeof source === 'object') {
-      return [source]
+      return [source as ManualEntityInput]
     }
 
     return []
@@ -165,11 +198,11 @@ export class ManualConnector extends BaseConnector {
    * Validate entity definition
    *
    * @private
-   * @param {ManualEntityInput} entity - Entity to validate
-   * @returns {ManualEntityInput | null} - Validated entity or null if invalid
-   * @throws {Error} - In strict mode, throws on validation error
+   * @param entity - Entity to validate
+   * @returns Validated entity or null if invalid
+   * @throws In strict mode, throws on validation error
    */
-  _validateEntity(entity) {
+  private _validateEntity(entity: ManualEntityInput): ManualEntityInput | null {
     const entityName = entity.name || '(unnamed)'
 
     // Validate entity.name
@@ -210,13 +243,13 @@ export class ManualConnector extends BaseConnector {
    * Validate field definition
    *
    * @private
-   * @param {string} entityName - Parent entity name for error context
-   * @param {string} fieldKey - Field key in fields object
-   * @param {ManualFieldInput} field - Field to validate
-   * @returns {boolean} - True if valid
-   * @throws {Error} - In strict mode, throws on validation error
+   * @param entityName - Parent entity name for error context
+   * @param fieldKey - Field key in fields object
+   * @param field - Field to validate
+   * @returns True if valid
+   * @throws In strict mode, throws on validation error
    */
-  _validateField(entityName, fieldKey, field) {
+  private _validateField(entityName: string, fieldKey: string, field: ManualFieldInput): boolean {
     // Validate field.name
     if (!field.name || typeof field.name !== 'string' || field.name.trim() === '') {
       const message = `ManualConnector: entity '${entityName}' field '${fieldKey}' missing required property 'name'`
@@ -252,19 +285,18 @@ export class ManualConnector extends BaseConnector {
    * Collect warnings for an entity without throwing
    *
    * @private
-   * @param {ManualEntityInput} entity - Entity to check
-   * @returns {import('./BaseConnector.js').ParseWarning[]} - Collected warnings
+   * @param entity - Entity to check
+   * @returns Collected warnings
    */
-  _collectWarnings(entity) {
-    /** @type {import('./BaseConnector.js').ParseWarning[]} */
-    const warnings = []
+  private _collectWarnings(entity: ManualEntityInput): ParseWarning[] {
+    const warnings: ParseWarning[] = []
     const entityName = entity.name || '(unnamed)'
 
     if (!entity.name || typeof entity.name !== 'string' || entity.name.trim() === '') {
       warnings.push({
         path: entityName,
         message: "Entity missing required field 'name'",
-        code: 'MISSING_ENTITY_NAME'
+        code: 'MISSING_ENTITY_NAME',
       })
       return warnings // Can't validate further without name
     }
@@ -273,7 +305,7 @@ export class ManualConnector extends BaseConnector {
       warnings.push({
         path: entity.name,
         message: "Entity missing required field 'endpoint'",
-        code: 'MISSING_ENTITY_ENDPOINT'
+        code: 'MISSING_ENTITY_ENDPOINT',
       })
     }
 
@@ -283,7 +315,7 @@ export class ManualConnector extends BaseConnector {
           warnings.push({
             path: `${entity.name}.fields.${fieldKey}`,
             message: "Field missing required property 'name'",
-            code: 'MISSING_FIELD_NAME'
+            code: 'MISSING_FIELD_NAME',
           })
           continue
         }
@@ -292,13 +324,13 @@ export class ManualConnector extends BaseConnector {
           warnings.push({
             path: `${entity.name}.fields.${field.name}`,
             message: "Field missing required property 'type'",
-            code: 'MISSING_FIELD_TYPE'
+            code: 'MISSING_FIELD_TYPE',
           })
         } else if (!isValidFieldType(field.type)) {
           warnings.push({
             path: `${entity.name}.fields.${field.name}`,
             message: `Invalid field type '${field.type}'`,
-            code: 'INVALID_FIELD_TYPE'
+            code: 'INVALID_FIELD_TYPE',
           })
         }
       }
@@ -311,12 +343,11 @@ export class ManualConnector extends BaseConnector {
    * Transform validated entity input into UnifiedEntitySchema
    *
    * @private
-   * @param {ManualEntityInput} entity - Validated entity input
-   * @returns {import('../schema.js').UnifiedEntitySchema} - Transformed entity schema
+   * @param entity - Validated entity input
+   * @returns Transformed entity schema
    */
-  _transformEntity(entity) {
-    /** @type {Record<string, import('../schema.js').UnifiedFieldSchema>} */
-    const transformedFields = {}
+  private _transformEntity(entity: ManualEntityInput): UnifiedEntitySchema {
+    const transformedFields: Record<string, UnifiedFieldSchema> = {}
 
     if (entity.fields) {
       for (const [fieldKey, field] of Object.entries(entity.fields)) {
@@ -328,11 +359,10 @@ export class ManualConnector extends BaseConnector {
       }
     }
 
-    /** @type {import('../schema.js').UnifiedEntitySchema} */
-    const schema = {
+    const schema: UnifiedEntitySchema = {
       name: entity.name,
       endpoint: entity.endpoint,
-      fields: transformedFields
+      fields: transformedFields,
     }
 
     // Add optional properties if provided
@@ -357,14 +387,13 @@ export class ManualConnector extends BaseConnector {
    * Transform field input into UnifiedFieldSchema
    *
    * @private
-   * @param {ManualFieldInput} field - Field input
-   * @returns {import('../schema.js').UnifiedFieldSchema} - Transformed field schema
+   * @param field - Field input
+   * @returns Transformed field schema
    */
-  _transformField(field) {
-    /** @type {import('../schema.js').UnifiedFieldSchema} */
-    const schema = {
+  private _transformField(field: ManualFieldInput): UnifiedFieldSchema {
+    const schema: UnifiedFieldSchema = {
       name: field.name,
-      type: /** @type {import('../schema.js').UnifiedFieldType} */ (field.type)
+      type: field.type as UnifiedFieldType,
     }
 
     // Add optional properties if provided

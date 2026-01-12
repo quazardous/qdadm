@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { applyDecorators } from '../../src/gen/decorators.js'
+import { applyDecorators } from '../../src/gen/decorators'
 
 /**
  * Create a sample UnifiedEntitySchema for testing

@@ -9,36 +9,45 @@
  */
 
 import { EntityManager } from '../entity/EntityManager'
-import { applyDecorators } from './decorators.js'
+import { applyDecorators, type EntityDecorator } from './decorators'
+import type { UnifiedEntitySchema } from './schema'
+import type { StorageProfileFactory, StorageProfileOptions } from './StorageProfileFactory'
 
 /**
  * Entity configuration in the config.entities map
- *
- * @typedef {object} EntityConfig
- * @property {string} schema - Schema source name (key in config.schemas)
- * @property {string} storage - Storage profile name (key in config.storages)
- * @property {string} endpoint - API endpoint path (e.g., '/users')
- * @property {import('./StorageProfileFactory.js').StorageProfileOptions} [options] - Per-entity storage options
  */
+export interface EntityConfig {
+  /** Schema source name (key in config.schemas) */
+  schema: string
+  /** Storage profile name (key in config.storages) */
+  storage: string
+  /** API endpoint path (e.g., '/users') */
+  endpoint: string
+  /** Per-entity storage options */
+  options?: StorageProfileOptions
+}
 
 /**
  * Configuration for createManagers factory
- *
- * @typedef {object} CreateManagersConfig
- * @property {Record<string, import('./schema.js').UnifiedEntitySchema[]>} schemas - Schema sources (connector results) keyed by name
- * @property {Record<string, import('./StorageProfileFactory.js').StorageProfileFactory>} storages - Storage profile factories keyed by name
- * @property {Record<string, EntityConfig>} entities - Entity configurations keyed by entity name
- * @property {Record<string, object>} [decorators] - Per-entity decorators (fields, labels, permissions)
  */
+export interface CreateManagersConfig {
+  /** Schema sources (connector results) keyed by name */
+  schemas: Record<string, UnifiedEntitySchema[]>
+  /** Storage profile factories keyed by name */
+  storages: Record<string, StorageProfileFactory>
+  /** Entity configurations keyed by entity name */
+  entities: Record<string, EntityConfig>
+  /** Per-entity decorators (fields, labels, permissions) */
+  decorators?: Record<string, EntityDecorator>
+}
 
 /**
  * Validate config structure early with clear error messages
  *
- * @param {CreateManagersConfig} config - Configuration to validate
- * @throws {Error} - If config is invalid
- * @private
+ * @param config - Configuration to validate
+ * @throws If config is invalid
  */
-function validateConfig(config) {
+function validateConfig(config: CreateManagersConfig): void {
   if (!config || typeof config !== 'object') {
     throw new Error('createManagers: config is required and must be an object')
   }
@@ -75,11 +84,15 @@ function validateConfig(config) {
 
     // Validate references exist
     if (!(entityConfig.schema in config.schemas)) {
-      throw new Error(`createManagers: entity '${entityName}' references unknown schema '${entityConfig.schema}'`)
+      throw new Error(
+        `createManagers: entity '${entityName}' references unknown schema '${entityConfig.schema}'`
+      )
     }
 
     if (!(entityConfig.storage in config.storages)) {
-      throw new Error(`createManagers: entity '${entityName}' references unknown storage '${entityConfig.storage}'`)
+      throw new Error(
+        `createManagers: entity '${entityName}' references unknown storage '${entityConfig.storage}'`
+      )
     }
   }
 }
@@ -90,16 +103,21 @@ function validateConfig(config) {
  * Connector results are arrays of UnifiedEntitySchema. This finds the schema
  * matching the entity name, or uses the first schema if none matches.
  *
- * @param {import('./schema.js').UnifiedEntitySchema[]} schemas - Connector result (array of schemas)
- * @param {string} entityName - Entity name to find
- * @param {string} schemaSourceName - Schema source name for error messages
- * @returns {import('./schema.js').UnifiedEntitySchema} - Found schema
- * @throws {Error} - If schema not found
- * @private
+ * @param schemas - Connector result (array of schemas)
+ * @param entityName - Entity name to find
+ * @param schemaSourceName - Schema source name for error messages
+ * @returns Found schema
+ * @throws If schema not found
  */
-function findSchemaForEntity(schemas, entityName, schemaSourceName) {
+function findSchemaForEntity(
+  schemas: UnifiedEntitySchema[],
+  entityName: string,
+  schemaSourceName: string
+): UnifiedEntitySchema {
   if (!Array.isArray(schemas)) {
-    throw new Error(`createManagers: schema source '${schemaSourceName}' must be an array of UnifiedEntitySchema`)
+    throw new Error(
+      `createManagers: schema source '${schemaSourceName}' must be an array of UnifiedEntitySchema`
+    )
   }
 
   if (schemas.length === 0) {
@@ -107,19 +125,21 @@ function findSchemaForEntity(schemas, entityName, schemaSourceName) {
   }
 
   // Find by entity name
-  const schema = schemas.find(s => s.name === entityName)
+  const schema = schemas.find((s) => s.name === entityName)
   if (schema) {
     return schema
   }
 
   // If only one schema in source, use it (common for single-entity sources)
   if (schemas.length === 1) {
-    return schemas[0]
+    return schemas[0]!
   }
 
   // Multiple schemas but none match
-  const available = schemas.map(s => s.name).join(', ')
-  throw new Error(`createManagers: entity '${entityName}' not found in schema source '${schemaSourceName}'. Available: ${available}`)
+  const available = schemas.map((s) => s.name).join(', ')
+  throw new Error(
+    `createManagers: entity '${entityName}' not found in schema source '${schemaSourceName}'. Available: ${available}`
+  )
 }
 
 /**
@@ -128,11 +148,12 @@ function findSchemaForEntity(schemas, entityName, schemaSourceName) {
  * This is the runtime factory that wires schemas, storage profiles, and
  * decorators together at runtime without code generation.
  *
- * @param {CreateManagersConfig} config - Configuration object
- * @returns {Map<string, EntityManager>} - Map of entity name to EntityManager instance
- * @throws {Error} - If config is invalid or references missing schemas/storages
+ * @param config - Configuration object
+ * @returns Map of entity name to EntityManager instance
+ * @throws If config is invalid or references missing schemas/storages
  *
  * @example
+ * ```ts
  * import { createManagers } from 'qdadm/gen'
  * import { ManualConnector } from 'qdadm/gen'
  * import { ApiStorage } from 'qdadm'
@@ -173,18 +194,18 @@ function findSchemaForEntity(schemas, entityName, schemaSourceName) {
  *
  * const usersManager = managers.get('users')
  * const users = await usersManager.list()
+ * ```
  */
-export function createManagers(config) {
+export function createManagers(config: CreateManagersConfig): Map<string, EntityManager> {
   // Validate config structure early
   validateConfig(config)
 
-  /** @type {Map<string, EntityManager>} */
-  const managers = new Map()
+  const managers: Map<string, EntityManager> = new Map()
 
   // Process each entity configuration
   for (const [entityName, entityConfig] of Object.entries(config.entities)) {
-    // 1. Get schema from connector result
-    const schemaSource = config.schemas[entityConfig.schema]
+    // 1. Get schema from connector result (validated in validateConfig)
+    const schemaSource = config.schemas[entityConfig.schema]!
     let schema = findSchemaForEntity(schemaSource, entityName, entityConfig.schema)
 
     // 2. Apply decorators if defined
@@ -197,9 +218,9 @@ export function createManagers(config) {
       throw new Error(`createManagers: storage '${entityConfig.storage}' must be a factory function`)
     }
 
-    const storageOptions = {
+    const storageOptions: StorageProfileOptions = {
       entity: entityName,
-      ...entityConfig.options
+      ...entityConfig.options,
     }
     const storage = storageFactory(entityConfig.endpoint, storageOptions)
 
@@ -213,7 +234,7 @@ export function createManagers(config) {
       labelField: schema.labelField,
       routePrefix: schema.routePrefix,
       readOnly: schema.readOnly,
-      fields: schema.fields
+      fields: schema.fields,
     })
 
     // 5. Store in result Map

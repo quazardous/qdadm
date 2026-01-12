@@ -3,7 +3,7 @@ import {
   getDefaultType,
   BASE_TYPE_MAPPINGS,
   FORMAT_MAPPINGS
-} from '../../src/gen/FieldMapper.js'
+} from '../../src/gen/FieldMapper'
 
 describe('FieldMapper', () => {
   describe('BASE_TYPE_MAPPINGS', () => {

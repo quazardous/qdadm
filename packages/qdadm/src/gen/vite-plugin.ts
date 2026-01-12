@@ -7,17 +7,20 @@
  * @module gen/vite-plugin
  */
 
-import { generateManagers } from './generateManagers.js'
+import { generateManagers, type GenerateManagersConfig } from './generateManagers'
 import { pathToFileURL } from 'node:url'
 import { resolve } from 'node:path'
+import type { Plugin } from 'vite'
 
 /**
  * Plugin options for qdadmGen
- *
- * @typedef {object} QdadmGenOptions
- * @property {string} [config] - Path to qdadm config file (default: 'qdadm.config.js')
- * @property {string} [output] - Override output directory for generated files
  */
+export interface QdadmGenOptions {
+  /** Path to qdadm config file (default: 'qdadm.config.js') */
+  config?: string
+  /** Override output directory for generated files */
+  output?: string
+}
 
 /**
  * Vite plugin for generating EntityManager files at build time
@@ -25,10 +28,11 @@ import { resolve } from 'node:path'
  * Loads the qdadm configuration file and calls generateManagers during
  * Vite's buildStart hook. Supports both ESM and CommonJS config files.
  *
- * @param {QdadmGenOptions} [options={}] - Plugin options
- * @returns {import('vite').Plugin} Vite plugin object
+ * @param options - Plugin options
+ * @returns Vite plugin object
  *
  * @example
+ * ```ts
  * // vite.config.js
  * import { defineConfig } from 'vite'
  * import { qdadmGen } from 'qdadm/gen/vite-plugin'
@@ -41,8 +45,10 @@ import { resolve } from 'node:path'
  *     })
  *   ]
  * })
+ * ```
  *
  * @example
+ * ```ts
  * // qdadm.config.js
  * export default {
  *   output: 'src/generated/managers/',
@@ -55,8 +61,9 @@ import { resolve } from 'node:path'
  *     }
  *   }
  * }
+ * ```
  */
-export function qdadmGen(options = {}) {
+export function qdadmGen(options: QdadmGenOptions = {}): Plugin {
   const configPath = options.config || 'qdadm.config.js'
 
   return {
@@ -69,7 +76,9 @@ export function qdadmGen(options = {}) {
 
         // Load config file dynamically
         const configUrl = pathToFileURL(resolvedConfigPath).href
-        const configModule = await import(configUrl)
+        const configModule = (await import(configUrl)) as {
+          default?: GenerateManagersConfig
+        } & GenerateManagersConfig
         const loadedConfig = configModule.default || configModule
 
         // Validate loaded config
@@ -82,9 +91,9 @@ export function qdadmGen(options = {}) {
         }
 
         // Merge plugin options with config (plugin options take precedence)
-        const mergedConfig = {
+        const mergedConfig: GenerateManagersConfig = {
           ...loadedConfig,
-          ...(options.output && { output: options.output })
+          ...(options.output && { output: options.output }),
         }
 
         // Generate managers
@@ -100,6 +109,6 @@ export function qdadmGen(options = {}) {
         const message = error instanceof Error ? error.message : String(error)
         throw new Error(`[qdadm-gen] Failed to generate managers: ${message}`)
       }
-    }
+    },
   }
 }

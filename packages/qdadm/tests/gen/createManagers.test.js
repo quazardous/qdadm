@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { createManagers } from '../../src/gen/createManagers.js'
-import { ManualConnector } from '../../src/gen/connectors/ManualConnector.js'
+import { createManagers } from '../../src/gen/createManagers'
+import { ManualConnector } from '../../src/gen/connectors/ManualConnector'
 import { MemoryStorage } from '../../src/entity/storage/MemoryStorage'
 import { EntityManager } from '../../src/entity/EntityManager'
 

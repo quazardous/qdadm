@@ -9,31 +9,41 @@
  * @module gen/connectors/BaseConnector
  */
 
-/**
- * Connector options for customizing parsing behavior
- *
- * @typedef {object} ConnectorOptions
- * @property {string} [name] - Connector instance name for debugging
- * @property {boolean} [strict] - Throw on validation errors instead of warning (default: false)
- * @property {Record<string, *>} [extensions] - Custom extension data passed to output schemas
- */
+import type { UnifiedEntitySchema } from '../schema'
 
 /**
- * Parse result with parsed schemas and any encountered issues
- *
- * @typedef {object} ParseResult
- * @property {import('../schema.js').UnifiedEntitySchema[]} schemas - Parsed entity schemas
- * @property {ParseWarning[]} warnings - Non-fatal issues encountered during parsing
+ * Connector options for customizing parsing behavior
  */
+export interface ConnectorOptions {
+  /** Connector instance name for debugging */
+  name?: string
+  /** Throw on validation errors instead of warning (default: false) */
+  strict?: boolean
+  /** Custom extension data passed to output schemas */
+  extensions?: Record<string, unknown>
+}
 
 /**
  * Warning encountered during parsing
- *
- * @typedef {object} ParseWarning
- * @property {string} path - Location in source where issue occurred
- * @property {string} message - Description of the issue
- * @property {string} [code] - Warning code for programmatic handling
  */
+export interface ParseWarning {
+  /** Location in source where issue occurred */
+  path: string
+  /** Description of the issue */
+  message: string
+  /** Warning code for programmatic handling */
+  code?: string
+}
+
+/**
+ * Parse result with parsed schemas and any encountered issues
+ */
+export interface ParseResult {
+  /** Parsed entity schemas */
+  schemas: UnifiedEntitySchema[]
+  /** Non-fatal issues encountered during parsing */
+  warnings: ParseWarning[]
+}
 
 /**
  * Base connector class for parsing schema sources into UnifiedEntitySchema format.
@@ -53,24 +63,24 @@
  * const connector = new ManualConnector({ strict: true })
  * const schemas = connector.parse(manualDefinitions)
  */
-export class BaseConnector {
+export abstract class BaseConnector {
+  /** Connector instance name */
+  name: string
+
+  /** Whether to throw on validation errors */
+  strict: boolean
+
+  /** Custom extension data */
+  extensions: Record<string, unknown>
+
   /**
    * Create a new connector instance
    *
-   * @param {ConnectorOptions} [options={}] - Connector configuration options
+   * @param options - Connector configuration options
    */
-  constructor(options = {}) {
-    if (new.target === BaseConnector) {
-      throw new Error('BaseConnector is abstract and cannot be instantiated directly')
-    }
-
-    /** @type {string} */
+  constructor(options: ConnectorOptions = {}) {
     this.name = options.name || this.constructor.name
-
-    /** @type {boolean} */
     this.strict = options.strict ?? false
-
-    /** @type {Record<string, *>} */
     this.extensions = options.extensions || {}
   }
 
@@ -83,9 +93,9 @@ export class BaseConnector {
    * - OpenAPIConnector: OpenAPI 3.x specification object
    *
    * @abstract
-   * @param {*} source - Source data to parse (format depends on connector type)
-   * @returns {import('../schema.js').UnifiedEntitySchema[]} - Parsed entity schemas
-   * @throws {Error} - If parsing fails (in strict mode) or source is invalid
+   * @param source - Source data to parse (format depends on connector type)
+   * @returns Parsed entity schemas
+   * @throws If parsing fails (in strict mode) or source is invalid
    *
    * @example
    * // ManualConnector source format
@@ -103,9 +113,7 @@ export class BaseConnector {
    *   components: { schemas: { ... } }
    * })
    */
-  parse(source) {
-    throw new Error(`${this.name}.parse() must be implemented by subclass`)
-  }
+  abstract parse(source: unknown): UnifiedEntitySchema[]
 
   /**
    * Parse with detailed result including warnings
@@ -116,13 +124,13 @@ export class BaseConnector {
    * Default implementation wraps `parse()` with empty warnings array.
    * Subclasses can override for more detailed reporting.
    *
-   * @param {*} source - Source data to parse
-   * @returns {ParseResult} - Schemas and any warnings encountered
+   * @param source - Source data to parse
+   * @returns Schemas and any warnings encountered
    */
-  parseWithWarnings(source) {
+  parseWithWarnings(source: unknown): ParseResult {
     return {
       schemas: this.parse(source),
-      warnings: []
+      warnings: [],
     }
   }
 
@@ -131,10 +139,10 @@ export class BaseConnector {
    *
    * Override in subclasses to add custom validation.
    *
-   * @returns {boolean} - True if connector is valid
-   * @throws {Error} - If connector configuration is invalid
+   * @returns True if connector is valid
+   * @throws If connector configuration is invalid
    */
-  validate() {
+  validate(): boolean {
     return true
   }
 }

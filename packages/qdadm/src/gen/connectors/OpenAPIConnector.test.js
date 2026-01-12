@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { OpenAPIConnector } from './OpenAPIConnector.js'
+import { OpenAPIConnector } from './OpenAPIConnector'
 import sampleSpec from './__fixtures__/sample-openapi.json'
 
 describe('OpenAPIConnector', () => {

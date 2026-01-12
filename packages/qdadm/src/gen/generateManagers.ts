@@ -9,59 +9,69 @@
  */
 
 import { mkdir, writeFile } from 'node:fs/promises'
-import { join, dirname } from 'node:path'
+import { join } from 'node:path'
+
+import type { UnifiedEntitySchema, UnifiedFieldSchema } from './schema'
+import type { EntityDecorator } from './decorators'
 
 /**
  * Default output directory for generated managers
- * @type {string}
  */
 const DEFAULT_OUTPUT_DIR = 'src/generated/managers/'
 
 /**
- * Configuration for generateManagers
- *
- * @typedef {object} GenerateManagersConfig
- * @property {string} [output] - Output directory (default: 'src/generated/managers/')
- * @property {boolean} [classMode] - Generate classes instead of instances (for extension pattern)
- * @property {Record<string, GenerateManagersEntityConfig>} entities - Entity configurations keyed by entity name
+ * Entity configuration for generation
  */
+export interface GenerateManagersEntityConfig {
+  /** Entity schema */
+  schema: UnifiedEntitySchema
+  /** API endpoint path (e.g., '/users') */
+  endpoint: string
+  /** Import path for storage (e.g., 'qdadm' or './storage') */
+  storageImport: string
+  /** Storage class name (e.g., 'ApiStorage') */
+  storageClass: string
+  /** Additional storage constructor options */
+  storageOptions?: Record<string, unknown>
+  /** Field decorators to apply */
+  decorators?: EntityDecorator
+  /** Generate class instead of instance (for extension) */
+  classMode?: boolean
+}
 
 /**
- * Entity configuration for generation
- *
- * @typedef {object} GenerateManagersEntityConfig
- * @property {import('./schema.js').UnifiedEntitySchema} schema - Entity schema
- * @property {string} endpoint - API endpoint path (e.g., '/users')
- * @property {string} storageImport - Import path for storage (e.g., 'qdadm' or './storage')
- * @property {string} storageClass - Storage class name (e.g., 'ApiStorage')
- * @property {object} [storageOptions] - Additional storage constructor options
- * @property {object} [decorators] - Field decorators to apply
- * @property {boolean} [classMode] - Generate class instead of instance (for extension)
+ * Configuration for generateManagers
  */
+export interface GenerateManagersConfig {
+  /** Output directory (default: 'src/generated/managers/') */
+  output?: string
+  /** Generate classes instead of instances (for extension pattern) */
+  classMode?: boolean
+  /** Entity configurations keyed by entity name */
+  entities: Record<string, GenerateManagersEntityConfig>
+}
 
 /**
  * Convert entity name to PascalCase for class name
  *
- * @param {string} name - Entity name (e.g., 'users', 'blog_posts')
- * @returns {string} PascalCase name (e.g., 'Users', 'BlogPosts')
- * @private
+ * @param name - Entity name (e.g., 'users', 'blog_posts')
+ * @returns PascalCase name (e.g., 'Users', 'BlogPosts')
  */
-function toPascalCase(name) {
+function toPascalCase(name: string): string {
   return name
     .split(/[_-]/)
-    .map(part => part.charAt(0).toUpperCase() + part.slice(1))
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
     .join('')
 }
 
 /**
  * Serialize a value to JavaScript source code
  *
- * @param {*} value - Value to serialize
- * @param {number} [indent=0] - Current indentation level
- * @returns {string} JavaScript source code
- * @private
+ * @param value - Value to serialize
+ * @param indent - Current indentation level
+ * @returns JavaScript source code
  */
-function serializeValue(value, indent = 0) {
+function serializeValue(value: unknown, indent: number = 0): string {
   const spaces = '  '.repeat(indent)
   const innerSpaces = '  '.repeat(indent + 1)
 
@@ -71,15 +81,16 @@ function serializeValue(value, indent = 0) {
   if (typeof value === 'number' || typeof value === 'boolean') return String(value)
   if (Array.isArray(value)) {
     if (value.length === 0) return '[]'
-    const items = value.map(v => serializeValue(v, indent + 1))
+    const items = value.map((v) => serializeValue(v, indent + 1))
     return `[\n${innerSpaces}${items.join(`,\n${innerSpaces}`)}\n${spaces}]`
   }
   if (typeof value === 'object') {
-    const keys = Object.keys(value)
+    const obj = value as Record<string, unknown>
+    const keys = Object.keys(obj)
     if (keys.length === 0) return '{}'
-    const entries = keys.map(key => {
+    const entries = keys.map((key) => {
       const safeKey = /^[a-zA-Z_$][a-zA-Z0-9_$]*$/.test(key) ? key : JSON.stringify(key)
-      return `${innerSpaces}${safeKey}: ${serializeValue(value[key], indent + 1)}`
+      return `${innerSpaces}${safeKey}: ${serializeValue(obj[key], indent + 1)}`
     })
     return `{\n${entries.join(',\n')}\n${spaces}}`
   }
@@ -87,31 +98,47 @@ function serializeValue(value, indent = 0) {
 }
 
 /**
+ * Manager options for EntityManager constructor
+ */
+interface ManagerOptions {
+  name: string
+  idField: string
+  label?: string
+  labelPlural?: string
+  labelField?: string
+  routePrefix?: string
+  readOnly?: boolean
+  fields: Record<string, UnifiedFieldSchema>
+}
+
+/**
  * Generate the source code for a single entity manager file
  *
- * @param {string} entityName - Entity name
- * @param {GenerateManagersEntityConfig} entityConfig - Entity configuration
- * @param {object} [globalOptions] - Global generation options
- * @param {boolean} [globalOptions.classMode] - Generate class instead of instance
- * @returns {string} Generated JavaScript source code
- * @private
+ * @param entityName - Entity name
+ * @param entityConfig - Entity configuration
+ * @param globalOptions - Global generation options
+ * @returns Generated JavaScript source code
  */
-function generateManagerSource(entityName, entityConfig, globalOptions = {}) {
+function generateManagerSource(
+  entityName: string,
+  entityConfig: GenerateManagersEntityConfig,
+  globalOptions: { classMode?: boolean } = {}
+): string {
   const { schema, endpoint, storageImport, storageClass, storageOptions = {}, decorators } = entityConfig
   const classMode = entityConfig.classMode ?? globalOptions.classMode ?? false
   const className = toPascalCase(entityName)
 
   // Build storage options object
-  const fullStorageOptions = {
+  const fullStorageOptions: Record<string, unknown> = {
     endpoint,
-    ...storageOptions
+    ...storageOptions,
   }
 
   // Apply decorators to schema if provided
   let finalSchema = schema
   if (decorators?.fields) {
     // Create decorated fields inline
-    const decoratedFields = {}
+    const decoratedFields: Record<string, UnifiedFieldSchema> = {}
     for (const [fieldName, fieldSchema] of Object.entries(schema.fields)) {
       const decorator = decorators.fields[fieldName]
       if (decorator) {
@@ -124,7 +151,7 @@ function generateManagerSource(entityName, entityConfig, globalOptions = {}) {
   }
 
   // Build EntityManager options
-  const managerOptions = {
+  const managerOptions: Record<string, unknown> = {
     name: finalSchema.name,
     idField: finalSchema.idField || 'id',
     label: finalSchema.label,
@@ -132,7 +159,7 @@ function generateManagerSource(entityName, entityConfig, globalOptions = {}) {
     labelField: finalSchema.labelField,
     routePrefix: finalSchema.routePrefix,
     readOnly: finalSchema.readOnly,
-    fields: finalSchema.fields
+    fields: finalSchema.fields,
   }
 
   // Remove undefined values
@@ -221,11 +248,12 @@ export const ${entityName}Manager = new EntityManager({
  * Creates one JavaScript file per entity in the output directory.
  * Each file exports the entity's schema and a configured EntityManager instance.
  *
- * @param {GenerateManagersConfig} config - Configuration object
- * @returns {Promise<string[]>} List of generated file paths
- * @throws {Error} If config is invalid or file operations fail
+ * @param config - Configuration object
+ * @returns List of generated file paths
+ * @throws If config is invalid or file operations fail
  *
  * @example
+ * ```ts
  * import { generateManagers } from 'qdadm/gen'
  *
  * const generatedFiles = await generateManagers({
@@ -248,8 +276,9 @@ export const ${entityName}Manager = new EntityManager({
  *
  * console.log('Generated:', generatedFiles)
  * // ['src/generated/managers/usersManager.js']
+ * ```
  */
-export async function generateManagers(config) {
+export async function generateManagers(config: GenerateManagersConfig): Promise<string[]> {
   // Validate config
   if (!config || typeof config !== 'object') {
     throw new Error('generateManagers: config is required and must be an object')
@@ -261,7 +290,7 @@ export async function generateManagers(config) {
 
   const outputDir = config.output || DEFAULT_OUTPUT_DIR
   const globalOptions = { classMode: config.classMode ?? false }
-  const generatedFiles = []
+  const generatedFiles: string[] = []
 
   // Validate each entity config
   for (const [entityName, entityConfig] of Object.entries(config.entities)) {

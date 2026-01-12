@@ -8,39 +8,41 @@
  * @module gen/decorators
  */
 
+import type { UnifiedEntitySchema, UnifiedFieldSchema } from './schema'
+
 /**
  * Allowed decorator properties for field overrides.
  * Unknown properties will trigger a console warning.
- *
- * @type {readonly string[]}
  */
-const ALLOWED_FIELD_DECORATORS = Object.freeze([
-  'hidden',
-  'label',
-  'readOnly',
-  'order'
-])
+const ALLOWED_FIELD_DECORATORS = ['hidden', 'label', 'readOnly', 'order'] as const
+
+type AllowedFieldDecoratorKey = (typeof ALLOWED_FIELD_DECORATORS)[number]
 
 /**
  * Field Decorator Configuration
  *
  * Per-field overrides that can be applied to schema fields.
- *
- * @typedef {object} FieldDecorator
- * @property {boolean} [hidden] - Override field visibility
- * @property {string} [label] - Override field label
- * @property {boolean} [readOnly] - Override field read-only state
- * @property {number} [order] - Override field display order
  */
+export interface FieldDecorator {
+  /** Override field visibility */
+  hidden?: boolean
+  /** Override field label */
+  label?: string
+  /** Override field read-only state */
+  readOnly?: boolean
+  /** Override field display order */
+  order?: number
+}
 
 /**
  * Entity Decorator Configuration
  *
  * Decorator configuration for a single entity.
- *
- * @typedef {object} EntityDecorator
- * @property {Record<string, FieldDecorator>} [fields] - Field-level overrides keyed by field name
  */
+export interface EntityDecorator {
+  /** Field-level overrides keyed by field name */
+  fields?: Record<string, FieldDecorator>
+}
 
 /**
  * Apply decorators to a UnifiedEntitySchema
@@ -49,9 +51,9 @@ const ALLOWED_FIELD_DECORATORS = Object.freeze([
  * decorator properties merged onto matching fields. Original schema is
  * not mutated.
  *
- * @param {import('./schema.js').UnifiedEntitySchema} schema - Original entity schema
- * @param {EntityDecorator} [decoratorConfig] - Decorator configuration
- * @returns {import('./schema.js').UnifiedEntitySchema} New schema with decorators applied
+ * @param schema - Original entity schema
+ * @param decoratorConfig - Decorator configuration
+ * @returns New schema with decorators applied
  *
  * @example
  * // Hide email field and rename created_at
@@ -72,7 +74,10 @@ const ALLOWED_FIELD_DECORATORS = Object.freeze([
  *   }
  * })
  */
-export function applyDecorators(schema, decoratorConfig) {
+export function applyDecorators(
+  schema: UnifiedEntitySchema,
+  decoratorConfig?: EntityDecorator
+): UnifiedEntitySchema {
   // No decorators - return schema as-is (still immutable reference)
   if (!decoratorConfig || !decoratorConfig.fields) {
     return schema
@@ -81,7 +86,7 @@ export function applyDecorators(schema, decoratorConfig) {
   const { fields: fieldDecorators } = decoratorConfig
 
   // Build new fields object with decorators applied
-  const decoratedFields = {}
+  const decoratedFields: Record<string, UnifiedFieldSchema> = {}
 
   for (const [fieldName, fieldSchema] of Object.entries(schema.fields)) {
     const decorator = fieldDecorators[fieldName]
@@ -94,7 +99,7 @@ export function applyDecorators(schema, decoratorConfig) {
 
     // Validate decorator properties
     for (const key of Object.keys(decorator)) {
-      if (!ALLOWED_FIELD_DECORATORS.includes(key)) {
+      if (!(ALLOWED_FIELD_DECORATORS as readonly string[]).includes(key)) {
         console.warn(
           `[qdadm] Unknown decorator property "${key}" for field "${fieldName}" in entity "${schema.name}". Allowed: ${ALLOWED_FIELD_DECORATORS.join(', ')}`
         )
@@ -102,10 +107,10 @@ export function applyDecorators(schema, decoratorConfig) {
     }
 
     // Merge decorator properties onto field (only allowed properties)
-    const decoratedField = { ...fieldSchema }
+    const decoratedField: UnifiedFieldSchema = { ...fieldSchema }
     for (const key of ALLOWED_FIELD_DECORATORS) {
       if (key in decorator) {
-        decoratedField[key] = decorator[key]
+        ;(decoratedField as Record<string, unknown>)[key] = decorator[key as AllowedFieldDecoratorKey]
       }
     }
 
@@ -124,6 +129,6 @@ export function applyDecorators(schema, decoratorConfig) {
   // Return new schema with decorated fields
   return {
     ...schema,
-    fields: decoratedFields
+    fields: decoratedFields,
   }
 }
