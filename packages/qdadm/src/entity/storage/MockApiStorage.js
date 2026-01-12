@@ -1,5 +1,5 @@
 import { IStorage } from './IStorage.js'
-import { QueryExecutor } from '../../query/index.js'
+import { QueryExecutor } from '../../query/index'
 
 /**
  * MockApiStorage - In-memory storage with localStorage persistence

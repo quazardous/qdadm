@@ -9,16 +9,52 @@
  *   window.__debug.triggerEvent('filterChange', { name: 'queue_status', value: 'pending' })
  */
 
-class DebugInjector {
-  constructor() {
-    this.vueApp = null
-    this.components = new Map()
+interface SelectInfo {
+  index: number
+  element: Element
+  component: VueComponentProxy | null
+  value: unknown
+  placeholder: string | null | undefined
+}
+
+interface VueComponentProxy {
+  modelValue?: unknown
+  localFilterValues?: Record<string, unknown>
+  onFilterChange?: (name: string) => void
+  $options?: { name?: string }
+  $parent?: VueComponentProxy
+}
+
+interface VNodeComponent {
+  proxy?: VueComponentProxy
+  parent?: VNodeComponent
+  type?: { name?: string; __name?: string }
+  subTree?: { children?: VNodeComponent[] }
+  component?: VNodeComponent
+}
+
+interface VueApp {
+  _instance?: VNodeComponent
+}
+
+declare global {
+  interface Window {
+    __debug: DebugInjector
   }
+  interface HTMLElement {
+    __vue_app__?: VueApp
+    __vueParentComponent?: VNodeComponent
+  }
+}
+
+class DebugInjector {
+  vueApp: VueApp | null = null
+  components: Map<string, VueComponentProxy> = new Map()
 
   /**
    * Initialize and expose to window
    */
-  init() {
+  init(): this {
     window.__debug = this
     console.log('🔧 Debug Injector initialized. Use window.__debug to access.')
     this.findVueApp()
@@ -28,8 +64,8 @@ class DebugInjector {
   /**
    * Find Vue app instance
    */
-  findVueApp() {
-    const appEl = document.querySelector('#app')
+  findVueApp(): VueApp | null {
+    const appEl = document.querySelector('#app') as HTMLElement | null
     if (appEl && appEl.__vue_app__) {
       this.vueApp = appEl.__vue_app__
       console.log('✅ Vue app found:', this.vueApp)
@@ -42,8 +78,10 @@ class DebugInjector {
   /**
    * Get Vue component instance from DOM element
    */
-  getComponentFromElement(selector) {
-    const el = typeof selector === 'string' ? document.querySelector(selector) : selector
+  getComponentFromElement(selector: string | Element): VueComponentProxy | null {
+    const el = (
+      typeof selector === 'string' ? document.querySelector(selector) : selector
+    ) as HTMLElement | null
     if (!el) return null
 
     // Vue 3 stores component on __vueParentComponent
@@ -57,9 +95,9 @@ class DebugInjector {
   /**
    * Find all PrimeVue Select components
    */
-  findSelects() {
+  findSelects(): SelectInfo[] {
     const selects = document.querySelectorAll('[data-pc-name="select"]')
-    const results = []
+    const results: SelectInfo[] = []
     selects.forEach((el, i) => {
       const component = this.getComponentFromElement(el)
       results.push({
@@ -67,21 +105,23 @@ class DebugInjector {
         element: el,
         component,
         value: component?.modelValue,
-        placeholder: el.querySelector('[data-pc-section="label"]')?.textContent
+        placeholder: el.querySelector('[data-pc-section="label"]')?.textContent,
       })
     })
-    console.table(results.map(r => ({
-      index: r.index,
-      placeholder: r.placeholder,
-      value: r.value
-    })))
+    console.table(
+      results.map((r) => ({
+        index: r.index,
+        placeholder: r.placeholder,
+        value: r.value,
+      }))
+    )
     return results
   }
 
   /**
    * Simulate selecting a value in a PrimeVue Select
    */
-  selectValue(selectIndex, optionText) {
+  selectValue(selectIndex: number, optionText: string): boolean {
     const selects = this.findSelects()
     const select = selects[selectIndex]
     if (!select) {
@@ -90,15 +130,15 @@ class DebugInjector {
     }
 
     // Click to open dropdown
-    select.element.click()
+    ;(select.element as HTMLElement).click()
 
     // Wait for dropdown to open and find option
     setTimeout(() => {
       const options = document.querySelectorAll('[data-pc-section="option"]')
       for (const opt of options) {
-        if (opt.textContent.includes(optionText)) {
+        if (opt.textContent?.includes(optionText)) {
           console.log(`🎯 Clicking option: ${opt.textContent}`)
-          opt.click()
+          ;(opt as HTMLElement).click()
           return true
         }
       }
@@ -113,7 +153,7 @@ class DebugInjector {
   /**
    * Direct Vue reactivity manipulation - find ListPage component
    */
-  findListPage() {
+  findListPage(): VueComponentProxy | null {
     // Find the main content area
     const main = document.querySelector('main')
     if (!main) return null
@@ -126,7 +166,7 @@ class DebugInjector {
         console.log('✅ Found ListPage component:', component)
         return component
       }
-      component = component.$parent
+      component = component.$parent || null
     }
 
     // Alternative: search in Vue app's component tree
@@ -137,11 +177,11 @@ class DebugInjector {
   /**
    * Get current filter values from ListPage
    */
-  getFilterValues() {
+  getFilterValues(): Record<string, unknown> | null {
     const listPage = this.findListPage()
     if (listPage) {
       console.log('Filter values:', listPage.localFilterValues)
-      return listPage.localFilterValues
+      return listPage.localFilterValues || null
     }
     return null
   }
@@ -149,7 +189,7 @@ class DebugInjector {
   /**
    * Directly set a filter value (bypasses UI)
    */
-  setFilterDirect(filterName, value) {
+  setFilterDirect(filterName: string, value: unknown): boolean {
     const listPage = this.findListPage()
     if (!listPage) {
       console.error('ListPage not found')
@@ -157,7 +197,9 @@ class DebugInjector {
     }
 
     console.log(`Setting ${filterName} = ${value}`)
-    listPage.localFilterValues[filterName] = value
+    if (listPage.localFilterValues) {
+      listPage.localFilterValues[filterName] = value
+    }
 
     // Trigger the change handler
     if (listPage.onFilterChange) {
@@ -170,10 +212,10 @@ class DebugInjector {
   /**
    * Dispatch a custom event that Vue components can listen to
    */
-  dispatchFilterChange(filterName, value) {
+  dispatchFilterChange(filterName: string, value: unknown): void {
     const event = new CustomEvent('debug:filterChange', {
       detail: { filterName, value },
-      bubbles: true
+      bubbles: true,
     })
     document.dispatchEvent(event)
     console.log(`📤 Dispatched debug:filterChange for ${filterName}=${value}`)
@@ -182,9 +224,9 @@ class DebugInjector {
   /**
    * Log all Vue component instances in the tree
    */
-  logComponentTree(root = null, depth = 0) {
+  logComponentTree(root: VNodeComponent | null = null, depth = 0): void {
     if (!root) {
-      root = this.findVueApp()?._instance
+      root = this.findVueApp()?._instance || null
       if (!root) return
     }
 
@@ -204,7 +246,7 @@ class DebugInjector {
   /**
    * Execute code in Vue component context
    */
-  execInComponent(selector, code) {
+  execInComponent(selector: string, code: string): unknown {
     const component = this.getComponentFromElement(selector)
     if (!component) {
       console.error('Component not found')
@@ -223,15 +265,19 @@ class DebugInjector {
   /**
    * Monitor all events on an element
    */
-  monitorEvents(selector) {
+  monitorEvents(selector: string): void {
     const el = document.querySelector(selector)
     if (!el) return
 
     const events = ['click', 'change', 'input', 'focus', 'blur', 'mousedown', 'mouseup']
-    events.forEach(evt => {
-      el.addEventListener(evt, (e) => {
-        console.log(`📡 ${evt}:`, e.target, e)
-      }, true)
+    events.forEach((evt) => {
+      el.addEventListener(
+        evt,
+        (e) => {
+          console.log(`📡 ${evt}:`, e.target, e)
+        },
+        true
+      )
     })
     console.log(`Monitoring events on ${selector}`)
   }
@@ -239,7 +285,7 @@ class DebugInjector {
   /**
    * Quick help
    */
-  help() {
+  help(): void {
     console.log(`
 🔧 Debug Injector Commands:
   __debug.findSelects()           - List all Select components

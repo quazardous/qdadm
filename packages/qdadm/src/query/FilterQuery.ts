@@ -26,18 +26,65 @@
  * // → [{ label: 'Rock', value: 1 }, { label: 'Jazz', value: 2 }]
  * ```
  */
-import { getNestedValue } from './QueryExecutor.js'
+import { getNestedValue } from './QueryExecutor'
 
-const VALID_SOURCES = ['entity', 'field']
+const VALID_SOURCES = ['entity', 'field'] as const
+
+export type FilterQuerySource = (typeof VALID_SOURCES)[number]
+
+/**
+ * Option item for dropdowns
+ */
+export interface FilterOption {
+  label: string | null | undefined
+  value: unknown
+}
+
+/**
+ * Value resolver - can be a path string or function
+ */
+export type ValueResolver<T = unknown> = string | ((item: T) => unknown)
+
+/**
+ * FilterQuery constructor options
+ */
+export interface FilterQueryOptions<T = unknown> {
+  source: FilterQuerySource
+  entity?: string | null
+  field?: string | null
+  parentManager?: EntityManagerLike | null
+  label?: ValueResolver<T>
+  value?: ValueResolver<T>
+  transform?: ((options: FilterOption[]) => FilterOption[]) | null
+  toQuery?: ((value: unknown) => Record<string, unknown>) | null
+}
+
+/**
+ * Minimal interface for EntityManager (to avoid circular deps)
+ */
+interface EntityManagerLike {
+  _cache?: unknown[]
+  list(params?: { page_size?: number }): Promise<{ items: unknown[] }>
+}
+
+/**
+ * Minimal interface for Orchestrator (to avoid circular deps)
+ */
+interface OrchestratorLike {
+  get(name: string): EntityManagerLike | undefined
+}
+
+/**
+ * Minimal interface for SignalBus (to avoid circular deps)
+ */
+interface SignalBusLike {
+  on(signal: string, handler: () => void): () => void
+}
 
 /**
  * Resolve a value from an item using a path or function
- *
- * @param {object} item - The item to extract value from
- * @param {string|Function} resolver - Path string ('name', 'author.country') or function (item => value)
- * @returns {*} The resolved value
  */
-function resolveValue(item, resolver) {
+function resolveValue<T>(item: T, resolver: ValueResolver<T>): unknown {
   if (typeof resolver === 'function') {
     return resolver(item)
   }
@@ -46,19 +93,21 @@ function resolveValue(item, resolver) {
   return getNestedValue(resolver, item)
 }
 
-export class FilterQuery {
-  /**
-   * @param {object} options
-   * @param {'entity'|'field'} options.source - Source type for options
-   * @param {string} [options.entity] - Entity name (required if source='entity')
-   * @param {string} [options.field] - Field name to extract values from (required if source='field')
-   * @param {object} [options.parentManager] - Parent EntityManager (for field source, set by builder)
-   * @param {string|Function} [options.label='name'] - Label resolver (path or function)
-   * @param {string|Function} [options.value='id'] - Value resolver (path or function)
-   * @param {Function} [options.transform] - Post-processing function for options
-   * @param {Function} [options.toQuery] - Transform filter value to query object
-   */
-  constructor(options = {}) {
+export class FilterQuery<T = unknown> {
+  source: FilterQuerySource
+  entity: string | null
+  field: string | null
+  parentManager: EntityManagerLike | null
+  label: ValueResolver<T>
+  value: ValueResolver<T>
+  transform: ((options: FilterOption[]) => FilterOption[]) | null
+  toQuery: ((value: unknown) => Record<string, unknown>) | null
+
+  private _options: FilterOption[] | null = null
+  private _signals: SignalBusLike | null = null
+  private _subscriptions: Array<() => void> = []
+
+  constructor(options: FilterQueryOptions<T>) {
     const {
       source,
       entity = null,
@@ -67,14 +116,12 @@ export class FilterQuery {
       label = 'name',
       value = 'id',
       transform = null,
-      toQuery = null
+      toQuery = null,
     } = options
 
     // Validate source type
     if (!source || !VALID_SOURCES.includes(source)) {
-      throw new Error(
-        `FilterQuery: source must be one of: ${VALID_SOURCES.join(', ')}. Got: ${source}`
-      )
+      throw new Error(`FilterQuery: source must be one of: ${VALID_SOURCES.join(', ')}. Got: ${source}`)
     }
 
     // Validate source-specific requirements
@@ -94,20 +141,12 @@ export class FilterQuery {
     this.value = value
     this.transform = transform
     this.toQuery = toQuery
-
-    // Internal cache
-    this._options = null
-    this._signals = null
-    this._subscriptions = []  // Signal unsubscribe functions for cleanup
   }
 
   /**
    * Set the parent manager (called by useListPage for field source)
-   *
-   * @param {EntityManager} manager
-   * @returns {FilterQuery} this for chaining
    */
-  setParentManager(manager) {
+  setParentManager(manager: EntityManagerLike): this {
     this.parentManager = manager
     return this
   }
@@ -117,15 +156,8 @@ export class FilterQuery {
    *
    * Subscribes to entity CRUD signals ({entity}:created, {entity}:updated, {entity}:deleted)
    * to invalidate cached options when the source entity changes.
-   *
-   * Note: Auth changes are handled by Vue component lifecycle - when user logs out,
-   * router guard redirects to login, component unmounts, FilterQuery is disposed.
-   * On re-login, new FilterQuery is created with empty cache.
-   *
-   * @param {SignalBus} signals
-   * @returns {FilterQuery} this for chaining
    */
-  setSignals(signals) {
+  setSignals(signals: SignalBusLike | null): this {
     // Clean up existing subscriptions if any
     this._cleanupSubscriptions()
 
@@ -148,9 +180,8 @@ export class FilterQuery {
 
   /**
    * Cleanup signal subscriptions
-   * @private
    */
-  _cleanupSubscriptions() {
+  private _cleanupSubscriptions(): void {
     for (const unbind of this._subscriptions) {
       if (typeof unbind === 'function') {
         unbind()
@@ -164,7 +195,7 @@ export class FilterQuery {
    *
    * Call this when the FilterQuery is no longer needed to prevent memory leaks.
    */
-  dispose() {
+  dispose(): void {
     this._cleanupSubscriptions()
     this._signals = null
     this._options = null
@@ -173,23 +204,20 @@ export class FilterQuery {
   /**
    * Invalidate the cached options (forces refresh on next getOptions)
    */
-  invalidate() {
+  invalidate(): void {
     this._options = null
   }
 
   /**
    * Get options for dropdown
-   *
-   * @param {Orchestrator} [orchestrator] - Required for entity source
-   * @returns {Promise<Array<{label: string, value: *}>>}
    */
-  async getOptions(orchestrator = null) {
+  async getOptions(orchestrator: OrchestratorLike | null = null): Promise<FilterOption[]> {
     // Return cached options if available
     if (this._options !== null) {
       return this._options
     }
 
-    let items = []
+    let items: unknown[] = []
 
     if (this.source === 'entity') {
       items = await this._fetchFromEntity(orchestrator)
@@ -198,10 +226,13 @@ export class FilterQuery {
     }
 
     // Map items to { label, value } format
-    let options = items.map(item => ({
-      label: resolveValue(item, this.label),
-      value: resolveValue(item, this.value)
-    }))
+    let options: FilterOption[] = items.map((item) => {
+      const labelValue = resolveValue(item as T, this.label)
+      return {
+        label: labelValue == null ? labelValue : String(labelValue),
+        value: resolveValue(item as T, this.value),
+      }
+    })
 
     // Apply transform if provided
     if (typeof this.transform === 'function') {
@@ -216,17 +247,13 @@ export class FilterQuery {
 
   /**
    * Fetch items from entity manager
-   *
-   * @param {Orchestrator} orchestrator
-   * @returns {Promise<Array>}
-   * @private
    */
-  async _fetchFromEntity(orchestrator) {
+  private async _fetchFromEntity(orchestrator: OrchestratorLike | null): Promise<unknown[]> {
     if (!orchestrator) {
       throw new Error('FilterQuery: orchestrator is required for entity source')
     }
 
-    const manager = orchestrator.get(this.entity)
+    const manager = orchestrator.get(this.entity!)
     if (!manager) {
       throw new Error(`FilterQuery: entity "${this.entity}" not found in orchestrator`)
     }
@@ -238,11 +265,8 @@ export class FilterQuery {
 
   /**
    * Extract unique values from parent manager's cached items
-   *
-   * @returns {Array}
-   * @private
    */
-  _extractFromField() {
+  private _extractFromField(): unknown[] {
     if (!this.parentManager) {
       throw new Error('FilterQuery: parentManager is required for field source')
     }
@@ -255,24 +279,24 @@ export class FilterQuery {
     }
 
     // Extract unique values from the field
-    const seen = new Set()
-    const items = []
+    const seen = new Set<string>()
+    const items: unknown[] = []
 
     for (const item of cachedItems) {
-      const fieldValue = resolveValue(item, this.field)
+      const fieldValue = resolveValue(item as T, this.field!)
       if (fieldValue == null) continue
 
       // Create a unique key for deduplication
-      const key = typeof fieldValue === 'object' ? JSON.stringify(fieldValue) : fieldValue
+      const key = typeof fieldValue === 'object' ? JSON.stringify(fieldValue) : String(fieldValue)
 
       if (!seen.has(key)) {
         seen.add(key)
         // For field source, the item IS the value (create a simple object)
         items.push({
-          [this.field]: fieldValue,
+          [this.field!]: fieldValue,
           // Also set 'name' and 'id' defaults for simple resolution
           name: fieldValue,
-          id: fieldValue
+          id: fieldValue,
         })
       }
     }

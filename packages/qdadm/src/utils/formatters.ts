@@ -16,11 +16,14 @@
  * Format a date string to localized date+time
  * Default format: toLocaleString() (e.g., "20/12/2025, 14:30:00")
  *
- * @param {string|Date} dateStr - ISO date string or Date object
- * @param {object} options - Intl.DateTimeFormat options
- * @returns {string} Formatted date string or '-' if empty
+ * @param dateStr - ISO date string or Date object
+ * @param options - Intl.DateTimeFormat options
+ * @returns Formatted date string or '-' if empty
  */
-export function formatDate(dateStr, options = {}) {
+export function formatDate(
+  dateStr: string | Date | null | undefined,
+  options: Intl.DateTimeFormatOptions = {}
+): string {
   if (!dateStr) return '-'
   const date = new Date(dateStr)
   if (isNaN(date.getTime())) return '-'
@@ -34,46 +37,46 @@ export function formatDate(dateStr, options = {}) {
 /**
  * Format to full datetime with year (20/12/2025 14:30)
  */
-export function formatDateTime(dateStr) {
+export function formatDateTime(dateStr: string | Date | null | undefined): string {
   return formatDate(dateStr, {
     year: 'numeric',
     month: '2-digit',
     day: '2-digit',
     hour: '2-digit',
-    minute: '2-digit'
+    minute: '2-digit',
   })
 }
 
 /**
  * Format to short datetime without year (20/12 14:30)
  */
-export function formatDateTimeShort(dateStr) {
+export function formatDateTimeShort(dateStr: string | Date | null | undefined): string {
   return formatDate(dateStr, {
     month: '2-digit',
     day: '2-digit',
     hour: '2-digit',
-    minute: '2-digit'
+    minute: '2-digit',
   })
 }
 
 /**
  * Format to date only (20/12/2025)
  */
-export function formatDateOnly(dateStr) {
+export function formatDateOnly(dateStr: string | Date | null | undefined): string {
   if (!dateStr) return '-'
   const date = new Date(dateStr)
   if (isNaN(date.getTime())) return '-'
   return date.toLocaleDateString(undefined, {
     year: 'numeric',
     month: '2-digit',
-    day: '2-digit'
+    day: '2-digit',
   })
 }
 
 /**
  * Format to time only (14:30:00)
  */
-export function formatTimeOnly(dateStr) {
+export function formatTimeOnly(dateStr: string | Date | null | undefined): string {
   if (!dateStr) return '-'
   const date = new Date(dateStr)
   if (isNaN(date.getTime())) return '-'
@@ -83,7 +86,7 @@ export function formatTimeOnly(dateStr) {
 /**
  * Format with "Never" as default (for last_used fields)
  */
-export function formatDateOrNever(dateStr) {
+export function formatDateOrNever(dateStr: string | Date | null | undefined): string {
   if (!dateStr) return 'Never'
   return formatDate(dateStr)
 }
@@ -95,10 +98,10 @@ export function formatDateOrNever(dateStr) {
 /**
  * Format a duration in milliseconds to human-readable string
  *
- * @param {number} ms - Duration in milliseconds
- * @returns {string} Human-readable duration (e.g., "2h 30m 15s" or "45.2s")
+ * @param ms - Duration in milliseconds
+ * @returns Human-readable duration (e.g., "2h 30m 15s" or "45.2s")
  */
-export function formatDuration(ms) {
+export function formatDuration(ms: number | null | undefined): string {
   if (ms === null || ms === undefined) return '-'
   if (ms < 1000) return `${ms}ms`
 
@@ -122,12 +125,15 @@ export function formatDuration(ms) {
 /**
  * Format duration from start/end timestamps
  */
-export function formatDurationBetween(startDate, endDate) {
+export function formatDurationBetween(
+  startDate: string | Date | null | undefined,
+  endDate: string | Date | null | undefined
+): string {
   if (!startDate || !endDate) return '-'
   const start = new Date(startDate)
   const end = new Date(endDate)
   if (isNaN(start.getTime()) || isNaN(end.getTime())) return '-'
-  return formatDuration(end - start)
+  return formatDuration(end.getTime() - start.getTime())
 }
 
 // =============================================================================
@@ -137,7 +143,10 @@ export function formatDurationBetween(startDate, endDate) {
 /**
  * Format a number with locale-specific separators
  */
-export function formatNumber(value, options = {}) {
+export function formatNumber(
+  value: number | null | undefined,
+  options: Intl.NumberFormatOptions = {}
+): string {
   if (value === null || value === undefined) return '-'
   return value.toLocaleString(undefined, options)
 }
@@ -145,7 +154,7 @@ export function formatNumber(value, options = {}) {
 /**
  * Format bytes to human-readable size
  */
-export function formatBytes(bytes) {
+export function formatBytes(bytes: number | null | undefined): string {
   if (bytes === null || bytes === undefined) return '-'
   if (bytes === 0) return '0 B'
 
@@ -159,7 +168,7 @@ export function formatBytes(bytes) {
 /**
  * Format a percentage
  */
-export function formatPercent(value, decimals = 1) {
+export function formatPercent(value: number | null | undefined, decimals = 1): string {
   if (value === null || value === undefined) return '-'
   return `${(value * 100).toFixed(decimals)}%`
 }

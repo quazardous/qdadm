@@ -206,8 +206,8 @@ describe('DebugBar', () => {
       await wrapper.find('.debug-minimized').trigger('click')
       expect(wrapper.find('.debug-panel').exists()).toBe(true)
 
-      // Click minimize button
-      const minimizeBtn = wrapper.find('[title="Minimize"]')
+      // Click close/minimize button
+      const minimizeBtn = wrapper.find('[title="Close"]')
       await minimizeBtn.trigger('click')
 
       expect(wrapper.find('.debug-minimized').exists()).toBe(true)

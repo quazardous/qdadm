@@ -131,7 +131,7 @@ export function useEntityItemFormPage(config = {}) {
   // Toast helper - wraps orchestrator.toast for legacy compatibility
   const toast = {
     add({ severity, summary, detail, emitter }) {
-      orchestrator?.toast[severity]?.(summary, detail, emitter)
+      orchestrator?.toast?.[severity]?.(summary, detail, emitter)
     }
   }
 

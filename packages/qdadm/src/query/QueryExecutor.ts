@@ -22,28 +22,73 @@
  */
 
 /**
+ * Query condition can be a primitive, array, or operator object
+ */
+export type QueryCondition =
+  | string
+  | number
+  | boolean
+  | null
+  | undefined
+  | unknown[]
+  | QueryOperators
+
+/**
+ * Supported query operators
+ */
+export interface QueryOperators {
+  $eq?: unknown
+  $ne?: unknown
+  $gt?: number | string | Date
+  $gte?: number | string | Date
+  $lt?: number | string | Date
+  $lte?: number | string | Date
+  $in?: unknown[]
+  $nin?: unknown[]
+  $like?: string
+  $between?: [unknown, unknown]
+}
+
+/**
+ * Query object with field conditions and logical operators
+ */
+export interface QueryObject {
+  $or?: QueryObject[]
+  $and?: QueryObject[]
+  [field: string]: QueryCondition | QueryObject[] | undefined
+}
+
+/**
+ * Result of query execution
+ */
+export interface QueryResult<T> {
+  items: T[]
+  total: number
+}
+
+/**
  * Get nested value from object using dot notation
  *
- * @param {string} path - Dot-separated path (e.g., 'author.name')
- * @param {object} obj - Source object
- * @returns {*} - Value at path or undefined if not found
+ * @param path - Dot-separated path (e.g., 'author.name')
+ * @param obj - Source object
+ * @returns Value at path or undefined if not found
  *
  * @example
  * getNestedValue('author.name', { author: { name: 'John' } }) // → 'John'
  * getNestedValue('author.name', { author: null }) // → undefined
  * getNestedValue('missing.path', {}) // → undefined
  */
-export function getNestedValue(path, obj) {
+export function getNestedValue(path: string, obj: unknown): unknown {
   if (obj === null || obj === undefined) return undefined
   if (!path || typeof path !== 'string') return undefined
 
   const keys = path.split('.')
-  let current = obj
+  let current: unknown = obj
 
   for (const key of keys) {
     if (current === null || current === undefined) return undefined
     if (typeof current !== 'object') return undefined
-    current = current[key]
+    current = (current as Record<string, unknown>)[key]
   }
 
   return current
@@ -51,12 +96,8 @@ export function getNestedValue(path, obj) {
 
 /**
  * Check if a value matches a condition with an operator
- *
- * @param {*} itemValue - Value from the item
- * @param {*} condition - Condition to match (operator object or value)
- * @returns {boolean}
  */
-function matchCondition(itemValue, condition) {
+function matchCondition(itemValue: unknown, condition: QueryCondition): boolean {
   // Null/undefined condition matches null/undefined values
   if (condition === null || condition === undefined) {
     return itemValue === condition
@@ -64,7 +105,7 @@ function matchCondition(itemValue, condition) {
 
   // Explicit operator object (e.g., { $eq: 'value' })
   if (typeof condition === 'object' && !Array.isArray(condition)) {
-    return matchOperator(itemValue, condition)
+    return matchOperator(itemValue, condition as QueryOperators)
   }
 
   // Implicit $in for arrays
@@ -78,12 +119,8 @@ function matchCondition(itemValue, condition) {
 
 /**
  * Match a value against an operator object
- *
- * @param {*} itemValue - Value from the item
- * @param {object} operators - Object with operator keys
- * @returns {boolean}
  */
-function matchOperator(itemValue, operators) {
+function matchOperator(itemValue: unknown, operators: QueryOperators): boolean {
   for (const [op, expected] of Object.entries(operators)) {
     switch (op) {
       case '$eq':
@@ -98,44 +135,44 @@ function matchOperator(itemValue, operators) {
         if (itemValue === null || itemValue === undefined) return false
         if (expected === null || expected === undefined) return false
         if (typeof itemValue !== typeof expected) return false
-        if (!(itemValue > expected)) return false
+        if (!((itemValue as number | string) > (expected as number | string))) return false
         break
 
       case '$gte':
         if (itemValue === null || itemValue === undefined) return false
         if (expected === null || expected === undefined) return false
         if (typeof itemValue !== typeof expected) return false
-        if (!(itemValue >= expected)) return false
+        if (!((itemValue as number | string) >= (expected as number | string))) return false
         break
 
       case '$lt':
         if (itemValue === null || itemValue === undefined) return false
         if (expected === null || expected === undefined) return false
         if (typeof itemValue !== typeof expected) return false
-        if (!(itemValue < expected)) return false
+        if (!((itemValue as number | string) < (expected as number | string))) return false
         break
 
       case '$lte':
         if (itemValue === null || itemValue === undefined) return false
         if (expected === null || expected === undefined) return false
         if (typeof itemValue !== typeof expected) return false
-        if (!(itemValue <= expected)) return false
+        if (!((itemValue as number | string) <= (expected as number | string))) return false
         break
 
       case '$in':
-        if (!matchIn(itemValue, expected)) return false
+        if (!matchIn(itemValue, expected as unknown[])) return false
         break
 
       case '$nin':
-        if (!matchNin(itemValue, expected)) return false
+        if (!matchNin(itemValue, expected as unknown[])) return false
         break
 
       case '$like':
-        if (!matchLike(itemValue, expected)) return false
+        if (!matchLike(itemValue, expected as string)) return false
         break
 
       case '$between':
-        if (!matchBetween(itemValue, expected)) return false
+        if (!matchBetween(itemValue, expected as [unknown, unknown])) return false
         break
 
       default:
@@ -148,12 +185,8 @@ function matchOperator(itemValue, operators) {
 
 /**
  * Match $in operator - value in array
- *
- * @param {*} itemValue - Value to check
- * @param {Array} values - Array of allowed values
- * @returns {boolean}
  */
-function matchIn(itemValue, values) {
+function matchIn(itemValue: unknown, values: unknown[]): boolean {
   if (!Array.isArray(values)) return false
   if (values.length === 0) return false
   return values.includes(itemValue)
@@ -161,12 +194,8 @@ function matchIn(itemValue, values) {
 
 /**
  * Match $nin operator - value not in array
- *
- * @param {*} itemValue - Value to check
- * @param {Array} values - Array of disallowed values
- * @returns {boolean}
  */
-function matchNin(itemValue, values) {
+function matchNin(itemValue: unknown, values: unknown[]): boolean {
   if (!Array.isArray(values)) return true
   if (values.length === 0) return true
   return !values.includes(itemValue)
@@ -174,12 +203,8 @@ function matchNin(itemValue, values) {
 
 /**
  * Match $like operator - case-insensitive substring match
- *
- * @param {*} itemValue - Value to check
- * @param {string} pattern - Substring to find
- * @returns {boolean}
  */
-function matchLike(itemValue, pattern) {
+function matchLike(itemValue: unknown, pattern: string): boolean {
   if (itemValue === null || itemValue === undefined) return false
   if (pattern === null || pattern === undefined) return false
   const str = String(itemValue).toLowerCase()
@@ -189,44 +214,36 @@ function matchLike(itemValue, pattern) {
 
 /**
  * Match $between operator - inclusive range check
- *
- * @param {*} itemValue - Value to check
- * @param {Array} range - [min, max] tuple
- * @returns {boolean}
  */
-function matchBetween(itemValue, range) {
+function matchBetween(itemValue: unknown, range: [unknown, unknown]): boolean {
   if (itemValue === null || itemValue === undefined) return false
   if (!Array.isArray(range) || range.length !== 2) return false
   const [min, max] = range
-  return itemValue >= min && itemValue <= max
+  return (itemValue as number) >= (min as number) && (itemValue as number) <= (max as number)
 }
 
 /**
  * Match an item against a query object
- *
- * @param {object} item - Item to check
- * @param {object} query - Query object
- * @returns {boolean}
  */
-function matchQuery(item, query) {
+function matchQuery(item: unknown, query: QueryObject): boolean {
   if (!query || typeof query !== 'object') return true
   if (Object.keys(query).length === 0) return true
 
   for (const [key, condition] of Object.entries(query)) {
     // Logical operators
     if (key === '$or') {
-      if (!matchOr(item, condition)) return false
+      if (!matchOr(item, condition as QueryObject[])) return false
       continue
     }
 
     if (key === '$and') {
-      if (!matchAnd(item, condition)) return false
+      if (!matchAnd(item, condition as QueryObject[])) return false
       continue
     }
 
     // Field condition
     const itemValue = getNestedValue(key, item)
-    if (!matchCondition(itemValue, condition)) {
+    if (!matchCondition(itemValue, condition as QueryCondition)) {
       return false
     }
   }
@@ -236,28 +253,20 @@ function matchQuery(item, query) {
 
 /**
  * Match $or operator - at least one condition must match
- *
- * @param {object} item - Item to check
- * @param {Array} conditions - Array of query objects
- * @returns {boolean}
  */
-function matchOr(item, conditions) {
+function matchOr(item: unknown, conditions: QueryObject[]): boolean {
   if (!Array.isArray(conditions)) return true
   if (conditions.length === 0) return true
-  return conditions.some(cond => matchQuery(item, cond))
+  return conditions.some((cond) => matchQuery(item, cond))
 }
 
 /**
  * Match $and operator - all conditions must match
- *
- * @param {object} item - Item to check
- * @param {Array} conditions - Array of query objects
- * @returns {boolean}
  */
-function matchAnd(item, conditions) {
+function matchAnd(item: unknown, conditions: QueryObject[]): boolean {
   if (!Array.isArray(conditions)) return true
   if (conditions.length === 0) return true
-  return conditions.every(cond => matchQuery(item, cond))
+  return conditions.every((cond) => matchQuery(item, cond))
 }
 
 /**
@@ -267,9 +276,9 @@ export class QueryExecutor {
   /**
    * Execute query on array of items
    *
-   * @param {Array} items - Source items to filter
-   * @param {Object} query - MongoDB-like query object
-   * @returns {{ items: Array, total: number }}
+   * @param items - Source items to filter
+   * @param query - MongoDB-like query object
+   * @returns Query result with filtered items and total count
    *
    * @example
    * // Filter by status
@@ -283,7 +292,7 @@ export class QueryExecutor {
    * QueryExecutor.execute(books, {})
    * // => { items: [...all books...], total: 100 }
    */
-  static execute(items, query) {
+  static execute<T>(items: T[], query: QueryObject): QueryResult<T> {
     // Guard against invalid input
     if (!Array.isArray(items)) {
       return { items: [], total: 0 }
@@ -295,7 +304,7 @@ export class QueryExecutor {
     }
 
     try {
-      const filtered = items.filter(item => matchQuery(item, query))
+      const filtered = items.filter((item) => matchQuery(item, query))
       return { items: filtered, total: filtered.length }
     } catch {
       // Return empty for malformed queries (fail-safe)
@@ -306,16 +315,16 @@ export class QueryExecutor {
   /**
    * Check if single item matches query
    *
-   * @param {Object} item - Item to check
-   * @param {Object} query - Query object
-   * @returns {boolean}
+   * @param item - Item to check
+   * @param query - Query object
+   * @returns True if item matches query
    *
    * @example
    * const book = { title: 'Vue 3', status: 'published' }
    * QueryExecutor.match(book, { status: 'published' }) // true
    * QueryExecutor.match(book, { status: 'draft' }) // false
    */
-  static match(item, query) {
+  static match<T>(item: T, query: QueryObject): boolean {
     if (item === null || item === undefined) return false
 
     // Empty query matches everything

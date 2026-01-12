@@ -4,7 +4,7 @@ import { useConfirm } from 'primevue/useconfirm'
 import { useHooks } from './useHooks.js'
 import { useEntityItemPage } from './useEntityItemPage.js'
 import { useActiveStack } from '../chain/useActiveStack.js'
-import { FilterQuery } from '../query/FilterQuery.js'
+import { FilterQuery } from '../query/FilterQuery'
 
 // Cookie utilities for pagination persistence
 const COOKIE_NAME = 'qdadm_pageSize'

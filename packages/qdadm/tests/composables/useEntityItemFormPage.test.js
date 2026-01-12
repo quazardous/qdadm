@@ -78,7 +78,13 @@ function createMockManager(options = {}) {
 // Mock orchestrator
 let mockManager = createMockManager()
 const mockOrchestrator = {
-  get: vi.fn(() => mockManager)
+  get: vi.fn(() => mockManager),
+  toast: {
+    error: vi.fn((summary, detail) => mockToast.add({ severity: 'error', summary, detail })),
+    success: vi.fn((summary, detail) => mockToast.add({ severity: 'success', summary, detail })),
+    warn: vi.fn((summary, detail) => mockToast.add({ severity: 'warn', summary, detail })),
+    info: vi.fn((summary, detail) => mockToast.add({ severity: 'info', summary, detail }))
+  }
 }
 
 // Helper to create a wrapper component for testing composable

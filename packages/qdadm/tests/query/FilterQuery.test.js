@@ -8,7 +8,7 @@
  */
 
 import { describe, it, expect, beforeEach } from 'vitest'
-import { FilterQuery } from '../../src/query/index.js'
+import { FilterQuery } from '../../src/query/index'
 
 /**
  * Mock EntityManager for testing

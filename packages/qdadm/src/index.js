@@ -51,10 +51,10 @@ export * from './deferred/index.js'
 export * from './core/index.js'
 
 // Query (MongoDB-like filtering)
-export * from './query/index.js'
+export * from './query/index'
 
 // Utils
-export * from './utils/index.js'
+export * from './utils/index'
 
 // Toast (signal-based notifications)
 export * from './toast/index.js'

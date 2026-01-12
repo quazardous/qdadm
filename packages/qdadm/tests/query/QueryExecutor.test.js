@@ -7,7 +7,7 @@
  */
 
 import { describe, it, expect } from 'vitest'
-import { QueryExecutor, getNestedValue } from '../../src/query/index.js'
+import { QueryExecutor, getNestedValue } from '../../src/query/index'
 
 // Sample test data
 const books = [

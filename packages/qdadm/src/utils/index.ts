@@ -14,7 +14,7 @@ export {
   formatDurationBetween,
   formatNumber,
   formatBytes,
-  formatPercent
+  formatPercent,
 } from './formatters'
 
 // Transformers
@@ -28,8 +28,11 @@ export {
   toIsoDateTime,
   deepClone,
   getSparseUpdate,
-  isEqual
+  isEqual,
 } from './transformers'
+
+// Type exports
+export type { KeyValuePair, LanguageObject } from './transformers'
 
 // Debug Injector
 export { default as debugInjector, DebugInjector } from './debugInjector'
