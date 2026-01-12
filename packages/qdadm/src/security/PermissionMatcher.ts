@@ -22,9 +22,9 @@ export class PermissionMatcher {
   /**
    * Check if a permission pattern matches a required permission
    *
-   * @param {string} pattern - Pattern with wildcards (e.g., 'entity:*:read')
-   * @param {string} required - Required permission (e.g., 'entity:books:read')
-   * @returns {boolean} True if pattern matches required
+   * @param pattern - Pattern with wildcards (e.g., 'entity:*:read')
+   * @param required - Required permission (e.g., 'entity:books:read')
+   * @returns True if pattern matches required
    *
    * @example
    * PermissionMatcher.matches('entity:books:read', 'entity:books:read')  // true (exact)
@@ -34,7 +34,7 @@ export class PermissionMatcher {
    * PermissionMatcher.matches('**', 'entity:books:read')                 // true (super admin)
    * PermissionMatcher.matches('entity:*:read', 'entity:a:b:read')        // false (* = exactly one)
    */
-  static matches(pattern, required) {
+  static matches(pattern: string, required: string): boolean {
     // Super admin
     if (pattern === '**') return true
 
@@ -49,9 +49,13 @@ export class PermissionMatcher {
 
   /**
    * Recursive matching of pattern parts against required parts
-   * @private
    */
-  static _matchParts(pattern, required, pi, ri) {
+  private static _matchParts(
+    pattern: string[],
+    required: string[],
+    pi: number,
+    ri: number
+  ): boolean {
     // Both exhausted = match
     if (pi === pattern.length && ri === required.length) {
       return true
@@ -101,48 +105,48 @@ export class PermissionMatcher {
   /**
    * Check if any pattern in array matches the required permission
    *
-   * @param {string[]} patterns - Array of patterns (user's permissions)
-   * @param {string} required - Required permission to check
-   * @returns {boolean} True if any pattern matches
+   * @param patterns - Array of patterns (user's permissions)
+   * @param required - Required permission to check
+   * @returns True if any pattern matches
    *
    * @example
    * const userPerms = ['entity:*:read', 'entity:*:list', 'auth:impersonate']
    * PermissionMatcher.any(userPerms, 'entity:books:read')  // true
    * PermissionMatcher.any(userPerms, 'entity:books:delete') // false
    */
-  static any(patterns, required) {
+  static any(patterns: string[] | null | undefined, required: string): boolean {
     if (!patterns || patterns.length === 0) return false
-    return patterns.some(p => this.matches(p, required))
+    return patterns.some((p) => this.matches(p, required))
   }
 
   /**
    * Filter permissions that match a pattern
    *
-   * @param {string[]} permissions - Array of specific permissions
-   * @param {string} pattern - Pattern to filter by
-   * @returns {string[]} Permissions that match the pattern
+   * @param permissions - Array of specific permissions
+   * @param pattern - Pattern to filter by
+   * @returns Permissions that match the pattern
    *
    * @example
    * const allPerms = ['entity:books:read', 'entity:books:create', 'auth:login']
    * PermissionMatcher.filter(allPerms, 'entity:books:*')  // ['entity:books:read', 'entity:books:create']
    */
-  static filter(permissions, pattern) {
-    return permissions.filter(p => this.matches(pattern, p))
+  static filter(permissions: string[], pattern: string): string[] {
+    return permissions.filter((p) => this.matches(pattern, p))
   }
 
   /**
    * Expand a pattern against registered permissions
    * Useful for UI: show what a wildcard pattern actually grants
    *
-   * @param {string} pattern - Pattern to expand
-   * @param {string[]} allPermissions - All registered permissions
-   * @returns {string[]} Permissions that the pattern would grant
+   * @param pattern - Pattern to expand
+   * @param allPermissions - All registered permissions
+   * @returns Permissions that the pattern would grant
    *
    * @example
    * const registry = ['entity:books:read', 'entity:books:create', 'entity:loans:read']
    * PermissionMatcher.expand('entity:*:read', registry)  // ['entity:books:read', 'entity:loans:read']
    */
-  static expand(pattern, allPermissions) {
-    return allPermissions.filter(p => this.matches(pattern, p))
+  static expand(pattern: string, allPermissions: string[]): string[] {
+    return allPermissions.filter((p) => this.matches(pattern, p))
   }
 }

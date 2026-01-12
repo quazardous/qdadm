@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import {
   PersistableRoleGranterAdapter,
   createLocalStorageRoleGranter
-} from '../../src/security/PersistableRoleGranterAdapter.js'
+} from '../../src/security/PersistableRoleGranterAdapter'
 
 describe('PersistableRoleGranterAdapter', () => {
   describe('constructor', () => {

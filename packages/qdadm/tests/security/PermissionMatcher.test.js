@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { PermissionMatcher } from '../../src/security/PermissionMatcher.js'
+import { PermissionMatcher } from '../../src/security/PermissionMatcher'
 
 describe('PermissionMatcher', () => {
   describe('matches - exact', () => {

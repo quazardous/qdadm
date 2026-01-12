@@ -1,6 +1,6 @@
 import { RoleHierarchy, type RoleHierarchyConfig } from './RoleHierarchy'
-import { PermissionMatcher } from '../../security/PermissionMatcher.js'
-import { StaticRoleGranterAdapter } from '../../security/StaticRoleGranterAdapter.js'
+import { PermissionMatcher } from '../../security/PermissionMatcher'
+import { StaticRoleGranterAdapter } from '../../security/StaticRoleGranterAdapter'
 import type { AuthUser } from './EntityAuthAdapter'
 
 /**

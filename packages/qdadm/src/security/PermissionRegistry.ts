@@ -1,4 +1,49 @@
 /**
+ * Permission definition stored in the registry
+ */
+export interface PermissionDefinition {
+  key: string
+  namespace: string
+  action: string
+  module: string | null
+  label: string
+  description: string | null
+  custom: boolean
+}
+
+/**
+ * Permission metadata for registration
+ */
+export interface PermissionMeta {
+  label?: string
+  description?: string
+  custom?: boolean
+}
+
+/**
+ * Options for registering permissions
+ */
+export interface RegisterOptions {
+  isEntity?: boolean
+  module?: string
+}
+
+/**
+ * Options for registering entity permissions
+ */
+export interface RegisterEntityOptions {
+  module?: string
+  actions?: string[]
+  hasOwnership?: boolean
+  ownActions?: string[]
+}
+
+/**
+ * Grouped permissions by namespace
+ */
+export type GroupedPermissions = Record<string, PermissionDefinition[]>
+
+/**
  * PermissionRegistry - Central registry for all permissions
  *
  * Collects permissions declared by modules via ctx.permissions().
@@ -25,19 +70,18 @@
  * registry.exists('auth:impersonate')  // true
  */
 export class PermissionRegistry {
+  private _permissions: Map<string, PermissionDefinition>
+
   constructor() {
-    /** @type {Map<string, PermissionDefinition>} */
     this._permissions = new Map()
   }
 
   /**
    * Register permissions for a namespace
    *
-   * @param {string} prefix - Namespace prefix (e.g., 'books', 'auth', 'admin:config')
-   * @param {Object<string, string|PermissionMeta>} permissions - Permission definitions
-   * @param {Object} [options]
-   * @param {boolean} [options.isEntity=false] - Prefix with 'entity:' namespace
-   * @param {string} [options.module] - Module name for tracking
+   * @param prefix - Namespace prefix (e.g., 'books', 'auth', 'admin:config')
+   * @param permissions - Permission definitions
+   * @param options - Registration options
    *
    * @example
    * // Entity permissions (auto-prefixed with 'entity:')
@@ -53,15 +97,17 @@ export class PermissionRegistry {
    * })
    * // → auth:impersonate
    */
-  register(prefix, permissions, options = {}) {
+  register(
+    prefix: string,
+    permissions: Record<string, string | PermissionMeta>,
+    options: RegisterOptions = {}
+  ): void {
     const namespace = options.isEntity ? `entity:${prefix}` : prefix
     const module = options.module || null
 
     for (const [action, meta] of Object.entries(permissions)) {
       const key = `${namespace}:${action}`
-      const definition = typeof meta === 'string'
-        ? { label: meta }
-        : { ...meta }
+      const definition: Partial<PermissionMeta> = typeof meta === 'string' ? { label: meta } : { ...meta }
 
       this._permissions.set(key, {
         key,
@@ -70,7 +116,7 @@ export class PermissionRegistry {
         module,
         label: definition.label || action,
         description: definition.description || null,
-        custom: definition.custom || false
+        custom: definition.custom || false,
       })
     }
   }
@@ -79,53 +125,48 @@ export class PermissionRegistry {
    * Register standard CRUD permissions for an entity
    * Called automatically by ctx.entity()
    *
-   * @param {string} entityName - Entity name
-   * @param {Object} [options]
-   * @param {string} [options.module] - Module name
-   * @param {string[]} [options.actions] - Custom action list (default: CRUD)
-   * @param {boolean} [options.hasOwnership] - Register entity-own:* permissions too
-   * @param {string[]} [options.ownActions] - Actions for ownership (default: same as actions)
+   * @param entityName - Entity name
+   * @param options - Registration options
    */
-  registerEntity(entityName, options = {}) {
+  registerEntity(entityName: string, options: RegisterEntityOptions = {}): void {
     const actions = options.actions || ['read', 'list', 'create', 'update', 'delete']
-    const permissions = {}
+    const permissions: Record<string, PermissionMeta> = {}
 
     for (const action of actions) {
       permissions[action] = {
         label: `${this._capitalize(action)} ${entityName}`,
-        description: `Can ${action} ${entityName} records`
+        description: `Can ${action} ${entityName} records`,
       }
     }
 
     this.register(entityName, permissions, {
       isEntity: true,
-      module: options.module
+      module: options.module,
     })
 
     // Register entity-own:* permissions for ownership-based access
     if (options.hasOwnership) {
-      const ownActions = options.ownActions || actions.filter(a => a !== 'list' && a !== 'create')
-      const ownPermissions = {}
+      const ownActions = options.ownActions ?? actions.filter((a) => a !== 'list' && a !== 'create')
+      const ownPermissions: Record<string, PermissionMeta> = {}
 
       for (const action of ownActions) {
         ownPermissions[action] = {
           label: `${this._capitalize(action)} own ${entityName}`,
-          description: `Can ${action} own ${entityName} records`
+          description: `Can ${action} own ${entityName} records`,
         }
       }
 
       // Register under entity-own:entityName namespace
       this.register(`entity-own:${entityName}`, ownPermissions, {
-        module: options.module
+        module: options.module,
       })
     }
   }
 
   /**
    * Unregister all permissions for a namespace
-   * @param {string} namespace - Namespace to clear
    */
-  unregister(namespace) {
+  unregister(namespace: string): void {
     for (const key of this._permissions.keys()) {
       if (key.startsWith(namespace + ':')) {
         this._permissions.delete(key)
@@ -135,23 +176,20 @@ export class PermissionRegistry {
 
   /**
    * Get all registered permissions
-   * @returns {PermissionDefinition[]}
    */
-  getAll() {
+  getAll(): PermissionDefinition[] {
     return [...this._permissions.values()]
   }
 
   /**
    * Get all permission keys
-   * @returns {string[]}
    */
-  getKeys() {
+  getKeys(): string[] {
     return [...this._permissions.keys()]
   }
 
   /**
    * Get permissions grouped by namespace
-   * @returns {Object<string, PermissionDefinition[]>}
    *
    * @example
    * registry.getGrouped()
@@ -160,14 +198,16 @@ export class PermissionRegistry {
    * //   'auth': [{ key: 'auth:impersonate', ... }]
    * // }
    */
-  getGrouped() {
-    const groups = {}
+  getGrouped(): GroupedPermissions {
+    const groups: GroupedPermissions = {}
 
     for (const perm of this._permissions.values()) {
-      if (!groups[perm.namespace]) {
-        groups[perm.namespace] = []
+      const existing = groups[perm.namespace]
+      if (existing) {
+        existing.push(perm)
+      } else {
+        groups[perm.namespace] = [perm]
       }
-      groups[perm.namespace].push(perm)
     }
 
     return groups
@@ -175,89 +215,59 @@ export class PermissionRegistry {
 
   /**
    * Get permissions for a specific namespace
-   * @param {string} namespace - Namespace prefix
-   * @returns {PermissionDefinition[]}
    */
-  getByNamespace(namespace) {
-    return this.getAll().filter(p =>
-      p.namespace === namespace || p.namespace.startsWith(namespace + ':')
+  getByNamespace(namespace: string): PermissionDefinition[] {
+    return this.getAll().filter(
+      (p) => p.namespace === namespace || p.namespace.startsWith(namespace + ':')
     )
   }
 
   /**
    * Get permissions registered by a specific module
-   * @param {string} moduleName - Module name
-   * @returns {PermissionDefinition[]}
    */
-  getByModule(moduleName) {
-    return this.getAll().filter(p => p.module === moduleName)
+  getByModule(moduleName: string): PermissionDefinition[] {
+    return this.getAll().filter((p) => p.module === moduleName)
   }
 
   /**
    * Get entity permissions only
-   * @returns {PermissionDefinition[]}
    */
-  getEntityPermissions() {
-    return this.getAll().filter(p => p.namespace.startsWith('entity:'))
+  getEntityPermissions(): PermissionDefinition[] {
+    return this.getAll().filter((p) => p.namespace.startsWith('entity:'))
   }
 
   /**
    * Get non-entity permissions (system, feature, admin, etc.)
-   * @returns {PermissionDefinition[]}
    */
-  getSystemPermissions() {
-    return this.getAll().filter(p => !p.namespace.startsWith('entity:'))
+  getSystemPermissions(): PermissionDefinition[] {
+    return this.getAll().filter((p) => !p.namespace.startsWith('entity:'))
   }
 
   /**
    * Check if a permission is registered
-   * @param {string} permission - Permission key
-   * @returns {boolean}
    */
-  exists(permission) {
+  exists(permission: string): boolean {
     return this._permissions.has(permission)
   }
 
   /**
    * Get a specific permission definition
-   * @param {string} permission - Permission key
-   * @returns {PermissionDefinition|null}
    */
-  get(permission) {
-    return this._permissions.get(permission) || null
+  get(permission: string): PermissionDefinition | undefined {
+    return this._permissions.get(permission)
   }
 
   /**
    * Get count of registered permissions
-   * @returns {number}
    */
-  get size() {
+  get size(): number {
     return this._permissions.size
   }
 
   /**
    * Capitalize first letter
-   * @private
    */
-  _capitalize(str) {
+  private _capitalize(str: string): string {
     return str.charAt(0).toUpperCase() + str.slice(1)
   }
 }
-
-/**
- * @typedef {Object} PermissionDefinition
- * @property {string} key - Full permission key (e.g., 'entity:books:read')
- * @property {string} namespace - Namespace (e.g., 'entity:books')
- * @property {string} action - Action name (e.g., 'read')
- * @property {string|null} module - Module that registered this permission
- * @property {string} label - Human-readable label
- * @property {string|null} description - Optional description
- * @property {boolean} custom - Is this a custom (non-CRUD) permission
- */
-
-/**
- * @typedef {Object} PermissionMeta
- * @property {string} [label] - Human-readable label
- * @property {string} [description] - Description
- * @property {boolean} [custom] - Mark as custom permission
- */

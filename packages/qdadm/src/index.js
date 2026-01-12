@@ -21,7 +21,7 @@ export * from './entity/index.js'
 export * from './auth'
 
 // Security (permissions, roles)
-export * from './security/index.js'
+export * from './security/index'
 
 // Orchestrator
 export * from './orchestrator/index.js'

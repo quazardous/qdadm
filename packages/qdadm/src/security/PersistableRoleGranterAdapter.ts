@@ -58,30 +58,82 @@
  * })
  */
 
-import { RoleGranterAdapter } from './RoleGranterAdapter.js'
+import { RoleGranterAdapter } from './RoleGranterAdapter'
+import type { RoleData, RoleHierarchyMap } from './RoleGranterAdapter'
+
+/**
+ * Role configuration structure
+ */
+export interface RoleConfig {
+  role_hierarchy?: Record<string, string[]>
+  role_permissions?: Record<string, string[]>
+  role_labels?: Record<string, string>
+}
+
+/**
+ * Merge strategy for combining defaults with loaded data
+ */
+export type MergeStrategy = 'extend' | 'replace' | 'defaults-only'
+
+/**
+ * Load callback type
+ */
+export type LoadCallback = () => Promise<RoleConfig | null> | RoleConfig | null
+
+/**
+ * Persist callback type
+ */
+export type PersistCallback = (data: RoleConfig) => Promise<void> | void
+
+/**
+ * Options for PersistableRoleGranterAdapter
+ */
+export interface PersistableRoleGranterOptions {
+  load?: LoadCallback
+  persist?: PersistCallback
+  fixed?: RoleConfig
+  defaults?: RoleConfig
+  mergeStrategy?: MergeStrategy
+  autoLoad?: boolean
+}
+
+/**
+ * Options for createLocalStorageRoleGranter
+ */
+export interface LocalStorageRoleGranterOptions {
+  key?: string
+  fixed?: RoleConfig
+  defaults?: RoleConfig
+  mergeStrategy?: MergeStrategy
+}
 
 export class PersistableRoleGranterAdapter extends RoleGranterAdapter {
+  private _loadFn: LoadCallback | null
+  private _persistFn: PersistCallback | null
+  private _mergeStrategy: MergeStrategy
+  private _autoLoad: boolean
+
+  // Fixed (incompressible, always applied on top)
+  private _fixed: Required<RoleConfig>
+
+  // Defaults (fallback)
+  private _defaults: Required<RoleConfig>
+
+  // Current state (starts with defaults)
+  protected _hierarchy: Record<string, string[]>
+  protected _permissions: Record<string, string[]>
+  protected _labels: Record<string, string>
+
+  // Loading state
+  // Note: _loaded is public to allow createLocalStorageRoleGranter to set it
+  public _loaded: boolean = false
+  private _loading: Promise<void> | null = null
+  private _dirty: boolean = false
+
   /**
    * Create a persistable role granter
-   *
-   * @param {Object} options
-   * @param {Function} [options.load] - Load callback: () => Promise<RoleConfig>|RoleConfig|null
-   * @param {Function} [options.persist] - Persist callback: (data: RoleConfig) => Promise<void>|void
-   * @param {Object} [options.fixed={}] - Fixed/system configuration (incompressible, never overridden)
-   * @param {Object} [options.fixed.role_hierarchy={}] - Fixed role hierarchy
-   * @param {Object} [options.fixed.role_permissions={}] - Fixed role permissions (e.g., auth:login)
-   * @param {Object} [options.fixed.role_labels={}] - Fixed role labels
-   * @param {Object} [options.defaults={}] - Default configuration (fallback)
-   * @param {Object} [options.defaults.role_hierarchy={}] - Default role hierarchy
-   * @param {Object} [options.defaults.role_permissions={}] - Default role permissions
-   * @param {Object} [options.defaults.role_labels={}] - Default role labels
-   * @param {string} [options.mergeStrategy='extend'] - How to merge defaults with loaded data
-   *   - 'extend': Loaded data extends defaults (loaded takes priority)
-   *   - 'replace': Loaded data replaces defaults entirely
-   *   - 'defaults-only': Use defaults, ignore loaded (for fallback mode)
-   * @param {boolean} [options.autoLoad=true] - Auto-load on first access
    */
-  constructor(options = {}) {
+  constructor(options: PersistableRoleGranterOptions = {}) {
     super()
 
     this._loadFn = options.load || null
@@ -93,33 +145,26 @@ export class PersistableRoleGranterAdapter extends RoleGranterAdapter {
     this._fixed = {
       role_hierarchy: options.fixed?.role_hierarchy || {},
       role_permissions: options.fixed?.role_permissions || {},
-      role_labels: options.fixed?.role_labels || {}
+      role_labels: options.fixed?.role_labels || {},
     }
 
     // Defaults (fallback)
     this._defaults = {
       role_hierarchy: options.defaults?.role_hierarchy || {},
       role_permissions: options.defaults?.role_permissions || {},
-      role_labels: options.defaults?.role_labels || {}
+      role_labels: options.defaults?.role_labels || {},
     }
 
     // Current state (starts with defaults)
     this._hierarchy = { ...this._defaults.role_hierarchy }
     this._permissions = { ...this._defaults.role_permissions }
     this._labels = { ...this._defaults.role_labels }
-
-    // Loading state
-    this._loaded = false
-    this._loading = null // Promise when loading
-    this._dirty = false // Has unsaved changes
   }
 
   /**
    * Load configuration from source
-   *
-   * @returns {Promise<void>}
    */
-  async load() {
+  async load(): Promise<void> {
     if (!this._loadFn) {
       this._loaded = true
       return
@@ -140,11 +185,10 @@ export class PersistableRoleGranterAdapter extends RoleGranterAdapter {
 
   /**
    * Internal load implementation
-   * @private
    */
-  async _doLoad() {
+  private async _doLoad(): Promise<void> {
     try {
-      const data = await this._loadFn()
+      const data = await this._loadFn!()
 
       if (data) {
         this._applyData(data)
@@ -161,11 +205,8 @@ export class PersistableRoleGranterAdapter extends RoleGranterAdapter {
 
   /**
    * Apply loaded data according to merge strategy
-   *
-   * @param {Object} data - Loaded data
-   * @private
    */
-  _applyData(data) {
+  _applyData(data: RoleConfig): void {
     switch (this._mergeStrategy) {
       case 'replace':
         // Loaded data replaces everything
@@ -183,15 +224,15 @@ export class PersistableRoleGranterAdapter extends RoleGranterAdapter {
         // Loaded extends defaults (loaded takes priority)
         this._hierarchy = {
           ...this._defaults.role_hierarchy,
-          ...(data.role_hierarchy || {})
+          ...(data.role_hierarchy || {}),
         }
         this._permissions = {
           ...this._defaults.role_permissions,
-          ...(data.role_permissions || {})
+          ...(data.role_permissions || {}),
         }
         this._labels = {
           ...this._defaults.role_labels,
-          ...(data.role_labels || {})
+          ...(data.role_labels || {}),
         }
         break
     }
@@ -199,19 +240,17 @@ export class PersistableRoleGranterAdapter extends RoleGranterAdapter {
 
   /**
    * Persist current configuration to source
-   *
-   * @returns {Promise<void>}
    */
-  async persist() {
+  async persist(): Promise<void> {
     if (!this._persistFn) {
       console.warn('[PersistableRoleGranterAdapter] No persist function configured')
       return
     }
 
-    const data = {
+    const data: RoleConfig = {
       role_hierarchy: this._hierarchy,
       role_permissions: this._permissions,
-      role_labels: this._labels
+      role_labels: this._labels,
     }
 
     try {
@@ -225,11 +264,8 @@ export class PersistableRoleGranterAdapter extends RoleGranterAdapter {
 
   /**
    * Ensure data is loaded (auto-load if needed)
-   *
-   * @returns {Promise<void>}
-   * @private
    */
-  async _ensureLoaded() {
+  private async _ensureLoaded(): Promise<void> {
     if (!this._loaded && this._autoLoad) {
       await this.load()
     }
@@ -243,11 +279,8 @@ export class PersistableRoleGranterAdapter extends RoleGranterAdapter {
    * Get permissions for a role
    *
    * Merges: current permissions + fixed permissions (fixed always wins)
-   *
-   * @param {string} role - Role name
-   * @returns {string[]} Permission patterns
    */
-  getPermissions(role) {
+  getPermissions(role: string): string[] {
     // Note: This is synchronous. For async sources, call load() first
     // or use autoLoad + await ensureReady() before first use
     const base = this._permissions[role] || []
@@ -270,13 +303,11 @@ export class PersistableRoleGranterAdapter extends RoleGranterAdapter {
    * Get all defined roles
    *
    * Includes roles from: current + fixed
-   *
-   * @returns {string[]} Role names
    */
-  getRoles() {
-    const roles = new Set([
+  getRoles(): string[] {
+    const roles = new Set<string>([
       ...Object.keys(this._permissions),
-      ...Object.keys(this._fixed.role_permissions)
+      ...Object.keys(this._fixed.role_permissions),
     ])
     return [...roles]
   }
@@ -285,13 +316,11 @@ export class PersistableRoleGranterAdapter extends RoleGranterAdapter {
    * Get role hierarchy
    *
    * Merges: current hierarchy + fixed hierarchy
-   *
-   * @returns {Object} Hierarchy map { role: [inheritedRoles] }
    */
-  getHierarchy() {
+  getHierarchy(): RoleHierarchyMap {
     return {
       ...this._hierarchy,
-      ...this._fixed.role_hierarchy
+      ...this._fixed.role_hierarchy,
     }
   }
 
@@ -299,13 +328,11 @@ export class PersistableRoleGranterAdapter extends RoleGranterAdapter {
    * Get role labels for display
    *
    * Merges: current labels + fixed labels
-   *
-   * @returns {Object} Labels map { role: label }
    */
-  getLabels() {
+  getLabels(): Record<string, string> {
     return {
       ...this._labels,
-      ...this._fixed.role_labels
+      ...this._fixed.role_labels,
     }
   }
 
@@ -317,22 +344,17 @@ export class PersistableRoleGranterAdapter extends RoleGranterAdapter {
 
   /**
    * Check if a role exists (in current or fixed)
-   *
-   * @param {string} role - Role name
-   * @returns {boolean}
    */
-  roleExists(role) {
-    return this._permissions[role] !== undefined ||
-      this._fixed.role_permissions[role] !== undefined
+  roleExists(role: string): boolean {
+    return (
+      this._permissions[role] !== undefined || this._fixed.role_permissions[role] !== undefined
+    )
   }
 
   /**
    * Get complete role object
-   *
-   * @param {string} role - Role name
-   * @returns {RoleData|null} Role data or null if not found
    */
-  getRole(role) {
+  getRole(role: string): RoleData | null {
     if (!this.roleExists(role)) {
       return null
     }
@@ -340,7 +362,7 @@ export class PersistableRoleGranterAdapter extends RoleGranterAdapter {
       name: role,
       label: this._labels[role] || this._fixed.role_labels[role] || role,
       permissions: this.getPermissions(role),
-      inherits: this._hierarchy[role] || this._fixed.role_hierarchy[role] || []
+      inherits: this._hierarchy[role] || this._fixed.role_hierarchy[role] || [],
     }
   }
 
@@ -350,16 +372,11 @@ export class PersistableRoleGranterAdapter extends RoleGranterAdapter {
 
   /**
    * Create a new role (async, auto-persists)
-   *
-   * @param {string} name - Role name
-   * @param {Object} [options]
-   * @param {string} [options.label] - Display label
-   * @param {string[]} [options.permissions=[]] - Permission patterns
-   * @param {string[]} [options.inherits=[]] - Roles to inherit from
-   * @returns {Promise<RoleData>} Created role data
-   * @throws {Error} If role already exists
    */
-  async createRole(name, { label, permissions = [], inherits = [] } = {}) {
+  async createRole(
+    name: string,
+    { label, permissions = [], inherits = [] }: { label?: string; permissions?: string[]; inherits?: string[] } = {}
+  ): Promise<RoleData> {
     if (this.roleExists(name)) {
       throw new Error(`Role '${name}' already exists`)
     }
@@ -372,21 +389,16 @@ export class PersistableRoleGranterAdapter extends RoleGranterAdapter {
       await this.persist()
     }
 
-    return this.getRole(name)
+    return this.getRole(name)!
   }
 
   /**
    * Update an existing role (async, auto-persists)
-   *
-   * @param {string} name - Role name
-   * @param {Object} [options] - Only provided properties are updated
-   * @param {string} [options.label] - Display label
-   * @param {string[]} [options.permissions] - Permission patterns
-   * @param {string[]} [options.inherits] - Roles to inherit from
-   * @returns {Promise<RoleData>} Updated role data
-   * @throws {Error} If role doesn't exist
    */
-  async updateRole(name, { label, permissions, inherits } = {}) {
+  async updateRole(
+    name: string,
+    { label, permissions, inherits }: { label?: string; permissions?: string[]; inherits?: string[] } = {}
+  ): Promise<RoleData> {
     if (!this.roleExists(name)) {
       throw new Error(`Role '${name}' does not exist`)
     }
@@ -399,17 +411,13 @@ export class PersistableRoleGranterAdapter extends RoleGranterAdapter {
       await this.persist()
     }
 
-    return this.getRole(name)
+    return this.getRole(name)!
   }
 
   /**
    * Set permissions for a role
-   *
-   * @param {string} role - Role name
-   * @param {string[]} permissions - Permission patterns
-   * @returns {this}
    */
-  setRolePermissions(role, permissions) {
+  setRolePermissions(role: string, permissions: string[]): this {
     this._permissions[role] = [...permissions]
     this._dirty = true
     return this
@@ -417,14 +425,10 @@ export class PersistableRoleGranterAdapter extends RoleGranterAdapter {
 
   /**
    * Add permissions to a role
-   *
-   * @param {string} role - Role name
-   * @param {string[]} permissions - Permissions to add
-   * @returns {this}
    */
-  addRolePermissions(role, permissions) {
+  addRolePermissions(role: string, permissions: string[]): this {
     const current = this._permissions[role] || []
-    const newPerms = permissions.filter(p => !current.includes(p))
+    const newPerms = permissions.filter((p) => !current.includes(p))
     this._permissions[role] = [...current, ...newPerms]
     this._dirty = true
     return this
@@ -432,26 +436,18 @@ export class PersistableRoleGranterAdapter extends RoleGranterAdapter {
 
   /**
    * Remove permissions from a role
-   *
-   * @param {string} role - Role name
-   * @param {string[]} permissions - Permissions to remove
-   * @returns {this}
    */
-  removeRolePermissions(role, permissions) {
+  removeRolePermissions(role: string, permissions: string[]): this {
     const current = this._permissions[role] || []
-    this._permissions[role] = current.filter(p => !permissions.includes(p))
+    this._permissions[role] = current.filter((p) => !permissions.includes(p))
     this._dirty = true
     return this
   }
 
   /**
    * Set role hierarchy
-   *
-   * @param {string} role - Role name
-   * @param {string[]} inherits - Roles this role inherits from
-   * @returns {this}
    */
-  setRoleHierarchy(role, inherits) {
+  setRoleHierarchy(role: string, inherits: string[]): this {
     this._hierarchy[role] = [...inherits]
     this._dirty = true
     return this
@@ -459,12 +455,8 @@ export class PersistableRoleGranterAdapter extends RoleGranterAdapter {
 
   /**
    * Set role label
-   *
-   * @param {string} role - Role name
-   * @param {string} label - Display label
-   * @returns {this}
    */
-  setRoleLabel(role, label) {
+  setRoleLabel(role: string, label: string): this {
     this._labels[role] = label
     this._dirty = true
     return this
@@ -472,12 +464,8 @@ export class PersistableRoleGranterAdapter extends RoleGranterAdapter {
 
   /**
    * Delete a role entirely (async, auto-persists)
-   *
-   * @param {string} name - Role name
-   * @returns {Promise<void>}
-   * @throws {Error} If role doesn't exist
    */
-  async deleteRole(name) {
+  async deleteRole(name: string): Promise<void> {
     if (!this.roleExists(name)) {
       throw new Error(`Role '${name}' does not exist`)
     }
@@ -493,10 +481,8 @@ export class PersistableRoleGranterAdapter extends RoleGranterAdapter {
 
   /**
    * Reset to defaults
-   *
-   * @returns {this}
    */
-  reset() {
+  reset(): this {
     this._hierarchy = { ...this._defaults.role_hierarchy }
     this._permissions = { ...this._defaults.role_permissions }
     this._labels = { ...this._defaults.role_labels }
@@ -510,48 +496,41 @@ export class PersistableRoleGranterAdapter extends RoleGranterAdapter {
 
   /**
    * Check if data has been loaded
-   * @returns {boolean}
    */
-  get isLoaded() {
+  get isLoaded(): boolean {
     return this._loaded
   }
 
   /**
    * Check if there are unsaved changes
-   * @returns {boolean}
    */
-  get isDirty() {
+  get isDirty(): boolean {
     return this._dirty
   }
 
   /**
    * Check if adapter supports persistence
    * Returns true if a persist function was provided
-   * @returns {boolean}
    */
-  get canPersist() {
+  get canPersist(): boolean {
     return !!this._persistFn
   }
 
   /**
    * Get current configuration as object
-   *
-   * @returns {Object} Current config
    */
-  toJSON() {
+  toJSON(): RoleConfig {
     return {
       role_hierarchy: this._hierarchy,
       role_permissions: this._permissions,
-      role_labels: this._labels
+      role_labels: this._labels,
     }
   }
 
   /**
    * Get a ready promise (resolves when loaded)
-   *
-   * @returns {Promise<this>}
    */
-  async ensureReady() {
+  async ensureReady(): Promise<this> {
     await this._ensureLoaded()
     return this
   }
@@ -562,19 +541,14 @@ export class PersistableRoleGranterAdapter extends RoleGranterAdapter {
  *
  * Unlike async sources, localStorage is synchronous so data is loaded
  * immediately at construction time. No need to call ensureReady().
- *
- * @param {Object} options
- * @param {string} [options.key='qdadm_roles'] - localStorage key
- * @param {Object} [options.fixed] - Fixed/system configuration (incompressible)
- * @param {Object} [options.defaults] - Default configuration
- * @param {string} [options.mergeStrategy] - Merge strategy
- * @returns {PersistableRoleGranterAdapter}
  */
-export function createLocalStorageRoleGranter(options = {}) {
+export function createLocalStorageRoleGranter(
+  options: LocalStorageRoleGranterOptions = {}
+): PersistableRoleGranterAdapter {
   const key = options.key || 'qdadm_roles'
 
   // Load data synchronously from localStorage (localStorage is sync)
-  let initialData = null
+  let initialData: RoleConfig | null = null
   try {
     const stored = localStorage.getItem(key)
     initialData = stored ? JSON.parse(stored) : null
@@ -597,7 +571,7 @@ export function createLocalStorageRoleGranter(options = {}) {
     fixed: options.fixed,
     defaults: options.defaults,
     mergeStrategy: options.mergeStrategy,
-    autoLoad: false // We load synchronously below
+    autoLoad: false, // We load synchronously below
   })
 
   // Apply initial data immediately (synchronous load)
@@ -608,11 +582,3 @@ export function createLocalStorageRoleGranter(options = {}) {
 
   return adapter
 }
-
-/**
- * @typedef {Object} RoleData
- * @property {string} name - Role name
- * @property {string} label - Display label
- * @property {string[]} permissions - Permission patterns (includes fixed)
- * @property {string[]} inherits - Roles this role inherits from
- */

@@ -21,44 +21,91 @@
  *   roleGranter: new EntityRoleGranterAdapter({ entityName: 'roles' })
  * }
  */
+
+/**
+ * Role metadata for display purposes
+ */
+export interface RoleMeta {
+  label?: string
+  description?: string
+}
+
+/**
+ * Complete role data object
+ */
+export interface RoleData {
+  name: string
+  label: string
+  permissions: string[]
+  inherits: string[]
+}
+
+/**
+ * Role hierarchy mapping
+ */
+export type RoleHierarchyMap = Record<string, string[]>
+
+/**
+ * Role permissions mapping
+ */
+export type RolePermissionsMap = Record<string, string[]>
+
+/**
+ * Role labels mapping
+ */
+export type RoleLabelsMap = Record<string, string>
+
+/**
+ * Kernel context interface (minimal for adapter needs)
+ */
+export interface RoleGranterContext {
+  signals?: {
+    on: (pattern: string, handler: () => void) => () => void
+  }
+  orchestrator?: {
+    get: (name: string) => unknown
+  }
+  [key: string]: unknown
+}
+
 export class RoleGranterAdapter {
   /**
    * Get permissions granted to a role
    *
-   * @param {string} role - Role name (e.g., 'ROLE_USER')
-   * @returns {string[]} Array of permission strings (may include wildcards)
+   * @param role - Role name (e.g., 'ROLE_USER')
+   * @returns Array of permission strings (may include wildcards)
    *
    * @example
    * adapter.getPermissions('ROLE_ADMIN')
    * // ['entity:**', 'admin:**']
    */
-  getPermissions(role) {
+  getPermissions(_role: string): string[] {
     throw new Error('RoleGranterAdapter.getPermissions() must be implemented')
   }
 
   /**
    * Get all defined roles
    *
-   * @returns {string[]} Array of role names
+   * @returns Array of role names
    *
    * @example
    * adapter.getRoles()
    * // ['ROLE_USER', 'ROLE_ADMIN', 'ROLE_SUPER_ADMIN']
    */
-  getRoles() {
+  getRoles(): string[] {
     throw new Error('RoleGranterAdapter.getRoles() must be implemented')
   }
 
   /**
    * Get role hierarchy map
    *
-   * @returns {Object<string, string[]>} Role → inherited roles
+   * @returns Role → inherited roles
    *
    * @example
    * adapter.getHierarchy()
    * // { ROLE_ADMIN: ['ROLE_USER'], ROLE_SUPER_ADMIN: ['ROLE_ADMIN'] }
    */
-  getHierarchy() {
+  getHierarchy(): RoleHierarchyMap {
     throw new Error('RoleGranterAdapter.getHierarchy() must be implemented')
   }
 
@@ -67,9 +114,9 @@ export class RoleGranterAdapter {
    *
    * Always returns 'ROLE_ANONYMOUS' (convention)
    *
-   * @returns {string} Anonymous role name
+   * @returns Anonymous role name
    */
-  getAnonymousRole() {
+  getAnonymousRole(): string {
     return 'ROLE_ANONYMOUS'
   }
 
@@ -77,10 +124,10 @@ export class RoleGranterAdapter {
    * Get role metadata (label, description)
    * Optional - for display purposes
    *
-   * @param {string} role - Role name
-   * @returns {RoleMeta|null}
+   * @param role - Role name
+   * @returns Role metadata or null
    */
-  getRoleMeta(role) {
+  getRoleMeta(_role: string): RoleMeta | null {
     return null
   }
 
@@ -88,16 +135,16 @@ export class RoleGranterAdapter {
    * Install adapter (called by Kernel when context is ready)
    * Override for adapters that need initialization
    *
-   * @param {Object} ctx - Kernel context
+   * @param ctx - Kernel context
    */
-  install(ctx) {
+  install(_ctx: RoleGranterContext): void {
     // Override if needed
   }
 
   /**
    * Uninstall adapter (cleanup)
    */
-  uninstall() {
+  uninstall(): void {
     // Override if needed
   }
 
@@ -108,16 +155,8 @@ export class RoleGranterAdapter {
    * AND can persist changes. UI should show edit controls.
    *
    * When false, the adapter is read-only. UI should hide edit controls.
-   *
-   * @returns {boolean}
    */
-  get canPersist() {
+  get canPersist(): boolean {
     return false
   }
 }
-
-/**
- * @typedef {Object} RoleMeta
- * @property {string} [label] - Human-readable label
- * @property {string} [description] - Description
- */

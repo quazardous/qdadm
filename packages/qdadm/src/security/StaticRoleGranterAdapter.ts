@@ -1,4 +1,19 @@
-import { RoleGranterAdapter } from './RoleGranterAdapter.js'
+import { RoleGranterAdapter } from './RoleGranterAdapter'
+import type {
+  RoleMeta,
+  RoleHierarchyMap,
+  RolePermissionsMap,
+  RoleLabelsMap,
+} from './RoleGranterAdapter'
+
+/**
+ * Static role granter configuration
+ */
+export interface StaticRoleGranterConfig {
+  role_hierarchy?: RoleHierarchyMap
+  role_permissions?: RolePermissionsMap
+  role_labels?: RoleLabelsMap
+}
 
 /**
  * StaticRoleGranterAdapter - Role granter from config object
@@ -32,13 +47,11 @@ import { RoleGranterAdapter } from './RoleGranterAdapter.js'
  * })
  */
 export class StaticRoleGranterAdapter extends RoleGranterAdapter {
-  /**
-   * @param {Object} config
-   * @param {Object<string, string[]>} [config.role_hierarchy={}] - Role hierarchy
-   * @param {Object<string, string[]>} [config.role_permissions={}] - Role permissions
-   * @param {Object<string, string>} [config.role_labels={}] - Role display labels
-   */
-  constructor(config = {}) {
+  protected _hierarchy: RoleHierarchyMap
+  protected _permissions: RolePermissionsMap
+  protected _labels: RoleLabelsMap
+
+  constructor(config: StaticRoleGranterConfig = {}) {
     super()
     this._hierarchy = config.role_hierarchy || {}
     this._permissions = config.role_permissions || {}
@@ -47,22 +60,19 @@ export class StaticRoleGranterAdapter extends RoleGranterAdapter {
 
   /**
    * Get permissions for a role
-   * @param {string} role
-   * @returns {string[]}
    */
-  getPermissions(role) {
+  getPermissions(role: string): string[] {
     return this._permissions[role] || []
   }
 
   /**
    * Get all defined roles
-   * @returns {string[]}
    */
-  getRoles() {
+  getRoles(): string[] {
     // Combine roles from permissions and hierarchy
-    const roles = new Set([
+    const roles = new Set<string>([
       ...Object.keys(this._permissions),
-      ...Object.keys(this._hierarchy)
+      ...Object.keys(this._hierarchy),
     ])
 
     // Also include inherited roles
@@ -77,18 +87,15 @@ export class StaticRoleGranterAdapter extends RoleGranterAdapter {
 
   /**
    * Get role hierarchy
-   * @returns {Object<string, string[]>}
    */
-  getHierarchy() {
+  getHierarchy(): RoleHierarchyMap {
     return this._hierarchy
   }
 
   /**
    * Get role metadata
-   * @param {string} role
-   * @returns {RoleMeta|null}
    */
-  getRoleMeta(role) {
+  getRoleMeta(role: string): RoleMeta | null {
     const label = this._labels[role]
     if (!label) return null
     return { label }
@@ -96,19 +103,15 @@ export class StaticRoleGranterAdapter extends RoleGranterAdapter {
 
   /**
    * Update role permissions at runtime (for testing or hot-reload)
-   * @param {string} role
-   * @param {string[]} permissions
    */
-  setPermissions(role, permissions) {
+  setPermissions(role: string, permissions: string[]): void {
     this._permissions[role] = permissions
   }
 
   /**
    * Update role hierarchy at runtime
-   * @param {string} role
-   * @param {string[]} inherits
    */
-  setHierarchy(role, inherits) {
+  setHierarchy(role: string, inherits: string[]): void {
     this._hierarchy[role] = inherits
   }
 }

@@ -22,21 +22,41 @@
  * })
  */
 
+// eslint-disable-next-line @typescript-eslint/no-require-imports
 import { Module } from '../kernel/Module.js'
-import { RolesManager } from './RolesManager.js'
+import { RolesManager } from './RolesManager'
+import type { RoleGranterAdapter } from './RoleGranterAdapter'
+import type { PermissionRegistry } from './PermissionRegistry'
+
+/**
+ * Kernel context interface for modules
+ */
+interface ModuleContext {
+  security?: {
+    roleGranter?: RoleGranterAdapter
+  }
+  permissionRegistry?: PermissionRegistry
+  entity(name: string, manager: unknown): void
+  permissions(namespace: string, permissions: Record<string, string>): void
+  crud(
+    name: string,
+    pages: { list?: () => Promise<unknown>; form?: () => Promise<unknown> },
+    options?: { basePath?: string; nav?: { section?: string; icon?: string; permission?: string } }
+  ): void
+}
 
 export class SecurityModule extends Module {
   static name = 'security'
-  static requires = []
+  static requires: string[] = []
   static priority = 100 // Load late (after other modules register permissions)
 
-  async connect(ctx) {
+  async connect(ctx: ModuleContext): Promise<void> {
     // ════════════════════════════════════════════════════════════════════════
     // ENTITY (wraps roleGranter)
     // ════════════════════════════════════════════════════════════════════════
     const rolesManager = new RolesManager({
-      roleGranter: ctx.security?.roleGranter,
-      permissionRegistry: ctx.permissionRegistry
+      roleGranter: ctx.security?.roleGranter ?? null,
+      permissionRegistry: ctx.permissionRegistry ?? null,
     })
 
     ctx.entity('roles', rolesManager)
@@ -47,23 +67,27 @@ export class SecurityModule extends Module {
     const rolesPerm = rolesManager.adminPermission?.replace('security:', '') || 'roles:manage'
     ctx.permissions('security', {
       [rolesPerm]: 'Manage roles (view, create, edit, delete)',
-      'users:manage': 'Manage users (view, create, edit, delete)'
+      'users:manage': 'Manage users (view, create, edit, delete)',
     })
 
     // ════════════════════════════════════════════════════════════════════════
     // ROUTES (using ctx.crud helper)
     // ════════════════════════════════════════════════════════════════════════
-    ctx.crud('roles', {
-      list: () => import('./pages/RoleList.vue'),
-      form: () => import('./pages/RoleForm.vue')
-    }, {
-      basePath: 'security/roles',
-      nav: {
-        section: 'Security',
-        icon: 'pi pi-shield',
-        permission: 'security:roles:read'
+    ctx.crud(
+      'roles',
+      {
+        list: () => import('./pages/RoleList.vue'),
+        form: () => import('./pages/RoleForm.vue'),
+      },
+      {
+        basePath: 'security/roles',
+        nav: {
+          section: 'Security',
+          icon: 'pi pi-shield',
+          permission: 'security:roles:read',
+        },
       }
-    })
+    )
   }
 }
 

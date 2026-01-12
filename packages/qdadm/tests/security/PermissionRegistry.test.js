@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest'
-import { PermissionRegistry } from '../../src/security/PermissionRegistry.js'
+import { PermissionRegistry } from '../../src/security/PermissionRegistry'
 
 describe('PermissionRegistry', () => {
   let registry

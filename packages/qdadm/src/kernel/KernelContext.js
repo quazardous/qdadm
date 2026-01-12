@@ -26,7 +26,7 @@
 
 import { managerFactory } from '../entity/factory.js'
 import { registry, getRoutes } from '../module/moduleRegistry.js'
-import { UsersManager } from '../security/UsersManager.js'
+import { UsersManager } from '../security/UsersManager'
 
 export class KernelContext {
   /**
