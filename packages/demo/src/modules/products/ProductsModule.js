@@ -101,7 +101,8 @@ export class ProductsModule extends Module {
       section: 'DummyJSON',
       route: 'product',
       icon: 'pi pi-box',
-      label: 'Products'
+      label: 'Products',
+      entity: 'products'
     })
 
     // Route family
