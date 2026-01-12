@@ -5,13 +5,13 @@
  * Listens to stack:change and hydrates each level with entity data.
  *
  * Signals emitted:
- * - stack:hydration:change - when a level's hydration completes { levels }
+ * - stack:hydrated - when hydration completes (batched, emits once after all levels) { levels }
  *
  * For Vue reactivity, use useStackHydrator composable.
  *
  * @example
  * const hydrator = new StackHydrator(activeStack, orchestrator, signalBus)
- * signalBus.on('stack:hydration:change', (event) => console.log('Hydrated:', event.data.levels))
+ * signalBus.on('stack:hydrated', (event) => console.log('Hydrated:', event.data.levels))
  */
 
 /**
@@ -41,6 +41,9 @@ export class StackHydrator {
 
     /** @type {HydratedLevel[]} */
     this._levels = []
+
+    /** @type {Promise|null} - Pending batched emit */
+    this._pendingEmit = null
 
     // Listen to stack changes via SignalBus
     // QuarKernel passes (event, ctx) where event.data contains the payload
@@ -126,7 +129,7 @@ export class StackHydrator {
       const manager = this._orchestrator?.get(level.entity)
       level.label = manager?.labelPlural ?? level.entity
       level.hydrated = true
-      this._emitChange()
+      this._scheduleEmit()
       return
     }
 
@@ -139,7 +142,7 @@ export class StackHydrator {
         level.label = level.id
         level.hydrated = true
         level.loading = false
-        this._emitChange()
+        this._scheduleEmit()
         return
       }
 
@@ -153,16 +156,22 @@ export class StackHydrator {
       level.hydrated = true // Mark as hydrated even on error
     } finally {
       level.loading = false
-      this._emitChange()
+      this._scheduleEmit()
     }
   }
 
   /**
-   * Emit hydration change signal
+   * Schedule batched hydration signal (groups multiple level hydrations)
+   * Uses microtask to batch emissions within same tick
    * @private
    */
-  _emitChange() {
-    this._emit('stack:hydration:change', { levels: this._levels })
+  _scheduleEmit() {
+    if (this._pendingEmit) return // Already scheduled
+
+    this._pendingEmit = Promise.resolve().then(() => {
+      this._pendingEmit = null
+      this._emit('stack:hydrated', { levels: this._levels })
+    })
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -237,8 +246,7 @@ export class StackHydrator {
     level.label = manager?.getEntityLabel?.(data) ?? level.id
     level.hydrated = true
     level.loading = false
-    this._emit('stack:hydrated', { level })
-    this._emit('stack:hydration:change', { levels: this._levels })
+    this._scheduleEmit()
   }
 
   /**
@@ -255,8 +263,7 @@ export class StackHydrator {
     level.label = manager?.getEntityLabel?.(data) ?? level.id
     level.hydrated = true
     level.loading = false
-    this._emit('stack:hydrated', { level })
-    this._emit('stack:hydration:change', { levels: this._levels })
+    this._scheduleEmit()
   }
 
   // ═══════════════════════════════════════════════════════════════════════════

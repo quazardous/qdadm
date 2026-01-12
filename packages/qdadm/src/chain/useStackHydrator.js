@@ -5,7 +5,7 @@
  * Each level has its own promise for fine-grained control.
  *
  * Listens to SignalBus events for reactivity:
- * - stack:hydration:change - when hydration state changes
+ * - stack:hydrated - when hydration completes (batched)
  *
  * @example
  * const hydrator = useStackHydrator()
@@ -38,11 +38,11 @@ export function useStackHydrator() {
   // Reactive state - updated via SignalBus
   const levels = ref(hydrator.getLevels())
 
-  // Subscribe to hydration changes
+  // Subscribe to hydration changes (batched signal)
   // QuarKernel passes (event, ctx) where event.data contains the payload
   let unsubscribe = null
   if (signalBus) {
-    unsubscribe = signalBus.on('stack:hydration:change', (event) => {
+    unsubscribe = signalBus.on('stack:hydrated', (event) => {
       const newLevels = event.data?.levels
       if (newLevels) {
         // Create new array reference to trigger reactivity
