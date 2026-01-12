@@ -7,11 +7,9 @@
  * - PersistableRoleGranterAdapter: full CRUD
  * - EntityRoleGranterAdapter: full CRUD via entity
  *
- * Registers permissions:
- * - security:roles:read - View roles list
- * - security:roles:create - Create new roles
- * - security:roles:update - Edit existing roles
- * - security:roles:delete - Delete roles
+ * Dynamically registers permissions from managers:
+ * - RolesManager.adminPermission (default: security:roles:manage)
+ * - security:users:manage (for UsersManager)
  *
  * @example
  * import { SecurityModule } from 'qdadm/security'
@@ -34,16 +32,6 @@ export class SecurityModule extends Module {
 
   async connect(ctx) {
     // ════════════════════════════════════════════════════════════════════════
-    // PERMISSIONS
-    // ════════════════════════════════════════════════════════════════════════
-    ctx.permissions('security', {
-      'roles:read': 'View roles and permissions',
-      'roles:create': 'Create new roles',
-      'roles:update': 'Edit role permissions',
-      'roles:delete': 'Delete roles'
-    })
-
-    // ════════════════════════════════════════════════════════════════════════
     // ENTITY (wraps roleGranter)
     // ════════════════════════════════════════════════════════════════════════
     const rolesManager = new RolesManager({
@@ -52,6 +40,15 @@ export class SecurityModule extends Module {
     })
 
     ctx.entity('roles', rolesManager)
+
+    // ════════════════════════════════════════════════════════════════════════
+    // PERMISSIONS (registered after entity so we can read adminPermission)
+    // ════════════════════════════════════════════════════════════════════════
+    const rolesPerm = rolesManager.adminPermission?.replace('security:', '') || 'roles:manage'
+    ctx.permissions('security', {
+      [rolesPerm]: 'Manage roles (view, create, edit, delete)',
+      'users:manage': 'Manage users (view, create, edit, delete)'
+    })
 
     // ════════════════════════════════════════════════════════════════════════
     // ROUTES (using ctx.crud helper)

@@ -13,9 +13,17 @@ export class RolesManager extends EntityManager {
    * @param {Object} options
    * @param {import('./RoleGranterAdapter.js').RoleGranterAdapter} options.roleGranter
    * @param {import('./PermissionRegistry.js').PermissionRegistry} options.permissionRegistry
+   * @param {string} [options.adminPermission='security:roles:manage'] - Permission required for role management
    */
   constructor(options = {}) {
-    const storage = new RoleGranterStorage(options.roleGranter)
+    const {
+      roleGranter,
+      permissionRegistry,
+      adminPermission = 'security:roles:manage',
+      ...rest
+    } = options
+
+    const storage = new RoleGranterStorage(roleGranter)
 
     super({
       name: 'roles',
@@ -28,11 +36,13 @@ export class RolesManager extends EntityManager {
         permissions: { type: 'array', label: 'Permissions', default: [] },
         inherits: { type: 'array', label: 'Inherits From', default: [] }
       },
-      storage
+      storage,
+      ...rest
     })
 
-    this._roleGranter = options.roleGranter
-    this._permissionRegistry = options.permissionRegistry
+    this._roleGranter = roleGranter
+    this._permissionRegistry = permissionRegistry
+    this._adminPermission = adminPermission
   }
 
   /**
@@ -50,28 +60,44 @@ export class RolesManager extends EntityManager {
   }
 
   /**
-   * Check if roles can be edited
-   */
-  get canPersist() {
-    return this._roleGranter?.canPersist ?? false
-  }
-
-  /**
    * Protected system roles that cannot be deleted
    */
   static PROTECTED_ROLES = ['ROLE_ANONYMOUS']
 
-  // Permission checks based on canPersist
-  canCreate() { return this.canPersist }
-  canUpdate() { return this.canPersist }
+  /**
+   * Get admin permission (for external registration)
+   */
+  get adminPermission() {
+    return this._adminPermission
+  }
+
+  _isAdmin() {
+    if (this._hasSecurityChecker()) {
+      return this.authAdapter.isGranted(this._adminPermission)
+    }
+    return false
+  }
+
+  canRead() {
+    return this._isAdmin()
+  }
+
+  canCreate() {
+    return this._isAdmin()
+  }
+
+  canUpdate() {
+    return this._isAdmin()
+  }
 
   /**
    * Check if can delete (general or row-specific)
+   * Protected roles cannot be deleted even with permission
    * @param {object} [item] - Optional role to check
    * @returns {boolean}
    */
   canDelete(item) {
-    if (!this.canPersist) return false
+    if (!this._isAdmin()) return false
     if (item) {
       // Protected system roles cannot be deleted
       return !RolesManager.PROTECTED_ROLES.includes(item.name)

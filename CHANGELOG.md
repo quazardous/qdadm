@@ -6,7 +6,8 @@ This is not a commit log. Keep entries simple, user-focused.
 ## [0.59.4] - 2026-01-12
 
 - **useUserImpersonator composable**: Reusable composable for user impersonation in admin dashboards. Supports entity-based or direct users list, configurable ID/label fields, and permission checks.
-- **EntityManager readOnly from storage**: `readOnly` getter now checks `storage.capabilities.readOnly` in addition to constructor option. Write operations automatically blocked when storage is read-only.
+- **Permission-based access for RolesManager/UsersManager**: Replaced `canPersist` logic with proper permission checks (`security:roles:manage`, `security:users:manage`). Permissions are dynamically registered by SecurityModule.
+- **adminPermission option**: Both managers accept `adminPermission` option to customize the required permission.
 
 ## [0.59.3] - 2026-01-12
 

@@ -27,14 +27,15 @@ list.addDeleteAction({ labelField: 'label' })
 // ============ HELPERS ============
 const { getManager } = useOrchestrator()
 const manager = getManager('roles')
-const canPersist = manager?.canPersist ?? false
+// Storage capability (not user permission) - for showing read-only warning
+const storageCanPersist = manager?.roleGranter?.canPersist ?? false
 </script>
 
 <template>
   <ListPage v-bind="list.props.value" v-on="list.events">
     <!-- Read-only Warning -->
     <template #before-table>
-      <Message v-if="!canPersist" severity="info" :closable="false" class="mb-4">
+      <Message v-if="!storageCanPersist" severity="info" :closable="false" class="mb-4">
         <div class="flex align-items-center gap-2">
           <i class="pi pi-info-circle text-xl"></i>
           <span>

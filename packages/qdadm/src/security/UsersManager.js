@@ -31,8 +31,7 @@ export class UsersManager extends EntityManager {
     const {
       storage,
       extraFields = {},
-      adminRole = 'ROLE_ADMIN',
-      adminOnly = true,
+      adminPermission = 'security:users:manage',
       fieldOverrides = {},
       ...rest
     } = options
@@ -79,44 +78,40 @@ export class UsersManager extends EntityManager {
       ...rest
     })
 
-    this._adminRole = adminRole
-    this._adminOnly = adminOnly
+    this._adminPermission = adminPermission
   }
 
   /**
-   * Check if current user has admin role
-   * @returns {boolean}
-   * @private
+   * Get admin permission (for external registration)
    */
-  _isAdmin() {
-    const user = this.authAdapter?.getCurrentUser?.()
-    if (!user) return false
-
-    // Check role directly or in roles array
-    const userRole = user.role || user.roles?.[0]
-    if (!userRole) return false
-
-    // Normalize to uppercase with ROLE_ prefix
-    const normalized = userRole.toUpperCase()
-    const roleToCheck = normalized.startsWith('ROLE_') ? normalized : `ROLE_${normalized}`
-
-    return roleToCheck === this._adminRole
+  get adminPermission() {
+    return this._adminPermission
   }
 
-  // Permission checks - admin only by default
+  _isAdmin() {
+    if (this._hasSecurityChecker()) {
+      return this.authAdapter.isGranted(this._adminPermission)
+    }
+    return false
+  }
+
   canRead() {
-    return this._adminOnly ? this._isAdmin() : true
+    return this._isAdmin();
   }
 
   canCreate() {
-    return this._adminOnly ? this._isAdmin() : true
+    // little dumb but should work for simple storages
+    return this._isAdmin();
   }
 
   canUpdate() {
-    return this._adminOnly ? this._isAdmin() : true
+    // little dumb but should work for simple storages
+    return this._isAdmin();
   }
 
   canDelete() {
-    return this._adminOnly ? this._isAdmin() : true
+    // little dumb but should work for simple storages
+    return this._isAdmin();
   }
+
 }
