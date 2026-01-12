@@ -6,10 +6,21 @@
  */
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports
-import { EntityManager } from '../entity/EntityManager.js'
+import { EntityManager } from '../entity/EntityManager'
 import { RoleGranterStorage } from './RoleGranterStorage'
 import type { RoleGranterAdapter, RoleData } from './RoleGranterAdapter'
 import type { PermissionRegistry } from './PermissionRegistry'
+import type { IStorage, EntityRecord } from '../types'
+
+/**
+ * RoleData as EntityRecord (with id mapped to name)
+ */
+interface RoleRecord extends EntityRecord {
+  name: string
+  label: string
+  permissions: string[]
+  inherits: string[]
+}
 
 /**
  * Options for RolesManager
@@ -29,7 +40,7 @@ interface EntityManagerInstance {
   }
 }
 
-export class RolesManager extends EntityManager {
+export class RolesManager extends EntityManager<RoleRecord> {
   private _roleGranter: RoleGranterAdapter | null
   private _permissionRegistry: PermissionRegistry | null
   private _adminPermission: string
@@ -47,7 +58,7 @@ export class RolesManager extends EntityManager {
       ...rest
     } = options
 
-    const storage = new RoleGranterStorage(roleGranter)
+    const storage = new RoleGranterStorage(roleGranter) as unknown as IStorage<RoleRecord>
 
     super({
       name: 'roles',
@@ -114,7 +125,7 @@ export class RolesManager extends EntityManager {
    * Check if can delete (general or row-specific)
    * Protected roles cannot be deleted even with permission
    */
-  canDelete(item?: RoleData): boolean {
+  canDelete(item?: RoleRecord | null): boolean {
     if (!this._isAdmin()) return false
     if (item) {
       // Protected system roles cannot be deleted

@@ -17,7 +17,7 @@
  * ```
  */
 
-import { EntityManager } from './EntityManager.js'
+import { EntityManager } from './EntityManager'
 import { storageFactory } from './storage/factory'
 
 /**

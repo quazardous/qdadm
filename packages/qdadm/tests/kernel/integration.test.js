@@ -17,7 +17,7 @@ import {
 import { KernelContext, createKernelContext } from '../../src/kernel/KernelContext.js'
 import { createSignalBus } from '../../src/kernel/SignalBus'
 import { Kernel } from '../../src/kernel/Kernel.js'
-import { EntityManager } from '../../src/entity/EntityManager.js'
+import { EntityManager } from '../../src/entity/EntityManager'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Test Fixtures

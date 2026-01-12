@@ -5,7 +5,7 @@ import {
   createManagerFactory,
   createManagers
 } from './factory.js'
-import { EntityManager } from './EntityManager.js'
+import { EntityManager } from './EntityManager'
 import { ApiStorage } from './storage/ApiStorage'
 import { MemoryStorage } from './storage/MemoryStorage'
 

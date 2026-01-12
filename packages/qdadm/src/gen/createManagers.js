@@ -8,7 +8,7 @@
  * @module gen/createManagers
  */
 
-import { EntityManager } from '../entity/EntityManager.js'
+import { EntityManager } from '../entity/EntityManager'
 import { applyDecorators } from './decorators.js'
 
 /**

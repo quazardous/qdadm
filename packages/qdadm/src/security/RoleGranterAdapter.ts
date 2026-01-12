@@ -32,12 +32,17 @@ export interface RoleMeta {
 
 /**
  * Complete role data object
+ *
+ * Note: `id` is optional and maps to `name` for EntityManager compatibility
+ * when using idField: 'name'
  */
 export interface RoleData {
   name: string
   label: string
   permissions: string[]
   inherits: string[]
+  /** Virtual id field (equals name) for EntityRecord compatibility */
+  id?: string
 }
 
 /**

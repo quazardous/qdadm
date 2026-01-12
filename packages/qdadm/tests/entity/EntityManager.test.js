@@ -4,7 +4,7 @@
  * Run: npm test
  */
 import { describe, it, expect, beforeEach, vi } from 'vitest'
-import { EntityManager, createEntityManager } from '../../src/entity/EntityManager.js'
+import { EntityManager, createEntityManager } from '../../src/entity/EntityManager'
 import {
   EntityAuthAdapter,
   AuthActions,

@@ -8,7 +8,7 @@
  * Run: npm test
  */
 import { describe, it, expect } from 'vitest'
-import { EntityManager } from '../../../src/entity/EntityManager.js'
+import { EntityManager } from '../../../src/entity/EntityManager'
 import {
   ApiStorage,
   SdkStorage,

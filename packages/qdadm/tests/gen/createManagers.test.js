@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { createManagers } from '../../src/gen/createManagers.js'
 import { ManualConnector } from '../../src/gen/connectors/ManualConnector.js'
 import { MemoryStorage } from '../../src/entity/storage/MemoryStorage'
-import { EntityManager } from '../../src/entity/EntityManager.js'
+import { EntityManager } from '../../src/entity/EntityManager'
 
 /**
  * Sample config fixture - reusable test configuration

@@ -17,7 +17,7 @@
  */
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports
-import { EntityManager } from '../entity/EntityManager.js'
+import { EntityManager } from '../entity/EntityManager'
 import type { FieldConfig } from '../types'
 
 /**

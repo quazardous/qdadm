@@ -5,7 +5,7 @@
  */
 
 // EntityManager
-export { EntityManager, createEntityManager } from './EntityManager.js'
+export { EntityManager, createEntityManager } from './EntityManager'
 
 // Manager Factory
 export {

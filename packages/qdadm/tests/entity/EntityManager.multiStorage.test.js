@@ -13,7 +13,7 @@
  * Run: npm test
  */
 import { describe, it, expect, beforeEach, vi } from 'vitest'
-import { EntityManager } from '../../src/entity/EntityManager.js'
+import { EntityManager } from '../../src/entity/EntityManager'
 import { MemoryStorage } from '../../src/entity/storage/MemoryStorage'
 
 /**
