@@ -54,14 +54,14 @@ ctx.permissionRegistry.getKeys()  // ['entity:books:read', 'reports:export', ...
 Maps roles to permissions:
 
 ```js
-const roleGranter = new RoleGranter({
+const roleProvider = new RoleGranter({
   ROLE_ADMIN: ['*'],  // All permissions
   ROLE_EDITOR: ['entity:books:*', 'entity:loans:read'],
   ROLE_USER: ['entity:books:read']
 })
 
 // With anonymous role
-const roleGranter = new RoleGranter({
+const roleProvider = new RoleGranter({
   ROLE_ANONYMOUS: ['entity:books:read'],  // Public read
   ROLE_USER: ['entity:books:*']
 }, { anonymousRole: 'ROLE_ANONYMOUS' })

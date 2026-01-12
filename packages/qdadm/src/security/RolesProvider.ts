@@ -1,7 +1,7 @@
 /**
- * RoleGranterAdapter - Interface for role → permissions mapping
+ * RoleProvider - Interface for role → permissions mapping
  *
- * The framework provides StaticRoleGranterAdapter (from config object).
+ * The framework provides StaticRoleProvider (from config object).
  * Apps can implement custom adapters (entity-based, API-backed, etc.)
  *
  * This interface abstracts HOW roles and permissions are stored/retrieved,
@@ -18,7 +18,7 @@
  *
  * // Custom adapter
  * security: {
- *   roleGranter: new EntityRoleGranterAdapter({ entityName: 'roles' })
+ *   rolesProvider: new EntityRoleProvider({ entityName: 'roles' })
  * }
  */
 
@@ -63,7 +63,7 @@ export type RoleLabelsMap = Record<string, string>
 /**
  * Kernel context interface (minimal for adapter needs)
  */
-export interface RoleGranterContext {
+export interface RoleProviderContext {
   signals?: {
     on: (pattern: string, handler: () => void) => () => void
   }
@@ -73,7 +73,7 @@ export interface RoleGranterContext {
   [key: string]: unknown
 }
 
-export class RoleGranterAdapter {
+export class RoleProvider {
   /**
    * Get permissions granted to a role
    *
@@ -85,7 +85,7 @@ export class RoleGranterAdapter {
    * // ['entity:**', 'admin:**']
    */
   getPermissions(_role: string): string[] {
-    throw new Error('RoleGranterAdapter.getPermissions() must be implemented')
+    throw new Error('RoleProvider.getPermissions() must be implemented')
   }
 
   /**
@@ -98,7 +98,7 @@ export class RoleGranterAdapter {
    * // ['ROLE_USER', 'ROLE_ADMIN', 'ROLE_SUPER_ADMIN']
    */
   getRoles(): string[] {
-    throw new Error('RoleGranterAdapter.getRoles() must be implemented')
+    throw new Error('RoleProvider.getRoles() must be implemented')
   }
 
   /**
@@ -111,7 +111,7 @@ export class RoleGranterAdapter {
    * // { ROLE_ADMIN: ['ROLE_USER'], ROLE_SUPER_ADMIN: ['ROLE_ADMIN'] }
    */
   getHierarchy(): RoleHierarchyMap {
-    throw new Error('RoleGranterAdapter.getHierarchy() must be implemented')
+    throw new Error('RoleProvider.getHierarchy() must be implemented')
   }
 
   /**
@@ -142,7 +142,7 @@ export class RoleGranterAdapter {
    *
    * @param ctx - Kernel context
    */
-  install(_ctx: RoleGranterContext): void {
+  install(_ctx: RoleProviderContext): void {
     // Override if needed
   }
 

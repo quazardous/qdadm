@@ -39,7 +39,7 @@ interface RoleGranter {
  * Roles manager interface
  */
 interface RolesManager {
-  roleGranter?: RoleGranter
+  rolesProvider?: RoleGranter
 }
 
 /**
@@ -80,11 +80,11 @@ const permissionRegistry = inject<PermissionRegistry | null>('qdadmPermissionReg
 // Role options for inheritance (exclude self)
 const allRoles = computed<RoleOption[]>(() => {
   const currentName = form.data.value?.name as string | undefined
-  const roles = manager?.roleGranter?.getRoles() || []
+  const roles = manager?.rolesProvider?.getRoles() || []
   return roles
     .filter((name: string) => name !== currentName)
     .map((name: string) => {
-      const role = manager?.roleGranter?.getRole?.(name)
+      const role = manager?.rolesProvider?.getRole?.(name)
       return {
         name,
         label: role?.label || name,

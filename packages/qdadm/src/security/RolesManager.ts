@@ -1,14 +1,14 @@
 /**
  * RolesManager - System entity manager for roles
  *
- * Uses RoleGranterStorage as bridge to roleGranter.
+ * Uses RoleProviderStorage as bridge to rolesProvider.
  * Allows SecurityModule to use standard ctx.crud() pattern.
  */
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 import { EntityManager } from '../entity/EntityManager'
-import { RoleGranterStorage } from './RoleGranterStorage'
-import type { RoleGranterAdapter } from './RoleGranterAdapter'
+import { RoleProviderStorage } from './RolesProviderStorage'
+import type { RoleProvider } from './RolesProvider'
 import type { PermissionRegistry } from './PermissionRegistry'
 import type { IStorage, EntityRecord } from '../types'
 
@@ -26,7 +26,7 @@ interface RoleRecord extends EntityRecord {
  * Options for RolesManager
  */
 export interface RolesManagerOptions {
-  roleGranter?: RoleGranterAdapter | null
+  rolesProvider?: RoleProvider | null
   permissionRegistry?: PermissionRegistry | null
   adminPermission?: string
   [key: string]: unknown
@@ -41,7 +41,7 @@ interface EntityManagerInstance {
 }
 
 export class RolesManager extends EntityManager<RoleRecord> {
-  private _roleGranter: RoleGranterAdapter | null
+  private _rolesProvider: RoleProvider | null
   private _permissionRegistry: PermissionRegistry | null
   private _adminPermission: string
 
@@ -52,13 +52,13 @@ export class RolesManager extends EntityManager<RoleRecord> {
 
   constructor(options: RolesManagerOptions = {}) {
     const {
-      roleGranter = null,
+      rolesProvider = null,
       permissionRegistry = null,
       adminPermission = 'security:roles:manage',
       ...rest
     } = options
 
-    const storage = new RoleGranterStorage(roleGranter) as unknown as IStorage<RoleRecord>
+    const storage = new RoleProviderStorage(rolesProvider) as unknown as IStorage<RoleRecord>
 
     super({
       name: 'roles',
@@ -75,16 +75,16 @@ export class RolesManager extends EntityManager<RoleRecord> {
       ...rest,
     })
 
-    this._roleGranter = roleGranter
+    this._rolesProvider = rolesProvider
     this._permissionRegistry = permissionRegistry
     this._adminPermission = adminPermission
   }
 
   /**
-   * Get roleGranter (for RoleForm permission picker)
+   * Get rolesProvider (for RoleForm permission picker)
    */
-  get roleGranter(): RoleGranterAdapter | null {
-    return this._roleGranter
+  get rolesProvider(): RoleProvider | null {
+    return this._rolesProvider
   }
 
   /**

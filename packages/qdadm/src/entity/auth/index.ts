@@ -20,7 +20,7 @@ export type { RoleHierarchyConfig } from './RoleHierarchy'
 // Security Checker (isGranted contract)
 export { SecurityChecker, createSecurityChecker } from './SecurityChecker'
 export type {
-  RoleGranterAdapter,
+  RoleProvider,
   SecurityCheckerOptions,
   SecurityCheckerConfig,
 } from './SecurityChecker'

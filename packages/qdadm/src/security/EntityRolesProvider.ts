@@ -1,13 +1,13 @@
-import { RoleGranterAdapter } from './RoleGranterAdapter'
+import { RoleProvider } from './RolesProvider'
 import type {
   RoleMeta,
   RoleData,
   RoleHierarchyMap,
-  RoleGranterContext,
-} from './RoleGranterAdapter'
+  RoleProviderContext,
+} from './RolesProvider'
 
 /**
- * Options for EntityRoleGranterAdapter
+ * Options for EntityRoleProvider
  */
 export interface EntityRoleGranterOptions {
   entityName?: string
@@ -52,7 +52,7 @@ interface RoleCache {
 }
 
 /**
- * EntityRoleGranterAdapter - Role granter backed by an entity
+ * EntityRoleProvider - Role granter backed by an entity
  *
  * Fetches roles and permissions from a 'roles' entity.
  * Auto-invalidates cache on entity:roles:* signals.
@@ -72,7 +72,7 @@ interface RoleCache {
  * const kernel = new Kernel({
  *   modules: [SecurityModule, ...],
  *   security: {
- *     roleGranter: new EntityRoleGranterAdapter({
+ *     rolesProvider: new EntityRoleProvider({
  *       entityName: 'roles',
  *       nameField: 'name',
  *       permissionsField: 'permissions',
@@ -82,10 +82,10 @@ interface RoleCache {
  * })
  *
  * // Load roles before boot
- * await kernel.options.security.roleGranter.load()
+ * await kernel.options.security.rolesProvider.load()
  * await kernel.boot()
  */
-export class EntityRoleGranterAdapter extends RoleGranterAdapter {
+export class EntityRoleProvider extends RoleProvider {
   private _entityName: string
   private _nameField: string
   private _labelField: string
@@ -93,7 +93,7 @@ export class EntityRoleGranterAdapter extends RoleGranterAdapter {
   private _inheritsField: string
 
   private _cache: RoleCache | null = null
-  private _ctx: RoleGranterContext | null = null
+  private _ctx: RoleProviderContext | null = null
   private _orchestrator: Orchestrator | null = null
   private _signalCleanup: (() => void) | null = null
   private _loading: Promise<void> | null = null
@@ -110,7 +110,7 @@ export class EntityRoleGranterAdapter extends RoleGranterAdapter {
   /**
    * Install adapter (called by Kernel after orchestrator ready)
    */
-  install(ctx: RoleGranterContext): void {
+  install(ctx: RoleProviderContext): void {
     this._ctx = ctx
     this._orchestrator = ctx.orchestrator as Orchestrator
 

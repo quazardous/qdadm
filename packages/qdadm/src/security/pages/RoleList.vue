@@ -19,7 +19,7 @@ interface RoleGranter {
  * Roles manager interface
  */
 interface RolesManager {
-  roleGranter?: RoleGranter
+  rolesProvider?: RoleGranter
 }
 
 // ============ LIST BUILDER ============
@@ -42,7 +42,7 @@ list.addDeleteAction({ labelField: 'label' })
 const { getManager } = useOrchestrator()
 const manager = getManager('roles') as RolesManager | null
 // Storage capability (not user permission) - for showing read-only warning
-const storageCanPersist: boolean = manager?.roleGranter?.canPersist ?? false
+const storageCanPersist: boolean = manager?.rolesProvider?.canPersist ?? false
 </script>
 
 <template>
@@ -54,7 +54,7 @@ const storageCanPersist: boolean = manager?.roleGranter?.canPersist ?? false
           <i class="pi pi-info-circle text-xl"></i>
           <span>
             <strong>Read-only:</strong> Roles are configured statically.
-            Use a PersistableRoleGranterAdapter for editing.
+            Use a PersistableRoleProvider for editing.
           </span>
         </div>
       </Message>

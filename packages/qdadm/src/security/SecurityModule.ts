@@ -2,10 +2,10 @@
  * SecurityModule - Role management UI
  *
  * Provides a page to view/edit roles and permissions.
- * Works with any RoleGranterAdapter:
- * - StaticRoleGranterAdapter: read-only view
- * - PersistableRoleGranterAdapter: full CRUD
- * - EntityRoleGranterAdapter: full CRUD via entity
+ * Works with any RoleProvider:
+ * - StaticRoleProvider: read-only view
+ * - PersistableRoleProvider: full CRUD
+ * - EntityRoleProvider: full CRUD via entity
  *
  * Dynamically registers permissions from managers:
  * - RolesManager.adminPermission (default: security:roles:manage)
@@ -17,7 +17,7 @@
  * const kernel = new Kernel({
  *   moduleDefs: [SecurityModule, ...],
  *   security: {
- *     roleGranter: createLocalStorageRoleGranter({ ... })
+ *     rolesProvider: createLocalStorageRoleGranter({ ... })
  *   }
  * })
  */
@@ -25,7 +25,7 @@
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 import { Module } from '../kernel/Module'
 import { RolesManager } from './RolesManager'
-import type { RoleGranterAdapter } from './RoleGranterAdapter'
+import type { RoleProvider } from './RolesProvider'
 import type { PermissionRegistry } from './PermissionRegistry'
 
 /**
@@ -33,7 +33,7 @@ import type { PermissionRegistry } from './PermissionRegistry'
  */
 interface ModuleContext {
   security?: {
-    roleGranter?: RoleGranterAdapter
+    rolesProvider?: RoleProvider
   }
   permissionRegistry?: PermissionRegistry
   entity(name: string, manager: unknown): void
@@ -52,10 +52,10 @@ export class SecurityModule extends Module {
 
   async connect(ctx: ModuleContext): Promise<void> {
     // ════════════════════════════════════════════════════════════════════════
-    // ENTITY (wraps roleGranter)
+    // ENTITY (wraps rolesProvider)
     // ════════════════════════════════════════════════════════════════════════
     const rolesManager = new RolesManager({
-      roleGranter: ctx.security?.roleGranter ?? null,
+      rolesProvider: ctx.security?.rolesProvider ?? null,
       permissionRegistry: ctx.permissionRegistry ?? null,
     })
 

@@ -39,7 +39,7 @@ const kernel = new Kernel({
   authAdapter,
   entityAuthAdapter: () => authAdapter.getUser(), // Function → EntityAuthAdapter with getCurrentUser
   security: {
-    roleGranter: createLocalStorageRoleGranter({
+    roleProvider: createLocalStorageRoleGranter({
       key: 'demo_roles',
       // Fixed: system permissions, cannot be edited
       fixed: {

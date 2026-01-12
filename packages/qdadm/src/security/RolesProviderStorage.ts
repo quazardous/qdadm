@@ -1,12 +1,12 @@
 /**
- * RoleGranterStorage - Storage bridge for roleGranter
+ * RoleProviderStorage - Storage bridge for rolesProvider
  *
- * Implements Storage interface and delegates to roleGranter.
+ * Implements Storage interface and delegates to rolesProvider.
  * Allows RolesManager to use standard EntityManager patterns.
  */
 
 import type { StorageCapabilities } from '../types'
-import type { RoleGranterAdapter, RoleData } from './RoleGranterAdapter'
+import type { RoleProvider, RoleData } from './RolesProvider'
 
 /**
  * List parameters for role listing
@@ -35,9 +35,9 @@ export interface RoleInput {
 }
 
 /**
- * Extended RoleGranterAdapter with optional mutation methods
+ * Extended RoleProvider with optional mutation methods
  */
-interface MutableRoleGranterAdapter extends RoleGranterAdapter {
+interface MutableRoleProvider extends RoleProvider {
   ensureReady?(): Promise<void>
   getLabels?(): Record<string, string>
   getRole?(name: string): RoleData | null
@@ -52,11 +52,11 @@ interface MutableRoleGranterAdapter extends RoleGranterAdapter {
   deleteRole?(name: string): Promise<void>
 }
 
-export class RoleGranterStorage {
+export class RoleProviderStorage {
   /**
    * Storage name for debug display (survives minification)
    */
-  static storageName = 'RoleGranterStorage'
+  static storageName = 'RoleProviderStorage'
 
   /**
    * Static capabilities (standard storage pattern)
@@ -65,13 +65,13 @@ export class RoleGranterStorage {
     supportsTotal: true,
     supportsFilters: false,
     supportsPagination: false,
-    supportsCaching: false, // In-memory via roleGranter, no need for EntityManager cache
+    supportsCaching: false, // In-memory via rolesProvider, no need for EntityManager cache
   }
 
-  private _roleGranter: MutableRoleGranterAdapter | null
+  private _rolesProvider: MutableRoleProvider | null
 
-  constructor(roleGranter: RoleGranterAdapter | null) {
-    this._roleGranter = roleGranter as MutableRoleGranterAdapter | null
+  constructor(rolesProvider: RoleProvider | null) {
+    this._rolesProvider = rolesProvider as MutableRoleProvider | null
   }
 
   /**
@@ -79,13 +79,13 @@ export class RoleGranterStorage {
    *
    * Dynamic properties:
    * - requiresAuth: false (roles are system data)
-   * - readOnly: based on roleGranter.canPersist
+   * - readOnly: based on rolesProvider.canPersist
    */
   get capabilities(): StorageCapabilities & { requiresAuth: boolean; readOnly: boolean } {
     return {
-      ...RoleGranterStorage.capabilities,
+      ...RoleProviderStorage.capabilities,
       requiresAuth: false,
-      readOnly: !this._roleGranter?.canPersist,
+      readOnly: !this._rolesProvider?.canPersist,
     }
   }
 
@@ -93,16 +93,16 @@ export class RoleGranterStorage {
    * List all roles
    */
   async list(params: RoleListParams = {}): Promise<RoleListResult> {
-    if (!this._roleGranter) {
+    if (!this._rolesProvider) {
       return { items: [], total: 0 }
     }
 
     // Ensure loaded for adapters that need it
-    if (this._roleGranter.ensureReady) {
-      await this._roleGranter.ensureReady()
+    if (this._rolesProvider.ensureReady) {
+      await this._rolesProvider.ensureReady()
     }
 
-    const roleNames = this._roleGranter.getRoles()
+    const roleNames = this._rolesProvider.getRoles()
     const roles = roleNames.map((name) => this._getRole(name)).filter((r): r is RoleData => r !== null)
 
     // Simple search filter
@@ -124,10 +124,10 @@ export class RoleGranterStorage {
    * Get a single role by name
    */
   async get(name: string): Promise<RoleData | null> {
-    if (!this._roleGranter) return null
+    if (!this._rolesProvider) return null
 
-    if (this._roleGranter.ensureReady) {
-      await this._roleGranter.ensureReady()
+    if (this._rolesProvider.ensureReady) {
+      await this._rolesProvider.ensureReady()
     }
 
     return this._getRole(name)
@@ -137,10 +137,10 @@ export class RoleGranterStorage {
    * Get many roles by names
    */
   async getMany(names: string[]): Promise<RoleData[]> {
-    if (!this._roleGranter) return []
+    if (!this._rolesProvider) return []
 
-    if (this._roleGranter.ensureReady) {
-      await this._roleGranter.ensureReady()
+    if (this._rolesProvider.ensureReady) {
+      await this._rolesProvider.ensureReady()
     }
 
     return names.map((name) => this._getRole(name)).filter((r): r is RoleData => r !== null)
@@ -150,10 +150,10 @@ export class RoleGranterStorage {
    * Create a new role
    */
   async create(data: RoleInput): Promise<RoleData> {
-    if (!this._roleGranter?.createRole) {
+    if (!this._rolesProvider?.createRole) {
       throw new Error('Role creation not supported by this adapter')
     }
-    return this._roleGranter.createRole(data.name, {
+    return this._rolesProvider.createRole(data.name, {
       label: data.label,
       permissions: data.permissions || [],
       inherits: data.inherits || [],
@@ -164,10 +164,10 @@ export class RoleGranterStorage {
    * Update an existing role
    */
   async update(name: string, data: Partial<RoleInput>): Promise<RoleData> {
-    if (!this._roleGranter?.updateRole) {
+    if (!this._rolesProvider?.updateRole) {
       throw new Error('Role update not supported by this adapter')
     }
-    return this._roleGranter.updateRole(name, {
+    return this._rolesProvider.updateRole(name, {
       label: data.label,
       permissions: data.permissions,
       inherits: data.inherits,
@@ -185,27 +185,27 @@ export class RoleGranterStorage {
    * Delete a role
    */
   async delete(name: string): Promise<void> {
-    if (!this._roleGranter?.deleteRole) {
+    if (!this._rolesProvider?.deleteRole) {
       throw new Error('Role deletion not supported by this adapter')
     }
-    return this._roleGranter.deleteRole(name)
+    return this._rolesProvider.deleteRole(name)
   }
 
   /**
-   * Get role object from roleGranter
+   * Get role object from rolesProvider
    */
   private _getRole(name: string): RoleData | null {
-    if (!this._roleGranter) return null
+    if (!this._rolesProvider) return null
 
-    if (this._roleGranter.getRole) {
-      return this._roleGranter.getRole(name)
+    if (this._rolesProvider.getRole) {
+      return this._rolesProvider.getRole(name)
     }
     // Fallback for adapters without getRole
     return {
       name,
-      label: this._roleGranter.getLabels?.()[name] || name,
-      permissions: this._roleGranter.getPermissions(name),
-      inherits: this._roleGranter.getHierarchy()[name] || [],
+      label: this._rolesProvider.getLabels?.()[name] || name,
+      permissions: this._rolesProvider.getPermissions(name),
+      inherits: this._rolesProvider.getHierarchy()[name] || [],
     }
   }
 }

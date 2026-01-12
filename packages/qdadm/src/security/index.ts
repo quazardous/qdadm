@@ -4,10 +4,10 @@
  * Provides:
  * - PermissionMatcher: Wildcard pattern matching (*, **)
  * - PermissionRegistry: Central registry for module permissions
- * - RoleGranterAdapter: Interface for role → permissions mapping
- * - StaticRoleGranterAdapter: Config-based role granter (default)
- * - EntityRoleGranterAdapter: Entity-based role granter (for UI management)
- * - PersistableRoleGranterAdapter: Load/persist from any source (localStorage, API)
+ * - RoleProvider: Interface for role → permissions mapping
+ * - StaticRoleProvider: Config-based role granter (default)
+ * - EntityRoleProvider: Entity-based role granter (for UI management)
+ * - PersistableRoleProvider: Load/persist from any source (localStorage, API)
  * - SecurityModule: System module for roles UI (uses RolesManager)
  * - RolesManager: System entity manager for roles
  * - UsersManager: System entity manager for users (linked to roles)
@@ -16,9 +16,9 @@
  * import {
  *   PermissionMatcher,
  *   PermissionRegistry,
- *   StaticRoleGranterAdapter,
- *   EntityRoleGranterAdapter,
- *   PersistableRoleGranterAdapter,
+ *   StaticRoleProvider,
+ *   EntityRoleProvider,
+ *   PersistableRoleProvider,
  *   createLocalStorageRoleGranter,
  *   UsersManager
  * } from 'qdadm/security'
@@ -34,24 +34,24 @@ export {
   type GroupedPermissions,
 } from './PermissionRegistry'
 export {
-  RoleGranterAdapter,
+  RoleProvider,
   type RoleMeta,
   type RoleData,
   type RoleHierarchyMap,
   type RolePermissionsMap,
   type RoleLabelsMap,
-  type RoleGranterContext,
-} from './RoleGranterAdapter'
+  type RoleProviderContext,
+} from './RolesProvider'
 export {
-  StaticRoleGranterAdapter,
+  StaticRoleProvider,
   type StaticRoleGranterConfig,
-} from './StaticRoleGranterAdapter'
+} from './StaticRolesProvider'
 export {
-  EntityRoleGranterAdapter,
+  EntityRoleProvider,
   type EntityRoleGranterOptions,
-} from './EntityRoleGranterAdapter'
+} from './EntityRolesProvider'
 export {
-  PersistableRoleGranterAdapter,
+  PersistableRoleProvider,
   createLocalStorageRoleGranter,
   type RoleConfig,
   type MergeStrategy,
@@ -59,16 +59,16 @@ export {
   type PersistCallback,
   type PersistableRoleGranterOptions,
   type LocalStorageRoleGranterOptions,
-} from './PersistableRoleGranterAdapter'
+} from './PersistableRolesProvider'
 export { SecurityModule } from './SecurityModule'
 export { RolesManager, type RolesManagerOptions } from './RolesManager'
 export { UsersManager, type UsersManagerOptions, type UserEntity } from './UsersManager'
 export {
-  RoleGranterStorage,
+  RoleProviderStorage,
   type RoleListParams,
   type RoleListResult,
   type RoleInput,
-} from './RoleGranterStorage'
+} from './RolesProviderStorage'
 
 /**
  * Standard entity actions for CRUD operations

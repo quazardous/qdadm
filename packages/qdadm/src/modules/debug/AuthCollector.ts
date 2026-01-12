@@ -267,8 +267,8 @@ export class AuthCollector extends Collector<AuthEntry> {
           })
         }
       } else {
-        const checker = securityChecker as SecurityChecker & { roleGranter?: { getAnonymousRole?: () => string } }
-        const anonymousRole = checker?.roleGranter?.getAnonymousRole?.() ?? 'ROLE_ANONYMOUS'
+        const checker = securityChecker as SecurityChecker & { rolesProvider?: { getAnonymousRole?: () => string } }
+        const anonymousRole = checker?.rolesProvider?.getAnonymousRole?.() ?? 'ROLE_ANONYMOUS'
         const effectivePermissions = this._getEffectivePermissions(securityChecker, [anonymousRole])
 
         entries.push({
@@ -398,7 +398,7 @@ export class AuthCollector extends Collector<AuthEntry> {
     try {
       const checker = securityChecker as SecurityChecker & {
         getUserPermissions?: (user: { roles: string[] }) => string[]
-        roleGranter?: { getPermissions?: (role: string) => string[] }
+        rolesProvider?: { getPermissions?: (role: string) => string[] }
         roleHierarchy?: { getReachableRoles?: (role: string) => string[] }
       }
 
@@ -408,14 +408,14 @@ export class AuthCollector extends Collector<AuthEntry> {
         return [...new Set(perms)].sort()
       }
 
-      const roleGranter = checker.roleGranter
-      if (!roleGranter) return []
+      const rolesProvider = checker.rolesProvider
+      if (!rolesProvider) return []
 
       const permissions = new Set<string>()
       for (const role of roles) {
         const reachable = checker.roleHierarchy?.getReachableRoles?.(role) ?? [role]
         for (const r of reachable) {
-          const rolePerms = roleGranter.getPermissions?.(r) ?? []
+          const rolePerms = rolesProvider.getPermissions?.(r) ?? []
           for (const perm of rolePerms) {
             permissions.add(perm)
           }

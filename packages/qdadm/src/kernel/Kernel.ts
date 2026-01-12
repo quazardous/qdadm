@@ -55,7 +55,7 @@ import { createHookRegistry, type HookRegistry } from '../hooks/HookRegistry'
 import { createSecurityChecker, type SecurityChecker } from '../entity/auth/SecurityChecker'
 import { authFactory, CompositeAuthAdapter } from '../entity/auth'
 import { PermissionRegistry } from '../security/PermissionRegistry'
-import { StaticRoleGranterAdapter } from '../security/StaticRoleGranterAdapter'
+import { StaticRoleProvider } from '../security/StaticRolesProvider'
 import { createManagers, type ManagerFactoryContext } from '../entity/factory.js'
 import { defaultStorageResolver } from '../entity/storage/factory'
 import { createDeferredRegistry, type DeferredRegistry } from '../deferred/DeferredRegistry.js'
@@ -64,7 +64,7 @@ import { createSSEBridge, type SSEBridge } from './SSEBridge'
 import { ActiveStack } from '../chain/ActiveStack.js'
 import { StackHydrator } from '../chain/StackHydrator.js'
 import type { EntityManager } from '../entity/EntityManager'
-import type { RoleGranterAdapter } from '../security/RoleGranterAdapter'
+import type { RoleProvider } from '../security/RolesProvider'
 import type { EntityAuthAdapter } from '../entity/auth/EntityAuthAdapter'
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -151,7 +151,7 @@ export interface SecurityConfig {
   role_permissions?: Record<string, string[]>
   role_labels?: Record<string, string>
   entity_permissions?: boolean | string[]
-  roleGranter?: RoleGranterAdapter
+  rolesProvider?: RoleProvider
 }
 
 /**
@@ -991,9 +991,9 @@ export class Kernel {
 
     if (!security) return
 
-    let roleGranter = security.roleGranter
-    if (!roleGranter && (security.role_permissions || security.role_hierarchy)) {
-      roleGranter = new StaticRoleGranterAdapter({
+    let rolesProvider = security.rolesProvider
+    if (!rolesProvider && (security.role_permissions || security.role_hierarchy)) {
+      rolesProvider = new StaticRoleProvider({
         role_hierarchy: security.role_hierarchy || {},
         role_permissions: security.role_permissions || {},
         role_labels: security.role_labels || {},
@@ -1001,7 +1001,7 @@ export class Kernel {
     }
 
     this.securityChecker = createSecurityChecker({
-      roleGranter: roleGranter || undefined,
+      rolesProvider: rolesProvider || undefined,
       getCurrentUser: () =>
         (entityAuthAdapter as EntityAuthAdapter | null)?.getCurrentUser?.() || null,
     })
@@ -1015,13 +1015,13 @@ export class Kernel {
       adapter.setSecurityChecker(this.securityChecker)
     }
 
-    if (roleGranter?.install) {
+    if (rolesProvider?.install) {
       const ctx = {
         orchestrator: this.orchestrator,
         signals: this.signals,
       }
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      roleGranter.install(ctx as any)
+      rolesProvider.install(ctx as any)
     }
   }
 

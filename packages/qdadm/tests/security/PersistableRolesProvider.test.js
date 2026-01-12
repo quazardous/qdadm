@@ -1,13 +1,13 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import {
-  PersistableRoleGranterAdapter,
+  PersistableRoleProvider,
   createLocalStorageRoleGranter
-} from '../../src/security/PersistableRoleGranterAdapter'
+} from '../../src/security/PersistableRolesProvider'
 
-describe('PersistableRoleGranterAdapter', () => {
+describe('PersistableRoleProvider', () => {
   describe('constructor', () => {
     it('initializes with defaults', () => {
-      const adapter = new PersistableRoleGranterAdapter({
+      const adapter = new PersistableRoleProvider({
         defaults: {
           role_permissions: { ROLE_USER: ['entity:*:read'] },
           role_hierarchy: { ROLE_ADMIN: ['ROLE_USER'] },
@@ -21,12 +21,12 @@ describe('PersistableRoleGranterAdapter', () => {
     })
 
     it('returns empty array for unknown role', () => {
-      const adapter = new PersistableRoleGranterAdapter()
+      const adapter = new PersistableRoleProvider()
       expect(adapter.getPermissions('ROLE_UNKNOWN')).toEqual([])
     })
 
     it('starts not loaded when no load function', () => {
-      const adapter = new PersistableRoleGranterAdapter()
+      const adapter = new PersistableRoleProvider()
       expect(adapter.isLoaded).toBe(false)
     })
   })
@@ -37,7 +37,7 @@ describe('PersistableRoleGranterAdapter', () => {
         role_permissions: { ROLE_ADMIN: ['admin:**'] }
       })
 
-      const adapter = new PersistableRoleGranterAdapter({
+      const adapter = new PersistableRoleProvider({
         load: loadFn,
         autoLoad: false
       })
@@ -50,7 +50,7 @@ describe('PersistableRoleGranterAdapter', () => {
     })
 
     it('handles sync load function', async () => {
-      const adapter = new PersistableRoleGranterAdapter({
+      const adapter = new PersistableRoleProvider({
         load: () => ({ role_permissions: { ROLE_TEST: ['test:*'] } }),
         autoLoad: false
       })
@@ -61,7 +61,7 @@ describe('PersistableRoleGranterAdapter', () => {
     })
 
     it('handles null from load (uses defaults)', async () => {
-      const adapter = new PersistableRoleGranterAdapter({
+      const adapter = new PersistableRoleProvider({
         load: () => null,
         defaults: { role_permissions: { ROLE_USER: ['default:*'] } },
         autoLoad: false
@@ -73,7 +73,7 @@ describe('PersistableRoleGranterAdapter', () => {
     })
 
     it('handles load error gracefully', async () => {
-      const adapter = new PersistableRoleGranterAdapter({
+      const adapter = new PersistableRoleProvider({
         load: () => { throw new Error('Load failed') },
         defaults: { role_permissions: { ROLE_USER: ['fallback:*'] } },
         autoLoad: false
@@ -87,7 +87,7 @@ describe('PersistableRoleGranterAdapter', () => {
 
     it('prevents concurrent loads', async () => {
       let loadCount = 0
-      const adapter = new PersistableRoleGranterAdapter({
+      const adapter = new PersistableRoleProvider({
         load: async () => {
           loadCount++
           await new Promise(r => setTimeout(r, 10))
@@ -120,7 +120,7 @@ describe('PersistableRoleGranterAdapter', () => {
     }
 
     it('extend strategy merges loaded over defaults', async () => {
-      const adapter = new PersistableRoleGranterAdapter({
+      const adapter = new PersistableRoleProvider({
         load: () => loaded,
         defaults,
         mergeStrategy: 'extend',
@@ -143,7 +143,7 @@ describe('PersistableRoleGranterAdapter', () => {
     })
 
     it('replace strategy uses only loaded data', async () => {
-      const adapter = new PersistableRoleGranterAdapter({
+      const adapter = new PersistableRoleProvider({
         load: () => loaded,
         defaults,
         mergeStrategy: 'replace',
@@ -159,7 +159,7 @@ describe('PersistableRoleGranterAdapter', () => {
     })
 
     it('defaults-only strategy ignores loaded data', async () => {
-      const adapter = new PersistableRoleGranterAdapter({
+      const adapter = new PersistableRoleProvider({
         load: () => loaded,
         defaults,
         mergeStrategy: 'defaults-only',
@@ -177,7 +177,7 @@ describe('PersistableRoleGranterAdapter', () => {
 
   describe('fixed permissions', () => {
     it('always includes fixed permissions regardless of loaded data', async () => {
-      const adapter = new PersistableRoleGranterAdapter({
+      const adapter = new PersistableRoleProvider({
         fixed: {
           role_permissions: {
             ROLE_USER: ['auth:authenticated', 'auth:logout']
@@ -210,7 +210,7 @@ describe('PersistableRoleGranterAdapter', () => {
     })
 
     it('fixed permissions survive replace merge strategy', async () => {
-      const adapter = new PersistableRoleGranterAdapter({
+      const adapter = new PersistableRoleProvider({
         fixed: {
           role_permissions: {
             ROLE_ANONYMOUS: ['auth:login']
@@ -234,7 +234,7 @@ describe('PersistableRoleGranterAdapter', () => {
     })
 
     it('getRoles includes roles from fixed', () => {
-      const adapter = new PersistableRoleGranterAdapter({
+      const adapter = new PersistableRoleProvider({
         fixed: {
           role_permissions: { ROLE_ANONYMOUS: ['auth:login'] }
         },
@@ -249,7 +249,7 @@ describe('PersistableRoleGranterAdapter', () => {
     })
 
     it('getHierarchy merges fixed hierarchy', () => {
-      const adapter = new PersistableRoleGranterAdapter({
+      const adapter = new PersistableRoleProvider({
         fixed: {
           role_hierarchy: { ROLE_SYSTEM: ['ROLE_ROOT'] }
         },
@@ -266,7 +266,7 @@ describe('PersistableRoleGranterAdapter', () => {
     })
 
     it('getLabels merges fixed labels', () => {
-      const adapter = new PersistableRoleGranterAdapter({
+      const adapter = new PersistableRoleProvider({
         fixed: {
           role_labels: { ROLE_ANONYMOUS: 'Anonymous' }
         },
@@ -283,7 +283,7 @@ describe('PersistableRoleGranterAdapter', () => {
     })
 
     it('deduplicates permissions when fixed overlaps with loaded', async () => {
-      const adapter = new PersistableRoleGranterAdapter({
+      const adapter = new PersistableRoleProvider({
         fixed: {
           role_permissions: { ROLE_USER: ['auth:logout', 'shared:perm'] }
         },
@@ -306,7 +306,7 @@ describe('PersistableRoleGranterAdapter', () => {
   describe('persist', () => {
     it('calls persist callback with current data', async () => {
       const persistFn = vi.fn()
-      const adapter = new PersistableRoleGranterAdapter({
+      const adapter = new PersistableRoleProvider({
         persist: persistFn,
         defaults: {
           role_permissions: { ROLE_USER: ['entity:*:read'] }
@@ -323,7 +323,7 @@ describe('PersistableRoleGranterAdapter', () => {
     })
 
     it('clears dirty flag after persist', async () => {
-      const adapter = new PersistableRoleGranterAdapter({
+      const adapter = new PersistableRoleProvider({
         persist: vi.fn()
       })
 
@@ -335,7 +335,7 @@ describe('PersistableRoleGranterAdapter', () => {
     })
 
     it('throws on persist error', async () => {
-      const adapter = new PersistableRoleGranterAdapter({
+      const adapter = new PersistableRoleProvider({
         persist: () => { throw new Error('Persist failed') }
       })
 
@@ -347,7 +347,7 @@ describe('PersistableRoleGranterAdapter', () => {
     let adapter
 
     beforeEach(() => {
-      adapter = new PersistableRoleGranterAdapter({
+      adapter = new PersistableRoleProvider({
         defaults: {
           role_permissions: { ROLE_USER: ['read', 'list'] }
         }
@@ -413,7 +413,7 @@ describe('PersistableRoleGranterAdapter', () => {
 
   describe('getRoles', () => {
     it('returns all defined roles', () => {
-      const adapter = new PersistableRoleGranterAdapter({
+      const adapter = new PersistableRoleProvider({
         defaults: {
           role_permissions: {
             ROLE_USER: ['read'],
@@ -428,7 +428,7 @@ describe('PersistableRoleGranterAdapter', () => {
 
   describe('toJSON', () => {
     it('returns current config as object', () => {
-      const adapter = new PersistableRoleGranterAdapter({
+      const adapter = new PersistableRoleProvider({
         defaults: {
           role_permissions: { ROLE_USER: ['read'] },
           role_hierarchy: { ROLE_ADMIN: ['ROLE_USER'] },
@@ -446,12 +446,12 @@ describe('PersistableRoleGranterAdapter', () => {
 
   describe('anonymousRole', () => {
     it('always returns ROLE_ANONYMOUS (convention)', () => {
-      const adapter = new PersistableRoleGranterAdapter()
+      const adapter = new PersistableRoleProvider()
       expect(adapter.getAnonymousRole()).toBe('ROLE_ANONYMOUS')
     })
 
     it('works with fixed permissions for ROLE_ANONYMOUS', () => {
-      const adapter = new PersistableRoleGranterAdapter({
+      const adapter = new PersistableRoleProvider({
         fixed: {
           role_permissions: {
             ROLE_ANONYMOUS: ['auth:login', 'auth:register']
@@ -471,7 +471,7 @@ describe('PersistableRoleGranterAdapter', () => {
         role_permissions: { ROLE_USER: ['loaded:*'] }
       })
 
-      const adapter = new PersistableRoleGranterAdapter({
+      const adapter = new PersistableRoleProvider({
         load: loadFn,
         autoLoad: true
       })
@@ -483,7 +483,7 @@ describe('PersistableRoleGranterAdapter', () => {
     })
 
     it('returns self for chaining', async () => {
-      const adapter = new PersistableRoleGranterAdapter()
+      const adapter = new PersistableRoleProvider()
       const result = await adapter.ensureReady()
       expect(result).toBe(adapter)
     })
@@ -507,7 +507,7 @@ describe('createLocalStorageRoleGranter', () => {
       defaults: { role_permissions: { ROLE_USER: ['default:*'] } }
     })
 
-    expect(adapter).toBeInstanceOf(PersistableRoleGranterAdapter)
+    expect(adapter).toBeInstanceOf(PersistableRoleProvider)
 
     await adapter.load()
     expect(localStorage.getItem).toHaveBeenCalledWith('test_roles')

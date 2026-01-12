@@ -1,5 +1,5 @@
 /**
- * PersistableRoleGranterAdapter - Role granter with load/persist callbacks
+ * PersistableRoleProvider - Role granter with load/persist callbacks
  *
  * Flexible adapter that can load role→permissions mapping from any source
  * (localStorage, API, entity) and persist changes back.
@@ -18,7 +18,7 @@
  *
  * @example
  * // With fixed system permissions + API loading
- * const adapter = new PersistableRoleGranterAdapter({
+ * const adapter = new PersistableRoleProvider({
  *   // Fixed: ALWAYS present, even if API returns different data
  *   fixed: {
  *     role_permissions: {
@@ -46,7 +46,7 @@
  *
  * @example
  * // With localStorage
- * const adapter = new PersistableRoleGranterAdapter({
+ * const adapter = new PersistableRoleProvider({
  *   load: () => JSON.parse(localStorage.getItem('roles') || 'null'),
  *   persist: (data) => localStorage.setItem('roles', JSON.stringify(data)),
  *   defaults: {
@@ -58,8 +58,8 @@
  * })
  */
 
-import { RoleGranterAdapter } from './RoleGranterAdapter'
-import type { RoleData, RoleHierarchyMap } from './RoleGranterAdapter'
+import { RoleProvider } from './RolesProvider'
+import type { RoleData, RoleHierarchyMap } from './RolesProvider'
 
 /**
  * Role configuration structure
@@ -86,7 +86,7 @@ export type LoadCallback = () => Promise<RoleConfig | null> | RoleConfig | null
 export type PersistCallback = (data: RoleConfig) => Promise<void> | void
 
 /**
- * Options for PersistableRoleGranterAdapter
+ * Options for PersistableRoleProvider
  */
 export interface PersistableRoleGranterOptions {
   load?: LoadCallback
@@ -107,7 +107,7 @@ export interface LocalStorageRoleGranterOptions {
   mergeStrategy?: MergeStrategy
 }
 
-export class PersistableRoleGranterAdapter extends RoleGranterAdapter {
+export class PersistableRoleProvider extends RoleProvider {
   private _loadFn: LoadCallback | null
   private _persistFn: PersistCallback | null
   private _mergeStrategy: MergeStrategy
@@ -197,7 +197,7 @@ export class PersistableRoleGranterAdapter extends RoleGranterAdapter {
       this._loaded = true
       this._dirty = false
     } catch (err) {
-      console.error('[PersistableRoleGranterAdapter] Load failed:', err)
+      console.error('[PersistableRoleProvider] Load failed:', err)
       // Keep defaults on error
       this._loaded = true
     }
@@ -243,7 +243,7 @@ export class PersistableRoleGranterAdapter extends RoleGranterAdapter {
    */
   async persist(): Promise<void> {
     if (!this._persistFn) {
-      console.warn('[PersistableRoleGranterAdapter] No persist function configured')
+      console.warn('[PersistableRoleProvider] No persist function configured')
       return
     }
 
@@ -257,7 +257,7 @@ export class PersistableRoleGranterAdapter extends RoleGranterAdapter {
       await this._persistFn(data)
       this._dirty = false
     } catch (err) {
-      console.error('[PersistableRoleGranterAdapter] Persist failed:', err)
+      console.error('[PersistableRoleProvider] Persist failed:', err)
       throw err
     }
   }
@@ -272,7 +272,7 @@ export class PersistableRoleGranterAdapter extends RoleGranterAdapter {
   }
 
   // ─────────────────────────────────────────────────────────────────────────────
-  // RoleGranterAdapter interface
+  // RoleProvider interface
   // ─────────────────────────────────────────────────────────────────────────────
 
   /**
@@ -336,7 +336,7 @@ export class PersistableRoleGranterAdapter extends RoleGranterAdapter {
     }
   }
 
-  // getAnonymousRole() inherited from RoleGranterAdapter (returns 'ROLE_ANONYMOUS')
+  // getAnonymousRole() inherited from RoleProvider (returns 'ROLE_ANONYMOUS')
 
   // ─────────────────────────────────────────────────────────────────────────────
   // Role query methods
@@ -544,7 +544,7 @@ export class PersistableRoleGranterAdapter extends RoleGranterAdapter {
  */
 export function createLocalStorageRoleGranter(
   options: LocalStorageRoleGranterOptions = {}
-): PersistableRoleGranterAdapter {
+): PersistableRoleProvider {
   const key = options.key || 'qdadm_roles'
 
   // Load data synchronously from localStorage (localStorage is sync)
@@ -556,7 +556,7 @@ export function createLocalStorageRoleGranter(
     // Ignore parse errors, will use defaults
   }
 
-  const adapter = new PersistableRoleGranterAdapter({
+  const adapter = new PersistableRoleProvider({
     load: () => {
       try {
         const stored = localStorage.getItem(key)
