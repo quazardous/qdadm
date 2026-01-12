@@ -37,7 +37,7 @@
  * ```
  */
 
-import { createApp, h, defineComponent } from 'vue'
+import { createApp, h, defineComponent, ref } from 'vue'
 import { createPinia } from 'pinia'
 import { createRouter, createWebHistory, createWebHashHistory } from 'vue-router'
 import ToastService from 'primevue/toastservice'
@@ -152,6 +152,8 @@ export class Kernel {
     this._pendingProvides = new Map()
     /** @type {Map<string, import('vue').Component>} Pending components from modules */
     this._pendingComponents = new Map()
+    /** @type {import('vue').Ref<number>} App key for force remount on auth changes */
+    this._appKey = ref(0)
   }
 
   /**
@@ -223,6 +225,8 @@ export class Kernel {
     this._setupAuthExpiredHandler()
     // 6.5. Setup auth impersonation (authAdapter reacts to signals)
     this._setupAuthImpersonation()
+    // 6.6. Setup auth invalidation (remount app on auth changes)
+    this._setupAuthInvalidation()
     // 7. Wire modules that need orchestrator (phase 2 - kernel:ready signal)
     this._wireModules()
     // 8. Create EventRouter (needs signals + orchestrator)
@@ -278,6 +282,8 @@ export class Kernel {
     this._setupAuthExpiredHandler()
     // 6.5. Setup auth impersonation (authAdapter reacts to signals)
     this._setupAuthImpersonation()
+    // 6.6. Setup auth invalidation (remount app on auth changes)
+    this._setupAuthInvalidation()
     // 7. Wire modules that need orchestrator (phase 2 - kernel:ready signal)
     await this._wireModulesAsync()
     // 8. Create EventRouter (needs signals + orchestrator)
@@ -383,6 +389,37 @@ export class Kernel {
 
     // Connect authAdapter to signals - returns cleanup function
     this._authImpersonationCleanup = authAdapter.connectSignals(this.signals)
+  }
+
+  /**
+   * Setup auth invalidation - remount entire app on auth changes
+   *
+   * This centralizes the auth signal handling that was previously spread
+   * across multiple composables (useAuth, useNavigation, useUserImpersonator).
+   * Changing _appKey forces Vue to remount the root component and all children.
+   */
+  _setupAuthInvalidation() {
+    const debug = this.options.debug ?? false
+    const authSignals = ['auth:login', 'auth:logout', 'auth:impersonate', 'auth:impersonate:stop']
+
+    for (const signal of authSignals) {
+      this.signals.on(signal, () => {
+        if (debug) {
+          console.debug(`[Kernel] ${signal} → invalidateApp()`)
+        }
+        this.invalidateApp()
+      })
+    }
+  }
+
+  /**
+   * Force full app remount
+   *
+   * Increments _appKey which causes Vue to destroy and recreate
+   * the root component and all its children. Use sparingly.
+   */
+  invalidateApp() {
+    this._appKey.value++
   }
 
   /**
@@ -1140,14 +1177,16 @@ export class Kernel {
     const OriginalRoot = this.options.root
     const DebugBarComponent = this.options.debugBar?.component && QdadmDebugBar ? QdadmDebugBar : null
     const hasPrimeVue = !!this.options.primevue?.plugin
+    const appKey = this._appKey
 
     // Wrap root with Toast + ToastListener (for global toasts on all pages) and optionally DebugBar
     // Note: Apps should NOT include their own <Toast /> - Kernel provides it at root level
+    // appKey enables full app remount on auth changes (login/logout/impersonate)
     const WrappedRoot = defineComponent({
       name: 'QdadmRootWrapper',
       setup() {
         return () => {
-          const children = [h(OriginalRoot)]
+          const children = [h(OriginalRoot, { key: appKey.value })]
 
           // Add global Toast and ToastListener if PrimeVue is configured
           if (hasPrimeVue) {

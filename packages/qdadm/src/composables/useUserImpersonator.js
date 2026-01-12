@@ -27,7 +27,7 @@
  *   })
  */
 
-import { ref, computed, onMounted, onUnmounted, inject, getCurrentInstance, isRef, unref } from 'vue'
+import { ref, computed, onMounted, inject, getCurrentInstance, isRef, unref } from 'vue'
 
 /**
  * @typedef {Object} UseUserImpersonatorOptions
@@ -69,16 +69,13 @@ export function useUserImpersonator(options = {}) {
   const loading = ref(false)
   const error = ref(null)
 
-  // Reactive trigger for auth state changes
-  const authTick = ref(0)
-  const signalCleanups = []
+  // Note: authTick removed - Kernel.invalidateApp() remounts entire app
+  // on auth changes, so composable is re-initialized with fresh state
 
   /**
    * Current user (may be impersonated)
    */
   const currentUser = computed(() => {
-    // eslint-disable-next-line no-unused-expressions
-    authTick.value
     return authAdapter?.getUser?.() || null
   })
 
@@ -86,8 +83,6 @@ export function useUserImpersonator(options = {}) {
    * Original user (before impersonation)
    */
   const originalUser = computed(() => {
-    // eslint-disable-next-line no-unused-expressions
-    authTick.value
     return authAdapter?.getOriginalUser?.() || null
   })
 
@@ -102,8 +97,6 @@ export function useUserImpersonator(options = {}) {
    * Check if current user can impersonate others
    */
   const canImpersonate = computed(() => {
-    // eslint-disable-next-line no-unused-expressions
-    authTick.value
     if (!entityAuth?.isGranted) return true // Default allow if no auth
     return entityAuth.isGranted(permission)
   })
@@ -207,39 +200,11 @@ export function useUserImpersonator(options = {}) {
     })
   }
 
-  // Setup signal listeners
+  // Load users on mount
+  // Note: Auth signal listeners removed - Kernel.invalidateApp() remounts entire app
+  // on auth changes, so composable is re-initialized with fresh state
   onMounted(() => {
-    // Load users
     loadUsers()
-
-    // Watch for provided users changes if reactive
-    if (providedUsers && isRef(providedUsers)) {
-      // Will auto-update via unref in loadUsers
-    }
-
-    // Subscribe to auth signals to refresh state
-    if (signals) {
-      signalCleanups.push(signals.on('auth:impersonate', () => {
-        authTick.value++
-      }))
-      signalCleanups.push(signals.on('auth:impersonate:stop', () => {
-        authTick.value++
-      }))
-      signalCleanups.push(signals.on('auth:login', () => {
-        authTick.value++
-        loadUsers() // Reload users on login
-      }))
-      signalCleanups.push(signals.on('auth:logout', () => {
-        authTick.value++
-      }))
-    }
-  })
-
-  onUnmounted(() => {
-    // Cleanup signal subscriptions
-    for (const cleanup of signalCleanups) {
-      if (typeof cleanup === 'function') cleanup()
-    }
   })
 
   return {

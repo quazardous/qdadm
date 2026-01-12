@@ -3,6 +3,12 @@
 All notable changes to qdadm will be documented in this file.
 This is not a commit log. Keep entries simple, user-focused.
 
+## [0.59.5] - 2026-01-12
+
+- **Centralized auth invalidation**: Kernel remounts entire app on auth signals (`auth:login`, `auth:logout`, `auth:impersonate`, `auth:impersonate:stop`). Composables no longer need individual signal listeners.
+- **Kernel.invalidateApp()**: New method to force app remount via key-changing technique. Used internally by auth signal handlers.
+- **Simplified composables**: Removed auth signal listeners from `useAuth`, `useNavigation`, `useUserImpersonator`. Fresh state is guaranteed by app remount.
+
 ## [0.59.4] - 2026-01-12
 
 - **useUserImpersonator composable**: Reusable composable for user impersonation in admin dashboards. Supports entity-based or direct users list, configurable ID/label fields, and permission checks.

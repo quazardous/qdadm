@@ -9,7 +9,7 @@
  * the navigation structure dynamically.
  */
 
-import { computed, inject, ref, onMounted, onUnmounted } from 'vue'
+import { computed, inject, ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { getNavSections, alterMenuSections, isMenuAltered } from '../module/moduleRegistry'
 import { useSemanticBreadcrumb } from './useSemanticBreadcrumb'
@@ -52,23 +52,8 @@ export function useNavigation() {
     return manager.canRead()
   }
 
-  // Signal cleanup functions
-  const signalCleanups = []
-
-  // Listen to auth signals to refresh menu when permissions change
-  if (signals) {
-    signalCleanups.push(
-      signals.on('auth:impersonate', () => { alterVersion.value++ }),
-      signals.on('auth:impersonate:stop', () => { alterVersion.value++ }),
-      signals.on('auth:login', () => { alterVersion.value++ }),
-      signals.on('auth:logout', () => { alterVersion.value++ })
-    )
-  }
-
-  // Cleanup signal listeners on unmount
-  onUnmounted(() => {
-    signalCleanups.forEach(cleanup => cleanup?.())
-  })
+  // Note: Auth signal listeners removed - Kernel.invalidateApp() remounts entire app
+  // on auth changes, so composable is re-initialized with fresh state
 
   // Invoke menu:alter hook on mount
   onMounted(async () => {

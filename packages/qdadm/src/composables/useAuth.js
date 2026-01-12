@@ -8,9 +8,9 @@
  * For route guards or services, use authAdapter directly.
  *
  * Reactivity:
- * - Listens to auth:login, auth:logout, auth:impersonate, auth:impersonate:stop signals
- * - User computed re-evaluates when these signals fire
- * - No polling or manual refresh needed
+ * - Kernel.invalidateApp() remounts entire app on auth changes
+ * - Composable is re-initialized with fresh state
+ * - No signal listeners needed
  *
  * Note: Permission checking (canRead/canWrite) is handled by EntityManager,
  * not by useAuth. This keeps auth simple and delegates permission logic
@@ -20,7 +20,7 @@
  *   const { isAuthenticated, user, logout } = useAuth()
  */
 
-import { inject, computed, ref, onUnmounted, getCurrentInstance } from 'vue'
+import { inject, computed, ref, getCurrentInstance } from 'vue'
 
 export function useAuth() {
   // Strict context check - must be called in component setup()
@@ -31,7 +31,6 @@ export function useAuth() {
 
   const auth = inject('authAdapter')
   const features = inject('qdadmFeatures')
-  const signals = inject('qdadmSignals', null)
 
   // If auth disabled or not provided, return neutral values
   if (!features?.auth || !auth) {
@@ -45,28 +44,11 @@ export function useAuth() {
     }
   }
 
-  // Reactive trigger - incremented on auth signals to force computed re-evaluation
-  const authTick = ref(0)
+  // Note: Auth signal listeners removed - Kernel.invalidateApp() remounts entire app
+  // on auth changes, so composable is re-initialized with fresh state
 
-  // Subscribe to auth signals for reactivity
-  const cleanups = []
-  if (signals) {
-    cleanups.push(signals.on('auth:login', () => { authTick.value++ }))
-    cleanups.push(signals.on('auth:logout', () => { authTick.value++ }))
-    cleanups.push(signals.on('auth:impersonate', () => { authTick.value++ }))
-    cleanups.push(signals.on('auth:impersonate:stop', () => { authTick.value++ }))
-  }
-
-  // Cleanup signal subscriptions on unmount
-  onUnmounted(() => {
-    cleanups.forEach(cleanup => cleanup())
-  })
-
-  // Reactive user state - re-evaluates when authTick changes
+  // User state - reads current value from authAdapter
   const user = computed(() => {
-    // Touch authTick to create reactive dependency
-    // eslint-disable-next-line no-unused-expressions
-    authTick.value
     if (typeof auth.getUser === 'function') {
       return auth.getUser()
     }
@@ -77,12 +59,7 @@ export function useAuth() {
     login: auth.login,
     logout: auth.logout,
     getCurrentUser: auth.getCurrentUser,
-    isAuthenticated: computed(() => {
-      // Touch authTick for reactivity
-      // eslint-disable-next-line no-unused-expressions
-      authTick.value
-      return auth.isAuthenticated()
-    }),
+    isAuthenticated: computed(() => auth.isAuthenticated()),
     user,
     authEnabled: true
   }
