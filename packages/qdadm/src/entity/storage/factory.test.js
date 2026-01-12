@@ -5,12 +5,12 @@ import {
   defaultStorageResolver,
   createStorageFactory,
   storageTypes
-} from './factory.js'
+} from './factory'
 import { IStorage } from './IStorage'
-import { ApiStorage } from './ApiStorage.js'
-import { LocalStorage } from './LocalStorage.js'
-import { MemoryStorage } from './MemoryStorage.js'
-import { MockApiStorage } from './MockApiStorage.js'
+import { ApiStorage } from './ApiStorage'
+import { LocalStorage } from './LocalStorage'
+import { MemoryStorage } from './MemoryStorage'
+import { MockApiStorage } from './MockApiStorage'
 
 describe('parseStoragePattern', () => {
   it('parses api pattern with endpoint', () => {

@@ -4,7 +4,7 @@
  * Run: npm test
  */
 import { describe, it, expect } from 'vitest'
-import { SdkStorage, createSdkStorage } from '../../../src/entity/storage/SdkStorage.js'
+import { SdkStorage, createSdkStorage } from '../../../src/entity/storage/SdkStorage'
 import { getStorageCapabilities, DEFAULT_STORAGE_CAPABILITIES } from '../../../src/entity/storage/index'
 
 describe('SdkStorage', () => {

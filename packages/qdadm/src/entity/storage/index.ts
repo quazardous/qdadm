@@ -48,11 +48,28 @@ export {
   createStorageFactory,
   parseStoragePattern,
   storageTypes,
-} from './factory.js'
+} from './factory'
+export type { ParsedStoragePattern, StorageConfig, StorageResolver } from './factory'
 
 // Storage adapters
-export { ApiStorage, createApiStorage } from './ApiStorage.js'
-export { LocalStorage, createLocalStorage } from './LocalStorage.js'
-export { MemoryStorage, createMemoryStorage } from './MemoryStorage.js'
-export { MockApiStorage, createMockApiStorage } from './MockApiStorage.js'
-export { SdkStorage, createSdkStorage } from './SdkStorage.js'
+export { ApiStorage, createApiStorage } from './ApiStorage'
+export type { HttpClient, RoutingContext, ApiStorageOptions } from './ApiStorage'
+
+export { LocalStorage, createLocalStorage } from './LocalStorage'
+export type { LocalStorageOptions } from './LocalStorage'
+
+export { MemoryStorage, createMemoryStorage, StorageError } from './MemoryStorage'
+export type { MemoryStorageOptions } from './MemoryStorage'
+
+export { MockApiStorage, createMockApiStorage } from './MockApiStorage'
+export type { MockApiStorageOptions } from './MockApiStorage'
+
+export { SdkStorage, createSdkStorage } from './SdkStorage'
+export type {
+  SdkInstance,
+  SdkMethodConfig,
+  SdkMethodTransforms,
+  SdkResponseFormat,
+  SdkMethods,
+  SdkStorageOptions,
+} from './SdkStorage'

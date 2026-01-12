@@ -14,7 +14,7 @@
  */
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { EntityManager } from '../../src/entity/EntityManager.js'
-import { MemoryStorage } from '../../src/entity/storage/MemoryStorage.js'
+import { MemoryStorage } from '../../src/entity/storage/MemoryStorage'
 
 /**
  * Mock storage that tracks calls for testing

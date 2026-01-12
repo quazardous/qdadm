@@ -8,7 +8,7 @@
  */
 
 import { ManualConnector } from '../../../src/gen/connectors/ManualConnector.js'
-import { MemoryStorage } from '../../../src/entity/storage/MemoryStorage.js'
+import { MemoryStorage } from '../../../src/entity/storage/MemoryStorage'
 
 /**
  * Sample users schema definition

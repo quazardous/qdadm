@@ -18,7 +18,7 @@
  */
 
 import { EntityManager } from './EntityManager.js'
-import { storageFactory } from './storage/factory.js'
+import { storageFactory } from './storage/factory'
 
 /**
  * Default manager resolver - creates manager instance from config

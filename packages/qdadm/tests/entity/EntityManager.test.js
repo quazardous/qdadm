@@ -10,7 +10,7 @@ import {
   AuthActions,
   PermissiveAuthAdapter
 } from '../../src/entity/auth/index.js'
-import { MemoryStorage } from '../../src/entity/storage/MemoryStorage.js'
+import { MemoryStorage } from '../../src/entity/storage/MemoryStorage'
 
 /**
  * Test AuthAdapter that denies specific actions/records

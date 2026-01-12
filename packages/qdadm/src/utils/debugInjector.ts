@@ -1,4 +1,3 @@
-/* eslint-disable no-console */
 /**
  * Debug Injector - Bypasses MCP/DevTools limitations
  *

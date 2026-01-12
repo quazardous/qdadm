@@ -6,8 +6,8 @@ import {
   createManagers
 } from './factory.js'
 import { EntityManager } from './EntityManager.js'
-import { ApiStorage } from './storage/ApiStorage.js'
-import { MemoryStorage } from './storage/MemoryStorage.js'
+import { ApiStorage } from './storage/ApiStorage'
+import { MemoryStorage } from './storage/MemoryStorage'
 
 describe('defaultManagerResolver', () => {
   it('creates EntityManager with config', () => {
