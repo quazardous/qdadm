@@ -46,6 +46,7 @@ interface UserData {
 }
 
 const features = inject<FeaturesConfig>('qdadmFeatures', { poweredBy: true, breadcrumb: true })
+const homeRoute = inject<string>('qdadmHomeRoute', 'home')
 
 // Guard dialog from shared store (registered by useBareForm/useForm when a form is active)
 const guardDialog = useGuardDialog()
@@ -218,7 +219,7 @@ function handleHeaderClick(): void {
   if (isMobile()) {
     closeSidebar()
   } else {
-    router.push({ name: 'home' })
+    router.push({ name: homeRoute })
   }
 }
 
