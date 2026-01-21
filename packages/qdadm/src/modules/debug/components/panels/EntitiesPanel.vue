@@ -41,6 +41,12 @@ interface CacheInfo {
   total?: number
   threshold?: number
   items?: Record<string, unknown>[]
+  /** TTL in milliseconds (0=disabled, -1=infinite, >0=TTL) */
+  ttlMs?: number
+  /** Timestamp when cache expires (null if no TTL) */
+  expiresAt?: number | null
+  /** Whether the cache has expired based on TTL */
+  expired?: boolean
 }
 
 interface RelationInfo {
@@ -212,6 +218,26 @@ function getCapabilityLabel(cap: string): string {
   }
   return labels[cap] || cap
 }
+
+function formatTtl(ttlMs: number | undefined): string {
+  if (ttlMs === undefined) return '?'
+  if (ttlMs === -1) return '∞'
+  if (ttlMs === 0) return 'off'
+  if (ttlMs < 1000) return `${ttlMs}ms`
+  if (ttlMs < 60000) return `${Math.round(ttlMs / 1000)}s`
+  if (ttlMs < 3600000) return `${Math.round(ttlMs / 60000)}min`
+  return `${Math.round(ttlMs / 3600000)}h`
+}
+
+function formatExpiresIn(expiresAt: number | null | undefined): string {
+  if (!expiresAt) return ''
+  const diff = expiresAt - Date.now()
+  if (diff <= 0) return 'expired'
+  if (diff < 1000) return `${diff}ms`
+  if (diff < 60000) return `${Math.round(diff / 1000)}s`
+  if (diff < 3600000) return `${Math.round(diff / 60000)}min`
+  return `${Math.round(diff / 3600000)}h`
+}
 </script>
 
 <template>
@@ -377,18 +403,27 @@ function getCapabilityLabel(cap: string): string {
             <template v-if="entity.cache.valid">
               ({{ entity.cache.itemCount }} items, threshold {{ entity.cache.threshold }})
             </template>
+            <span class="entity-cache-ttl" :class="{ 'ttl-expired': entity.cache.expired }">
+              TTL: {{ formatTtl(entity.cache.ttlMs) }}
+              <template v-if="entity.cache.valid && entity.cache.expiresAt && !entity.cache.expired">
+                ({{ formatExpiresIn(entity.cache.expiresAt) }} left)
+              </template>
+              <template v-if="entity.cache.expired">
+                <i class="pi pi-exclamation-triangle" title="Cache expired" />
+              </template>
+            </span>
           </span>
           <button
-            v-if="!entity.cache.valid"
+            v-if="!entity.cache.valid || entity.cache.expired"
             class="entity-load-btn"
             :disabled="isLoading(entity.name)"
             @click.stop="loadCache(entity.name)"
           >
             <i :class="['pi', isLoading(entity.name) ? 'pi-spin pi-spinner' : 'pi-download']" />
-            {{ isLoading(entity.name) ? 'Loading...' : 'Load' }}
+            {{ isLoading(entity.name) ? 'Loading...' : (entity.cache.expired ? 'Reload' : 'Load') }}
           </button>
           <button
-            v-else
+            v-if="entity.cache.valid && !entity.cache.expired"
             class="entity-invalidate-btn"
             title="Invalidate cache"
             @click.stop="invalidateCache(entity.name)"

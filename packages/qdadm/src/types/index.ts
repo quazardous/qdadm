@@ -47,6 +47,8 @@ export interface StorageCapabilities {
   supportsCaching: boolean
   requiresAuth?: boolean
   searchFields?: string[]
+  /** Cache TTL in milliseconds (0=disabled, -1=infinite, >0=TTL). Can be set dynamically from API headers. */
+  cacheTtlMs?: number
 }
 
 // ============ FIELD TYPES ============
@@ -143,6 +145,8 @@ export interface EntityManagerOptions<T extends EntityRecord = EntityRecord> {
   labelField?: string | ((entity: T) => string)
   fields?: Record<string, FieldConfig>
   localFilterThreshold?: number | null
+  /** Cache TTL in milliseconds (0=disabled, -1=infinite, >0=TTL). Overrides global, overridden by storage. */
+  cacheTtlMs?: number | null
   readOnly?: boolean
   warmup?: boolean
   authSensitive?: boolean

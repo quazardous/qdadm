@@ -87,7 +87,10 @@ const kernel = new Kernel({
   primevue: { plugin: PrimeVue, theme: Aura },
 
   // Debug bar
-  debugBar
+  debugBar,
+
+  // Cache: 5 minutes TTL by default for all entities
+  defaultEntityCacheTtlMs: 5 * 60 * 1000
 })
 
 // Create app and register hooks

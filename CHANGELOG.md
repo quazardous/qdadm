@@ -3,6 +3,19 @@
 All notable changes to qdadm will be documented in this file.
 This is not a commit log. Keep entries simple, user-focused.
 
+## [1.1.1] - 2026-01-21
+
+### Added
+- **Global cache TTL**: New `defaultEntityCacheTtlMs` Kernel option to set default cache TTL for all entities
+- **LocalStorageSessionAuthAdapter config**: Now accepts config object with `storageKey` option, plus static `defaults`
+
+### Fixed
+- **Debug panel TTL display**: Shows "X left" for remaining time instead of duplicating TTL value
+- **Kernel options propagation**: Fixed `defaultEntityCacheTtlMs` not being passed to EntityManager (via `orchestrator.kernelOptions`)
+
+### Demo
+- **Default cache TTL**: Demo now uses 5 minutes default cache TTL
+
 ## [1.1.0] - 2026-01-12
 
 ### Breaking Changes

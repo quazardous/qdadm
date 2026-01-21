@@ -102,9 +102,10 @@ export class Orchestrator {
   private _toastConfig: ToastConfig = {}
   private _toastHelper: ToastHelper | null = null
 
-  // Reference to kernel (set by Kernel after construction)
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  kernel?: any
+  // Kernel options (set by Kernel after construction, avoids circular reference)
+  kernelOptions?: {
+    defaultEntityCacheTtlMs?: number
+  }
 
   constructor(options: OrchestratorOptions = {}) {
     const {

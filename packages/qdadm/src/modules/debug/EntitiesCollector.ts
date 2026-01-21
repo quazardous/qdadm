@@ -57,6 +57,12 @@ export interface CacheInfo {
   overflow: boolean
   loadedAt: string | null
   items: unknown[]
+  /** TTL in milliseconds (0=disabled, -1=infinite, >0=TTL) */
+  ttlMs: number
+  /** Timestamp when cache expires (null if no TTL or infinite) */
+  expiresAt: number | null
+  /** Whether the cache has expired based on TTL */
+  expired: boolean
 }
 
 /**
@@ -350,6 +356,9 @@ export class EntitiesCollector extends Collector<EntityEntry> {
         threshold?: number
         overflow?: boolean
         loadedAt?: number
+        ttlMs?: number
+        expiresAt?: number | null
+        expired?: boolean
       }
       getStats?: () => StatsInfo
       getRequiredFields?: () => string[]
@@ -414,7 +423,10 @@ export class EntitiesCollector extends Collector<EntityEntry> {
         threshold: cache.threshold ?? 0,
         overflow: cache.overflow ?? false,
         loadedAt: cache.loadedAt ? new Date(cache.loadedAt).toLocaleTimeString() : null,
-        items: this._getCacheItems(extManager, 50)
+        items: this._getCacheItems(extManager, 50),
+        ttlMs: cache.ttlMs ?? -1,
+        expiresAt: cache.expiresAt ?? null,
+        expired: cache.expired ?? false
       },
 
       permissions: {

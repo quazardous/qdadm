@@ -226,6 +226,14 @@ interface StoredSessionData<TUser = AuthUser> {
 }
 
 /**
+ * Configuration options for LocalStorageSessionAuthAdapter
+ */
+export interface LocalStorageAuthConfig {
+  /** localStorage key for session data (default: 'qdadm_auth') */
+  storageKey?: string
+}
+
+/**
  * LocalStorage-based SessionAuthAdapter implementation
  *
  * Ready-to-use adapter that stores session in localStorage.
@@ -252,15 +260,29 @@ interface StoredSessionData<TUser = AuthUser> {
  * ```
  */
 export class LocalStorageSessionAuthAdapter<TUser extends AuthUser = AuthUser> extends SessionAuthAdapter<TUser> {
+  /**
+   * Default configuration. Override to change defaults globally:
+   * @example
+   * LocalStorageSessionAuthAdapter.defaults.storageKey = 'my_app_auth'
+   */
+  static defaults: Required<LocalStorageAuthConfig> = {
+    storageKey: 'qdadm_auth'
+  }
+
   protected _storageKey: string
   protected _originalUser: TUser | null = null  // Stores original user during impersonation
 
   /**
-   * @param storageKey - localStorage key for session data
+   * @param config - Configuration options or storage key string (for backward compatibility)
    */
-  constructor(storageKey: string = 'qdadm_auth') {
+  constructor(config?: LocalStorageAuthConfig | string) {
     super()
-    this._storageKey = storageKey
+    // Support both string (legacy) and config object
+    if (typeof config === 'string') {
+      this._storageKey = config
+    } else {
+      this._storageKey = config?.storageKey ?? LocalStorageSessionAuthAdapter.defaults.storageKey
+    }
     this._restore()
   }
 

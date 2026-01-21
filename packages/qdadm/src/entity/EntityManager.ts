@@ -142,6 +142,12 @@ export interface CacheInfo {
   itemCount: number
   total: number
   loadedAt: number | null
+  /** Effective TTL in milliseconds (0 = no TTL) */
+  ttlMs: number
+  /** Timestamp when cache expires (null if no TTL) */
+  expiresAt: number | null
+  /** Whether the cache has expired based on TTL */
+  expired: boolean
 }
 
 /**
@@ -157,6 +163,8 @@ export interface EntityManagerOptions<T extends EntityRecord = EntityRecord> {
   labelField?: string | ((entity: T) => string)
   fields?: Record<string, FieldConfig>
   localFilterThreshold?: number | null
+  /** Cache TTL in milliseconds (0=disabled, -1=infinite, >0=TTL). Overrides global, overridden by storage. */
+  cacheTtlMs?: number | null
   readOnly?: boolean
   warmup?: boolean
   authSensitive?: boolean
@@ -205,6 +213,7 @@ export class EntityManager<T extends EntityRecord = EntityRecord> {
   protected _fields: Record<string, FieldConfig>
 
   localFilterThreshold: number | null
+  protected _cacheTtlMs: number | null
   protected _readOnly: boolean
   protected _warmup: boolean
   protected _authSensitive: boolean
@@ -265,6 +274,7 @@ export class EntityManager<T extends EntityRecord = EntityRecord> {
       labelField = 'name',
       fields = {},
       localFilterThreshold = null,
+      cacheTtlMs = null,
       readOnly = false,
       warmup = true,
       authSensitive,
@@ -290,6 +300,7 @@ export class EntityManager<T extends EntityRecord = EntityRecord> {
     this._fields = fields
 
     this.localFilterThreshold = localFilterThreshold
+    this._cacheTtlMs = cacheTtlMs
     this._readOnly = readOnly
     this._warmup = warmup
     this._authSensitive = authSensitive ?? this._getStorageRequiresAuth()
@@ -970,6 +981,11 @@ export class EntityManager<T extends EntityRecord = EntityRecord> {
       Object.keys(mergedParams.filters || {}).length > 0
     const canUseCache = !hasFilters || cacheSafe
 
+    // Check TTL expiration before using cache
+    if (this._isCacheExpired()) {
+      this.invalidateCache()
+    }
+
     // 1. Cache valid + cacheable -> use cache with local filtering
     if (this._cache.valid && canUseCache) {
       if (!_internal) this._stats.cacheHits++
@@ -1058,6 +1074,11 @@ export class EntityManager<T extends EntityRecord = EntityRecord> {
     )
     this._stats.get++
 
+    // Check TTL expiration before using cache
+    if (this._isCacheExpired()) {
+      this.invalidateCache()
+    }
+
     // Try cache first if valid and complete
     if (this._cache.valid && !this.overflow) {
       const idStr = String(id)
@@ -1099,6 +1120,11 @@ export class EntityManager<T extends EntityRecord = EntityRecord> {
     context?: RoutingContext
   ): Promise<T[]> {
     if (!ids || ids.length === 0) return []
+
+    // Check TTL expiration before using cache
+    if (this._isCacheExpired()) {
+      this.invalidateCache()
+    }
 
     // Try cache first if valid and complete
     if (this._cache.valid && !this.overflow) {
@@ -1335,6 +1361,57 @@ export class EntityManager<T extends EntityRecord = EntityRecord> {
   }
 
   /**
+   * Get effective cache TTL in milliseconds
+   * Priority: storage.cacheTtlMs > entity.cacheTtlMs > kernel.defaultEntityCacheTtlMs > -1
+   *
+   * Values:
+   * - 0: disable caching
+   * - -1: infinite (no expiration, cache until invalidation)
+   * - > 0: TTL in milliseconds
+   */
+  get effectiveCacheTtlMs(): number {
+    // 1. Storage capabilities (can be set dynamically from API headers)
+    const storageCaps =
+      (this.storage as unknown as { capabilities?: StorageCapabilities })?.capabilities ||
+      (this.storage?.constructor as { capabilities?: StorageCapabilities })?.capabilities
+    if (storageCaps?.cacheTtlMs !== undefined) {
+      return storageCaps.cacheTtlMs
+    }
+
+    // 2. Entity-level config
+    if (this._cacheTtlMs !== null) {
+      return this._cacheTtlMs
+    }
+
+    // 3. Global default from kernel options
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const globalTtl = (this._orchestrator as any)?.kernelOptions?.defaultEntityCacheTtlMs
+    if (globalTtl !== undefined) {
+      return globalTtl
+    }
+
+    // 4. Default: infinite (no expiration)
+    return -1
+  }
+
+  /**
+   * Check if caching is disabled by TTL=0
+   */
+  get isCacheTtlDisabled(): boolean {
+    return this.effectiveCacheTtlMs === 0
+  }
+
+  /**
+   * Check if cache has expired based on TTL
+   */
+  protected _isCacheExpired(): boolean {
+    if (!this._cache.valid || !this._cache.loadedAt) return false
+    const ttl = this.effectiveCacheTtlMs
+    if (ttl <= 0) return false // 0 = disabled (handled elsewhere), -1 = infinite
+    return Date.now() - this._cache.loadedAt > ttl
+  }
+
+  /**
    * Check if storage adapter supports returning total count
    */
   get storageSupportsTotal(): boolean {
@@ -1564,6 +1641,7 @@ export class EntityManager<T extends EntityRecord = EntityRecord> {
    */
   get isCacheEnabled(): boolean {
     if (this.effectiveThreshold <= 0) return false
+    if (this.isCacheTtlDisabled) return false // TTL=0 disables cache
     // Check capabilities (instance getter or static)
     const caps =
       (this.storage as unknown as { capabilities?: StorageCapabilities })?.capabilities ||
@@ -1870,6 +1948,7 @@ export class EntityManager<T extends EntityRecord = EntityRecord> {
    * Get cache info (for debugging)
    */
   getCacheInfo(): CacheInfo {
+    const ttlMs = this.effectiveCacheTtlMs
     return {
       enabled: this.isCacheEnabled,
       storageSupportsTotal: this.storageSupportsTotal,
@@ -1879,6 +1958,11 @@ export class EntityManager<T extends EntityRecord = EntityRecord> {
       itemCount: this._cache.items.length,
       total: this._cache.total,
       loadedAt: this._cache.loadedAt,
+      ttlMs,
+      expiresAt: this._cache.loadedAt && ttlMs > 0
+        ? this._cache.loadedAt + ttlMs
+        : null,
+      expired: this._isCacheExpired(),
     }
   }
 

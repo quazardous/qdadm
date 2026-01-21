@@ -210,6 +210,8 @@ export interface KernelOptions {
   layouts?: LayoutComponents
   security?: SecurityConfig
   warmup?: boolean
+  /** Default entity cache TTL in milliseconds (0=disabled, -1=infinite, >0=TTL). Default: -1 (infinite). */
+  defaultEntityCacheTtlMs?: number
   eventRouter?: RoutesConfig
   sse?: SSEConfig
   debugBar?: DebugBarConfig
@@ -950,6 +952,11 @@ export class Kernel {
       deferred: this.deferred,
       entityAuthAdapter: (this.options.entityAuthAdapter as EntityAuthAdapter) || null,
     })
+
+    // Pass kernel options to orchestrator (avoid circular reference for Vue reactivity)
+    this.orchestrator.kernelOptions = {
+      defaultEntityCacheTtlMs: this.options.defaultEntityCacheTtlMs,
+    }
 
     if (this.options.toast) {
       this.orchestrator.setToastConfig(this.options.toast)

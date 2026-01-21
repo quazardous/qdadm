@@ -11,4 +11,5 @@ export {
   type SessionData,
   type AuthUser,
   type ISessionAuthAdapter,
+  type LocalStorageAuthConfig,
 } from './SessionAuthAdapter'
