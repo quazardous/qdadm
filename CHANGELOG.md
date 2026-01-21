@@ -3,6 +3,11 @@
 All notable changes to qdadm will be documented in this file.
 This is not a commit log. Keep entries simple, user-focused.
 
+## [1.1.3] - 2026-01-21
+
+### Fixed
+- **Sidebar header home route**: Now uses injectable `qdadmHomeRoute` instead of hardcoded `'home'`
+
 ## [1.1.2] - 2026-01-21
 
 ### Fixed
