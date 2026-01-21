@@ -374,6 +374,7 @@ export interface ListPageProps {
   searchPlaceholder: string
   filters: FilterConfig[]
   filterValues: Record<string, unknown>
+  isFilterAtDefault: (name: string) => boolean
   getActions: (row: unknown) => ResolvedAction[]
   hasRowTapAction: boolean
 }
@@ -481,6 +482,8 @@ export interface UseListPageReturn {
   setFilterValue: (name: string, value: unknown) => void
   updateFilters: (values: Record<string, unknown>) => void
   clearFilters: () => void
+  isFilterAtDefault: (name: string) => boolean
+  hasActiveFilters: ComputedRef<boolean>
   loadFilterOptions: () => Promise<void>
   initFromRegistry: () => void
   restoreFilters: () => void
@@ -983,9 +986,9 @@ export function useListPage(config: UseListPageOptions): UseListPageReturn {
   }
 
   function clearFilters(): void {
-    const cleared: Record<string, null> = {}
-    for (const key of Object.keys(filterValues.value)) {
-      cleared[key] = null
+    const cleared: Record<string, unknown> = {}
+    for (const [key, filterDef] of filtersMap.value.entries()) {
+      cleared[key] = filterDef.default ?? null
     }
     filterValues.value = cleared
     searchQuery.value = ''
@@ -1005,6 +1008,32 @@ export function useListPage(config: UseListPageOptions): UseListPageReturn {
   }
 
   const filters = computed(() => Array.from(filtersMap.value.values()))
+
+  /**
+   * Check if a filter is at its default value
+   * Used for styling: default = blue (info), modified = orange (warning)
+   */
+  function isFilterAtDefault(name: string): boolean {
+    const filterDef = filtersMap.value.get(name)
+    if (!filterDef) return true
+    const currentValue = filterValues.value[name]
+    const defaultValue = filterDef.default ?? null
+    return currentValue === defaultValue
+  }
+
+  /**
+   * Check if any filter is NOT at its default value (or search is active)
+   * Useful to show a "clear filters" button only when needed
+   */
+  const hasActiveFilters = computed(() => {
+    if (searchQuery.value) return true
+    for (const [name, filterDef] of filtersMap.value.entries()) {
+      const currentValue = filterValues.value[name]
+      const defaultValue = filterDef.default ?? null
+      if (currentValue !== defaultValue) return true
+    }
+    return false
+  })
 
   // ============ AUTO-LOAD FROM REGISTRY ============
 
@@ -1772,6 +1801,7 @@ export function useListPage(config: UseListPageOptions): UseListPageReturn {
     searchPlaceholder: searchConfig.value.placeholder || 'Search...',
     filters: filters.value,
     filterValues: filterValues.value,
+    isFilterAtDefault,
     getActions,
     hasRowTapAction: hasRowTapAction.value,
   }))
@@ -1855,6 +1885,8 @@ export function useListPage(config: UseListPageOptions): UseListPageReturn {
     setFilterValue,
     updateFilters,
     clearFilters,
+    isFilterAtDefault,
+    hasActiveFilters,
     loadFilterOptions,
     initFromRegistry,
     restoreFilters,

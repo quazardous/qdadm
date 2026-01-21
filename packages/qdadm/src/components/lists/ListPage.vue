@@ -118,6 +118,7 @@ const props = defineProps({
   // Filters
   filters: { type: Array as PropType<FilterConfig[]>, default: () => [] },
   filterValues: { type: Object as PropType<Record<string, unknown>>, default: () => ({}) },
+  isFilterAtDefault: { type: Function as PropType<(name: string) => boolean>, default: () => () => true },
 
   // Row Actions
   getActions: { type: Function as unknown as PropType<((row: unknown) => ResolvedAction[]) | null>, default: null },
@@ -300,6 +301,24 @@ function onRowClick(event: { data: unknown; originalEvent: Event }): void {
   // event.data = row data, event.originalEvent = Event
   emit('row-click', event.data, event.originalEvent as MouseEvent)
 }
+
+/**
+ * Get filter CSS class based on value and default state
+ * - No value (null/empty): no class
+ * - Value = default: 'filter-default' (blue/info)
+ * - Value ≠ default: 'filter-modified' (orange/warning)
+ */
+function getFilterClass(filter: FilterConfig): Record<string, boolean> {
+  const value = localFilterValues.value[filter.name]
+  const hasValue = value != null && value !== ''
+  if (!hasValue) return {}
+
+  const isDefault = props.isFilterAtDefault(filter.name)
+  return {
+    'filter-default': isDefault,
+    'filter-modified': !isDefault
+  }
+}
 </script>
 
 <template>
@@ -380,7 +399,7 @@ function onRowClick(event: { data: unknown; originalEvent: Event }): void {
             :dropdown="true"
             :minLength="0"
             :style="{ minWidth: filter.width || '160px' }"
-            :class="{ 'filter-active': localFilterValues[filter.name] != null && localFilterValues[filter.name] !== '' }"
+            :class="getFilterClass(filter)"
             :inputClass="'filter-autocomplete-input'"
           />
           <!-- Standard select filter -->
@@ -393,7 +412,7 @@ function onRowClick(event: { data: unknown; originalEvent: Event }): void {
             :optionValue="filter.optionValue || 'value'"
             :placeholder="filter.placeholder"
             :style="{ minWidth: filter.width || '160px' }"
-            :class="{ 'filter-active': localFilterValues[filter.name] != null && localFilterValues[filter.name] !== '' }"
+            :class="getFilterClass(filter)"
           />
         </template>
         <slot name="filters" ></slot>

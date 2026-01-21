@@ -31,9 +31,24 @@
 }
 
 // =============================================================================
-// Active Filter Highlight
+// Filter Value Indicators
 // =============================================================================
 
+// Filter at default value: blue/info (subtle indicator)
+.p-select.filter-default,
+.p-autocomplete.filter-default .p-inputtext {
+  border-color: var(--p-primary-400, #60a5fa) !important;
+  box-shadow: 0 0 0 1px var(--p-primary-400, #60a5fa) !important;
+}
+
+// Filter modified from default: orange/warning (attention needed)
+.p-select.filter-modified,
+.p-autocomplete.filter-modified .p-inputtext {
+  border-color: #f97316 !important;
+  box-shadow: 0 0 0 1px #f97316 !important;
+}
+
+// Legacy: keep filter-active as alias for filter-modified
 .p-select.filter-active,
 .p-inputtext.filter-active {
   border-color: #f97316 !important;

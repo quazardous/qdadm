@@ -948,6 +948,44 @@ export class EntityManager<T extends EntityRecord = EntityRecord> {
   // ============ CRUD OPERATIONS ============
 
   /**
+   * API Response Contract for Caching
+   * ==================================
+   *
+   * The storage/API must return responses in this format:
+   *
+   *   {
+   *     items: T[],     // Items for current page/request
+   *     total: number   // TOTAL count of ALL items matching the query (not just this page)
+   *   }
+   *
+   * Why `total` is critical:
+   * ------------------------
+   * The `total` field enables the smart caching mechanism:
+   *
+   * 1. Cache eligibility: if `total <= localFilterThreshold`, EntityManager will cache all items
+   * 2. Cache validation: `items.length >= total` confirms we received the complete dataset
+   * 3. Background loading: if `items.length < total` but `total <= threshold`, loads all items in background
+   *
+   * Once cached, all filtering/sorting/pagination happens locally via QueryExecutor (MongoDB-like syntax).
+   * This dramatically reduces API calls for small datasets.
+   *
+   * Common pitfalls:
+   * ----------------
+   * - `total` missing or 0: falls back to `items.length`, may create incomplete cache
+   * - `total` incorrect (e.g., always returns page size): cache thinks it's complete when it's not
+   * - `total` always equals real total (ignoring filters): cache works but may overflow threshold
+   *
+   * Example:
+   * --------
+   * // Good: API returns correct total
+   * GET /api/users?page=1&page_size=20
+   * → { items: [...20 users...], total: 45 }  // 45 users exist, got first 20
+   *
+   * // EntityManager sees: total(45) <= threshold(100), items(20) < total(45)
+   * // → Triggers background load of all 45 users for cache
+   */
+
+  /**
    * List entities with pagination/filtering
    */
   async list(
@@ -1336,10 +1374,23 @@ export class EntityManager<T extends EntityRecord = EntityRecord> {
   async request(
     method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE',
     path: string,
-    options: { data?: unknown; params?: Record<string, unknown>; headers?: Record<string, string> } = {}
+    options: {
+      data?: unknown
+      params?: Record<string, unknown>
+      headers?: Record<string, string>
+      invalidateCache?: boolean
+    } = {}
   ): Promise<unknown> {
     if (this.storage?.request) {
-      return this.storage.request(method, path, options)
+      const { invalidateCache: shouldInvalidate, ...storageOptions } = options
+      const result = await this.storage.request(method, path, storageOptions)
+
+      // Auto-invalidate cache for mutation methods, or if explicitly requested
+      if (shouldInvalidate ?? method !== 'GET') {
+        this.invalidateCache()
+      }
+
+      return result
     }
     throw new Error(`[EntityManager:${this.name}] request() not implemented`)
   }

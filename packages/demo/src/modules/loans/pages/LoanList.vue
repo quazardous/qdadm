@@ -59,8 +59,11 @@ list.addFilter('book_id', {
 
 // Virtual filter - status maps to returned_at field
 // toQuery transforms the value to MongoDB-like query for QueryExecutor
+// default: 'active' - show only active loans by default (blue indicator)
+// when user changes to another value, indicator turns orange
 list.addFilter('status', {
   placeholder: 'All Status',
+  default: 'active',
   options: [
     { label: 'All Status', value: null },
     { label: 'Active', value: 'active' },
