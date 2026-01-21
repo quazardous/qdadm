@@ -3,6 +3,11 @@
 All notable changes to qdadm will be documented in this file.
 This is not a commit log. Keep entries simple, user-focused.
 
+## [1.1.2] - 2026-01-21
+
+### Fixed
+- **Sidebar nav icon animation**: Icons now stay centered during collapse animation (moved to `_sidebar.scss` with absolute positioning)
+
 ## [1.1.1] - 2026-01-21
 
 ### Added

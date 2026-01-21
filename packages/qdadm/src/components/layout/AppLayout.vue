@@ -569,51 +569,8 @@ const showBreadcrumb = computed<boolean>(() => {
   z-index: 10;
 }
 
-/* Nav items - compact, subtle hover */
-.nav-item {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: var(--fad-nav-item-padding-y) var(--fad-nav-item-padding-x);
-  padding-left: 1rem;
-  color: var(--p-surface-300, #cbd5e1);
-  text-decoration: none;
-  font-size: var(--fad-font-size-sm);
-  font-weight: var(--fad-font-weight-normal);
-  border-radius: 0;
-  transition: background var(--fad-transition-fast), color var(--fad-transition-fast);
-}
-
-.nav-item span {
-  white-space: nowrap;
-}
-
-.nav-item:hover {
-  background: var(--p-surface-700, #334155);
-  color: var(--p-surface-0, white);
-}
-
-.nav-item-active {
-  background: var(--p-surface-700, #334155);
-  color: var(--p-primary-300, #93c5fd);
-  border-left: 2px solid var(--p-primary-400, #60a5fa);
-  padding-left: calc(1rem - 2px);
-}
-
-.nav-item-active:hover {
-  background: var(--p-surface-600, #475569);
-}
-
-.nav-item i {
-  font-size: var(--fad-nav-icon-size);
-  width: 1.125rem;
-  text-align: center;
-  opacity: 0.8;
-}
-
-.nav-item-active i {
-  opacity: 1;
-}
+/* Nav items are styled in _sidebar.scss (global styles)
+   See .sidebar-nav .nav-item for base styles */
 
 /* -----------------------------------------------------------------------------
    Main Content
@@ -866,25 +823,8 @@ const showBreadcrumb = computed<boolean>(() => {
   opacity: 1 !important;
 }
 
-.sidebar--collapsed .nav-item {
-  padding: 0.5rem 0;
-  gap: 0;
-  border-left: none !important;
-  justify-content: center;
-}
-
-.sidebar--collapsed .nav-item-active {
-  border-left: none !important;
-  padding: 0.5rem 0;
-}
-
-.sidebar--collapsed .nav-item span {
-  display: none;
-}
-
-.sidebar--collapsed .nav-item i {
-  width: auto;
-}
+/* Nav item collapsed styles are in _sidebar.scss (global styles)
+   See .sidebar--collapsed .sidebar-nav .nav-item */
 
 /* Powered-by collapsed: smaller height */
 .sidebar--collapsed #powered-by {
@@ -995,23 +935,7 @@ const showBreadcrumb = computed<boolean>(() => {
     pointer-events: auto;
   }
 
-  .sidebar.sidebar--collapsed .nav-item {
-    justify-content: flex-start;
-    padding: var(--fad-nav-item-padding-y) var(--fad-nav-item-padding-x);
-    padding-left: 1rem;
-    gap: 0.5rem;
-  }
-
-  .sidebar.sidebar--collapsed .nav-item span {
-    display: inline;
-    opacity: 1;
-    width: auto;
-  }
-
-  .sidebar.sidebar--collapsed .nav-item i {
-    font-size: var(--fad-nav-icon-size);
-    width: 1.125rem;
-  }
+  /* Nav item mobile collapsed styles are in _sidebar.scss (global styles) */
 
   .sidebar.sidebar--collapsed #powered-by,
   .sidebar.sidebar--collapsed #user-zone {

@@ -95,7 +95,8 @@ watch(() => route?.path, () => {
 </script>
 
 <template>
-  <nav class="default-menu">
+  <!-- Use sidebar-nav class to inherit global nav-item styles from _sidebar.scss -->
+  <nav class="sidebar-nav">
     <div v-for="section in navSections" :key="section.title || section.label" class="nav-section">
       <div
         class="nav-section-title"
@@ -126,7 +127,10 @@ watch(() => route?.path, () => {
 </template>
 
 <style scoped>
-.default-menu {
+/* DefaultMenu uses sidebar-nav class to inherit global nav-item styles from _sidebar.scss
+   Only component-specific styles remain here */
+
+.sidebar-nav {
   flex: 1;
   overflow-y: auto;
   padding: 1rem 0;
@@ -175,30 +179,6 @@ watch(() => route?.path, () => {
   opacity: 0;
 }
 
-.nav-item {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  padding: 0.625rem 1.5rem;
-  font-size: 0.9375rem;
-  color: var(--p-surface-300, #cbd5e1);
-  text-decoration: none;
-  transition: all 0.15s;
-}
-
-.nav-item:hover {
-  background: var(--p-surface-700, #334155);
-  color: var(--p-surface-0, white);
-}
-
-.nav-item-active {
-  background: var(--p-primary-600, #2563eb);
-  color: var(--p-surface-0, white);
-}
-
-.nav-item i {
-  font-size: 1rem;
-  width: 1.25rem;
-  text-align: center;
-}
+/* Nav item styles are in _sidebar.scss (global styles)
+   See .sidebar-nav .nav-item for base styles */
 </style>

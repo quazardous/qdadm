@@ -252,3 +252,129 @@ $sidebar-box-content-duration: 0.1s;
   opacity: 0;
   transition: opacity 0s;
 }
+
+/* =============================================================================
+   Nav Item - Sidebar navigation items
+
+   Same behavior as SidebarBox:
+   - Icon stays at fixed left position (never moves horizontally)
+   - On close: text disappears immediately
+   - On open: text appears with delayed fade after sidebar is fully open
+   ============================================================================= */
+
+// Nav item icon width
+$nav-item-icon-width: 1.125rem;
+
+// Nav item content left = icon-left + icon-width + gap
+// Icon is centered in collapsed sidebar: (collapsed-width - icon-width) / 2
+// Content starts after icon: icon-left + icon-width + gap = (collapsed-width + icon-width) / 2 + gap
+$nav-item-content-left: calc((var(--fad-sidebar-width-collapsed) + #{$nav-item-icon-width}) / 2 + 0.375rem);
+
+.sidebar-nav .nav-item {
+  position: relative;
+  display: flex;
+  align-items: center;
+  padding: var(--fad-nav-item-padding-y) var(--fad-nav-item-padding-x);
+  padding-left: $nav-item-content-left;
+  color: var(--p-surface-300, #cbd5e1);
+  text-decoration: none;
+  font-size: var(--fad-font-size-sm);
+  font-weight: var(--fad-font-weight-normal);
+  border-radius: 0;
+  transition: background var(--fad-transition-fast), color var(--fad-transition-fast), padding var(--fad-transition-slow);
+}
+
+// Icon: FIXED position at left, centered in collapsed sidebar width
+// Position = (collapsed-width - icon-width) / 2 so icon is centered when collapsed
+.sidebar-nav .nav-item i {
+  position: absolute;
+  left: calc((var(--fad-sidebar-width-collapsed) - #{$nav-item-icon-width}) / 2);
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: var(--fad-nav-icon-size);
+  width: $nav-item-icon-width;
+  text-align: center;
+  opacity: 0.8;
+  // No horizontal transition - icon never moves
+}
+
+// Text: delayed fade-in when sidebar opens
+.sidebar-nav .nav-item span {
+  white-space: nowrap;
+  opacity: 1;
+  transition: opacity $sidebar-box-content-duration ease $sidebar-box-content-delay;
+}
+
+.sidebar-nav .nav-item:hover {
+  background: var(--p-surface-700, #334155);
+  color: var(--p-surface-0, white);
+}
+
+.sidebar-nav .nav-item-active {
+  background: var(--p-surface-700, #334155);
+  color: var(--p-primary-300, #93c5fd);
+  border-left: 2px solid var(--p-primary-400, #60a5fa);
+  padding-left: calc(#{$nav-item-content-left} - 2px);
+}
+
+.sidebar-nav .nav-item-active:hover {
+  background: var(--p-surface-600, #475569);
+}
+
+.sidebar-nav .nav-item-active i {
+  opacity: 1;
+}
+
+/* =============================================================================
+   Nav Item - Collapsed state
+   ============================================================================= */
+
+.sidebar--collapsed .sidebar-nav .nav-item {
+  padding: 0.5rem 0;
+  padding-left: $nav-item-content-left; // Keep same padding - icon position doesn't change
+  border-left: none !important;
+}
+
+.sidebar--collapsed .sidebar-nav .nav-item-active {
+  border-left: none !important;
+  padding-left: $nav-item-content-left;
+}
+
+// Text: disappears IMMEDIATELY when closing (no transition)
+.sidebar--collapsed .sidebar-nav .nav-item span {
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0s, visibility 0s; // Instant hide
+}
+
+// Icon: stays at EXACT SAME left position - no movement at all
+// (inherits left: $sidebar-box-icon-left, no change needed)
+
+/* =============================================================================
+   Nav Item - Mobile responsive
+   On mobile, sidebar becomes fullscreen and collapsed state is ignored
+   ============================================================================= */
+
+@media (max-width: 767px) {
+  .sidebar.sidebar--collapsed .sidebar-nav .nav-item {
+    justify-content: flex-start;
+    padding: var(--fad-nav-item-padding-y) var(--fad-nav-item-padding-x);
+    padding-left: $nav-item-content-left; // Keep same padding for absolute icon
+  }
+
+  .sidebar.sidebar--collapsed .sidebar-nav .nav-item span {
+    display: inline;
+    opacity: 1;
+    visibility: visible;
+    width: auto;
+    transition: opacity $sidebar-box-content-duration ease $sidebar-box-content-delay; // Restore delayed fade-in
+  }
+
+  .sidebar.sidebar--collapsed .sidebar-nav .nav-item i {
+    // Keep absolute positioning on mobile too - same centered position
+    position: absolute;
+    left: calc((var(--fad-sidebar-width-collapsed) - #{$nav-item-icon-width}) / 2);
+    font-size: var(--fad-nav-icon-size);
+    width: $nav-item-icon-width;
+  }
+}
