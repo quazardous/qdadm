@@ -53,7 +53,7 @@ list.addFilter('book_id', {
   placeholder: 'All Books',
   optionsEntity: 'books',
   optionLabel: 'title',
-  optionValue: 'id',
+  optionValue: 'bookId',
   component: 'autocomplete'  // Force autocomplete for testing
 })
 
