@@ -42,6 +42,14 @@ import {
   type EntityManager,
 } from './useEntityItemPage'
 import type { StackHydratorReturn } from '../chain/useStackHydrator'
+import {
+  useFieldManager,
+  snakeCaseToTitle,
+  type FieldGroup,
+  type GroupDefinition,
+  type GroupOptions,
+  type AddFieldOptions,
+} from './useFieldManager'
 
 /**
  * Orchestrator interface
@@ -93,32 +101,7 @@ export interface ResolvedFieldConfig extends FieldDefinition {
   group?: string
 }
 
-/**
- * Field group definition for hierarchical organization
- */
-export interface FieldGroup {
-  name: string
-  label: string
-  fields: ResolvedFieldConfig[]
-  children: FieldGroup[]
-  parent?: string
-}
-
-/**
- * Group definition input (for defineGroups)
- */
-export interface GroupDefinition {
-  label?: string
-  fields?: string[]
-  children?: Record<string, GroupDefinition>
-}
-
-/**
- * Options for group method
- */
-export interface GroupOptions {
-  label?: string
-}
+// FieldGroup, GroupDefinition, GroupOptions imported from useFieldManager
 
 /**
  * Action configuration
@@ -159,7 +142,7 @@ export interface ShowPageProps {
   title: string
   titleParts: PageTitleParts
   fields: ResolvedFieldConfig[]
-  groups: FieldGroup[]
+  groups: FieldGroup<ResolvedFieldConfig>[]
   data: Record<string, unknown> | null
   actions: ResolvedAction[]
   fetchError: string | null
@@ -209,14 +192,7 @@ const TYPE_MAPPINGS: Record<string, string> = {
   tag: 'badge',
 }
 
-/**
- * Utility: Convert snake_case/kebab-case to Title Case
- */
-function snakeCaseToTitle(str: string): string {
-  return str
-    .replace(/[-_]/g, ' ')
-    .replace(/\b\w/g, (char) => char.toUpperCase())
-}
+// snakeCaseToTitle imported from useFieldManager
 
 /**
  * Options for useEntityItemShowPage
@@ -244,15 +220,7 @@ export interface GenerateFieldsOptions {
   exclude?: string[]
 }
 
-/**
- * Options for addField
- */
-export interface AddFieldOptions {
-  /** Insert after this field */
-  after?: string | null
-  /** Insert before this field */
-  before?: string | null
-}
+// AddFieldOptions imported from useFieldManager
 
 /**
  * Return type for useEntityItemShowPage
@@ -282,10 +250,10 @@ export interface UseEntityItemShowPageReturn {
   getField: (name: string) => ResolvedFieldConfig | undefined
 
   // Group management
-  groups: ComputedRef<FieldGroup[]>
+  groups: ComputedRef<FieldGroup<ResolvedFieldConfig>[]>
   group: (name: string, fieldsOrOptions?: string[] | GroupOptions, options?: GroupOptions) => UseEntityItemShowPageReturn
   defineGroups: (definitions: Record<string, GroupDefinition>) => UseEntityItemShowPageReturn
-  getGroup: (name: string) => FieldGroup | undefined
+  getGroup: (name: string) => FieldGroup<ResolvedFieldConfig> | undefined
 
   // Action management
   actions: ComputedRef<ResolvedAction[]>
@@ -355,14 +323,10 @@ export function useEntityItemShowPage(
   // Cast orchestrator to include toast methods
   const orchestrator = baseOrchestrator as Orchestrator
 
-  // ============ FIELD MANAGEMENT ============
-
-  const fieldsMap = ref<Map<string, ResolvedFieldConfig>>(new Map())
-  const fieldOrder = ref<string[]>([])
-  const excludedFields = ref<Set<string>>(new Set())
+  // ============ FIELD & GROUP MANAGEMENT (via useFieldManager) ============
 
   /**
-   * Resolve field configuration from schema definition
+   * Show-specific field resolver with reference route auto-detection
    */
   function resolveFieldConfig(name: string, fieldConfig: Partial<FieldDefinition>): ResolvedFieldConfig {
     const {
@@ -379,7 +343,6 @@ export function useEntityItemShowPage(
     // Auto-set reference route if reference entity is specified
     let referenceRoute = rest.referenceRoute
     if (reference && !referenceRoute) {
-      // Default: entity-show route
       const refManager = orchestrator.get(reference)
       if (refManager) {
         referenceRoute = (value: unknown) => ({
@@ -400,239 +363,36 @@ export function useEntityItemShowPage(
     }
   }
 
-  function generateFields(genOptions: GenerateFieldsOptions = {}): UseEntityItemShowPageReturn {
-    const { only = null, exclude = [] } = genOptions
+  // Create field manager with show-specific resolver
+  const fieldManager = useFieldManager<ResolvedFieldConfig>({
+    resolveFieldConfig,
+    getSchemaFieldConfig: (name) => manager.getFieldConfig?.(name) || null,
+  })
 
-    const allExcluded = new Set([...excludedFields.value, ...exclude])
+  // Direct access to computed values
+  const { fields, groups } = fieldManager
+
+  // Chainable method wrappers (return returnValue for fluent API)
+  const chain = <T extends unknown[], R>(fn: (...args: T) => R) =>
+    (...args: T): UseEntityItemShowPageReturn => { fn(...args); return returnValue }
+
+  const generateFields = (opts?: GenerateFieldsOptions): UseEntityItemShowPageReturn => {
     const formFields = manager.getFormFields?.() || []
-
-    for (const fieldConfig of formFields) {
-      const name = fieldConfig.name
-      if (!name) continue
-
-      if (only && !only.includes(name)) continue
-      if (allExcluded.has(name)) continue
-      if (fieldsMap.value.has(name)) continue
-
-      const resolvedConfig = resolveFieldConfig(name, fieldConfig)
-      fieldsMap.value.set(name, resolvedConfig)
-      fieldOrder.value.push(name)
-    }
-
+    fieldManager.generateFields(formFields, opts)
     return returnValue
   }
 
-  function addField(
-    name: string,
-    fieldConfig: Partial<FieldDefinition>,
-    addOptions: AddFieldOptions = {}
-  ): UseEntityItemShowPageReturn {
-    const { after = null, before = null } = addOptions
+  const addField = chain(fieldManager.addField)
+  const updateField = chain(fieldManager.updateField)
+  const removeField = chain(fieldManager.removeField)
+  const excludeField = chain(fieldManager.excludeField)
+  const reorderFields = chain(fieldManager.setFieldOrder)
+  const group = chain(fieldManager.group)
+  const defineGroups = chain(fieldManager.defineGroups)
 
-    const schemaConfig = manager.getFieldConfig?.(name) || {}
-    const resolvedConfig = resolveFieldConfig(name, { ...schemaConfig, ...fieldConfig })
-
-    fieldsMap.value.set(name, resolvedConfig)
-
-    const currentIndex = fieldOrder.value.indexOf(name)
-    if (currentIndex !== -1) {
-      fieldOrder.value.splice(currentIndex, 1)
-    }
-
-    if (after) {
-      const afterIndex = fieldOrder.value.indexOf(after)
-      if (afterIndex !== -1) {
-        fieldOrder.value.splice(afterIndex + 1, 0, name)
-      } else {
-        fieldOrder.value.push(name)
-      }
-    } else if (before) {
-      const beforeIndex = fieldOrder.value.indexOf(before)
-      if (beforeIndex !== -1) {
-        fieldOrder.value.splice(beforeIndex, 0, name)
-      } else {
-        fieldOrder.value.unshift(name)
-      }
-    } else {
-      fieldOrder.value.push(name)
-    }
-
-    return returnValue
-  }
-
-  function updateField(name: string, updates: Partial<FieldDefinition>): UseEntityItemShowPageReturn {
-    const existing = fieldsMap.value.get(name)
-    if (existing) {
-      fieldsMap.value.set(name, { ...existing, ...updates } as ResolvedFieldConfig)
-    }
-    return returnValue
-  }
-
-  function removeField(name: string): UseEntityItemShowPageReturn {
-    fieldsMap.value.delete(name)
-    const index = fieldOrder.value.indexOf(name)
-    if (index !== -1) {
-      fieldOrder.value.splice(index, 1)
-    }
-    return returnValue
-  }
-
-  function excludeField(name: string): UseEntityItemShowPageReturn {
-    excludedFields.value.add(name)
-    removeField(name)
-    return returnValue
-  }
-
-  function reorderFields(fieldNames: string[]): UseEntityItemShowPageReturn {
-    fieldOrder.value = fieldNames.filter((name) => fieldsMap.value.has(name))
-    return returnValue
-  }
-
-  function getField(name: string): ResolvedFieldConfig | undefined {
-    return fieldsMap.value.get(name)
-  }
-
-  const fields = computed<ResolvedFieldConfig[]>(() => {
-    return fieldOrder.value
-      .map((name) => fieldsMap.value.get(name))
-      .filter((f): f is ResolvedFieldConfig => f !== undefined)
-  })
-
-  // ============ GROUP MANAGEMENT ============
-
-  interface InternalGroup {
-    name: string
-    label: string
-    fields: string[]
-    parent?: string
-  }
-
-  const groupsMap = ref<Map<string, InternalGroup>>(new Map())
-
-  /**
-   * Create or update a group
-   * @param name - Group name (supports dot notation for hierarchy: 'parent.child')
-   * @param fieldsOrOptions - Array of field names or group options
-   * @param options - Group options (if fieldsOrOptions is array)
-   */
-  function group(
-    name: string,
-    fieldsOrOptions?: string[] | GroupOptions,
-    options?: GroupOptions
-  ): UseEntityItemShowPageReturn {
-    const fieldNames = Array.isArray(fieldsOrOptions) ? fieldsOrOptions : []
-    const groupOptions = Array.isArray(fieldsOrOptions) ? options : fieldsOrOptions
-
-    // Parse parent from dot notation
-    const parts = name.split('.')
-    const groupName = parts[parts.length - 1] || name
-    const parentName = parts.length > 1 ? parts.slice(0, -1).join('.') : undefined
-
-    // Create parent groups if they don't exist
-    if (parentName && !groupsMap.value.has(parentName)) {
-      const parentLabel = parentName.split('.').pop() || parentName
-      group(parentName, { label: snakeCaseToTitle(parentLabel) })
-    }
-
-    // Create or update group
-    const existing = groupsMap.value.get(name)
-    groupsMap.value.set(name, {
-      name,
-      label: groupOptions?.label || existing?.label || snakeCaseToTitle(groupName),
-      fields: [...(existing?.fields || []), ...fieldNames],
-      parent: parentName,
-    })
-
-    // Update fields with group reference
-    for (const fieldName of fieldNames) {
-      const field = fieldsMap.value.get(fieldName)
-      if (field) {
-        fieldsMap.value.set(fieldName, { ...field, group: name })
-      }
-    }
-
-    return returnValue
-  }
-
-  /**
-   * Define groups from object structure
-   */
-  function defineGroups(definitions: Record<string, GroupDefinition>, parentPath = ''): UseEntityItemShowPageReturn {
-    for (const [name, def] of Object.entries(definitions)) {
-      const fullPath = parentPath ? `${parentPath}.${name}` : name
-
-      // Create group with fields
-      group(fullPath, def.fields || [], { label: def.label })
-
-      // Recursively define children
-      if (def.children) {
-        defineGroups(def.children, fullPath)
-      }
-    }
-
-    return returnValue
-  }
-
-  /**
-   * Get a group by name
-   */
-  function getGroup(name: string): FieldGroup | undefined {
-    const internal = groupsMap.value.get(name)
-    if (!internal) return undefined
-
-    return buildGroupTree(internal)
-  }
-
-  /**
-   * Build group tree from internal group
-   */
-  function buildGroupTree(internal: InternalGroup): FieldGroup {
-    const groupFields = internal.fields
-      .map((name) => fieldsMap.value.get(name))
-      .filter((f): f is ResolvedFieldConfig => f !== undefined)
-
-    // Find children
-    const children: FieldGroup[] = []
-    for (const [name, g] of groupsMap.value.entries()) {
-      if (g.parent === internal.name) {
-        children.push(buildGroupTree(g))
-      }
-    }
-
-    return {
-      name: internal.name,
-      label: internal.label,
-      fields: groupFields,
-      children,
-      parent: internal.parent,
-    }
-  }
-
-  /**
-   * Computed groups tree (only root groups)
-   */
-  const groups = computed<FieldGroup[]>(() => {
-    const rootGroups: FieldGroup[] = []
-
-    for (const [, internal] of groupsMap.value.entries()) {
-      // Only include root groups (no parent)
-      if (!internal.parent) {
-        rootGroups.push(buildGroupTree(internal))
-      }
-    }
-
-    // If no groups defined, create a single "default" group with all fields
-    if (rootGroups.length === 0 && fields.value.length > 0) {
-      return [{
-        name: '_default',
-        label: '',
-        fields: fields.value,
-        children: [],
-      }]
-    }
-
-    return rootGroups
-  })
+  // Direct accessors (no chaining needed)
+  const getField = fieldManager.getField
+  const getGroup = fieldManager.getGroup
 
   // ============ ACTION MANAGEMENT ============
 

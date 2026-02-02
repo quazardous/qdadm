@@ -2,22 +2,28 @@
 /**
  * FormTabs - Normalized tab container for forms
  *
- * Provides consistent styling and behavior for form tabs.
- * Works with FormTab component for individual tabs.
+ * @deprecated Use FieldGroups with layout="tabs" instead. FieldGroups now supports
+ * icon, badge, count, visible, and disabled options on groups.
  *
- * Usage:
- *   <FormTabs v-model="activeTab" @update:modelValue="onTabChange">
- *     <template #tabs>
- *       <FormTab value="general" label="General" icon="pi-cog" />
- *       <FormTab value="items" label="Items" icon="pi-list" :count="items.length" />
- *       <FormTab value="advanced" label="Advanced" :visible="isEdit" />
- *     </template>
- *     <template #panels>
- *       <TabPanel value="general">...</TabPanel>
- *       <TabPanel value="items">...</TabPanel>
- *       <TabPanel value="advanced">...</TabPanel>
- *     </template>
- *   </FormTabs>
+ * ```vue
+ * <!-- Before (deprecated) -->
+ * <FormTabs v-model="activeTab">
+ *   <template #tabs>
+ *     <FormTab value="general" label="General" icon="pi-cog" />
+ *   </template>
+ *   <template #panels>
+ *     <TabPanel value="general">...</TabPanel>
+ *   </template>
+ * </FormTabs>
+ *
+ * <!-- After (recommended) -->
+ * form.group('general', ['field1', 'field2'], { label: 'General', icon: 'cog' })
+ * <FieldGroups :groups="form.groups.value" layout="tabs">
+ *   <template #field="{ field }">
+ *     <FormField :field="field" />
+ *   </template>
+ * </FieldGroups>
+ * ```
  */
 
 import Tabs from 'primevue/tabs'

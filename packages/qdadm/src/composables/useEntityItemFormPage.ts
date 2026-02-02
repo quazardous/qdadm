@@ -40,6 +40,13 @@ import { registerGuardDialog, unregisterGuardDialog } from './useGuardStore'
 import { deepClone } from '../utils/transformers'
 import { getSiblingRoutes } from '../module/moduleRegistry'
 import type { StackHydratorReturn } from '../chain/useStackHydrator'
+import {
+  useFieldManager,
+  type FieldGroup,
+  type GroupDefinition,
+  type GroupOptions,
+  type MoveFieldPosition,
+} from './useFieldManager'
 
 /**
  * Orchestrator interface
@@ -85,6 +92,7 @@ export interface ResolvedFieldConfig extends FieldDefinition {
   type: string
   schemaType: string
   label: string
+  group?: string
 }
 
 /**
@@ -152,6 +160,7 @@ export interface FormPageProps {
   title: string
   titleParts: PageTitleParts
   fields: ResolvedFieldConfig[]
+  groups: FieldGroup<ResolvedFieldConfig>[]
   actions: ResolvedAction[]
   canSave: boolean
   canDelete: boolean
@@ -263,15 +272,7 @@ export interface AddFieldOptions {
   before?: string | null
 }
 
-/**
- * Position options for moveField
- */
-export interface MoveFieldPosition {
-  /** Move after this field */
-  after?: string | null
-  /** Move before this field */
-  before?: string | null
-}
+// MoveFieldPosition imported from useFieldManager
 
 /**
  * Options for addSaveAction
@@ -358,6 +359,14 @@ export interface UseEntityItemFormPageReturn {
   getFields: () => ResolvedFieldConfig[]
   setFieldOrder: (order: string[]) => UseEntityItemFormPageReturn
   moveField: (name: string, position: MoveFieldPosition) => UseEntityItemFormPageReturn
+
+  // Group management
+  groups: ComputedRef<FieldGroup<ResolvedFieldConfig>[]>
+  group: (name: string, fieldsOrOptions?: string[] | GroupOptions, options?: GroupOptions) => UseEntityItemFormPageReturn
+  defineGroups: (definitions: Record<string, GroupDefinition>) => UseEntityItemFormPageReturn
+  getGroup: (name: string) => FieldGroup<ResolvedFieldConfig> | undefined
+  getFieldsByGroup: (groupName: string) => ResolvedFieldConfig[]
+  getUngroupedFields: () => ResolvedFieldConfig[]
 
   // Validation
   errors: Ref<Record<string, string>>
@@ -848,14 +857,10 @@ export function useEntityItemFormPage(
     router.push(findListRoute() as { name: string })
   }
 
-  // ============ FIELDS ============
-
-  const fieldsMap = ref<Map<string, ResolvedFieldConfig>>(new Map())
-  const fieldOrder = ref<string[]>([])
-  const excludedFields = ref<Set<string>>(new Set())
+  // ============ FIELDS & GROUPS (via useFieldManager) ============
 
   /**
-   * Resolve field configuration from schema definition
+   * Form-specific field resolver
    */
   function resolveFieldConfig(
     name: string,
@@ -895,38 +900,36 @@ export function useEntityItemFormPage(
     }
   }
 
+  // Use shared field manager
+  const fieldManager = useFieldManager<ResolvedFieldConfig>({
+    resolveFieldConfig,
+    getSchemaFieldConfig: (name) => manager.getFieldConfig(name) || null,
+  })
+
+  // Expose refs for validation (which needs direct access)
+  const { fieldsMap, fieldOrder, excludedFields, fields, groups } = fieldManager
+
+  /**
+   * Generate fields from manager schema
+   */
   function generateFields(options: GenerateFieldsOptions = {}): UseEntityItemFormPageReturn {
-    const { only = null, exclude = [] } = options
-
-    const allExcluded = new Set([...excludedFields.value, ...exclude])
     const formFields = manager.getFormFields()
-
-    for (const fieldDef of formFields) {
-      const { name, ...fieldConfig } = fieldDef
-
-      if (only && !only.includes(name)) continue
-      if (allExcluded.has(name)) continue
-      if (fieldsMap.value.has(name)) continue
-
-      const resolvedConfig = resolveFieldConfig(name, fieldConfig)
-      fieldsMap.value.set(name, resolvedConfig)
-      fieldOrder.value.push(name)
-    }
-
+    fieldManager.generateFields(formFields, options)
     // Auto-resolve reference options (async, non-blocking)
     resolveReferences()
-
     return builderApi
   }
 
+  /**
+   * Resolve reference field options from related entities
+   */
   async function resolveReferences(): Promise<void> {
     for (const [name, config] of fieldsMap.value.entries()) {
       if (config.options || !config.reference) continue
 
       try {
         const options = await manager.resolveReferenceOptions(name)
-        const updatedConfig = { ...config, options }
-        fieldsMap.value.set(name, updatedConfig)
+        fieldManager.updateField(name, { options })
       } catch (error) {
         console.warn(
           `[useEntityItemFormPage] Failed to resolve options for field '${name}':`,
@@ -936,123 +939,38 @@ export function useEntityItemFormPage(
     }
   }
 
-  function addField(
-    name: string,
-    fieldConfig: Partial<FieldDefinition>,
-    options: AddFieldOptions = {}
-  ): UseEntityItemFormPageReturn {
-    const { after = null, before = null } = options
+  // Chainable method wrapper (returns builderApi for fluent API)
+  const chain = <T extends unknown[], R>(fn: (...args: T) => R) =>
+    (...args: T): UseEntityItemFormPageReturn => { fn(...args); return builderApi }
 
-    const schemaConfig = manager.getFieldConfig(name) || {}
-    const resolvedConfig = resolveFieldConfig(name, { ...schemaConfig, ...fieldConfig })
+  // Field management (chainable)
+  const addField = chain(fieldManager.addField)
+  const removeField = chain(fieldManager.removeField)
+  const excludeField = chain(fieldManager.excludeField)
+  const setFieldOrder = chain(fieldManager.setFieldOrder)
+  const moveField = chain(fieldManager.moveField)
 
-    fieldsMap.value.set(name, resolvedConfig)
-
-    const currentIndex = fieldOrder.value.indexOf(name)
-    if (currentIndex !== -1) {
-      fieldOrder.value.splice(currentIndex, 1)
-    }
-
-    if (after) {
-      const afterIndex = fieldOrder.value.indexOf(after)
-      if (afterIndex !== -1) {
-        fieldOrder.value.splice(afterIndex + 1, 0, name)
-      } else {
-        fieldOrder.value.push(name)
-      }
-    } else if (before) {
-      const beforeIndex = fieldOrder.value.indexOf(before)
-      if (beforeIndex !== -1) {
-        fieldOrder.value.splice(beforeIndex, 0, name)
-      } else {
-        fieldOrder.value.push(name)
-      }
-    } else if (currentIndex === -1) {
-      fieldOrder.value.push(name)
-    } else {
-      fieldOrder.value.splice(currentIndex, 0, name)
-    }
-
-    return builderApi
-  }
-
-  function updateField(
-    name: string,
-    fieldConfig: Partial<FieldDefinition>
-  ): UseEntityItemFormPageReturn {
+  // updateField needs custom validation logic
+  function updateField(name: string, fieldConfig: Partial<FieldDefinition>): UseEntityItemFormPageReturn {
     if (!fieldsMap.value.has(name)) {
       throw new Error(`Field '${name}' does not exist. Use addField() to create new fields.`)
     }
-
-    const existingConfig = fieldsMap.value.get(name)!
-    const mergedConfig = { ...existingConfig, ...fieldConfig } as ResolvedFieldConfig
-    fieldsMap.value.set(name, mergedConfig)
-
+    fieldManager.updateField(name, fieldConfig)
     return builderApi
   }
 
-  function excludeField(name: string): UseEntityItemFormPageReturn {
-    excludedFields.value.add(name)
-    fieldsMap.value.delete(name)
-    const idx = fieldOrder.value.indexOf(name)
-    if (idx !== -1) {
-      fieldOrder.value.splice(idx, 1)
-    }
-    return builderApi
-  }
+  // Direct accessors
+  const getFieldConfig = fieldManager.getField
+  const getFields = (): ResolvedFieldConfig[] => fields.value
 
-  function removeField(name: string): UseEntityItemFormPageReturn {
-    fieldsMap.value.delete(name)
-    const idx = fieldOrder.value.indexOf(name)
-    if (idx !== -1) {
-      fieldOrder.value.splice(idx, 1)
-    }
-    return builderApi
-  }
+  // Group management (chainable)
+  const group = chain(fieldManager.group)
+  const defineGroups = chain(fieldManager.defineGroups)
 
-  function setFieldOrder(order: string[]): UseEntityItemFormPageReturn {
-    fieldOrder.value = order.filter((name) => fieldsMap.value.has(name))
-    return builderApi
-  }
-
-  function moveField(name: string, position: MoveFieldPosition): UseEntityItemFormPageReturn {
-    const { after = null, before = null } = position
-
-    const currentIndex = fieldOrder.value.indexOf(name)
-    if (currentIndex === -1) return builderApi
-
-    fieldOrder.value.splice(currentIndex, 1)
-
-    if (after) {
-      const afterIndex = fieldOrder.value.indexOf(after)
-      if (afterIndex !== -1) {
-        fieldOrder.value.splice(afterIndex + 1, 0, name)
-      } else {
-        fieldOrder.value.push(name)
-      }
-    } else if (before) {
-      const beforeIndex = fieldOrder.value.indexOf(before)
-      if (beforeIndex !== -1) {
-        fieldOrder.value.splice(beforeIndex, 0, name)
-      } else {
-        fieldOrder.value.unshift(name)
-      }
-    }
-
-    return builderApi
-  }
-
-  function getFieldConfig(name: string): ResolvedFieldConfig | undefined {
-    return fieldsMap.value.get(name)
-  }
-
-  function getFields(): ResolvedFieldConfig[] {
-    return fieldOrder.value
-      .map((name) => fieldsMap.value.get(name))
-      .filter((f): f is ResolvedFieldConfig => f !== undefined)
-  }
-
-  const fields = computed(() => getFields())
+  // Group accessors
+  const getGroup = fieldManager.getGroup
+  const getFieldsByGroup = fieldManager.getFieldsByGroup
+  const getUngroupedFields = fieldManager.getUngroupedFields
 
   // ============ VALIDATION ============
 
@@ -1281,6 +1199,7 @@ export function useEntityItemFormPage(
     title: pageTitle.value,
     titleParts: pageTitleParts.value,
     fields: fields.value,
+    groups: groups.value,
     actions: actions.value,
     canSave: canSave.value,
     canDelete: canDeleteRecord.value,
@@ -1352,6 +1271,14 @@ export function useEntityItemFormPage(
     getFields,
     setFieldOrder,
     moveField,
+
+    // Group management
+    groups,
+    group,
+    defineGroups,
+    getGroup,
+    getFieldsByGroup,
+    getUngroupedFields,
 
     // Validation
     errors,

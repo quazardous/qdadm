@@ -132,3 +132,17 @@ export {
   type UserRecord,
 } from './useUserImpersonator'
 export { useCurrentEntity, type UseCurrentEntityReturn } from './useCurrentEntity'
+export {
+  useFieldManager,
+  snakeCaseToTitle,
+  type BaseFieldDefinition,
+  type ResolvedFieldConfig as FieldManagerFieldConfig,
+  type FieldGroup,
+  type GroupDefinition,
+  type GroupOptions,
+  type GenerateFieldsOptions as FieldManagerGenerateOptions,
+  type AddFieldOptions as FieldManagerAddOptions,
+  type MoveFieldPosition,
+  type UseFieldManagerOptions,
+  type UseFieldManagerReturn,
+} from './useFieldManager'

@@ -6,7 +6,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { h, ref } from 'vue'
-import FormPage from '../../src/components/forms/FormPage.vue'
+import FormPage from '../../src/components/edit/FormPage.vue'
 
 // Mock PrimeVue components
 vi.mock('primevue/card', () => ({
@@ -42,7 +42,7 @@ vi.mock('../../src/components/layout/PageHeader.vue', () => ({
   }
 }))
 
-vi.mock('../../src/components/forms/FormActions.vue', () => ({
+vi.mock('../../src/components/edit/FormActions.vue', () => ({
   default: {
     name: 'FormActions',
     props: ['isEdit', 'saving', 'dirty', 'showSaveAndClose'],

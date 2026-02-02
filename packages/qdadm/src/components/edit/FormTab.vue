@@ -2,23 +2,16 @@
 /**
  * FormTab - Normalized tab header component
  *
- * Provides consistent tab headers with optional icon, count badge, and visibility control.
+ * @deprecated Use FieldGroups with layout="tabs" instead. FieldGroups now supports
+ * icon, badge, count, visible, and disabled options on groups.
  *
- * Props:
- *   - value: Tab identifier (required)
- *   - label: Display text (required)
- *   - icon: PrimeIcon class (e.g., 'pi-cog')
- *   - count: Number to display as badge
- *   - badge: Custom badge text/value
- *   - badgeSeverity: Badge color ('secondary', 'info', 'success', 'warn', 'danger')
- *   - visible: Show/hide tab (default: true)
- *   - disabled: Disable tab interaction
+ * ```ts
+ * // Before (deprecated)
+ * <FormTab value="general" label="General" icon="pi-cog" :count="5" />
  *
- * Usage:
- *   <FormTab value="general" label="General" icon="pi-cog" />
- *   <FormTab value="items" label="Items" :count="5" />
- *   <FormTab value="errors" label="Errors" :count="errors.length" badge-severity="danger" />
- *   <FormTab value="advanced" label="Advanced" :visible="isEdit" />
+ * // After (recommended)
+ * form.group('general', ['field1'], { label: 'General', icon: 'cog', count: 5 })
+ * ```
  */
 
 import { type PropType } from 'vue'

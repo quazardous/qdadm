@@ -19,19 +19,21 @@ export { default as DefaultFooter } from './layout/defaults/DefaultFooter.vue'
 export { default as DefaultUserInfo } from './layout/defaults/DefaultUserInfo.vue'
 export { default as DefaultBreadcrumb } from './layout/defaults/DefaultBreadcrumb.vue'
 
-// Forms
-export { default as FormPage } from './forms/FormPage.vue'
-export { default as FormField } from './forms/FormField.vue'
-export { default as FormInput } from './forms/FormInput.vue'
-export { default as FormActions } from './forms/FormActions.vue'
-export { default as FormTabs } from './forms/FormTabs.vue'
-export { default as FormTab } from './forms/FormTab.vue'
+// Item (shared between edit and show)
+export { default as FieldGroups } from './item/FieldGroups.vue'
+
+// Edit (form pages)
+export { default as FormPage } from './edit/FormPage.vue'
+export { default as FormField } from './edit/FormField.vue'
+export { default as FormInput } from './edit/FormInput.vue'
+export { default as FormActions } from './edit/FormActions.vue'
+export { default as FormTabs } from './edit/FormTabs.vue' // Deprecated: use FieldGroups with layout="tabs"
+export { default as FormTab } from './edit/FormTab.vue' // Deprecated: use FieldGroups with layout="tabs"
 
 // Show (read-only detail pages)
 export { default as ShowPage } from './show/ShowPage.vue'
 export { default as ShowField } from './show/ShowField.vue'
 export { default as ShowDisplay } from './show/ShowDisplay.vue'
-export { default as ShowGroups } from './show/ShowGroups.vue'
 
 // Lists
 export { default as ListPage } from './lists/ListPage.vue'

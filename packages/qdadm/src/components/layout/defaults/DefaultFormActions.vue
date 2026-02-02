@@ -15,7 +15,7 @@
  * - qdadmFormEmit: { save, saveAndClose, cancel, delete }
  */
 import { inject, computed, type Ref } from 'vue'
-import FormActions from '../../forms/FormActions.vue'
+import FormActions from '../../edit/FormActions.vue'
 
 interface FormState {
   isEdit?: boolean

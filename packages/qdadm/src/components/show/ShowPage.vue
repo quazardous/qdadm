@@ -42,7 +42,8 @@ import PageHeader from '../layout/PageHeader.vue'
 import Card from 'primevue/card'
 import Button from 'primevue/button'
 import Message from 'primevue/message'
-import ShowGroups from './ShowGroups.vue'
+import FieldGroups from '../item/FieldGroups.vue'
+import ShowField from './ShowField.vue'
 
 /**
  * Page title parts for PageHeader
@@ -246,14 +247,21 @@ const fetchErrorMessage = computed<string | null>(() => {
               <!-- Group layout mode -->
               <template v-if="useGroupLayout">
                 <slot name="groups">
-                  <ShowGroups
+                  <FieldGroups
                     :groups="groups"
                     :data="data"
                     :layout="layout"
                     :child-layout="childLayout"
-                    :horizontal="horizontalFields"
-                    :label-width="labelWidth"
-                  />
+                  >
+                    <template #field="{ field, value }">
+                      <ShowField
+                        :field="field"
+                        :value="value as string | number | boolean | Date | Record<string, unknown> | unknown[]"
+                        :horizontal="horizontalFields"
+                        :label-width="labelWidth"
+                      />
+                    </template>
+                  </FieldGroups>
                 </slot>
               </template>
               <!-- Flat fields mode (default) -->
@@ -300,14 +308,21 @@ const fetchErrorMessage = computed<string | null>(() => {
             <!-- Group layout mode -->
             <template v-if="useGroupLayout">
               <slot name="groups">
-                <ShowGroups
+                <FieldGroups
                   :groups="groups"
                   :data="data"
                   :layout="layout"
                   :child-layout="childLayout"
-                  :horizontal="horizontalFields"
-                  :label-width="labelWidth"
-                />
+                >
+                  <template #field="{ field, value }">
+                    <ShowField
+                      :field="field"
+                      :value="value as string | number | boolean | Date | Record<string, unknown> | unknown[]"
+                      :horizontal="horizontalFields"
+                      :label-width="labelWidth"
+                    />
+                  </template>
+                </FieldGroups>
               </slot>
             </template>
             <!-- Flat fields mode (default) -->

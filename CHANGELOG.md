@@ -3,6 +3,25 @@
 All notable changes to qdadm will be documented in this file.
 This is not a commit log. Keep entries simple, user-focused.
 
+## [1.2.0] - 2026-02-02
+
+### Breaking Changes
+- **Folder reorganization**: `/components/forms/` renamed to `/components/edit/`, new `/components/item/` for shared components
+- **ShowGroups removed**: Use `FieldGroups` with `#field` slot instead
+
+### Added
+- **useFieldManager composable**: Shared field and group management for both form and show pages (DRY refactor)
+- **FieldGroups component**: Generic slot-based group renderer with 5 layouts (flat, sections, cards, tabs, accordion)
+- **Group tab/accordion options**: `icon`, `badge`, `badgeSeverity`, `count`, `visible`, `disabled` on groups
+- **Field groups in forms**: `useEntityItemFormPage` now supports `group()` and `defineGroups()` methods
+
+### Deprecated
+- **FormTabs/FormTab**: Use `FieldGroups` with `layout="tabs"` instead
+
+### Demo
+- **JpUserShowPage**: Updated to use FieldGroups with tabs layout, icons and badges
+- **BookForm**: Updated to use FieldGroups with accordion layout
+
 ## [1.1.7] - 2026-02-02
 
 ### Added
