@@ -3,6 +3,11 @@
 All notable changes to qdadm will be documented in this file.
 This is not a commit log. Keep entries simple, user-focused.
 
+## [1.1.5] - 2026-02-02
+
+### Changed
+- **Default item route detection**: `getDefaultItemRoute` now checks for existing routes before returning
+
 ## [1.1.3] - 2026-01-21
 
 ### Fixed
