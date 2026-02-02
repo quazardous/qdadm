@@ -16,7 +16,7 @@
  * - showDetailsLink: Show "Details" link in navlinks (default: false)
  */
 import { computed, watch, inject, type Ref } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { getSiblingRoutes, getChildRoutes, type ModuleRoute, type ParentConfig } from '../../module/moduleRegistry'
 import { useOrchestrator } from '../../orchestrator/useOrchestrator.js'
 import type { EntityManager } from '../../entity/EntityManager'
@@ -37,6 +37,7 @@ const props = defineProps<{
 }>()
 
 const route = useRoute()
+const router = useRouter()
 const { getManager } = useOrchestrator()
 
 // Parent config from route meta
@@ -44,13 +45,22 @@ const parentConfig = computed<ParentConfig | undefined>(() => route.meta?.parent
 
 /**
  * Get default item route for an entity manager
- * - Read-only entities: use -show suffix
- * - Editable entities: use -edit suffix
+ * Checks which routes actually exist and returns the appropriate one:
+ * - Prefers -edit if it exists (editable entity)
+ * - Falls back to -show if -edit doesn't exist
+ * - Returns null if neither exists
  */
 function getDefaultItemRoute(manager: EntityManager<EntityRecord> | null): string | null {
   if (!manager) return null
-  const suffix = manager.readOnly ? '-show' : '-edit'
-  return `${manager.routePrefix}${suffix}`
+
+  const editRoute = `${manager.routePrefix}-edit`
+  const showRoute = `${manager.routePrefix}-show`
+
+  // Check which routes actually exist and return the first available
+  if (router.hasRoute(editRoute)) return editRoute
+  if (router.hasRoute(showRoute)) return showRoute
+
+  return null
 }
 
 // Sibling navlinks (routes with same parent)

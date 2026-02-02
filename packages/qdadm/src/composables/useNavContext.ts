@@ -139,15 +139,23 @@ export function useNavContext(_options: UseNavContextOptions = {}): UseNavContex
 
   /**
    * Get default item route for an entity manager
-   * - Read-only entities: use -show suffix
-   * - Editable entities: use -edit suffix
+   * Checks which routes actually exist and returns the appropriate one:
+   * - Prefers -edit if it exists (editable entity)
+   * - Falls back to -show if -edit doesn't exist
    * @param manager - Entity manager
-   * @returns Route name
+   * @returns Route name or null if neither exists
    */
   function getDefaultItemRoute(manager: EntityManager | null): string | null {
     if (!manager) return null
-    const suffix = manager.readOnly ? '-show' : '-edit'
-    return `${manager.routePrefix}${suffix}`
+
+    const editRoute = `${manager.routePrefix}-edit`
+    const showRoute = `${manager.routePrefix}-show`
+
+    // Check which routes actually exist and return the first available
+    if (router.hasRoute(editRoute)) return editRoute
+    if (router.hasRoute(showRoute)) return showRoute
+
+    return null
   }
 
   /**
