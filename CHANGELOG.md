@@ -3,6 +3,13 @@
 All notable changes to qdadm will be documented in this file.
 This is not a commit log. Keep entries simple, user-focused.
 
+## [1.1.7] - 2026-02-02
+
+### Added
+- **Field groups**: Hierarchical field organization with `group()` and `defineGroups()` methods in `useEntityItemShowPage`
+- **ShowGroups component**: Renders grouped fields with configurable layouts (flat, sections, cards, tabs, accordion)
+- **Nested groups**: Dot notation support for hierarchical groups (e.g., `info.basic`, `info.contact`)
+
 ## [1.1.6] - 2026-02-02
 
 ### Added

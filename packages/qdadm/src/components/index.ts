@@ -31,6 +31,7 @@ export { default as FormTab } from './forms/FormTab.vue'
 export { default as ShowPage } from './show/ShowPage.vue'
 export { default as ShowField } from './show/ShowField.vue'
 export { default as ShowDisplay } from './show/ShowDisplay.vue'
+export { default as ShowGroups } from './show/ShowGroups.vue'
 
 // Lists
 export { default as ListPage } from './lists/ListPage.vue'

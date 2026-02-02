@@ -90,6 +90,34 @@ export interface ResolvedFieldConfig extends FieldDefinition {
   type: string
   schemaType: string
   label: string
+  group?: string
+}
+
+/**
+ * Field group definition for hierarchical organization
+ */
+export interface FieldGroup {
+  name: string
+  label: string
+  fields: ResolvedFieldConfig[]
+  children: FieldGroup[]
+  parent?: string
+}
+
+/**
+ * Group definition input (for defineGroups)
+ */
+export interface GroupDefinition {
+  label?: string
+  fields?: string[]
+  children?: Record<string, GroupDefinition>
+}
+
+/**
+ * Options for group method
+ */
+export interface GroupOptions {
+  label?: string
 }
 
 /**
@@ -131,6 +159,7 @@ export interface ShowPageProps {
   title: string
   titleParts: PageTitleParts
   fields: ResolvedFieldConfig[]
+  groups: FieldGroup[]
   data: Record<string, unknown> | null
   actions: ResolvedAction[]
   fetchError: string | null
@@ -251,6 +280,12 @@ export interface UseEntityItemShowPageReturn {
   excludeField: (name: string) => UseEntityItemShowPageReturn
   reorderFields: (fieldNames: string[]) => UseEntityItemShowPageReturn
   getField: (name: string) => ResolvedFieldConfig | undefined
+
+  // Group management
+  groups: ComputedRef<FieldGroup[]>
+  group: (name: string, fieldsOrOptions?: string[] | GroupOptions, options?: GroupOptions) => UseEntityItemShowPageReturn
+  defineGroups: (definitions: Record<string, GroupDefinition>) => UseEntityItemShowPageReturn
+  getGroup: (name: string) => FieldGroup | undefined
 
   // Action management
   actions: ComputedRef<ResolvedAction[]>
@@ -463,6 +498,142 @@ export function useEntityItemShowPage(
       .filter((f): f is ResolvedFieldConfig => f !== undefined)
   })
 
+  // ============ GROUP MANAGEMENT ============
+
+  interface InternalGroup {
+    name: string
+    label: string
+    fields: string[]
+    parent?: string
+  }
+
+  const groupsMap = ref<Map<string, InternalGroup>>(new Map())
+
+  /**
+   * Create or update a group
+   * @param name - Group name (supports dot notation for hierarchy: 'parent.child')
+   * @param fieldsOrOptions - Array of field names or group options
+   * @param options - Group options (if fieldsOrOptions is array)
+   */
+  function group(
+    name: string,
+    fieldsOrOptions?: string[] | GroupOptions,
+    options?: GroupOptions
+  ): UseEntityItemShowPageReturn {
+    const fieldNames = Array.isArray(fieldsOrOptions) ? fieldsOrOptions : []
+    const groupOptions = Array.isArray(fieldsOrOptions) ? options : fieldsOrOptions
+
+    // Parse parent from dot notation
+    const parts = name.split('.')
+    const groupName = parts[parts.length - 1] || name
+    const parentName = parts.length > 1 ? parts.slice(0, -1).join('.') : undefined
+
+    // Create parent groups if they don't exist
+    if (parentName && !groupsMap.value.has(parentName)) {
+      const parentLabel = parentName.split('.').pop() || parentName
+      group(parentName, { label: snakeCaseToTitle(parentLabel) })
+    }
+
+    // Create or update group
+    const existing = groupsMap.value.get(name)
+    groupsMap.value.set(name, {
+      name,
+      label: groupOptions?.label || existing?.label || snakeCaseToTitle(groupName),
+      fields: [...(existing?.fields || []), ...fieldNames],
+      parent: parentName,
+    })
+
+    // Update fields with group reference
+    for (const fieldName of fieldNames) {
+      const field = fieldsMap.value.get(fieldName)
+      if (field) {
+        fieldsMap.value.set(fieldName, { ...field, group: name })
+      }
+    }
+
+    return returnValue
+  }
+
+  /**
+   * Define groups from object structure
+   */
+  function defineGroups(definitions: Record<string, GroupDefinition>, parentPath = ''): UseEntityItemShowPageReturn {
+    for (const [name, def] of Object.entries(definitions)) {
+      const fullPath = parentPath ? `${parentPath}.${name}` : name
+
+      // Create group with fields
+      group(fullPath, def.fields || [], { label: def.label })
+
+      // Recursively define children
+      if (def.children) {
+        defineGroups(def.children, fullPath)
+      }
+    }
+
+    return returnValue
+  }
+
+  /**
+   * Get a group by name
+   */
+  function getGroup(name: string): FieldGroup | undefined {
+    const internal = groupsMap.value.get(name)
+    if (!internal) return undefined
+
+    return buildGroupTree(internal)
+  }
+
+  /**
+   * Build group tree from internal group
+   */
+  function buildGroupTree(internal: InternalGroup): FieldGroup {
+    const groupFields = internal.fields
+      .map((name) => fieldsMap.value.get(name))
+      .filter((f): f is ResolvedFieldConfig => f !== undefined)
+
+    // Find children
+    const children: FieldGroup[] = []
+    for (const [name, g] of groupsMap.value.entries()) {
+      if (g.parent === internal.name) {
+        children.push(buildGroupTree(g))
+      }
+    }
+
+    return {
+      name: internal.name,
+      label: internal.label,
+      fields: groupFields,
+      children,
+      parent: internal.parent,
+    }
+  }
+
+  /**
+   * Computed groups tree (only root groups)
+   */
+  const groups = computed<FieldGroup[]>(() => {
+    const rootGroups: FieldGroup[] = []
+
+    for (const [, internal] of groupsMap.value.entries()) {
+      // Only include root groups (no parent)
+      if (!internal.parent) {
+        rootGroups.push(buildGroupTree(internal))
+      }
+    }
+
+    // If no groups defined, create a single "default" group with all fields
+    if (rootGroups.length === 0 && fields.value.length > 0) {
+      return [{
+        name: '_default',
+        label: '',
+        fields: fields.value,
+        children: [],
+      }]
+    }
+
+    return rootGroups
+  })
+
   // ============ ACTION MANAGEMENT ============
 
   const actionsMap = ref<Map<string, ActionConfig>>(new Map())
@@ -613,6 +784,7 @@ export function useEntityItemShowPage(
     title: title.value,
     titleParts: titleParts.value,
     fields: fields.value,
+    groups: groups.value,
     data: data.value as Record<string, unknown> | null,
     actions: actions.value,
     fetchError: error.value,
@@ -649,6 +821,12 @@ export function useEntityItemShowPage(
     excludeField,
     reorderFields,
     getField,
+
+    // Group management
+    groups,
+    group,
+    defineGroups,
+    getGroup,
 
     // Action management
     actions,

@@ -42,6 +42,7 @@ import PageHeader from '../layout/PageHeader.vue'
 import Card from 'primevue/card'
 import Button from 'primevue/button'
 import Message from 'primevue/message'
+import ShowGroups from './ShowGroups.vue'
 
 /**
  * Page title parts for PageHeader
@@ -83,6 +84,22 @@ interface FetchError {
   detail?: string
 }
 
+/**
+ * Field group structure
+ */
+interface FieldGroup {
+  name: string
+  label: string
+  fields: ResolvedFieldConfig[]
+  children: FieldGroup[]
+  parent?: string
+}
+
+/**
+ * Layout mode for groups
+ */
+type LayoutMode = 'flat' | 'sections' | 'cards' | 'tabs' | 'accordion'
+
 const props = defineProps({
   // State
   loading: { type: Boolean, default: false },
@@ -93,6 +110,9 @@ const props = defineProps({
 
   // Fields (for auto-rendering - optional, can use #fields slot instead)
   fields: { type: Array as PropType<ResolvedFieldConfig[]>, default: () => [] },
+
+  // Groups (hierarchical field organization)
+  groups: { type: Array as PropType<FieldGroup[]>, default: () => [] },
 
   // Data (entity data for field values)
   data: { type: Object as PropType<Record<string, unknown> | null>, default: null },
@@ -109,7 +129,13 @@ const props = defineProps({
   horizontalFields: { type: Boolean, default: true },
   labelWidth: { type: String, default: '140px' },
   // Media zone options
-  mediaWidth: { type: String, default: '200px' }
+  mediaWidth: { type: String, default: '200px' },
+
+  // Group layout mode: flat, sections, cards, tabs, accordion
+  layout: { type: String as PropType<LayoutMode>, default: 'flat' },
+
+  // Child group layout mode (for nested groups)
+  childLayout: { type: String as PropType<LayoutMode>, default: 'sections' }
 })
 
 // Check if media slot is used
@@ -119,10 +145,18 @@ const slots = defineSlots<{
   'header-actions'?: () => unknown
   media?: () => unknown
   fields?: () => unknown
+  groups?: () => unknown
   footer?: () => unknown
   error?: (props: { error: unknown }) => unknown
   loading?: () => unknown
 }>()
+
+// Determine if we should use group rendering
+const useGroupLayout = computed(() => {
+  // Use groups if: layout is not flat, or groups are explicitly defined (not just _default)
+  const hasRealGroups = props.groups.length > 0 && !(props.groups.length === 1 && props.groups[0]?.name === '_default')
+  return hasRealGroups && props.layout !== 'flat'
+})
 
 const emit = defineEmits<{
   (e: 'edit'): void
@@ -207,9 +241,25 @@ const fetchErrorMessage = computed<string | null>(() => {
               <slot name="media" />
             </div>
 
-            <!-- Fields zone -->
-            <div class="show-fields" :class="{ 'show-fields--horizontal': horizontalFields }">
-              <slot name="fields" />
+            <!-- Fields/Groups zone -->
+            <div class="show-fields" :class="{ 'show-fields--horizontal': horizontalFields && !useGroupLayout }">
+              <!-- Group layout mode -->
+              <template v-if="useGroupLayout">
+                <slot name="groups">
+                  <ShowGroups
+                    :groups="groups"
+                    :data="data"
+                    :layout="layout"
+                    :child-layout="childLayout"
+                    :horizontal="horizontalFields"
+                    :label-width="labelWidth"
+                  />
+                </slot>
+              </template>
+              <!-- Flat fields mode (default) -->
+              <template v-else>
+                <slot name="fields" />
+              </template>
             </div>
           </div>
 
@@ -245,9 +295,25 @@ const fetchErrorMessage = computed<string | null>(() => {
             <slot name="media" />
           </div>
 
-          <!-- Fields zone -->
-          <div class="show-fields" :class="{ 'show-fields--horizontal': horizontalFields }">
-            <slot name="fields" />
+          <!-- Fields/Groups zone -->
+          <div class="show-fields" :class="{ 'show-fields--horizontal': horizontalFields && !useGroupLayout }">
+            <!-- Group layout mode -->
+            <template v-if="useGroupLayout">
+              <slot name="groups">
+                <ShowGroups
+                  :groups="groups"
+                  :data="data"
+                  :layout="layout"
+                  :child-layout="childLayout"
+                  :horizontal="horizontalFields"
+                  :label-width="labelWidth"
+                />
+              </slot>
+            </template>
+            <!-- Flat fields mode (default) -->
+            <template v-else>
+              <slot name="fields" />
+            </template>
           </div>
         </div>
 
