@@ -60,6 +60,17 @@ export {
   type ParentConfig,
 } from './useEntityItemPage'
 export {
+  useEntityItemShowPage,
+  useEntityItemShowPage as useShowPageBuilder,
+  type UseEntityItemShowPageOptions,
+  type UseEntityItemShowPageReturn,
+  type FieldDefinition as ShowFieldDefinition,
+  type ResolvedFieldConfig as ShowResolvedFieldConfig,
+  type ActionConfig as ShowActionConfig,
+  type ShowPageProps,
+  type ShowPageEvents,
+} from './useEntityItemShowPage'
+export {
   useNavContext,
   type UseNavContextOptions,
   type UseNavContextReturn,

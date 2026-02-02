@@ -3,6 +3,17 @@
 All notable changes to qdadm will be documented in this file.
 This is not a commit log. Keep entries simple, user-focused.
 
+## [1.1.6] - 2026-02-02
+
+### Added
+- **ShowPage system**: New `useEntityItemShowPage` composable for read-only detail pages (mirrors `useEntityItemFormPage` API)
+- **ShowPage components**: `ShowPage`, `ShowField`, `ShowDisplay` for building detail pages
+- **Display widgets**: Auto-mapping by field type (text, email, number, currency, boolean, date, datetime, select, textarea, reference, url, image, json, badge)
+- **Media zone**: Optional `#media` slot in ShowPage for images, avatars, flags with responsive grid layout
+
+### Demo
+- Converted detail pages to use ShowPage: `ProductShowPage`, `PostShowPage`, `JpUserShowPage`, `CountryShowPage`
+
 ## [1.1.5] - 2026-02-02
 
 ### Changed

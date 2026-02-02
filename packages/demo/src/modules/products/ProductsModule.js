@@ -71,7 +71,12 @@ export class ProductsModule extends Module {
       fields: {
         id: { type: 'number', label: 'ID', readOnly: true },
         title: { type: 'text', label: 'Title', required: true },
+        description: { type: 'textarea', label: 'Description' },
         price: { type: 'number', label: 'Price' },
+        discountPercentage: { type: 'number', label: 'Discount %' },
+        rating: { type: 'number', label: 'Rating' },
+        stock: { type: 'number', label: 'Stock' },
+        brand: { type: 'text', label: 'Brand' },
         category: { type: 'text', label: 'Category' },
         thumbnail: { type: 'url', label: 'Thumbnail' }
       },
@@ -91,7 +96,7 @@ export class ProductsModule extends Module {
       {
         path: ':id',
         name: 'product-show',
-        component: () => import('./pages/ProductDetailPage.vue'),
+        component: () => import('./pages/ProductShowPage.vue'),
         meta: { layout: 'form' }
       }
     ], { entity: 'products' })

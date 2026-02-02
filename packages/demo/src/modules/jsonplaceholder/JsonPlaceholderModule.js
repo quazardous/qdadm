@@ -62,7 +62,7 @@ export class JsonPlaceholderModule extends Module {
       fields: {
         id: { type: 'number', label: 'ID', readOnly: true },
         title: { type: 'text', label: 'Title', required: true },
-        body: { type: 'text', label: 'Body', required: true },
+        body: { type: 'textarea', label: 'Body', required: true },
         userId: { type: 'number', label: 'Author', required: true }
       },
       storage: postsStorage
@@ -97,7 +97,7 @@ export class JsonPlaceholderModule extends Module {
       {
         path: '',
         name: 'jp_user-show',
-        component: () => import('../../pages/JpUserDetailPage.vue'),
+        component: () => import('../../pages/JpUserShowPage.vue'),
         meta: { layout: 'form' }
       }
     ], { entity: 'jp_users' })
@@ -112,7 +112,7 @@ export class JsonPlaceholderModule extends Module {
       {
         path: '',
         name: 'post-show',
-        component: () => import('../posts/pages/PostDetailPage.vue'),
+        component: () => import('../posts/pages/PostShowPage.vue'),
         meta: { layout: 'form' }
       }
     ], { entity: 'posts' })

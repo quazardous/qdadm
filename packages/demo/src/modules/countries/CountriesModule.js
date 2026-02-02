@@ -54,7 +54,8 @@ class RestCountriesStorage extends ApiStorage {
   }
 
   async get(id) {
-    const fields = 'name,cca3,capital,region,population,flag,flags'
+    // Fetch all fields for detail view
+    const fields = 'name,cca3,capital,region,subregion,population,flag,flags,languages,currencies,timezones,borders'
     const response = await this.client.get(`/v3.1/alpha/${id}`, { params: { fields } })
     return Array.isArray(response.data) ? response.data[0] : response.data
   }
@@ -89,6 +90,7 @@ export class CountriesModule extends Module {
         name: { type: 'object', label: 'Name', readOnly: true },
         capital: { type: 'array', label: 'Capital', readOnly: true },
         region: { type: 'text', label: 'Region', readOnly: true },
+        subregion: { type: 'text', label: 'Subregion', readOnly: true },
         population: { type: 'number', label: 'Population', readOnly: true },
         flag: { type: 'text', label: 'Flag', readOnly: true }
       },
@@ -110,7 +112,7 @@ export class CountriesModule extends Module {
       {
         path: '',
         name: 'country-show',
-        component: () => import('./pages/CountryDetailPage.vue'),
+        component: () => import('./pages/CountryShowPage.vue'),
         meta: { layout: 'form' }
       }
     ], { entity: 'countries' })

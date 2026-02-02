@@ -27,6 +27,11 @@ export { default as FormActions } from './forms/FormActions.vue'
 export { default as FormTabs } from './forms/FormTabs.vue'
 export { default as FormTab } from './forms/FormTab.vue'
 
+// Show (read-only detail pages)
+export { default as ShowPage } from './show/ShowPage.vue'
+export { default as ShowField } from './show/ShowField.vue'
+export { default as ShowDisplay } from './show/ShowDisplay.vue'
+
 // Lists
 export { default as ListPage } from './lists/ListPage.vue'
 export { default as ActionButtons } from './lists/ActionButtons.vue'
