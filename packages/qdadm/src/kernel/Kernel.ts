@@ -862,7 +862,18 @@ export class Kernel {
    */
   private _rebuildActiveStack(route: RouteLocationNormalized): void {
     const entityConfig = route.meta?.entity as string | undefined
-    if (!entityConfig) {
+
+    interface ParentMeta {
+      entity: string
+      param: string
+      foreignKey?: string
+      parent?: ParentMeta
+    }
+
+    const parentMeta = route.meta?.parent as ParentMeta | undefined
+
+    // No entity and no parent → nothing to stack
+    if (!entityConfig && !parentMeta) {
       this.activeStack!.clear()
       return
     }
@@ -876,14 +887,8 @@ export class Kernel {
 
     const levels: StackLevel[] = []
 
-    interface ParentMeta {
-      entity: string
-      param: string
-      foreignKey?: string
-      parent?: ParentMeta
-    }
-
-    let parentConfig = route.meta?.parent as ParentMeta | undefined
+    // Build parent levels
+    let parentConfig = parentMeta
     while (parentConfig) {
       const id = (route.params[parentConfig.param] as string) ?? null
       levels.unshift({
@@ -895,19 +900,21 @@ export class Kernel {
       parentConfig = parentConfig.parent ?? undefined
     }
 
-    const manager = this.orchestrator?.get(entityConfig)
-    const idField = manager?.idField ?? 'id'
-    const currentId = (route.params[idField] as string) ?? null
-    const currentForeignKey =
-      (route.meta?.parent as ParentMeta | undefined)?.foreignKey ?? null
+    // Add current entity level (only if route has its own entity)
+    if (entityConfig) {
+      const manager = this.orchestrator?.get(entityConfig)
+      const idField = manager?.idField ?? 'id'
+      const currentId = (route.params[idField] as string) ?? null
+      const currentForeignKey = parentMeta?.foreignKey ?? null
 
-    if (currentId) {
-      levels.push({
-        entity: entityConfig,
-        param: idField,
-        foreignKey: currentForeignKey,
-        id: currentId,
-      })
+      if (currentId) {
+        levels.push({
+          entity: entityConfig,
+          param: idField,
+          foreignKey: currentForeignKey,
+          id: currentId,
+        })
+      }
     }
 
     this.activeStack!.set(levels)

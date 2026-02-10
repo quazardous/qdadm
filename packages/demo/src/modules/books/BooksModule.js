@@ -132,6 +132,16 @@ export class BooksModule extends Module {
       label: 'Stats'
     })
 
+    // Child page: custom non-entity tab on book item
+    // DEMONSTRATES: ctx.childPage() for adding a simple page tab
+    // - Registers route /books/:bookId/info, name: book-info
+    // - Appears as "Info" tab alongside "Details" and "Loans"
+    ctx.childPage('book', 'info', {
+      component: () => import('./pages/BookInfo.vue'),
+      label: 'Info',
+      icon: 'pi pi-info-circle'
+    })
+
     // Child CRUD: loans for a specific book
     // DEMONSTRATES: ctx.crud() with parentRoute for child entities
     // - Auto-generates list, create, edit routes under books/:bookId/loans

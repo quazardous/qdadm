@@ -144,6 +144,11 @@ export function computeSemanticBreadcrumb(
         items.push({ kind: 'entity-list', entity, route: matchedRoute.name as string })
       }
     } else {
+      // Flush pending ID as entity-show before generic route
+      if (pendingId && lastEntity) {
+        items.push({ kind: 'entity-show', entity: lastEntity, id: pendingId })
+        pendingId = null
+      }
       // Generic route
       items.push({ kind: 'route', route: (matchedRoute.name as string) || segment })
     }

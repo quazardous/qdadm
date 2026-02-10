@@ -47,6 +47,7 @@ export type {
   RouteOptions,
   CrudPages,
   CrudOptions,
+  ChildPageOptions,
   UserEntityOptions,
   PermissionMeta,
   PermissionOptions,
@@ -288,6 +289,7 @@ export {
   type UserRecord,
 } from './composables/useUserImpersonator'
 export { useCurrentEntity, type UseCurrentEntityReturn } from './composables/useCurrentEntity'
+export { useChildPage, type UseChildPageReturn } from './composables/useChildPage'
 
 // ════════════════════════════════════════════════════════════════════════════
 // COMPONENTS

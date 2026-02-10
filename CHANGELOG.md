@@ -3,6 +3,22 @@
 All notable changes to qdadm will be documented in this file.
 This is not a commit log. Keep entries simple, user-focused.
 
+## [1.5.0] - 2026-02-10
+
+### Added
+- **`ctx.childPage()` API**: Register custom non-entity child pages on entity items (e.g., a "Statistics" tab alongside CRUD child routes like Loans)
+- **`useChildPage` composable**: Lightweight composable for child pages to access hydrated parent entity data, loading state, and parent manager
+- **`ChildPageOptions` type**: Exported interface for `childPage()` options (`component`, `label`, `icon`, `meta`)
+
+### Fixed
+- **ActiveStack for child pages**: `_rebuildActiveStack()` now builds parent levels even when `meta.entity` is absent (non-entity child pages)
+- **Semantic breadcrumb**: Flush pending entity ID before non-entity route segments (fixes missing parent item in breadcrumb)
+- **NavLinks filter**: Include `layout === 'page'` routes in sibling navlinks (child page tabs appear alongside entity child routes)
+- **Debug panel CSS leak**: Scoped `.entity-label` style under `.debug-panel` to prevent overriding PageHeader title on edit/show pages
+
+### Demo
+- **BookInfo page**: Demonstrates `ctx.childPage()` + `useChildPage()` with Info tab on book detail
+
 ## [1.4.0] - 2026-02-10
 
 ### Added

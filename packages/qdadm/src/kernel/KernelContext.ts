@@ -137,7 +137,7 @@ export interface RouteOptions {
 interface ParentConfig {
   entity: string
   param: string
-  foreignKey: string
+  foreignKey?: string
 }
 
 /**
@@ -164,6 +164,16 @@ export interface CrudOptions {
   parentRoute?: string
   foreignKey?: string
   label?: string
+}
+
+/**
+ * Child page options for non-entity child routes
+ */
+export interface ChildPageOptions {
+  component: () => Promise<{ default: Component }>
+  label?: string
+  icon?: string
+  meta?: Record<string, unknown>
 }
 
 /**
@@ -624,6 +634,80 @@ export class KernelContext {
       }
       this.navItem(navItem)
     }
+
+    return this
+  }
+
+  /**
+   * Register a custom child page on an entity item
+   *
+   * Adds a non-entity page as a tab alongside entity child routes.
+   * The page appears in PageNav navlinks next to CRUD children (e.g., Loans).
+   *
+   * @param parentRouteName - Parent route name (e.g., 'book')
+   * @param pageName - Page slug used in URL and route name (e.g., 'statistics')
+   * @param options - Page options (component, label, icon, meta)
+   *
+   * @example
+   * ctx.childPage('book', 'statistics', {
+   *   component: () => import('./pages/BookStatistics.vue'),
+   *   label: 'Statistics',
+   *   icon: 'pi pi-chart-bar'
+   * })
+   * // → Route: /books/:bookId/statistics, name: book-statistics
+   * // → Appears as tab in PageNav alongside entity child routes
+   */
+  childPage(parentRouteName: string, pageName: string, options: ChildPageOptions): this {
+    const allRoutes = getRoutes()
+    const parentRoute = allRoutes.find((r) => r.name === parentRouteName)
+
+    if (!parentRoute) {
+      console.warn(`[qdadm] childPage: parent route '${parentRouteName}' not found`)
+      return this
+    }
+
+    // Get parent entity info from route meta
+    const parentEntityName = parentRoute.meta?.entity as string | undefined
+    const parentManager = parentEntityName
+      ? this._kernel.orchestrator?.get(parentEntityName)
+      : null
+    const parentIdParam = parentManager?.idField || 'id'
+
+    // Build path: parentBasePath/:parentId/pageName
+    const parentBasePath =
+      parentRoute.path.replace(/\/(create|:.*)?$/, '') || parentEntityName
+    const basePath = `${parentBasePath}/:${parentIdParam}/${pageName}`
+
+    // Route name: parentRouteName-pageName
+    const routeName = `${parentRouteName}-${pageName}`
+
+    // Build parent config (no foreignKey for non-entity pages)
+    const parentConfig: ParentConfig | undefined = parentEntityName
+      ? { entity: parentEntityName, param: parentIdParam }
+      : undefined
+
+    // Build route options
+    const routeOpts: RouteOptions = {}
+    if (parentConfig) {
+      routeOpts.parent = parentConfig
+    }
+    if (options.label) {
+      routeOpts.label = options.label
+    }
+
+    // Register route with layout='page'
+    this.routes(basePath, [
+      {
+        path: '',
+        name: routeName,
+        component: options.component,
+        meta: {
+          layout: 'page',
+          ...(options.icon && { icon: options.icon }),
+          ...options.meta,
+        },
+      },
+    ], routeOpts)
 
     return this
   }
