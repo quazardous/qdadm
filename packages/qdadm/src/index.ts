@@ -89,6 +89,7 @@ export {
   EntityManager,
   createEntityManager,
   type EntityManagerOptions,
+  type EntityBadge,
   type RoutingContext,
   type PresaveContext,
   type PostsaveContext,

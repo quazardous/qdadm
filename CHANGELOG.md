@@ -3,6 +3,17 @@
 All notable changes to qdadm will be documented in this file.
 This is not a commit log. Keep entries simple, user-focused.
 
+## [1.3.0] - 2026-02-10
+
+### Added
+- **Entity badges**: New `badges` callback on `EntityManagerOptions` to compute badges for entity item headers
+- **EntityBadge type**: Exported badge descriptor with `label` and `severity` properties
+- **PageHeader badges**: Renders badges as PrimeVue `Tag` components next to entity title
+- **ShowPage badges**: Passes badges from `useEntityItemShowPage` to `PageHeader`
+
+### Demo
+- **Countries badges**: Region displayed as colored badge on country detail page
+
 ## [1.2.0] - 2026-02-02
 
 ### Breaking Changes

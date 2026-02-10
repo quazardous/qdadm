@@ -109,6 +109,9 @@ const props = defineProps({
   title: { type: String as PropType<string | null>, default: null },
   titleParts: { type: Object as PropType<PageTitleParts | null>, default: null },
 
+  // Custom badges from entity manager
+  badges: { type: Array as PropType<Array<{ label: string; severity?: string }>>, default: () => [] },
+
   // Fields (for auto-rendering - optional, can use #fields slot instead)
   fields: { type: Array as PropType<ResolvedFieldConfig[]>, default: () => [] },
 
@@ -188,7 +191,7 @@ const fetchErrorMessage = computed<string | null>(() => {
     <!-- Nav slot for PageNav (child routes) -->
     <slot name="nav" />
 
-    <PageHeader :title="title" :title-parts="titleParts">
+    <PageHeader :title="title" :title-parts="titleParts" :badges="badges">
       <template #actions>
         <slot name="header-actions" />
         <!-- Header actions from builder (e.g., edit) -->

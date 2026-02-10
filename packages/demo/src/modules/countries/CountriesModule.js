@@ -82,6 +82,18 @@ export class CountriesModule extends Module {
     ctx.entity('countries', {
       name: 'countries',
       labelField: (country) => country.name?.common || country.cca3,
+      badges: (country) => {
+        if (!country.region) return []
+        const severity = {
+          Africa: 'warn',
+          Americas: 'info',
+          Asia: 'danger',
+          Europe: 'success',
+          Oceania: 'contrast',
+          Antarctic: 'secondary',
+        }
+        return [{ label: country.region, severity: severity[country.region] || 'secondary' }]
+      },
       idField: 'cca3',
       readOnly: true,
       localFilterThreshold: 0,

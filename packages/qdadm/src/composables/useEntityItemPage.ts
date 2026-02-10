@@ -68,6 +68,7 @@ export interface EntityManager {
   getFormFields: () => FieldDefinition[]
   getFieldConfig: (name: string) => FieldDefinition | null
   getEntityLabel: (data: unknown) => string
+  getEntityBadges?: (data: unknown) => Array<{ label: string; severity?: string }>
   resolveReferenceOptions: (fieldName: string) => Promise<unknown[]>
   get: (id: string | number) => Promise<unknown>
   create: (data: unknown, context?: CreateContext) => Promise<unknown>

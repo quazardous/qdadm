@@ -5,6 +5,7 @@
  * Props:
  * - title: Page title (simple string) OR
  * - titleParts: { action, entityName, entityLabel } for decorated rendering
+ * - badges: Custom badges from entity manager [{ label, severity }]
  *
  * Title rendering:
  * - Simple: "Edit Agent" → <h1>Edit Agent</h1>
@@ -18,6 +19,7 @@
  * Note: Breadcrumb is handled globally by AppLayout.
  */
 import { computed, inject, type Ref } from 'vue'
+import Tag from 'primevue/tag'
 
 interface TitleParts {
   simple?: string
@@ -26,16 +28,23 @@ interface TitleParts {
   entityLabel?: string
 }
 
+interface BadgeConfig {
+  label: string
+  severity?: string
+}
+
 interface Props {
   title?: string | null
   titleParts?: TitleParts | null
   subtitle?: string | null
+  badges?: BadgeConfig[]
 }
 
 const props = withDefaults(defineProps<Props>(), {
   title: null,
   titleParts: null,
-  subtitle: null
+  subtitle: null,
+  badges: () => []
 })
 
 // Auto-injected title from useForm (if available)
@@ -63,9 +72,18 @@ const hasDecoratedTitle = computed((): boolean => {
           <div>
             <h1 class="page-title">
               <template v-if="simpleTitle">{{ simpleTitle }}</template>
-              <template v-else-if="hasDecoratedTitle"><span class="entity-label">{{ effectiveTitleParts?.entityLabel }}</span></template>
-              <span v-if="effectiveTitleParts && !simpleTitle" class="action-badge">{{ effectiveTitleParts.action }} {{ effectiveTitleParts.entityName }}</span>
-              <template v-if="!effectiveTitleParts">{{ title }}</template>
+              <template v-else-if="effectiveTitleParts">
+                <span v-if="hasDecoratedTitle" class="entity-label">{{ effectiveTitleParts.entityLabel }}</span>
+                <span v-else>{{ effectiveTitleParts.action }} {{ effectiveTitleParts.entityName }}</span>
+              </template>
+              <Tag
+                v-for="badge in badges"
+                :key="badge.label"
+                :value="badge.label"
+                :severity="(badge.severity as any) || 'secondary'"
+                class="entity-badge"
+              />
+              <template v-if="!effectiveTitleParts && !simpleTitle">{{ title }}</template>
             </h1>
             <p v-if="subtitle" class="page-subtitle">{{ subtitle }}</p>
           </div>
@@ -105,7 +123,7 @@ const hasDecoratedTitle = computed((): boolean => {
   color: var(--p-text-secondary);
 }
 
-/* Action badge (Edit User / Create Role) - small grey badge */
+/* Action badge (View Bot / Edit Country) - small grey badge, before title */
 .action-badge {
   display: inline-block;
   font-size: 0.5em;
@@ -114,10 +132,17 @@ const hasDecoratedTitle = computed((): boolean => {
   color: var(--p-surface-600);
   padding: 0.25em 0.6em;
   border-radius: 4px;
-  margin-left: 0.5em;
+  margin-right: 0.5em;
   vertical-align: middle;
   text-transform: uppercase;
   letter-spacing: 0.03em;
+}
+
+/* Entity badges from manager callback */
+.entity-badge {
+  vertical-align: middle;
+  margin-left: 0.4em;
+  font-size: 0.5em;
 }
 
 /* Entity label in title - main focus */

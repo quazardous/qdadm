@@ -141,6 +141,7 @@ export interface ShowPageProps {
   loading: boolean
   title: string
   titleParts: PageTitleParts
+  badges: Array<{ label: string; severity?: string }>
   fields: ResolvedFieldConfig[]
   groups: FieldGroup<ResolvedFieldConfig>[]
   data: Record<string, unknown> | null
@@ -496,6 +497,11 @@ export function useEntityItemShowPage(
     entityLabel: entityLabel.value || undefined,
   }))
 
+  const entityBadges = computed(() => {
+    if (!manager.getEntityBadges) return []
+    return manager.getEntityBadges(data.value as any)
+  })
+
   const title = computed(() => {
     const parts = titleParts.value
     if (parts.entityLabel) {
@@ -543,6 +549,7 @@ export function useEntityItemShowPage(
     loading: loading.value,
     title: title.value,
     titleParts: titleParts.value,
+    badges: entityBadges.value,
     fields: fields.value,
     groups: groups.value,
     data: data.value as Record<string, unknown> | null,

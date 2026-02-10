@@ -151,6 +151,14 @@ export interface CacheInfo {
 }
 
 /**
+ * Badge descriptor for entity item headers
+ */
+export interface EntityBadge {
+  label: string
+  severity?: 'secondary' | 'info' | 'success' | 'warn' | 'danger' | 'contrast'
+}
+
+/**
  * EntityManager constructor options
  */
 export interface EntityManagerOptions<T extends EntityRecord = EntityRecord> {
@@ -161,6 +169,8 @@ export interface EntityManagerOptions<T extends EntityRecord = EntityRecord> {
   labelPlural?: string
   routePrefix?: string
   labelField?: string | ((entity: T) => string)
+  /** Callback to compute badges for an entity item header */
+  badges?: (entity: T) => EntityBadge[]
   fields?: Record<string, FieldConfig>
   localFilterThreshold?: number | null
   /** Cache TTL in milliseconds (0=disabled, -1=infinite, >0=TTL). Overrides global, overridden by storage. */
@@ -207,6 +217,7 @@ export class EntityManager<T extends EntityRecord = EntityRecord> {
   readonly idField: string
 
   protected _labelField: string | ((entity: T) => string)
+  protected _badges: ((entity: T) => EntityBadge[]) | null
   protected _label: string | null
   protected _labelPlural: string | null
   protected _routePrefix: string | null
@@ -272,6 +283,7 @@ export class EntityManager<T extends EntityRecord = EntityRecord> {
       labelPlural = null,
       routePrefix = null,
       labelField = 'name',
+      badges = null,
       fields = {},
       localFilterThreshold = null,
       cacheTtlMs = null,
@@ -293,6 +305,7 @@ export class EntityManager<T extends EntityRecord = EntityRecord> {
     this.storage = storage
     this.idField = idField
     this._labelField = labelField
+    this._badges = badges
 
     this._label = label
     this._labelPlural = labelPlural
@@ -547,6 +560,14 @@ export class EntityManager<T extends EntityRecord = EntityRecord> {
       return this._labelField(entity)
     }
     return (entity[this._labelField] as string) || null
+  }
+
+  /**
+   * Get badges for an entity item header
+   */
+  getEntityBadges(entity: T | null): EntityBadge[] {
+    if (!entity || !this._badges) return []
+    return this._badges(entity)
   }
 
   /**
