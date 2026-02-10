@@ -118,6 +118,23 @@ export interface ActionConfig {
 }
 
 /**
+ * Lazy action configuration
+ *
+ * Unlike regular actions whose visibility is derived from entity data on the model,
+ * lazy actions resolve asynchronously after entity load (e.g., fetching security info
+ * from a separate endpoint). Hidden by default until resolve() returns visible: true.
+ */
+export interface LazyActionConfig {
+  name: string
+  label: string
+  icon?: string
+  severity?: string
+  onClick: () => void | Promise<void>
+  resolve: (data: unknown) => Promise<{ visible?: boolean; disabled?: boolean }>
+  loading?: () => boolean
+}
+
+/**
  * Resolved action for rendering
  */
 export interface ResolvedAction extends ActionConfig {
@@ -259,6 +276,7 @@ export interface UseEntityItemShowPageReturn {
   // Action management
   actions: ComputedRef<ResolvedAction[]>
   addAction: (action: ActionConfig) => UseEntityItemShowPageReturn
+  addLazyAction: (action: LazyActionConfig) => UseEntityItemShowPageReturn
   addEditAction: (options?: { label?: string; icon?: string }) => UseEntityItemShowPageReturn
   addDeleteAction: (options?: { label?: string; icon?: string; confirm?: boolean }) => UseEntityItemShowPageReturn
   addBackAction: (options?: { label?: string; icon?: string; route?: string }) => UseEntityItemShowPageReturn
@@ -311,12 +329,43 @@ export function useEntityItemShowPage(
   const route = useRoute()
   const confirm = useConfirm() as ConfirmService
 
-  // Use base composable
+  // Lazy action state (declared before base so onLoadSuccess wrapper can reference it)
+  const lazyActionsMap = ref<Map<string, LazyActionConfig>>(new Map())
+  const lazyResolvedStates = ref<Map<string, { visible: boolean; disabled: boolean }>>(new Map())
+
+  /**
+   * Run all lazy action resolvers with the loaded entity data.
+   * Errors in individual resolvers are caught — action stays hidden.
+   */
+  async function runLazyResolvers(entityData: unknown): Promise<void> {
+    const newStates = new Map<string, { visible: boolean; disabled: boolean }>()
+    const entries = Array.from(lazyActionsMap.value.entries())
+    await Promise.all(
+      entries.map(async ([name, action]) => {
+        try {
+          const result = await action.resolve(entityData)
+          newStates.set(name, {
+            visible: result.visible ?? false,
+            disabled: result.disabled ?? false,
+          })
+        } catch (err) {
+          console.warn(`[useEntityItemShowPage] Lazy action "${name}" resolve failed:`, err)
+          newStates.set(name, { visible: false, disabled: false })
+        }
+      })
+    )
+    lazyResolvedStates.value = newStates
+  }
+
+  // Use base composable — wrap onLoadSuccess to run lazy resolvers after entity load
   const base = useEntityItemPage({
     entity,
     loadOnMount,
     transformLoad,
-    onLoadSuccess,
+    onLoadSuccess: async (entityData) => {
+      await runLazyResolvers(entityData)
+      if (onLoadSuccess) await onLoadSuccess(entityData)
+    },
     onLoadError,
   })
 
@@ -411,6 +460,14 @@ export function useEntityItemShowPage(
     return returnValue
   }
 
+  function addLazyAction(action: LazyActionConfig): UseEntityItemShowPageReturn {
+    lazyActionsMap.value.set(action.name, action)
+    if (!actionOrder.value.includes(action.name)) {
+      actionOrder.value.push(action.name)
+    }
+    return returnValue
+  }
+
   function addEditAction(editOptions: { label?: string; icon?: string } = {}): UseEntityItemShowPageReturn {
     const { label = 'Edit', icon = 'pi pi-pencil' } = editOptions
     return addAction({
@@ -468,6 +525,8 @@ export function useEntityItemShowPage(
 
   function removeAction(name: string): UseEntityItemShowPageReturn {
     actionsMap.value.delete(name)
+    lazyActionsMap.value.delete(name)
+    lazyResolvedStates.value.delete(name)
     const index = actionOrder.value.indexOf(name)
     if (index !== -1) {
       actionOrder.value.splice(index, 1)
@@ -477,16 +536,31 @@ export function useEntityItemShowPage(
 
   const actions = computed<ResolvedAction[]>(() => {
     const ctx = { canEdit: canEdit.value, canDelete: canDelete.value, loading: loading.value }
+    const resolved = lazyResolvedStates.value // force dependency tracking
 
     return actionOrder.value
-      .map((name) => actionsMap.value.get(name))
-      .filter((a): a is ActionConfig => a !== undefined)
-      .filter((a) => !a.visible || a.visible(ctx))
-      .map((a) => ({
-        ...a,
-        isLoading: a.loading ? a.loading() : false,
-        isDisabled: a.disabled ? a.disabled(ctx) : false,
-      }))
+      .map((name) => {
+        const regular = actionsMap.value.get(name)
+        if (regular) return { type: 'regular' as const, action: regular }
+        const lazy = lazyActionsMap.value.get(name)
+        if (lazy) return { type: 'lazy' as const, action: lazy }
+        return null
+      })
+      .filter((entry): entry is NonNullable<typeof entry> => entry !== null)
+      .filter((entry) => {
+        if (entry.type === 'regular') return !entry.action.visible || entry.action.visible(ctx)
+        const state = resolved.get(entry.action.name)
+        return state?.visible === true
+      })
+      .map((entry) => {
+        const a = entry.action
+        if (entry.type === 'lazy') {
+          const state = resolved.get(a.name)
+          return { ...a, isLoading: a.loading ? a.loading() : false, isDisabled: state?.disabled ?? false }
+        }
+        const regular = a as ActionConfig
+        return { ...regular, isLoading: regular.loading ? regular.loading() : false, isDisabled: regular.disabled ? regular.disabled(ctx) : false }
+      })
   })
 
   // ============ PAGE TITLE ============
@@ -598,6 +672,7 @@ export function useEntityItemShowPage(
     // Action management
     actions,
     addAction,
+    addLazyAction,
     addEditAction,
     addDeleteAction,
     addBackAction,

@@ -67,6 +67,7 @@ export {
   type FieldDefinition as ShowFieldDefinition,
   type ResolvedFieldConfig as ShowResolvedFieldConfig,
   type ActionConfig as ShowActionConfig,
+  type LazyActionConfig as ShowLazyActionConfig,
   type ShowPageProps,
   type ShowPageEvents,
 } from './useEntityItemShowPage'

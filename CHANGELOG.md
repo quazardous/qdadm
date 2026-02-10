@@ -3,6 +3,12 @@
 All notable changes to qdadm will be documented in this file.
 This is not a commit log. Keep entries simple, user-focused.
 
+## [1.4.0] - 2026-02-10
+
+### Added
+- **Lazy actions**: `addLazyAction()` on ShowPage for actions that resolve asynchronously after entity load (e.g., fetching permissions from a separate endpoint)
+- **LazyActionConfig type**: Exported as `ShowLazyActionConfig`, with async `resolve()` returning `{ visible, disabled }`
+
 ## [1.3.0] - 2026-02-10
 
 ### Added
