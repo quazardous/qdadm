@@ -66,6 +66,8 @@ import { StackHydrator } from '../chain/StackHydrator.js'
 import type { EntityManager } from '../entity/EntityManager'
 import type { RoleProvider } from '../security/RolesProvider'
 import type { EntityAuthAdapter } from '../entity/auth/EntityAuthAdapter'
+import { NotificationModule } from '../notifications/NotificationModule'
+import { createNotificationStore, NOTIFICATION_KEY, type NotificationStore } from '../notifications/NotificationStore'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -179,6 +181,14 @@ export interface DebugBarConfig {
 }
 
 /**
+ * Notifications configuration
+ */
+export interface NotificationsConfig {
+  enabled?: boolean
+  maxNotifications?: number
+}
+
+/**
  * Home route configuration
  */
 export type HomeRoute = string | { name?: string; component?: Component }
@@ -215,6 +225,7 @@ export interface KernelOptions {
   eventRouter?: RoutesConfig
   sse?: SSEConfig
   debugBar?: DebugBarConfig
+  notifications?: NotificationsConfig
   toast?: Record<string, unknown>
   debug?: boolean
   onAuthExpired?: (payload: unknown) => void
@@ -282,6 +293,7 @@ export class Kernel {
   moduleLoader: ModuleLoader | null = null
   activeStack: ActiveStack | null = null
   stackHydrator: StackHydrator | null = null
+  notificationStore: NotificationStore | null = null
 
   /** Pending provides from modules (applied after vueApp creation) */
   _pendingProvides: Map<string | symbol, unknown> = new Map()
@@ -320,6 +332,13 @@ export class Kernel {
       if (!options.debug) {
         options.debug = true
       }
+    }
+
+    // Auto-inject NotificationModule if notifications config is provided
+    if (options.notifications?.enabled) {
+      const notificationModule = new NotificationModule()
+      options.moduleDefs = options.moduleDefs || []
+      options.moduleDefs.push(notificationModule)
     }
 
     this.options = options
@@ -1262,6 +1281,14 @@ export class Kernel {
       app.provide('qdadmPermissionRegistry', this.permissionRegistry)
     }
 
+    // Create and provide notification store if notifications are enabled
+    if (this.options.notifications?.enabled) {
+      this.notificationStore = createNotificationStore({
+        maxNotifications: this.options.notifications.maxNotifications,
+      })
+      app.provide(NOTIFICATION_KEY, this.notificationStore)
+    }
+
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const qdadmOptions: any = {
       orchestrator: this.orchestrator,
@@ -1347,6 +1374,13 @@ export class Kernel {
    */
   getSSEBridge(): SSEBridge | null {
     return this.sseBridge
+  }
+
+  /**
+   * Get the NotificationStore instance
+   */
+  getNotificationStore(): NotificationStore | null {
+    return this.notificationStore
   }
 
   /**

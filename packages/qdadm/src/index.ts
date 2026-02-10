@@ -22,6 +22,7 @@ export type {
   SecurityConfig,
   SSEConfig,
   DebugBarConfig,
+  NotificationsConfig,
   HomeRoute,
   KernelOptions,
 } from './kernel/Kernel'
@@ -386,6 +387,11 @@ export * from './utils/index'
 // TOAST (signal-based notifications)
 // ════════════════════════════════════════════════════════════════════════════
 export * from './toast/index'
+
+// ════════════════════════════════════════════════════════════════════════════
+// NOTIFICATIONS (optional notification panel)
+// ════════════════════════════════════════════════════════════════════════════
+export * from './notifications/index'
 
 // ════════════════════════════════════════════════════════════════════════════
 // DEBUG - NOT exported here to enable tree-shaking.

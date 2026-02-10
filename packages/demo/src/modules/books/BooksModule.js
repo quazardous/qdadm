@@ -155,6 +155,7 @@ export class BooksModule extends Module {
       label: 'Loans'            // Label for navlinks
       // routePrefix defaults to 'book-loan' (parentRoute + singular entity)
     })
+
   }
 }
 

@@ -89,6 +89,9 @@ const kernel = new Kernel({
   // Debug bar
   debugBar,
 
+  // Notification panel
+  notifications: { enabled: true, maxNotifications: 100 },
+
   // Cache: 5 minutes TTL by default for all entities
   defaultEntityCacheTtlMs: 5 * 60 * 1000
 })

@@ -84,6 +84,9 @@ provide('qdadmNavlinksOverride', navlinksOverride)
         :name="LAYOUT_ZONES.FOOTER"
         :default-component="DefaultFooter"
       />
+
+      <!-- Always-visible notification status (hidden when collapsed) -->
+      <Zone name="_app:notification-status" class="sidebar-notification-status" />
     </aside>
 
     <!-- Main content area -->
@@ -112,6 +115,9 @@ provide('qdadmNavlinksOverride', navlinksOverride)
     </div>
 
     <!-- Toast is now provided by Kernel at root level -->
+
+    <!-- Notification panel (rendered outside sidebar, follows sidebar position) -->
+    <Zone name="_app:notifications" />
 
     <!-- Confirm dialog (global) -->
     <ConfirmDialog />

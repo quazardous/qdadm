@@ -19,6 +19,7 @@ export {
   useSignalToast,
   type ToastSeverity,
   type ToastOptions,
+  type ToastMethodOptions,
   type SignalToastAPI,
 } from './useSignalToast'
 

@@ -23,6 +23,7 @@ import Button from 'primevue/button'
 import Breadcrumb from 'primevue/breadcrumb'
 import UnsavedChangesDialog from '../dialogs/UnsavedChangesDialog.vue'
 import SidebarBox from './SidebarBox.vue'
+import Zone from './Zone.vue'
 import qdadmLogo from '../../assets/logo.svg'
 import { version as qdadmVersion } from '../../../package.json'
 
@@ -204,10 +205,10 @@ const userSubtitle = computed<string>(() => {
   return userData?.email || userData?.role || ''
 })
 
-function handleLogout(): void {
+async function handleLogout(): Promise<void> {
   logout()
+  await router.push({ name: 'login' })
   signals?.emit('auth:logout', { reason: 'user' })
-  router.push({ name: 'login' })
 }
 
 /**
@@ -332,7 +333,11 @@ const showBreadcrumb = computed<boolean>(() => {
 
       <SidebarBox v-if="features.poweredBy" id="powered-by">
         <template #icon>
-          <img :src="qdadmLogo" alt="qdadm" />
+          <div class="footer-logo-wrapper">
+            <img :src="qdadmLogo" alt="qdadm" />
+            <!-- Notification badge overlay on logo -->
+            <Zone name="_app:notification-badge" />
+          </div>
         </template>
         <template #subtitle-content>
           <span class="sidebar-box-subtitle">
@@ -340,6 +345,9 @@ const showBreadcrumb = computed<boolean>(() => {
           </span>
         </template>
       </SidebarBox>
+
+      <!-- Always-visible notification status (hidden when collapsed) -->
+      <Zone name="_app:notification-status" class="sidebar-notification-status" />
     </aside>
 
     <!-- Main content -->
@@ -393,6 +401,9 @@ const showBreadcrumb = computed<boolean>(() => {
         <RouterView v-else />
       </div>
     </main>
+
+    <!-- Notification panel (rendered outside sidebar, follows sidebar position) -->
+    <Zone name="_app:notifications" />
 
     <!-- Unsaved Changes Dialog (auto-rendered when a form registers guardDialog) -->
     <UnsavedChangesDialog
@@ -650,6 +661,19 @@ const showBreadcrumb = computed<boolean>(() => {
 #powered-by .sidebar-box-icon img {
   width: 100%;
   height: 100%;
+}
+
+.footer-logo-wrapper {
+  position: relative;
+  display: inline-flex;
+  width: 100%;
+  height: 100%;
+  align-items: center;
+  justify-content: center;
+}
+
+.footer-logo-wrapper > :deep(.qdadm-zone) {
+  display: contents;
 }
 
 .powered-by-link {
@@ -986,5 +1010,17 @@ const showBreadcrumb = computed<boolean>(() => {
   .main-content--sidebar-collapsed {
     margin-left: var(--fad-sidebar-width-collapsed) !important;
   }
+}
+</style>
+
+<style>
+/* Non-scoped: logo alpha blink triggered by notification badge alert state */
+.footer-logo-wrapper:has(.notification-badge-zone--alert) {
+  animation: logo-alpha-blink 1s ease-in-out infinite;
+}
+
+@keyframes logo-alpha-blink {
+  0%, 100% { opacity: 1; filter: none; }
+  50% { opacity: 0.4; filter: brightness(1.2) sepia(1) hue-rotate(-30deg) saturate(3); }
 }
 </style>

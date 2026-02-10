@@ -12,8 +12,8 @@
  * - usersStorageInternal: for enriching username
  */
 
-import { Module, EntityManager, MockApiStorage } from 'qdadm'
-import { defineAsyncComponent } from 'vue'
+import { Module, EntityManager, MockApiStorage, useNotifications } from 'qdadm'
+import { defineAsyncComponent, defineComponent, h, onMounted } from 'vue'
 
 // ============================================================================
 // STORAGE
@@ -162,6 +162,49 @@ export class LoansModule extends Module {
       form: () => import('./pages/LoanForm.vue')
     }, {
       nav: { section: 'Library', icon: 'pi pi-arrow-right-arrow-left' }
+    })
+
+    // ════════════════════════════════════════════════════════════════════════
+    // NOTIFICATION STATUS: overdue loans
+    // ════════════════════════════════════════════════════════════════════════
+    const OverdueLoanStatus = defineComponent({
+      name: 'OverdueLoanStatus',
+      setup() {
+        // Must call useNotifications() synchronously in setup() for inject() to work
+        const notifications = useNotifications()
+
+        onMounted(async () => {
+          try {
+            // Count loans borrowed > 14 days ago and not returned
+            const { items } = await loansStorage.list({ page_size: 1000 })
+            const twoWeeksAgo = new Date()
+            twoWeeksAgo.setDate(twoWeeksAgo.getDate() - 14)
+            const overdueCount = items.filter(loan => {
+              if (loan.returned_at) return false
+              return new Date(loan.borrowed_at) < twoWeeksAgo
+            }).length
+            if (overdueCount > 0) {
+              notifications.registerStatus({
+                id: 'overdue-loans',
+                label: `${overdueCount} loan(s) overdue`,
+                severity: 'warn',
+                count: overdueCount,
+                icon: 'pi pi-clock',
+                to: { name: 'loan' }
+              })
+            }
+          } catch {
+            // Notifications module may not be loaded
+          }
+        })
+        return () => h('span', { style: 'display:none' })
+      }
+    })
+
+    ctx.block('_app:notification-status', {
+      id: 'loans-overdue-status',
+      component: OverdueLoanStatus,
+      weight: 10
     })
   }
 }

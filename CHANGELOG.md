@@ -3,6 +3,24 @@
 All notable changes to qdadm will be documented in this file.
 This is not a commit log. Keep entries simple, user-focused.
 
+## [1.6.0] - 2026-02-10
+
+### Added
+- **Notification panel**: Optional notification system that captures toast notifications into a persistent panel
+- **`NotificationModule`**: New module that intercepts `toast:*` signals and stores them in a reactive notification store
+- **`NotificationStore`**: Reactive store with `useNotifications()` composable for notifications and custom status items
+- **`NotificationPanel`**: Sidebar-anchored panel displaying notification history and module status items (follows sidebar collapse, mobile overlay)
+- **`NotificationBadge`**: Logo overlay with alpha blink effect when alerts are active
+- **Status items**: Modules can register custom status items with severity, count, icon, and navigation link (e.g., "2 loans overdue")
+- **`forceToast` option**: Signal toast data flag to force classic PrimeVue toast even when notification module is active
+- **`notifications` kernel config**: Enable notification system via `Kernel({ notifications: { enabled: true } })`
+
+### Demo
+- **Overdue loans status**: LoansModule registers dynamic overdue loan count as notification status item with navigation link
+
+### Fixed
+- **Logout toast error**: Reordered `handleLogout()` to `router.push` before emitting `auth:logout` signal, preventing component remount on current route
+
 ## [1.5.0] - 2026-02-10
 
 ### Added

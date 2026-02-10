@@ -9,6 +9,7 @@
  * when no blocks are registered.
  */
 import { inject } from 'vue'
+import Zone from '../Zone.vue'
 import qdadmLogo from '../../../assets/logo.svg'
 import { version as qdadmVersion } from '../../../../package.json'
 
@@ -21,18 +22,24 @@ const features = inject<Features>('qdadmFeatures', { poweredBy: true })
 </script>
 
 <template>
-  <a
-    v-if="features.poweredBy"
-    href="https://github.com/quazardous/qdadm"
-    target="_blank"
-    rel="noopener noreferrer"
-    class="default-footer"
-  >
-    <img :src="qdadmLogo" alt="qdadm" class="footer-logo" />
-    <span class="footer-text">
-      powered by <strong>qdadm</strong> v{{ qdadmVersion }}
-    </span>
-  </a>
+  <div class="default-footer-wrapper">
+    <a
+      v-if="features.poweredBy"
+      href="https://github.com/quazardous/qdadm"
+      target="_blank"
+      rel="noopener noreferrer"
+      class="default-footer"
+    >
+      <div class="footer-logo-wrapper">
+        <img :src="qdadmLogo" alt="qdadm" class="footer-logo" />
+        <!-- Notification badge overlay on logo -->
+        <Zone name="_app:notification-badge" />
+      </div>
+      <span class="footer-text">
+        powered by <strong>qdadm</strong> v{{ qdadmVersion }}
+      </span>
+    </a>
+  </div>
 </template>
 
 <style scoped>
@@ -50,6 +57,15 @@ const features = inject<Features>('qdadmFeatures', { poweredBy: true })
 
 .default-footer:hover {
   opacity: 1;
+}
+
+.default-footer-wrapper {
+  position: relative;
+}
+
+.footer-logo-wrapper {
+  position: relative;
+  flex-shrink: 0;
 }
 
 .footer-logo {

@@ -119,6 +119,14 @@ export interface BlockConfig {
   props?: Record<string, unknown>
   id?: string
   operation?: 'add' | 'replace' | 'extend' | 'wrap'
+  /** Block ID to replace (required if operation='replace') */
+  replaces?: string
+  /** Block ID to insert before (for operation='extend') */
+  before?: string
+  /** Block ID to insert after (for operation='extend') */
+  after?: string
+  /** Block ID to wrap (required if operation='wrap') */
+  wraps?: string
 }
 
 /**

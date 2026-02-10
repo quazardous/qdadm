@@ -1,0 +1,27 @@
+/**
+ * Notification Module Styles
+ *
+ * Styles for the always-visible notification status zone in the sidebar.
+ * Panel and badge styles are scoped in their respective Vue components.
+ */
+
+/* Timing values match _sidebar.scss sidebar-box-content-* variables */
+$_content-delay: 0.2s;
+$_content-duration: 0.1s;
+
+/* =============================================================================
+   Notification Status Zone (always visible below footer in sidebar)
+   ============================================================================= */
+
+.sidebar-notification-status {
+  opacity: 1;
+  transition: opacity $_content-duration ease $_content-delay;
+}
+
+.sidebar--collapsed .sidebar-notification-status {
+  opacity: 0;
+  visibility: hidden;
+  height: 0;
+  overflow: hidden;
+  transition: opacity 0s, visibility 0s, height 0s;
+}

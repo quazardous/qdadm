@@ -33,16 +33,26 @@ export interface ToastOptions {
   summary: string
   detail?: string
   life?: number
+  /** Force classic PrimeVue toast even when NotificationModule is active */
+  forceToast?: boolean
+}
+
+/**
+ * Toast method options
+ */
+export interface ToastMethodOptions {
+  /** Force classic PrimeVue toast even when NotificationModule is active */
+  forceToast?: boolean
 }
 
 /**
  * Toast API returned by useSignalToast
  */
 export interface SignalToastAPI {
-  success: (summary: string, detail?: string, life?: number) => void
-  error: (summary: string, detail?: string, life?: number) => void
-  info: (summary: string, detail?: string, life?: number) => void
-  warn: (summary: string, detail?: string, life?: number) => void
+  success: (summary: string, detail?: string, life?: number, options?: ToastMethodOptions) => void
+  error: (summary: string, detail?: string, life?: number, options?: ToastMethodOptions) => void
+  info: (summary: string, detail?: string, life?: number, options?: ToastMethodOptions) => void
+  warn: (summary: string, detail?: string, life?: number, options?: ToastMethodOptions) => void
   add: (options: ToastOptions) => void
 }
 
@@ -80,9 +90,10 @@ export function useSignalToast(emitter?: string): SignalToastAPI {
    * @param summary - Toast title
    * @param detail - Toast detail message
    * @param life - Duration in ms (0 for sticky)
+   * @param forceToast - Force classic PrimeVue toast when NotificationModule is active
    */
-  function addToast(severity: ToastSeverity, summary: string, detail?: string, life: number = 3000): void {
-    signals.emit(`toast:${severity}`, { summary, detail, life, emitter: resolvedEmitter })
+  function addToast(severity: ToastSeverity, summary: string, detail?: string, life: number = 3000, forceToast?: boolean): void {
+    signals.emit(`toast:${severity}`, { summary, detail, life, emitter: resolvedEmitter, forceToast })
   }
 
   return {
@@ -91,9 +102,10 @@ export function useSignalToast(emitter?: string): SignalToastAPI {
      * @param summary - Toast title
      * @param detail - Toast detail message
      * @param life - Duration in ms
+     * @param options - Additional options
      */
-    success(summary: string, detail?: string, life: number = 3000): void {
-      addToast('success', summary, detail, life)
+    success(summary: string, detail?: string, life: number = 3000, options?: ToastMethodOptions): void {
+      addToast('success', summary, detail, life, options?.forceToast)
     },
 
     /**
@@ -101,9 +113,10 @@ export function useSignalToast(emitter?: string): SignalToastAPI {
      * @param summary - Toast title
      * @param detail - Toast detail message
      * @param life - Duration in ms (longer for errors)
+     * @param options - Additional options
      */
-    error(summary: string, detail?: string, life: number = 5000): void {
-      addToast('error', summary, detail, life)
+    error(summary: string, detail?: string, life: number = 5000, options?: ToastMethodOptions): void {
+      addToast('error', summary, detail, life, options?.forceToast)
     },
 
     /**
@@ -111,9 +124,10 @@ export function useSignalToast(emitter?: string): SignalToastAPI {
      * @param summary - Toast title
      * @param detail - Toast detail message
      * @param life - Duration in ms
+     * @param options - Additional options
      */
-    info(summary: string, detail?: string, life: number = 3000): void {
-      addToast('info', summary, detail, life)
+    info(summary: string, detail?: string, life: number = 3000, options?: ToastMethodOptions): void {
+      addToast('info', summary, detail, life, options?.forceToast)
     },
 
     /**
@@ -121,9 +135,10 @@ export function useSignalToast(emitter?: string): SignalToastAPI {
      * @param summary - Toast title
      * @param detail - Toast detail message
      * @param life - Duration in ms
+     * @param options - Additional options
      */
-    warn(summary: string, detail?: string, life: number = 4000): void {
-      addToast('warn', summary, detail, life)
+    warn(summary: string, detail?: string, life: number = 4000, options?: ToastMethodOptions): void {
+      addToast('warn', summary, detail, life, options?.forceToast)
     },
 
     /**
@@ -131,7 +146,7 @@ export function useSignalToast(emitter?: string): SignalToastAPI {
      * @param options - Toast options
      */
     add(options: ToastOptions): void {
-      addToast(options.severity || 'info', options.summary, options.detail, options.life)
+      addToast(options.severity || 'info', options.summary, options.detail, options.life, options.forceToast)
     },
   }
 }
