@@ -88,8 +88,9 @@ const props = defineProps({
 // Resolve display type: field.type > hint > 'text'
 const displayType = computed<DisplayType>(() => (props.field?.type as DisplayType) || props.hint || 'text')
 
-// Check if value is empty
+// Check if value is empty (render() overrides: the function handles its own empty state)
 const isEmpty = computed(() => {
+  if (props.field.render) return false
   return props.value === null || props.value === undefined || props.value === ''
 })
 
@@ -189,6 +190,13 @@ const referenceLabel = computed(() => {
   if (props.field.referenceLabel) {
     return props.field.referenceLabel
   }
+  return String(props.value)
+})
+
+// Badge value (supports render())
+const badgeValue = computed(() => {
+  if (props.field.render) return props.field.render(props.value)
+  if (props.value === null || props.value === undefined) return ''
   return String(props.value)
 })
 
@@ -311,7 +319,7 @@ const imageStyle = computed(() => ({
   <!-- Badge -->
   <Tag
     v-else-if="displayType === 'badge'"
-    :value="String(value)"
+    :value="badgeValue"
     :severity="badgeSeverity"
     class="show-display show-display--badge"
   />
