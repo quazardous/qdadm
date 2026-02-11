@@ -3,6 +3,16 @@
 All notable changes to qdadm will be documented in this file.
 This is not a commit log. Keep entries simple, user-focused.
 
+## [1.7.0] - 2026-02-11
+
+### Added
+- **`useSidebarState()` composable**: Inject sidebar collapsed ref from any component via `provide/inject` (exported from qdadm index)
+- **`SIDEBAR_COLLAPSED_KEY`**: Injection key symbol, provided by `AppLayout` automatically
+
+### Changed
+- **Notification status zone**: No longer hidden when sidebar collapses — zone stays visible, text fades via `.status-label` class (matching SidebarBox pattern)
+- **AppLayout**: Provides `sidebarCollapsed` ref via `SIDEBAR_COLLAPSED_KEY` for zone block components
+
 ## [1.6.2] - 2026-02-11
 
 ### Fixed
