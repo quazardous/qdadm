@@ -156,6 +156,7 @@ function formatTime(timestamp: number): string {
   left: calc(var(--fad-sidebar-width, 15rem) + 0.375rem);
   bottom: 0.5rem;
   width: 22rem;
+  min-height: 6.6rem;
   max-height: 50vh;
   background: var(--p-surface-0, #ffffff);
   border: 1px solid var(--p-surface-200, #e2e8f0);

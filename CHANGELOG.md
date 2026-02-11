@@ -3,6 +3,11 @@
 All notable changes to qdadm will be documented in this file.
 This is not a commit log. Keep entries simple, user-focused.
 
+## [1.6.2] - 2026-02-11
+
+### Fixed
+- **Notification panel min-height**: Panel keeps a consistent minimum height whether empty or with status items
+
 ## [1.6.1] - 2026-02-11
 
 ### Changed
