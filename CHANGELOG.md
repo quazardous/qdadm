@@ -3,6 +3,17 @@
 All notable changes to qdadm will be documented in this file.
 This is not a commit log. Keep entries simple, user-focused.
 
+## [1.6.1] - 2026-02-11
+
+### Changed
+- **NotificationPanel redesign**: Removed dedicated header bar, replaced with floating inline toolbar (mark read, clear, close) positioned top-right
+- **Flatter style**: Reduced border-radius to 2px, lighter shadows and separators for a modern look
+- **Logo blink effect**: Alpha opacity blink with red tint instead of box-shadow glow, faster animation (1s cycle)
+- **Mobile responsive**: Notification panel takes full width at bottom of screen on smartphone
+
+### Fixed
+- **Logo offset**: Zone wrapper uses `display: contents` to prevent sidebar logo displacement
+
 ## [1.6.0] - 2026-02-10
 
 ### Added

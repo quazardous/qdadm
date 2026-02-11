@@ -8,11 +8,10 @@
  * - Mobile: Full width overlay at bottom of screen
  *
  * Features:
- * - Header with title, unread count, mark all read, close button
+ * - Inline action bar (mark read, clear, close) at top right
  * - Status items section (custom module items)
  * - Notification list (most recent first)
  * - Empty state
- * - Closable
  */
 import { RouterLink } from 'vue-router'
 import { useNotifications } from './NotificationStore'
@@ -55,28 +54,26 @@ function formatTime(timestamp: number): string {
       v-if="store.isOpen.value"
       class="notification-panel"
     >
-      <!-- Header -->
-      <div class="notification-panel-header">
-        <div class="notification-panel-actions">
-          <button
-            v-if="store.unreadCount.value > 0"
-            class="notification-panel-btn"
-            title="Mark all read"
-            @click="store.markAllRead()"
-          >
-            <i class="pi pi-check-circle" />
-          </button>
-          <button
-            v-if="store.notifications.value.length > 0"
-            class="notification-panel-btn"
-            title="Clear all"
-            @click="store.clearNotifications()"
-          >
-            <i class="pi pi-trash" />
-          </button>
-        </div>
+      <!-- Inline toolbar -->
+      <div class="notification-toolbar">
         <button
-          class="notification-panel-btn"
+          v-if="store.unreadCount.value > 0"
+          class="notification-toolbar-btn"
+          title="Mark all read"
+          @click="store.markAllRead()"
+        >
+          <i class="pi pi-check-circle" />
+        </button>
+        <button
+          v-if="store.notifications.value.length > 0"
+          class="notification-toolbar-btn"
+          title="Clear all"
+          @click="store.clearNotifications()"
+        >
+          <i class="pi pi-trash" />
+        </button>
+        <button
+          class="notification-toolbar-btn notification-toolbar-close"
           title="Close"
           @click="store.close()"
         >
@@ -162,8 +159,8 @@ function formatTime(timestamp: number): string {
   max-height: 50vh;
   background: var(--p-surface-0, #ffffff);
   border: 1px solid var(--p-surface-200, #e2e8f0);
-  border-radius: 0.1875rem;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+  border-radius: 2px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
   display: flex;
   flex-direction: column;
   z-index: 200;
@@ -171,51 +168,51 @@ function formatTime(timestamp: number): string {
 }
 
 /* Collapsed sidebar */
-.sidebar--collapsed ~ .main-area .notification-panel,
 :root:has(.sidebar--collapsed) .notification-panel {
   left: calc(var(--fad-sidebar-width-collapsed, 2.5rem) + 0.375rem);
 }
 
-/* Header */
-.notification-panel-header {
+/* Inline toolbar - floats top-right inside the panel */
+.notification-toolbar {
+  position: absolute;
+  top: 0;
+  right: 0;
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding: 0.375rem 0.5rem;
-  border-bottom: 1px solid var(--p-surface-200, #e2e8f0);
-  background: var(--p-surface-50, #f8fafc);
-  flex-shrink: 0;
+  gap: 1px;
+  padding: 0.25rem;
+  z-index: 1;
 }
 
-.notification-panel-actions {
-  display: flex;
-  align-items: center;
-  gap: 0.125rem;
-}
-
-.notification-panel-btn {
+.notification-toolbar-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 1.5rem;
-  height: 1.5rem;
+  width: 1.375rem;
+  height: 1.375rem;
   border: none;
   background: none;
-  border-radius: 0.125rem;
-  color: var(--p-surface-500, #64748b);
+  border-radius: 2px;
+  color: var(--p-surface-400, #94a3b8);
   cursor: pointer;
-  font-size: 0.75rem;
+  font-size: 0.6875rem;
+  transition: color 0.1s, background 0.1s;
 }
 
-.notification-panel-btn:hover {
-  background: var(--p-surface-200, #e2e8f0);
+.notification-toolbar-btn:hover {
+  background: var(--p-surface-100, #f1f5f9);
+  color: var(--p-surface-600, #475569);
+}
+
+.notification-toolbar-close:hover {
   color: var(--p-surface-700, #334155);
 }
 
 /* Status items */
 .notification-panel-status {
-  padding: 0.5rem 0.75rem;
-  border-bottom: 1px solid var(--p-surface-200, #e2e8f0);
+  padding: 0.5rem 0.625rem;
+  padding-right: 2.5rem;
+  border-bottom: 1px solid var(--p-surface-100, #f1f5f9);
   flex-shrink: 0;
 }
 
@@ -223,13 +220,13 @@ function formatTime(timestamp: number): string {
   display: flex;
   align-items: center;
   gap: 0.375rem;
-  padding: 0.25rem 0;
+  padding: 0.1875rem 0;
   font-size: 0.75rem;
   color: var(--p-surface-600, #475569);
 }
 
 .notification-status-item i {
-  font-size: 0.75rem;
+  font-size: 0.6875rem;
 }
 
 .notification-status-item--nominal i {
@@ -250,22 +247,24 @@ function formatTime(timestamp: number): string {
 
 .notification-status-count {
   font-weight: 600;
+  font-size: 0.6875rem;
 }
 
 .notification-status-item--link {
   text-decoration: none;
   cursor: pointer;
-  border-radius: 0.25rem;
-  padding: 0.25rem 0.375rem;
+  border-radius: 2px;
+  padding: 0.1875rem 0.375rem;
   margin: 0 -0.375rem;
+  transition: background 0.1s;
 }
 
 .notification-status-item--link:hover {
-  background: var(--p-surface-100, #f1f5f9);
+  background: var(--p-surface-50, #f8fafc);
 }
 
 .notification-status-arrow {
-  font-size: 0.625rem;
+  font-size: 0.5625rem;
   opacity: 0;
   transition: opacity 0.1s;
   color: var(--p-surface-400, #94a3b8);
@@ -287,10 +286,14 @@ function formatTime(timestamp: number): string {
   display: flex;
   align-items: flex-start;
   gap: 0.5rem;
-  padding: 0.5rem 0.75rem;
-  border-bottom: 1px solid var(--p-surface-100, #f1f5f9);
+  padding: 0.5rem 0.625rem;
+  border-bottom: 1px solid var(--p-surface-50, #f8fafc);
   cursor: pointer;
   transition: background 0.1s;
+}
+
+.notification-item:first-child {
+  padding-right: 2.5rem;
 }
 
 .notification-item:hover {
@@ -311,16 +314,16 @@ function formatTime(timestamp: number): string {
 
 .notification-item-icon {
   flex-shrink: 0;
-  width: 1.25rem;
-  height: 1.25rem;
+  width: 1.125rem;
+  height: 1.125rem;
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-top: 0.125rem;
+  margin-top: 0.0625rem;
 }
 
 .notification-item-icon i {
-  font-size: 0.8125rem;
+  font-size: 0.75rem;
 }
 
 .notification-item--success .notification-item-icon i {
@@ -345,16 +348,16 @@ function formatTime(timestamp: number): string {
 }
 
 .notification-item-summary {
-  font-size: 0.8125rem;
+  font-size: 0.75rem;
   font-weight: 500;
   color: var(--p-surface-700, #334155);
   line-height: 1.3;
 }
 
 .notification-item-detail {
-  font-size: 0.75rem;
+  font-size: 0.6875rem;
   color: var(--p-surface-500, #64748b);
-  margin-top: 0.125rem;
+  margin-top: 0.0625rem;
   line-height: 1.3;
 }
 
@@ -362,8 +365,8 @@ function formatTime(timestamp: number): string {
   display: flex;
   align-items: center;
   gap: 0.375rem;
-  margin-top: 0.25rem;
-  font-size: 0.6875rem;
+  margin-top: 0.125rem;
+  font-size: 0.625rem;
   color: var(--p-surface-400, #94a3b8);
 }
 
@@ -377,14 +380,14 @@ function formatTime(timestamp: number): string {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 1.25rem;
-  height: 1.25rem;
+  width: 1.125rem;
+  height: 1.125rem;
   border: none;
   background: none;
-  border-radius: 0.25rem;
+  border-radius: 2px;
   color: var(--p-surface-400, #94a3b8);
   cursor: pointer;
-  font-size: 0.625rem;
+  font-size: 0.5625rem;
   opacity: 0;
   transition: opacity 0.1s;
 }
@@ -404,17 +407,17 @@ function formatTime(timestamp: number): string {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 2rem 1rem;
-  color: var(--p-surface-400, #94a3b8);
-  gap: 0.5rem;
+  padding: 1.5rem 1rem;
+  color: var(--p-surface-300, #cbd5e1);
+  gap: 0.375rem;
 }
 
 .notification-panel-empty i {
-  font-size: 1.5rem;
+  font-size: 1.25rem;
 }
 
 .notification-panel-empty span {
-  font-size: 0.8125rem;
+  font-size: 0.75rem;
 }
 
 /* Transition */
@@ -435,12 +438,12 @@ function formatTime(timestamp: number): string {
 /* Mobile: full width bottom overlay */
 @media (max-width: 767px) {
   .notification-panel {
-    left: 0;
+    left: 0 !important;
     right: 0;
     bottom: 0;
     width: auto;
     max-height: 60vh;
-    border-radius: 0.5rem 0.5rem 0 0;
+    border-radius: 2px 2px 0 0;
     border-bottom: none;
   }
 }
@@ -451,13 +454,9 @@ function formatTime(timestamp: number): string {
   border-color: var(--p-surface-700, #334155);
 }
 
-.dark-mode .notification-panel-header {
-  background: var(--p-surface-900, #0f172a);
-  border-color: var(--p-surface-700, #334155);
-}
-
-.dark-mode .notification-panel-title {
-  color: var(--p-surface-200, #e2e8f0);
+.dark-mode .notification-toolbar-btn:hover {
+  background: var(--p-surface-700, #334155);
+  color: var(--p-surface-300, #cbd5e1);
 }
 
 .dark-mode .notification-item--unread {
