@@ -291,6 +291,7 @@ export {
 } from './composables/useUserImpersonator'
 export { useCurrentEntity, type UseCurrentEntityReturn } from './composables/useCurrentEntity'
 export { useChildPage, type UseChildPageReturn } from './composables/useChildPage'
+export { useSidebarState, SIDEBAR_COLLAPSED_KEY } from './composables/useSidebarState'
 
 // ════════════════════════════════════════════════════════════════════════════
 // COMPONENTS

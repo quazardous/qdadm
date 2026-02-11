@@ -18,10 +18,15 @@ $_content-duration: 0.1s;
   transition: opacity $_content-duration ease $_content-delay;
 }
 
-.sidebar--collapsed .sidebar-notification-status {
+/* Status label: delayed fade-in on expand, instant hide on collapse.
+   Matches SidebarBox content behavior (.sidebar-box-content). */
+.sidebar-notification-status .status-label {
+  opacity: 1;
+  transition: opacity $_content-duration ease $_content-delay;
+}
+
+.sidebar--collapsed .sidebar-notification-status .status-label {
   opacity: 0;
   visibility: hidden;
-  height: 0;
-  overflow: hidden;
-  transition: opacity 0s, visibility 0s, height 0s;
+  transition: opacity 0s, visibility 0s;
 }

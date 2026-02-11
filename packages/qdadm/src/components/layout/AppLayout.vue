@@ -13,6 +13,7 @@
  */
 
 import { ref, watch, onMounted, onUnmounted, computed, inject, provide, useSlots } from 'vue'
+import { SIDEBAR_COLLAPSED_KEY } from '../../composables/useSidebarState'
 import { RouterLink, RouterView, useRouter, useRoute } from 'vue-router'
 import { useNavigation, type NavSection } from '../../composables/useNavigation'
 import { useApp } from '../../composables/useApp'
@@ -69,8 +70,9 @@ const collapsedSections = ref<Record<string, boolean>>({})
 const sidebarOpen = ref<boolean>(false)
 const MOBILE_BREAKPOINT = 768
 
-// Desktop sidebar collapsed state
+// Desktop sidebar collapsed state (provided for child components via useSidebarState)
 const sidebarCollapsed = ref<boolean>(false)
+provide(SIDEBAR_COLLAPSED_KEY, sidebarCollapsed)
 const COLLAPSED_STORAGE_KEY = computed<string>(() => `${app.shortName.toLowerCase()}_sidebar_collapsed`)
 
 function toggleSidebar(): void {
