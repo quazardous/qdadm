@@ -384,10 +384,11 @@ export function useEntityItemShowPage(
       schemaType = type,
       label = '',
       reference = '',
+      severity,
       ...rest
     } = fieldConfig
 
-    const displayType = TYPE_MAPPINGS[type] || TYPE_MAPPINGS[schemaType] || 'text'
+    let resolvedDisplayType = TYPE_MAPPINGS[type] || TYPE_MAPPINGS[schemaType] || 'text'
     const resolvedLabel = label || snakeCaseToTitle(name)
 
     // Auto-set reference route if reference entity is specified
@@ -402,13 +403,23 @@ export function useEntityItemShowPage(
       }
     }
 
+    // Auto-inject severity from manager's severity maps
+    let resolvedSeverity = severity
+    if (!resolvedSeverity && manager.hasSeverityMap?.(name)) {
+      resolvedSeverity = (value: unknown) => manager.getSeverity!(name, value as string | number, 'secondary')
+      if (resolvedDisplayType === 'text') {
+        resolvedDisplayType = 'badge'
+      }
+    }
+
     return {
       name,
-      type: displayType,
+      type: resolvedDisplayType,
       schemaType,
       label: resolvedLabel,
       reference,
       referenceRoute,
+      severity: resolvedSeverity,
       ...rest,
     }
   }

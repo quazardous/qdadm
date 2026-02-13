@@ -78,6 +78,8 @@ export interface EntityManager {
   canCreate: () => boolean
   canUpdate: (data?: unknown) => boolean
   canDelete: (data?: unknown) => boolean
+  hasSeverityMap?: (field: string) => boolean
+  getSeverity?: (field: string, value: string | number, defaultSeverity?: string) => string
 }
 
 /**

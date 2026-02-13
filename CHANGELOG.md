@@ -3,6 +3,20 @@
 All notable changes to qdadm will be documented in this file.
 This is not a commit log. Keep entries simple, user-focused.
 
+## [1.8.0] - 2026-02-13
+
+### Added
+- **Severity maps on EntityManager**: `setSeverityMap(field, map)` to define severity-by-value at entity level instead of per-page
+- **`SeverityTag` component**: Reusable tag that resolves severity from the entity manager's severity map
+- **Auto-severity in ShowPage**: Fields with a severity map auto-promote from `text` to `badge` display type and inject severity callback
+
+### Changed
+- **EntityManager interface**: Added optional `hasSeverityMap()` and `getSeverity()` methods
+
+### Demo
+- **BookList**: Replaced manual `getGenreSeverity()` with `SeverityTag` component
+- **CountriesModule**: Severity map for `region` field defined via `setSeverityMap()` instead of inline callback in ShowPage
+
 ## [1.7.0] - 2026-02-11
 
 ### Added

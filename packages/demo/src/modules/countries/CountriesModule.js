@@ -10,7 +10,7 @@
  * Custom storage handles pagination and search.
  */
 
-import { Module, ApiStorage } from 'qdadm'
+import { Module, ApiStorage, EntityManager } from 'qdadm'
 import axios from 'axios'
 
 // ============================================================================
@@ -79,7 +79,7 @@ export class CountriesModule extends Module {
     // ════════════════════════════════════════════════════════════════════════
     // ENTITY
     // ════════════════════════════════════════════════════════════════════════
-    ctx.entity('countries', {
+    ctx.entity('countries', new EntityManager({
       name: 'countries',
       labelField: (country) => country.name?.common || country.cca3,
       badges: (country) => {
@@ -107,7 +107,14 @@ export class CountriesModule extends Module {
         flag: { type: 'text', label: 'Flag', readOnly: true }
       },
       storage: countriesStorage
-    })
+    }).setSeverityMap('region', {
+      'Africa': 'warn',
+      'Americas': 'success',
+      'Asia': 'danger',
+      'Europe': 'info',
+      'Oceania': 'secondary',
+      'Antarctic': 'contrast'
+    }))
 
     // ════════════════════════════════════════════════════════════════════════
     // ROUTES (list + detail - read-only)

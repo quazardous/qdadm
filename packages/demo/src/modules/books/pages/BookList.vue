@@ -14,8 +14,7 @@
  * See: modules/loans/components/LoansZoneSetup.vue for extension code
  */
 
-import { useListPage, ListPage, Zone } from 'qdadm'
-import Tag from 'primevue/tag'
+import { useListPage, ListPage, Zone, SeverityTag } from 'qdadm'
 import Column from 'primevue/column'
 import { useFavoriteAction } from '@/composables/useFavoriteAction'
 
@@ -49,17 +48,6 @@ list.addBulkDeleteAction()
 list.addEditAction()
 list.addDeleteAction({ labelField: 'title' })
 
-// ============ HELPERS ============
-function getGenreSeverity(genre) {
-  const map = {
-    'fiction': 'info',
-    'non-fiction': 'secondary',
-    'sci-fi': 'primary',
-    'fantasy': 'warn',
-    'mystery': 'danger'
-  }
-  return map[genre] || 'secondary'
-}
 </script>
 
 <template>
@@ -75,7 +63,7 @@ function getGenreSeverity(genre) {
       <Column field="year" header="Year" sortable style="width: 100px" />
       <Column field="genre" header="Genre" style="width: 120px">
         <template #body="{ data }">
-          <Tag :value="data.genre" :severity="getGenreSeverity(data.genre)" />
+          <SeverityTag field="genre" :value="data.genre" />
         </template>
       </Column>
     </template>

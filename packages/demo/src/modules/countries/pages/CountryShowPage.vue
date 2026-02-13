@@ -23,17 +23,6 @@ show.updateField('cca3', {
 
 show.updateField('region', {
   type: 'badge',
-  severity: (v) => {
-    const severities = {
-      'Africa': 'warn',
-      'Americas': 'success',
-      'Asia': 'danger',
-      'Europe': 'info',
-      'Oceania': 'secondary',
-      'Antarctic': 'contrast'
-    }
-    return severities[v] || 'secondary'
-  },
 })
 
 show.updateField('population', {
