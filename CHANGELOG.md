@@ -3,6 +3,11 @@
 All notable changes to qdadm will be documented in this file.
 This is not a commit log. Keep entries simple, user-focused.
 
+## [1.10.4] - 2026-02-13
+
+### Changed
+- **EntityManager prototype patching**: Replace ~250 lines of delegation boilerplate with prototype patching via `applyCacheMethods()`, `applyQueryMethods()`, `applyRelationsMethods()`, `applyCrudMethods()`; TypeScript interface merging provides type safety; add `EntityManagerInternal<T>` utility type for internal access
+
 ## [1.10.0] - 2026-02-13
 
 ### Added
