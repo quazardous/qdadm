@@ -1894,8 +1894,16 @@ export class EntityManager<T extends EntityRecord = EntityRecord> {
   ): Promise<ListResult<T>> {
     const { context = {}, routingContext = null } = options
 
-    // Ensure cache is filled (via list)
-    if (!this._cache.valid && this.isCacheEnabled) {
+    // Check if this context uses a dynamic endpoint (no caching possible)
+    const resolved = this._normalizeResolveResult(
+      this.resolveStorage('list', routingContext ?? undefined),
+      routingContext ?? undefined
+    )
+    const isDynamicEndpoint = !!resolved.endpoint
+
+    // Ensure cache is filled (via list) — skip for dynamic endpoints
+    // since list() disables caching when resolveStorage provides an endpoint
+    if (!isDynamicEndpoint && !this._cache.valid && this.isCacheEnabled) {
       await this.list(
         { page_size: this.effectiveThreshold },
         routingContext ?? undefined
@@ -1904,8 +1912,8 @@ export class EntityManager<T extends EntityRecord = EntityRecord> {
 
     let result: ListResult<T>
 
-    // If overflow or cache disabled, use API for accurate filtered results
-    if (this.overflow || !this.isCacheEnabled) {
+    // Dynamic endpoint, overflow, or cache disabled → use API directly
+    if (isDynamicEndpoint || this.overflow || !this.isCacheEnabled) {
       result = await this.list(params, routingContext ?? undefined)
     } else {
       // Full cache available - filter locally
