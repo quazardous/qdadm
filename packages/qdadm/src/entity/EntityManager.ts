@@ -1100,9 +1100,28 @@ export class EntityManager<T extends EntityRecord = EntityRecord> {
     // 2. Fetch from API
     let response: { items?: T[]; data?: T[] | { items?: T[]; data?: T[] }; total?: number; pagination?: { total?: number } }
     if (endpoint && storage.request) {
-      // Use request() with endpoint for multi-storage routing
+      // Use request() with endpoint for multi-storage routing.
+      // When using a dynamic endpoint, parent IDs are already encoded in the URL.
+      // Strip parent-related filters to avoid duplication in query params.
+      let requestParams = mergedParams
+      if (context?.parentChain && mergedParams.filters) {
+        const parentIds = new Set(
+          context.parentChain.map((p: { id: string | number }) => String(p.id))
+        )
+        const cleaned = Object.fromEntries(
+          Object.entries(mergedParams.filters as Record<string, unknown>).filter(
+            ([, value]) => !parentIds.has(String(value))
+          )
+        )
+        requestParams = { ...mergedParams }
+        if (Object.keys(cleaned).length > 0) {
+          requestParams.filters = cleaned
+        } else {
+          delete requestParams.filters
+        }
+      }
       const apiResponse = (await storage.request('GET', endpoint, {
-        params: mergedParams,
+        params: requestParams,
         context,
       })) as { data?: unknown }
       // Normalize response
