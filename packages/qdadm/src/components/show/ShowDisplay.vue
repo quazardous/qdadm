@@ -71,7 +71,7 @@ interface FieldConfig {
   optionLabel?: string
   optionValue?: string
   // Badge options
-  severity?: string | ((value: unknown) => string)
+  severity?: string | { severity: string; icon?: string; label?: string } | ((value: unknown) => string | { severity: string; icon?: string; label?: string })
   // Image options
   imageWidth?: string
   imageHeight?: string
@@ -200,13 +200,17 @@ const badgeValue = computed(() => {
   return String(props.value)
 })
 
-// Badge severity
-const badgeSeverity = computed(() => {
-  if (typeof props.field.severity === 'function') {
-    return props.field.severity(props.value)
-  }
-  return props.field.severity || 'info'
+// Badge descriptor (normalized to { severity, icon? })
+const badgeDescriptor = computed(() => {
+  const raw = typeof props.field.severity === 'function'
+    ? props.field.severity(props.value)
+    : props.field.severity
+  if (!raw) return { severity: 'info' }
+  return typeof raw === 'string' ? { severity: raw } : raw
 })
+
+const badgeSeverity = computed(() => badgeDescriptor.value.severity)
+const badgeIcon = computed(() => badgeDescriptor.value.icon)
 
 // JSON formatted
 const jsonValue = computed(() => {
@@ -316,7 +320,15 @@ const imageStyle = computed(() => ({
   <!-- JSON -->
   <pre v-else-if="displayType === 'json'" class="show-display show-display--json">{{ jsonValue }}</pre>
 
-  <!-- Badge -->
+  <!-- Badge (with optional icon) -->
+  <span
+    v-else-if="displayType === 'badge' && badgeIcon"
+    class="show-display show-display--badge p-tag p-component"
+    :class="`p-tag-${badgeSeverity}`"
+  >
+    <i :class="badgeIcon" />
+    <span class="p-tag-label">{{ badgeValue }}</span>
+  </span>
   <Tag
     v-else-if="displayType === 'badge'"
     :value="badgeValue"
@@ -333,6 +345,11 @@ const imageStyle = computed(() => ({
 <style scoped>
 .show-display {
   display: inline;
+}
+
+.show-display--badge {
+  display: inline-flex;
+  align-items: center;
 }
 
 .show-display--empty {

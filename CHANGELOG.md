@@ -3,6 +3,18 @@
 All notable changes to qdadm will be documented in this file.
 This is not a commit log. Keep entries simple, user-focused.
 
+## [1.9.0] - 2026-02-13
+
+### Added
+- **`SeverityDescriptor` type**: Rich severity descriptors with optional `icon` and `label` fields alongside the severity string
+- **`getSeverityDescriptor()` on EntityManager**: Returns full descriptor (severity + icon + label) for a field value
+- **Icon support in `SeverityTag`**: Renders rich badges with icons (including animated spinners) when the severity map provides a descriptor with an `icon` field
+- **Icon support in `ShowDisplay` badge**: Badge display type now renders icons from severity descriptors
+
+### Changed
+- **Severity maps accept descriptors**: `setSeverityMap()` values can now be plain strings (backward compat) or `SeverityDescriptor` objects
+- **Exported types**: `SeverityDescriptor`, `SeverityMapValue`, `SeverityMap` exported from main entry point
+
 ## [1.8.0] - 2026-02-13
 
 ### Added

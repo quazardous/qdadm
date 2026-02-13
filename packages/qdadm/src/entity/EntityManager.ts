@@ -159,6 +159,22 @@ export interface EntityBadge {
 }
 
 /**
+ * Rich severity descriptor for a field value.
+ * Extends beyond a simple severity string to support icons and label overrides.
+ */
+export interface SeverityDescriptor {
+  severity: string
+  icon?: string
+  label?: string
+}
+
+/** A severity map value: plain string (backward compat) or rich descriptor */
+export type SeverityMapValue = string | SeverityDescriptor
+
+/** Severity map: field value → severity string or descriptor */
+export type SeverityMap = Record<string, SeverityMapValue>
+
+/**
  * EntityManager constructor options
  */
 export interface EntityManagerOptions<T extends EntityRecord = EntityRecord> {
@@ -243,7 +259,7 @@ export class EntityManager<T extends EntityRecord = EntityRecord> {
   protected _nav: NavConfig
 
   protected _hooks: HookRegistry | null = null
-  protected _severityMaps: Record<string, Record<string, string>> = {}
+  protected _severityMaps: Record<string, SeverityMap> = {}
 
   protected _cache: CacheState<T> = {
     items: [],
@@ -939,24 +955,40 @@ export class EntityManager<T extends EntityRecord = EntityRecord> {
   // ============ SEVERITY MAPS ============
 
   /**
-   * Set severity map for a field
+   * Set severity map for a field.
+   * Values can be plain severity strings or rich descriptors with icon/label.
    */
-  setSeverityMap(field: string, map: Record<string, string>): this {
+  setSeverityMap(field: string, map: SeverityMap): this {
     this._severityMaps[field] = map
     return this
   }
 
   /**
-   * Get severity for a field value
+   * Get severity string for a field value (backward compat).
+   * Extracts .severity from descriptors automatically.
    */
   getSeverity(
     field: string,
     value: string | number,
     defaultSeverity: string = 'secondary'
   ): string {
-    const map = this._severityMaps[field]
-    if (!map) return defaultSeverity
-    return map[String(value)] ?? defaultSeverity
+    const entry = this._severityMaps[field]?.[String(value)]
+    if (!entry) return defaultSeverity
+    return typeof entry === 'string' ? entry : entry.severity
+  }
+
+  /**
+   * Get full severity descriptor for a field value.
+   * Returns normalized descriptor (plain strings wrapped as { severity }).
+   */
+  getSeverityDescriptor(
+    field: string,
+    value: string | number,
+    defaultSeverity: string = 'secondary'
+  ): SeverityDescriptor {
+    const entry = this._severityMaps[field]?.[String(value)]
+    if (!entry) return { severity: defaultSeverity }
+    return typeof entry === 'string' ? { severity: entry } : entry
   }
 
   /**

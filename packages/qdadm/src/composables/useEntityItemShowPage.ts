@@ -406,7 +406,9 @@ export function useEntityItemShowPage(
     // Auto-inject severity from manager's severity maps
     let resolvedSeverity = severity
     if (!resolvedSeverity && manager.hasSeverityMap?.(name)) {
-      resolvedSeverity = (value: unknown) => manager.getSeverity!(name, value as string | number, 'secondary')
+      resolvedSeverity = manager.getSeverityDescriptor
+        ? (value: unknown) => manager.getSeverityDescriptor!(name, value as string | number, 'secondary')
+        : (value: unknown) => manager.getSeverity!(name, value as string | number, 'secondary')
       if (resolvedDisplayType === 'text') {
         resolvedDisplayType = 'badge'
       }

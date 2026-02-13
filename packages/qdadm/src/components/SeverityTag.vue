@@ -2,6 +2,10 @@
 /**
  * SeverityTag - Auto-discovers severity from EntityManager
  *
+ * Renders a PrimeVue Tag for simple severity strings, or a rich badge
+ * with icon (including animated spinners) when the severity map provides
+ * a descriptor with an `icon` field.
+ *
  * Entity can be specified explicitly or auto-discovered from list context.
  *
  * @example
@@ -50,22 +54,33 @@ const manager = computed<EntityManager | null>(() => {
   return orchestrator?.get(resolvedEntity.value) ?? null
 })
 
-const severity = computed(() => {
-  if (!manager.value) return props.defaultSeverity
-  // getSeverity expects string | number, but value can be boolean | null too
-  const fieldValue = props.value === null || props.value === undefined
-    ? ''
-    : typeof props.value === 'boolean'
-      ? String(props.value)
-      : props.value
-  return manager.value.getSeverity(props.field, fieldValue, props.defaultSeverity)
+const fieldValue = computed(() => {
+  if (props.value === null || props.value === undefined) return ''
+  return typeof props.value === 'boolean' ? String(props.value) : props.value
 })
 
-const displayLabel = computed(() => {
-  return props.label ?? props.value
+const descriptor = computed(() => {
+  if (!manager.value?.getSeverityDescriptor) {
+    return { severity: manager.value?.getSeverity?.(props.field, fieldValue.value as string | number, props.defaultSeverity) ?? props.defaultSeverity }
+  }
+  return manager.value.getSeverityDescriptor(props.field, fieldValue.value as string | number, props.defaultSeverity)
 })
+
+const severity = computed(() => descriptor.value.severity)
+
+const displayLabel = computed(() => {
+  return props.label ?? descriptor.value.label ?? props.value
+})
+
+const hasIcon = computed(() => !!descriptor.value.icon)
 </script>
 
 <template>
-  <Tag :value="displayLabel" :severity="severity" />
+  <!-- Rich badge with icon -->
+  <span v-if="hasIcon" class="p-tag p-component" :class="`p-tag-${severity}`">
+    <i :class="descriptor.icon" />
+    <span class="p-tag-label">{{ displayLabel }}</span>
+  </span>
+  <!-- Simple PrimeVue Tag -->
+  <Tag v-else :value="displayLabel" :severity="severity" />
 </template>

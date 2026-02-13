@@ -80,6 +80,7 @@ export interface EntityManager {
   canDelete: (data?: unknown) => boolean
   hasSeverityMap?: (field: string) => boolean
   getSeverity?: (field: string, value: string | number, defaultSeverity?: string) => string
+  getSeverityDescriptor?: (field: string, value: string | number, defaultSeverity?: string) => { severity: string; icon?: string; label?: string }
 }
 
 /**
