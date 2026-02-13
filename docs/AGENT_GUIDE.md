@@ -131,6 +131,8 @@ ctx.entity('loans', new EntityManager({
 // Result: /books/:bookId/loans route, auto-filtered by book_id
 ```
 
+When the child API uses a **nested endpoint** (e.g. `/api/books/:id/loans` instead of `/api/loans?book_id=xxx`), override `resolveStorage()` in the child manager to build the URL from `parentChain`. See [extension.md — Multi-Storage](../packages/qdadm/docs/extension.md#multi-storage--multi-endpoint) for return value options and examples.
+
 ### children (inverse of parent)
 
 Declared on parent to enable child routes. Optional if parent already declares.
