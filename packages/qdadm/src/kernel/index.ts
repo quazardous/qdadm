@@ -15,6 +15,7 @@ export type {
   SecurityConfig,
   SSEConfig,
   DebugBarConfig,
+  NotificationsConfig,
   HomeRoute,
   KernelOptions,
 } from './Kernel'

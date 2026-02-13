@@ -15,6 +15,7 @@
 import { ref, computed, onMounted, inject, provide, type Ref, type ComputedRef } from 'vue'
 import { useRoute } from 'vue-router'
 import { useStackHydrator, type StackHydratorReturn } from '../chain/useStackHydrator'
+import type { EntityManagerCrud } from '../entity/EntityManager.interface'
 
 /**
  * Parent configuration from route.meta.parent
@@ -56,32 +57,9 @@ export interface CreateContext {
 }
 
 /**
- * Entity manager interface
- * Contains all methods that may be used by composables
+ * Entity manager interface for entity item pages (re-export for convenience)
  */
-export interface EntityManager {
-  idField: string
-  label?: string
-  routePrefix?: string
-  fields?: FieldDefinition[]
-  getInitialData: () => Record<string, unknown>
-  getFormFields: () => FieldDefinition[]
-  getFieldConfig: (name: string) => FieldDefinition | null
-  getEntityLabel: (data: unknown) => string
-  getEntityBadges?: (data: unknown) => Array<{ label: string; severity?: string }>
-  resolveReferenceOptions: (fieldName: string) => Promise<unknown[]>
-  get: (id: string | number) => Promise<unknown>
-  create: (data: unknown, context?: CreateContext) => Promise<unknown>
-  update: (id: string | number, data: unknown) => Promise<unknown>
-  patch: (id: string | number, data: unknown) => Promise<unknown>
-  delete: (id: string | number) => Promise<void>
-  canCreate: () => boolean
-  canUpdate: (data?: unknown) => boolean
-  canDelete: (data?: unknown) => boolean
-  hasSeverityMap?: (field: string) => boolean
-  getSeverity?: (field: string, value: string | number, defaultSeverity?: string) => string
-  getSeverityDescriptor?: (field: string, value: string | number, defaultSeverity?: string) => { severity: string; icon?: string; label?: string }
-}
+export type EntityManager = EntityManagerCrud
 
 /**
  * Orchestrator interface
