@@ -186,6 +186,8 @@ export class BooksModule extends Module {
     ctx.crud('genres', {
       list: () => import('./pages/GenreList.vue'),
       form: () => import('./pages/GenreForm.vue')
+    }, {
+      nav: { section: 'Library', icon: 'pi pi-tags' }
     })
 
     // Child: books for a specific genre
