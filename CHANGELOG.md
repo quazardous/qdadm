@@ -3,6 +3,23 @@
 All notable changes to qdadm will be documented in this file.
 This is not a commit log. Keep entries simple, user-focused.
 
+## [1.10.0] - 2026-02-13
+
+### Added
+- **`pathSegment` CRUD option**: Override the URL path segment for entities (e.g., `pathSegment: 'tasks'` for a `jobTasks` entity); defaults to kebab-case of entity name
+- **Child entity CRUD in demo**: Genres as child of books, user posts/todos in JsonPlaceholder module
+
+### Changed
+- **CSS centralization**: Extracted reusable styles from 13 Vue components into SCSS partials (`_cards.scss` new, `_states.scss`, `_code.scss`, `_forms.scss`, `_alerts.scss`, `_show-pages.scss`, `_main.scss`, `_dialogs.scss` extended); added scoping warning comment to remaining `<style scoped>` blocks
+- **Route path generation**: Entity routes now use kebab-case paths by default (e.g., `botTasks` → `/bot-tasks`)
+- **Breadcrumb deduplication fix**: Skip parent ID param when already consumed by an ancestor level in breadcrumb builder
+- **Entity cache bypass**: Disable list cache when `resolveStorage` provides an endpoint override (prevents stale data across parent contexts)
+- **Docs relocated**: Moved documentation from `packages/qdadm/docs/` to root `docs/`
+
+### Demo
+- **Genres module merged into BooksModule**: Genres entity now registered inside BooksModule with child book routes instead of standalone module
+- **JsonPlaceholder child routes**: User posts and user todos as child CRUD pages
+
 ## [1.9.0] - 2026-02-13
 
 ### Added

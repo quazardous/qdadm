@@ -18,6 +18,7 @@ import { defineAsyncComponent } from 'vue'
 // ============================================================================
 
 import booksFixture from '../../fixtures/books.json'
+import genresFixture from '../../fixtures/genres.json'
 
 // Auth check imported from shared config (cross-module dependency)
 import { authCheck } from '../../config/storages'
@@ -34,6 +35,12 @@ export const booksStorageInternal = new MockApiStorage({
   entityName: 'books',
   idField: 'bookId',
   initialData: booksFixture
+})
+
+const genresStorage = new MockApiStorage({
+  entityName: 'genres',
+  initialData: genresFixture,
+  authCheck
 })
 
 // Books permissions are handled by the SecurityChecker:
@@ -72,6 +79,23 @@ export class BooksModule extends Module {
       },
       storage: booksStorage
     }).setSeverityMap('genre', {
+      'fiction': 'info',
+      'non-fiction': 'secondary',
+      'sci-fi': 'primary',
+      'fantasy': 'warn',
+      'mystery': 'danger'
+    }))
+
+    ctx.entity('genres', new EntityManager({
+      name: 'genres',
+      labelField: 'name',
+      fields: {
+        id: { type: 'text', label: 'ID' },
+        name: { type: 'text', label: 'Name' },
+        description: { type: 'text', label: 'Description' }
+      },
+      storage: genresStorage
+    }).setSeverityMap('id', {
       'fiction': 'info',
       'non-fiction': 'secondary',
       'sci-fi': 'primary',
@@ -154,6 +178,23 @@ export class BooksModule extends Module {
       foreignKey: 'book_id',    // FK field in loans pointing to books
       label: 'Loans'            // Label for navlinks
       // routePrefix defaults to 'book-loan' (parentRoute + singular entity)
+    })
+
+    // ════════════════════════════════════════════════════════════════════════
+    // GENRES (read-only with child books)
+    // ════════════════════════════════════════════════════════════════════════
+    ctx.crud('genres', {
+      list: () => import('./pages/GenreList.vue'),
+      form: () => import('./pages/GenreForm.vue')
+    })
+
+    // Child: books for a specific genre
+    ctx.crud('books', {
+      list: () => import('./pages/GenreBooks.vue')
+    }, {
+      parentRoute: 'genre',
+      foreignKey: 'genre',
+      label: 'Books'
     })
 
   }

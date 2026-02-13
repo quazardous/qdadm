@@ -71,24 +71,3 @@ const iconClass = computed(() => {
     </div>
   </Message>
 </template>
-
-<style scoped>
-.info-banner-content {
-  display: flex;
-  align-items: center;
-  gap: 0.625rem;
-}
-
-.info-banner-icon {
-  font-size: 1.125rem;
-  flex-shrink: 0;
-}
-
-.info-banner-text {
-  flex: 1;
-}
-
-.info-banner-text :deep(strong) {
-  font-weight: 600;
-}
-</style>

@@ -33,3 +33,46 @@
 .tags-constrained {
   max-width: 300px;
 }
+
+// =============================================================================
+// JSON Viewer
+// =============================================================================
+
+.json-viewer {
+  background: var(--p-surface-50);
+  border: 1px solid var(--p-surface-200);
+  border-radius: 0.375rem;
+  overflow: auto;
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+  font-size: 0.8125rem;
+  line-height: 1.5;
+}
+
+.json-content {
+  padding: 1rem;
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.json-key {
+  color: #881391;
+}
+
+.json-string {
+  color: #1a1aa6;
+}
+
+.json-number {
+  color: #1c00cf;
+}
+
+.json-boolean {
+  color: #0d22aa;
+  font-weight: 500;
+}
+
+.json-null {
+  color: #808080;
+  font-style: italic;
+}

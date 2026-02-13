@@ -78,22 +78,3 @@ function onSaveAndLeave(): void {
     </template>
   </SimpleDialog>
 </template>
-
-<style scoped>
-.dialog-content {
-  display: flex;
-  align-items: flex-start;
-  gap: 1rem;
-}
-
-.dialog-icon {
-  font-size: 2rem;
-  color: var(--p-orange-500);
-  flex-shrink: 0;
-}
-
-.dialog-content p {
-  margin: 0;
-  line-height: 1.5;
-}
-</style>

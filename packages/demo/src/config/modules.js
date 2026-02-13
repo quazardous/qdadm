@@ -9,7 +9,6 @@ import { SecurityModule } from 'qdadm/security'
 import { BooksModule } from '../modules/books/BooksModule'
 import { UsersModule } from '../modules/users/UsersModule'
 import { LoansModule } from '../modules/loans/LoansModule'
-import { GenresModule } from '../modules/genres/GenresModule'
 import { CountriesModule } from '../modules/countries/CountriesModule'
 import { ProductsModule } from '../modules/products/ProductsModule'
 import { SettingsModule } from '../modules/settings/SettingsModule'
@@ -21,7 +20,6 @@ export const moduleDefs = [
   BooksModule,
   UsersModule,
   LoansModule,
-  GenresModule,
   CountriesModule,
   ProductsModule,
   SettingsModule,

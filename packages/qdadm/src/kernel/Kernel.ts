@@ -926,7 +926,11 @@ export class Kernel {
       const currentId = (route.params[idField] as string) ?? null
       const currentForeignKey = parentMeta?.foreignKey ?? null
 
-      if (currentId) {
+      // Skip if the ID param is already consumed by a parent level
+      // (e.g., /jobs/:id/bot-tasks — :id belongs to the parent, not the child)
+      const idConsumedByParent = levels.some(l => l.param === idField)
+
+      if (currentId && !idConsumedByParent) {
         levels.push({
           entity: entityConfig,
           param: idField,

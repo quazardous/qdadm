@@ -114,6 +114,10 @@ function resolveLabel(label: string | (() => string)): string {
 </template>
 
 <style scoped>
+/*
+ * Only keep styles here that REQUIRE scoping (:deep, dynamic binding, component-specific overrides).
+ * Generic/reusable styles belong in src/styles/ partials (see _forms.scss, _cards.scss, etc.).
+ */
 .page-subtitle {
   color: var(--p-surface-500);
   font-size: 0.9rem;

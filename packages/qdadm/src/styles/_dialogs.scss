@@ -7,7 +7,15 @@
 
 // Dialog content spacing
 .dialog-content {
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
   margin-bottom: $space-md;
+
+  p {
+    margin: 0;
+    line-height: 1.5;
+  }
 }
 
 // Dialog section title
@@ -16,4 +24,32 @@
   font-weight: $font-weight-semibold;
   margin-bottom: $space-sm;
   color: var(--p-surface-600);
+}
+
+// Dialog icon (used in UnsavedChangesDialog, etc.)
+.dialog-icon {
+  font-size: 2rem;
+  color: var(--p-orange-500);
+  flex-shrink: 0;
+}
+
+// =============================================================================
+// Multi-Step Dialog
+// =============================================================================
+
+.multi-step-dialog {
+  padding: 0.5rem 0;
+}
+
+.step-content {
+  padding: 1rem 0;
+}
+
+.step-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  margin-top: 1.5rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--p-surface-200);
 }

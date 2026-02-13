@@ -329,22 +329,3 @@ const slotActions = computed<SlotActions>(() => ({
     </div>
   </Dialog>
 </template>
-
-<style scoped>
-.multi-step-dialog {
-  padding: 0.5rem 0;
-}
-
-.step-content {
-  padding: 1rem 0;
-}
-
-.step-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 0.5rem;
-  margin-top: 1.5rem;
-  padding-top: 1rem;
-  border-top: 1px solid var(--p-surface-200);
-}
-</style>

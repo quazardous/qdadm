@@ -108,6 +108,15 @@ export class JsonPlaceholderModule extends Module {
     }, {
       nav: { section: 'JSONPlaceholder', icon: 'pi pi-file', label: 'Posts' }
     })
+
+    // Child: posts for a specific user
+    ctx.crud('posts', {
+      list: () => import('./pages/UserPostsPage.vue')
+    }, {
+      parentRoute: 'jp_user',
+      foreignKey: 'userId',
+      label: 'Posts'
+    })
     ctx.routes('posts/:id', [
       {
         path: '',
@@ -122,6 +131,15 @@ export class JsonPlaceholderModule extends Module {
       list: () => import('../todos/pages/TodosPage.vue')
     }, {
       nav: { section: 'JSONPlaceholder', icon: 'pi pi-check-square', label: 'Todos' }
+    })
+
+    // Child: todos for a specific user
+    ctx.crud('todos', {
+      list: () => import('./pages/UserTodosPage.vue')
+    }, {
+      parentRoute: 'jp_user',
+      foreignKey: 'userId',
+      label: 'Todos'
     })
   }
 }

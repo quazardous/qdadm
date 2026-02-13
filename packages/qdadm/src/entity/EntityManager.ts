@@ -1070,7 +1070,10 @@ export class EntityManager<T extends EntityRecord = EntityRecord> {
     const hasFilters =
       mergedParams.search ||
       Object.keys(mergedParams.filters || {}).length > 0
-    const canUseCache = !hasFilters || cacheSafe
+    // Disable cache when resolveStorage provides an endpoint override:
+    // the endpoint varies by routing context (e.g. parent chain), so
+    // caching would return stale data from a different context.
+    const canUseCache = (!hasFilters || cacheSafe) && !endpoint
 
     // Check TTL expiration before using cache
     if (this._isCacheExpired()) {

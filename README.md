@@ -172,9 +172,10 @@ ctx.block('books-list-header', { component: ExportButton })
 ## Docs
 
 - [QDADM_CREDO](packages/qdadm/QDADM_CREDO.md) - Philosophy & patterns
-- [Architecture](packages/qdadm/docs/architecture.md) - PAC pattern
-- [Extension](packages/qdadm/docs/extension.md) - Hooks, signals, zones
-- [Security](packages/qdadm/docs/security.md) - Permissions & roles
+- [CRUD Pages](docs/crud.md) - List, form, show, children
+- [Architecture](docs/architecture.md) - PAC pattern
+- [Extension](docs/extension.md) - Hooks, signals, zones
+- [Security](docs/security.md) - Permissions & roles
 
 ---
 

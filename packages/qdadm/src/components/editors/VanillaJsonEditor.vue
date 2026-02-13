@@ -160,6 +160,10 @@ onUnmounted(() => {
 </template>
 
 <style scoped>
+/*
+ * Only keep styles here that REQUIRE scoping (:deep, dynamic binding, component-specific overrides).
+ * Generic/reusable styles belong in src/styles/ partials (see _forms.scss, _cards.scss, etc.).
+ */
 .vanilla-json-editor {
   width: 100%;
   border: 1px solid var(--p-surface-300);

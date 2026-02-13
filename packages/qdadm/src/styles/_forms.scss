@@ -355,3 +355,80 @@
 .config-field {
   margin-bottom: $space-lg;
 }
+
+// =============================================================================
+// Form Actions (FormActions component)
+// =============================================================================
+
+.form-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 1.5rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--p-surface-200);
+}
+
+.form-actions-left {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.dirty-indicator {
+  color: var(--p-orange-500);
+  font-size: 0.5rem;
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+// =============================================================================
+// Field Invalid State (FormField component)
+// =============================================================================
+
+.field-invalid input,
+.field-invalid textarea,
+.field-invalid .p-inputtext,
+.field-invalid .p-select,
+.field-invalid .p-dropdown {
+  border-color: var(--p-red-500);
+}
+
+.field-invalid input:focus,
+.field-invalid textarea:focus,
+.field-invalid .p-inputtext:focus,
+.field-invalid .p-select:focus,
+.field-invalid .p-dropdown:focus {
+  box-shadow: 0 0 0 1px var(--p-red-500);
+}
+
+// =============================================================================
+// Form Page (FormPage component)
+// =============================================================================
+
+.form-page {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.form-error-message {
+  margin: 1rem 0;
+}
+
+.validation-summary {
+  margin-bottom: 1rem;
+}
+
+.validation-errors {
+  margin: 0;
+  padding-left: 1.5rem;
+
+  li {
+    margin: 0.25rem 0;
+  }
+}

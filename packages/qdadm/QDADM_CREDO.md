@@ -305,7 +305,7 @@ await signals.emit('auth:impersonate', { target: user, original: admin })
 await signals.emit('auth:impersonate:stop', { original: admin })
 ```
 
-See [Security docs](./docs/security.md) for full auth flow.
+See [Security docs](../../docs/security.md) for full auth flow.
 
 ## Summary
 
@@ -325,14 +325,14 @@ See [Security docs](./docs/security.md) for full auth flow.
 
 | Doc | Topic |
 |-----|-------|
-| [Architecture](./docs/architecture.md) | PAC pattern, layer separation, no-template-ish |
-| [Extension](./docs/extension.md) | Overview of all extension mechanisms |
-| [Modules](./docs/modules.md) | Class-based modules with lifecycle hooks |
-| [Zones](./docs/zones.md) | UI composition via named slots |
-| [Signals](./docs/signals.md) | Event-driven cross-module communication, EventRouter |
-| [Hooks](./docs/hooks.md) | Drupal-inspired lifecycle hooks |
-| [Deferred](./docs/deferred.md) | Async coordination, warmup |
-| [Security](./docs/security.md) | Scope vs silo, AuthAdapter |
+| [CRUD Pages](../../docs/crud.md) | List, form, show, children, recipes |
+| [Architecture](../../docs/architecture.md) | PAC pattern, layer separation, no-template-ish |
+| [Extension](../../docs/extension.md) | Overview of all extension mechanisms |
+| [Zones](../../docs/zones.md) | UI composition via named slots |
+| [Signals](../../docs/signals.md) | Event-driven cross-module communication, EventRouter |
+| [Hooks](../../docs/hooks.md) | Drupal-inspired lifecycle hooks |
+| [Deferred](../../docs/deferred.md) | Async coordination, warmup |
+| [Security](../../docs/security.md) | Scope vs silo, AuthAdapter |
 
 ## References
 

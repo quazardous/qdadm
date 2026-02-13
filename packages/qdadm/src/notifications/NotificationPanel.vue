@@ -151,6 +151,10 @@ function formatTime(timestamp: number): string {
 </template>
 
 <style scoped>
+/*
+ * Only keep styles here that REQUIRE scoping (:deep, dynamic binding, component-specific overrides).
+ * Generic/reusable styles belong in src/styles/ partials (see _forms.scss, _cards.scss, etc.).
+ */
 .notification-panel {
   position: fixed;
   left: calc(var(--fad-sidebar-width, 15rem) + 0.375rem);

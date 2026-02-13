@@ -131,7 +131,7 @@ ctx.entity('loans', new EntityManager({
 // Result: /books/:bookId/loans route, auto-filtered by book_id
 ```
 
-When the child API uses a **nested endpoint** (e.g. `/api/books/:id/loans` instead of `/api/loans?book_id=xxx`), override `resolveStorage()` in the child manager to build the URL from `parentChain`. See [extension.md — Multi-Storage](../packages/qdadm/docs/extension.md#multi-storage--multi-endpoint) for return value options and examples.
+When the child API uses a **nested endpoint** (e.g. `/api/books/:id/loans` instead of `/api/loans?book_id=xxx`), override `resolveStorage()` in the child manager to build the URL from `parentChain`. See [extension.md — Multi-Storage](./extension.md#multi-storage--multi-endpoint) for return value options and examples.
 
 ### children (inverse of parent)
 
@@ -165,6 +165,12 @@ EntitiesPanel shows all relations:
 | Entity auth | `demo/src/adapters/entityAuthAdapter.js` | Permissions |
 | User impersonation | `demo/src/components/UserImpersonator.vue` | Signal-driven |
 | Module template | `demo/src/modules/_template/` | Copy to create new |
+
+## CRUD Page Patterns
+
+See [crud.md](./crud.md) for complete documentation: list, form, show, children, field definition, severity maps, and recipes.
+
+**Key gotcha:** `FormPage` does NOT auto-render fields. The `#fields` slot is **required** — iterate `form.fields.value` with `FormField` + `FormInput`.
 
 ## Context Methods (KernelContext)
 
@@ -262,9 +268,10 @@ AuthCollector shows: user, token, permissions, role hierarchy, impersonation eve
 | Topic | File |
 |-------|------|
 | Philosophy | `packages/qdadm/QDADM_CREDO.md` |
-| Architecture (PAC) | `packages/qdadm/docs/architecture.md` |
-| Extension overview | `packages/qdadm/docs/extension.md` |
-| Hooks deep dive | `packages/qdadm/docs/hooks.md` |
-| Signals deep dive | `packages/qdadm/docs/signals.md` |
-| Zones deep dive | `packages/qdadm/docs/zones.md` |
-| Security | `packages/qdadm/docs/security.md` |
+| CRUD Pages | `docs/crud.md` |
+| Architecture (PAC) | `docs/architecture.md` |
+| Extension overview | `docs/extension.md` |
+| Hooks deep dive | `docs/hooks.md` |
+| Signals deep dive | `docs/signals.md` |
+| Zones deep dive | `docs/zones.md` |
+| Security | `docs/security.md` |

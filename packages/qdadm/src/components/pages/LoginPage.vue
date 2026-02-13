@@ -266,6 +266,10 @@ async function handleLogin(): Promise<void> {
 </template>
 
 <style scoped>
+/*
+ * Only keep styles here that REQUIRE scoping (:deep, dynamic binding, component-specific overrides).
+ * Generic/reusable styles belong in src/styles/ partials (see _forms.scss, _cards.scss, etc.).
+ */
 .qdadm-login-page {
   min-height: 100vh;
   display: flex;

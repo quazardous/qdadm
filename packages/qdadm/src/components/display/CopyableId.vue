@@ -57,6 +57,10 @@ async function copyToClipboard(): Promise<void> {
 </template>
 
 <style scoped>
+/*
+ * Only keep styles here that REQUIRE scoping (:deep, dynamic binding, component-specific overrides).
+ * Generic/reusable styles belong in src/styles/ partials (see _forms.scss, _cards.scss, etc.).
+ */
 .copyable-id {
   display: inline-flex;
   align-items: center;

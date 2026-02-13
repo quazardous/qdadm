@@ -96,8 +96,8 @@ Options: `transformRequest`, `transformResponse`, `responseFormat`, `clientSideP
 | Doc | Purpose |
 |-----|---------|
 | [QDADM_CREDO](QDADM_CREDO.md) | Philosophy, patterns, concepts |
-| [Architecture](docs/architecture.md) | PAC pattern, layers |
-| [Extension](docs/extension.md) | Hooks, signals, zones |
+| [Architecture](../../docs/architecture.md) | PAC pattern, layers |
+| [Extension](../../docs/extension.md) | Hooks, signals, zones |
 
 ## Peer Dependencies
 

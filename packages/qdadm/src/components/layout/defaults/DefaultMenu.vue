@@ -127,6 +127,10 @@ watch(() => route?.path, () => {
 </template>
 
 <style scoped>
+/*
+ * Only keep styles here that REQUIRE scoping (:deep, dynamic binding, component-specific overrides).
+ * Generic/reusable styles belong in src/styles/ partials (see _forms.scss, _cards.scss, etc.).
+ */
 /* DefaultMenu uses sidebar-nav class to inherit global nav-item styles from _sidebar.scss
    Only component-specific styles remain here */
 

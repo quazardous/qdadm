@@ -169,6 +169,8 @@ export interface CrudOptions {
     label?: string
   }
   routePrefix?: string
+  /** Override the URL path segment (defaults to entity name). Useful for camelCase entities like 'jobTasks' → 'tasks'. */
+  pathSegment?: string
   parentRoute?: string
   foreignKey?: string
   label?: string
@@ -503,7 +505,8 @@ export class KernelContext {
     const idParam = manager?.idField || 'id'
 
     // Handle parent route configuration
-    let basePath = entity
+    const urlSegment = options.pathSegment || this._toKebab(entity)
+    let basePath = urlSegment
     let parentConfig: ParentConfig | null = null
     let parentRoutePrefix: string | null = null
 
@@ -525,7 +528,7 @@ export class KernelContext {
         // e.g., books/:bookId/loans
         const parentBasePath =
           parentRoute.path.replace(/\/(create|:.*)?$/, '') || parentEntityName
-        basePath = `${parentBasePath}/:${parentIdParam}/${entity}`
+        basePath = `${parentBasePath}/:${parentIdParam}/${urlSegment}`
 
         // Build parent config for route meta (only if parent entity is defined)
         if (parentEntityName) {
@@ -734,6 +737,13 @@ export class KernelContext {
     }
     if (plural.endsWith('s') && !plural.endsWith('ss')) return plural.slice(0, -1)
     return plural
+  }
+
+  /**
+   * Convert camelCase to kebab-case (e.g. 'botTasks' → 'bot-tasks')
+   */
+  private _toKebab(str: string): string {
+    return str.replace(/([a-z])([A-Z])/g, '$1-$2').toLowerCase()
   }
 
   /**

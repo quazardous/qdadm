@@ -258,34 +258,3 @@ function onGuardStay(): void {
     />
   </div>
 </template>
-
-<style scoped>
-.form-page {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-}
-
-.loading-state {
-  display: flex;
-  justify-content: center;
-  padding: 3rem;
-}
-
-.form-error-message {
-  margin: 1rem 0;
-}
-
-.validation-summary {
-  margin-bottom: 1rem;
-}
-
-.validation-errors {
-  margin: 0;
-  padding-left: 1.5rem;
-}
-
-.validation-errors li {
-  margin: 0.25rem 0;
-}
-</style>

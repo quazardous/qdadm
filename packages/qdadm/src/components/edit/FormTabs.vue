@@ -63,6 +63,10 @@ function onTabChange(value: string | number): void {
 </template>
 
 <style scoped>
+/*
+ * Only keep styles here that REQUIRE scoping (:deep, dynamic binding, component-specific overrides).
+ * Generic/reusable styles belong in src/styles/ partials (see _forms.scss, _cards.scss, etc.).
+ */
 .form-tabs {
   margin-top: 1rem;
 }

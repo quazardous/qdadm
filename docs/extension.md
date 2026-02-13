@@ -533,4 +533,4 @@ const booksManager = new EntityManager({
 
 - [Drupal Hooks](https://www.drupal.org/docs/develop/creating-modules/understanding-hooks)
 - [Twig Template Inheritance](https://twig.symfony.com/doc/3.x/tags/extends.html)
-- [QuarKernel](../../quarkernel/) (signal bus library)
+- [QuarKernel](../packages/quarkernel/) (signal bus library)

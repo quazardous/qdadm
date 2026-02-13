@@ -65,32 +65,3 @@ const autoDisplay = computed(() => props.field !== null)
     </div>
   </div>
 </template>
-
-<style scoped>
-.show-field {
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-}
-
-.show-field--horizontal {
-  flex-direction: row;
-  align-items: flex-start;
-  gap: 1rem;
-}
-
-.show-field__label {
-  font-weight: 600;
-  color: var(--p-text-muted-color, #6c757d);
-  font-size: 0.875rem;
-}
-
-.show-field--horizontal .show-field__label {
-  padding-top: 0.125rem;
-}
-
-.show-field__value {
-  color: var(--p-text-color, #1e293b);
-  line-height: 1.5;
-}
-</style>

@@ -1,0 +1,241 @@
+/**
+ * Card Grid Systems
+ * CardsGrid and RichCardsGrid layouts and stat cards
+ */
+
+@use 'variables' as *;
+
+// =============================================================================
+// Cards Grid (simple stat cards)
+// =============================================================================
+
+.cards-grid {
+  display: grid;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+
+  &--cols-auto {
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  }
+
+  &--cols-2 {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  &--cols-3 {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  &--cols-4 {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+.stat-card,
+.card-custom {
+  background: var(--p-surface-0);
+  border: 1px solid var(--p-surface-200);
+  border-radius: 0.5rem;
+  padding: 1.25rem;
+}
+
+.stat-card {
+  text-align: center;
+
+  &--clickable {
+    cursor: pointer;
+    transition: border-color 0.2s, box-shadow 0.2s;
+
+    &:hover {
+      border-color: var(--p-primary-300);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    }
+  }
+}
+
+.stat-value {
+  font-size: 2rem;
+  font-weight: 600;
+  color: var(--p-primary-500);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+
+  &--success {
+    color: var(--p-green-500);
+  }
+
+  &--danger {
+    color: var(--p-red-500);
+  }
+
+  &--warning {
+    color: var(--p-orange-500);
+  }
+
+  &--info {
+    color: var(--p-blue-500);
+  }
+}
+
+.stat-icon {
+  font-size: 1.5rem;
+}
+
+.stat-label {
+  font-size: 0.875rem;
+  color: var(--p-surface-600);
+  margin-top: 0.25rem;
+}
+
+@media (max-width: 768px) {
+  .cards-grid--cols-3,
+  .cards-grid--cols-4 {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 480px) {
+  .cards-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+// =============================================================================
+// Rich Cards Grid
+// =============================================================================
+
+.rich-cards-grid {
+  display: grid;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+
+  &--cols-auto {
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  }
+
+  &--cols-2 {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  &--cols-3 {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  &--cols-4 {
+    grid-template-columns: repeat(4, 1fr);
+  }
+
+  &--cols-5 {
+    grid-template-columns: repeat(5, 1fr);
+  }
+
+  &--cols-6 {
+    grid-template-columns: repeat(6, 1fr);
+  }
+}
+
+.rich-card {
+  background: var(--p-surface-0);
+  border: 1px solid var(--p-surface-200);
+  border-radius: 0.5rem;
+  padding: 1.25rem;
+
+  &--clickable {
+    cursor: pointer;
+    transition: border-color 0.2s, box-shadow 0.2s, transform 0.2s;
+
+    &:hover {
+      border-color: var(--p-primary-300);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+      transform: translateY(-2px);
+    }
+  }
+
+  // Severity variants
+  &--success .rich-card-value {
+    color: var(--p-green-600);
+  }
+
+  &--success .rich-card-icon {
+    color: var(--p-green-500);
+  }
+
+  &--danger .rich-card-value {
+    color: var(--p-red-600);
+  }
+
+  &--danger .rich-card-icon {
+    color: var(--p-red-500);
+  }
+
+  &--warning .rich-card-value {
+    color: var(--p-orange-600);
+  }
+
+  &--warning .rich-card-icon {
+    color: var(--p-orange-500);
+  }
+
+  &--info .rich-card-value {
+    color: var(--p-blue-600);
+  }
+
+  &--info .rich-card-icon {
+    color: var(--p-blue-500);
+  }
+}
+
+.rich-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.75rem;
+}
+
+.rich-card-title {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--p-surface-600);
+}
+
+.rich-card-icon {
+  font-size: 1.25rem;
+  color: var(--p-surface-400);
+}
+
+.rich-card-value {
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--p-surface-900);
+  line-height: 1.2;
+}
+
+.rich-card-subtitle {
+  font-size: 0.8rem;
+  color: var(--p-surface-500);
+  margin-top: 0.25rem;
+}
+
+@media (max-width: 1024px) {
+  .rich-cards-grid--cols-5,
+  .rich-cards-grid--cols-6 {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (max-width: 768px) {
+  .rich-cards-grid--cols-3,
+  .rich-cards-grid--cols-4,
+  .rich-cards-grid--cols-5,
+  .rich-cards-grid--cols-6 {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 480px) {
+  .rich-cards-grid {
+    grid-template-columns: 1fr;
+  }
+}

@@ -73,3 +73,23 @@
     display: none;
   }
 }
+
+// InfoBanner content layout
+.info-banner-content {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+}
+
+.info-banner-icon {
+  font-size: 1.125rem;
+  flex-shrink: 0;
+}
+
+.info-banner-text {
+  flex: 1;
+
+  strong {
+    font-weight: 600;
+  }
+}

@@ -282,6 +282,10 @@ onMounted(async () => {
 </template>
 
 <style scoped>
+/*
+ * Only keep styles here that REQUIRE scoping (:deep, dynamic binding, component-specific overrides).
+ * Generic/reusable styles belong in src/styles/ partials (see _forms.scss, _cards.scss, etc.).
+ */
 .scope-editor {
   border: 1px solid var(--p-surface-200);
   border-radius: 0.5rem;

@@ -43,6 +43,10 @@ const features = inject<Features>('qdadmFeatures', { poweredBy: true })
 </template>
 
 <style scoped>
+/*
+ * Only keep styles here that REQUIRE scoping (:deep, dynamic binding, component-specific overrides).
+ * Generic/reusable styles belong in src/styles/ partials (see _forms.scss, _cards.scss, etc.).
+ */
 .default-footer {
   padding: 0.75rem 1rem;
   border-top: 1px solid var(--p-surface-700, #334155);

@@ -73,31 +73,3 @@ const emit = defineEmits<{
     />
   </div>
 </template>
-
-<style scoped>
-.form-actions {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-top: 1.5rem;
-  padding-top: 1.5rem;
-  border-top: 1px solid var(--p-surface-200);
-}
-
-.form-actions-left {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.dirty-indicator {
-  color: var(--p-orange-500);
-  font-size: 0.5rem;
-  animation: pulse 2s infinite;
-}
-
-@keyframes pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.4; }
-}
-</style>
