@@ -87,6 +87,7 @@ export class EntityManager<T extends EntityRecord = EntityRecord> {
   protected _asymmetric: boolean
   protected _detailCache: DetailCacheState<T> = { items: new Map() }
   protected _detailCacheTtlMs: number
+  protected _detailCacheMaxSize: number
   protected _detailInflight: Map<string, Promise<T>> = new Map()
   protected _readOnly: boolean
   protected _warmup: boolean
@@ -154,6 +155,7 @@ export class EntityManager<T extends EntityRecord = EntityRecord> {
       cacheTtlMs = null,
       asymmetric = false,
       detailCacheTtlMs = 0,
+      detailCacheMaxSize = 0,
       readOnly = false,
       warmup = true,
       authSensitive,
@@ -183,6 +185,7 @@ export class EntityManager<T extends EntityRecord = EntityRecord> {
     this._cacheTtlMs = cacheTtlMs
     this._asymmetric = asymmetric
     this._detailCacheTtlMs = detailCacheTtlMs
+    this._detailCacheMaxSize = detailCacheMaxSize
     this._readOnly = readOnly
     this._warmup = warmup
     this._authSensitive = authSensitive ?? this._getStorageRequiresAuth()
@@ -874,11 +877,13 @@ export interface EntityManager<T extends EntityRecord = EntityRecord> {
   readonly warmupEnabled: boolean
   readonly isAsymmetric: boolean
   readonly effectiveDetailCacheTtlMs: number
+  readonly effectiveDetailCacheMaxSize: number
   readonly isDetailCacheEnabled: boolean
 
   // --- Cache methods ---
   /** @internal */ _isCacheExpired(): boolean
   /** @internal */ _isDetailCacheEntryExpired(loadedAt: number): boolean
+  /** @internal */ _evictDetailCache(): void
   invalidateDetailCache(): void
   /** @internal */ _getStorageRequiresAuth(): boolean
   /** @internal */ _parseSearchFields(overrideSearchFields?: string[] | null): { ownFields: string[]; parentFields: Record<string, string[]> }

@@ -398,6 +398,7 @@ describe('EntityManager - Asymmetric Mode', () => {
         enabled: true,
         ttlMs: 60000,
         size: 0,
+        maxSize: 0,
       })
     })
 
@@ -421,6 +422,70 @@ describe('EntityManager - Asymmetric Mode', () => {
 
       const info = manager.getCacheInfo()
       expect(info.detailCache.size).toBe(2)
+    })
+  })
+
+  describe('detail cache max size', () => {
+    it('defaults to unlimited (0)', () => {
+      manager = new EntityManager({
+        name: 'items', storage, asymmetric: true, detailCacheTtlMs: -1,
+      })
+      expect(manager.effectiveDetailCacheMaxSize).toBe(0)
+    })
+
+    it('can be set via options', () => {
+      manager = new EntityManager({
+        name: 'items', storage, asymmetric: true, detailCacheTtlMs: -1,
+        detailCacheMaxSize: 2,
+      })
+      expect(manager.effectiveDetailCacheMaxSize).toBe(2)
+    })
+
+    it('evicts oldest entries when max size exceeded', async () => {
+      manager = new EntityManager({
+        name: 'items', storage, asymmetric: true, detailCacheTtlMs: -1,
+        detailCacheMaxSize: 2,
+      })
+
+      await manager.get(1)
+      await manager.get(2)
+      await manager.get(3) // Should evict item 1
+
+      const info = manager.getCacheInfo()
+      expect(info.detailCache.size).toBe(2)
+      expect(info.detailCache.maxSize).toBe(2)
+
+      // Item 1 evicted: must fetch again
+      await manager.get(1)
+      expect(storage.getCallCount).toBe(4) // 1+2+3 + re-fetch 1
+
+      // Item 3 still cached
+      await manager.get(3)
+      expect(storage.getCallCount).toBe(4) // No extra fetch
+    })
+
+    it('does not evict when maxSize=0 (unlimited)', async () => {
+      manager = new EntityManager({
+        name: 'items', storage, asymmetric: true, detailCacheTtlMs: -1,
+        detailCacheMaxSize: 0,
+      })
+
+      await manager.get(1)
+      await manager.get(2)
+      await manager.get(3)
+
+      const info = manager.getCacheInfo()
+      expect(info.detailCache.size).toBe(3)
+    })
+
+    it('reports maxSize in getCacheInfo()', () => {
+      manager = new EntityManager({
+        name: 'items', storage, asymmetric: true, detailCacheTtlMs: -1,
+        detailCacheMaxSize: 50,
+      })
+
+      const info = manager.getCacheInfo()
+      expect(info.detailCache.maxSize).toBe(50)
     })
   })
 

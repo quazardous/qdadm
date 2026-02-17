@@ -169,6 +169,7 @@ export interface CacheInfo {
     enabled: boolean
     ttlMs: number
     size: number
+    maxSize: number
   } | null
 }
 
@@ -217,6 +218,8 @@ export interface EntityManagerOptions<T extends EntityRecord = EntityRecord> {
   asymmetric?: boolean
   /** Detail cache TTL in milliseconds (0=disabled (default), -1=infinite, >0=TTL). Only used when asymmetric=true. */
   detailCacheTtlMs?: number
+  /** Detail cache max size (0=unlimited (default), >0=max items). Oldest entries are evicted when exceeded. Only used when asymmetric=true. */
+  detailCacheMaxSize?: number
   readOnly?: boolean
   warmup?: boolean
   authSensitive?: boolean
@@ -258,6 +261,7 @@ export type EntityManagerInternal<T extends EntityRecord = EntityRecord> = Entit
   _asymmetric: boolean
   _detailCache: DetailCacheState<T>
   _detailCacheTtlMs: number
+  _detailCacheMaxSize: number
   _detailInflight: Map<string, Promise<T>>
   _orchestrator: Orchestrator | null
   _parents: Record<string, ParentConfig>

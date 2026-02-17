@@ -38,6 +38,7 @@ interface DetailCacheInfo {
   enabled: boolean
   ttlMs: number
   size: number
+  maxSize: number
 }
 
 interface CacheInfo {
@@ -455,7 +456,7 @@ function formatExpiresIn(expiresAt: number | null | undefined): string {
         <div v-if="entity.cache.detailCache" class="entity-row">
           <span class="entity-key">Detail cache:</span>
           <span class="entity-value">
-            {{ entity.cache.detailCache.size }} items
+            {{ entity.cache.detailCache.size }}<template v-if="entity.cache.detailCache.maxSize > 0">/{{ entity.cache.detailCache.maxSize }}</template> items
             <span class="entity-cache-ttl">
               TTL: {{ formatTtl(entity.cache.detailCache.ttlMs) }}
             </span>

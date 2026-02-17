@@ -258,6 +258,7 @@ export function applyCrudMethods(EntityManagerClass: { prototype: any }): void {
         // Store in detail cache
         if (this.isDetailCacheEnabled) {
           this._detailCache.items.set(idStr, { item: result, loadedAt: Date.now() })
+          this._evictDetailCache()
         }
 
         return result

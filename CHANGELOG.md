@@ -3,6 +3,12 @@
 All notable changes to qdadm will be documented in this file.
 This is not a commit log. Keep entries simple, user-focused.
 
+## [1.11.1] - 2026-02-17
+
+### Added
+- **`detailCacheMaxSize` option**: Limit the number of items in the detail cache (0=unlimited, >0=max items); oldest entries (by `loadedAt`) are evicted when the limit is exceeded
+- **Debug panel**: Detail cache row now shows `size/maxSize` when a limit is configured
+
 ## [1.11.0] - 2026-02-17
 
 ### Added

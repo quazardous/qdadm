@@ -52,6 +52,7 @@ export interface DetailCacheInfo {
   enabled: boolean
   ttlMs: number
   size: number
+  maxSize: number
 }
 
 export interface CacheInfo {
@@ -374,7 +375,7 @@ export class EntitiesCollector extends Collector<EntityEntry> {
         expiresAt?: number | null
         expired?: boolean
         asymmetric?: boolean
-        detailCache?: { enabled: boolean; ttlMs: number; size: number } | null
+        detailCache?: { enabled: boolean; ttlMs: number; size: number; maxSize: number } | null
       }
       getStats?: () => StatsInfo
       getRequiredFields?: () => string[]

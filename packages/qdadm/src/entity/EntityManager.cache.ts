@@ -123,6 +123,13 @@ export function applyCacheMethods(EntityManagerClass: { prototype: any }): void 
     configurable: true,
   })
 
+  Object.defineProperty(proto, 'effectiveDetailCacheMaxSize', {
+    get(this: Self): number {
+      return this._detailCacheMaxSize
+    },
+    configurable: true,
+  })
+
   Object.defineProperty(proto, 'isDetailCacheEnabled', {
     get(this: Self): boolean {
       return this.isAsymmetric && this._detailCacheTtlMs !== 0
@@ -145,6 +152,20 @@ export function applyCacheMethods(EntityManagerClass: { prototype: any }): void 
     if (ttl < 0) return false // -1 = infinite
     if (ttl === 0) return true // 0 = disabled
     return Date.now() - loadedAt > ttl
+  }
+
+  proto._evictDetailCache = function (this: Self): void {
+    const maxSize = this._detailCacheMaxSize
+    if (maxSize <= 0) return // 0 = unlimited
+    const items = this._detailCache.items
+    if (items.size <= maxSize) return
+
+    // Evict oldest entries by loadedAt
+    const entries = [...items.entries()].sort((a, b) => a[1].loadedAt - b[1].loadedAt)
+    const toRemove = entries.length - maxSize
+    for (let i = 0; i < toRemove; i++) {
+      items.delete(entries[i][0])
+    }
   }
 
   proto._getStorageRequiresAuth = function (this: Self): boolean {
@@ -501,6 +522,7 @@ export function applyCacheMethods(EntityManagerClass: { prototype: any }): void 
             enabled: true,
             ttlMs: this.effectiveDetailCacheTtlMs,
             size: this._detailCache.items.size,
+            maxSize: this._detailCacheMaxSize,
           }
         : null,
     }
