@@ -212,6 +212,8 @@ export function applyQueryMethods(EntityManagerClass: { prototype: any }): void 
       delete: 0,
       cacheHits: 0,
       cacheMisses: 0,
+      detailCacheHits: 0,
+      detailCacheMisses: 0,
       maxItemsSeen: 0,
       maxTotal: 0,
     }

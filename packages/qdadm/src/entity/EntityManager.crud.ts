@@ -212,10 +212,71 @@ export function applyCrudMethods(EntityManagerClass: { prototype: any }): void {
     }
 
     const cache = this._cache
+    const idStr = String(id)
+
+    // ── Asymmetric mode: skip list cache, use detail cache ──
+    if (this.isAsymmetric) {
+      // Check detail cache first
+      if (this.isDetailCacheEnabled) {
+        const entry = this._detailCache.items.get(idStr)
+        if (entry && !this._isDetailCacheEntryExpired(entry.loadedAt)) {
+          stats.detailCacheHits++
+          return { ...entry.item }
+        }
+      }
+
+      // Deduplicate concurrent get() calls for the same ID
+      const inflight = this._detailInflight.get(idStr)
+      if (inflight) {
+        stats.detailCacheHits++
+        const result = await inflight
+        return { ...result }
+      }
+
+      // Fetch from storage
+      stats.detailCacheMisses++
+      if (!storage) {
+        throw new Error(`[EntityManager:${this.name}] get() not implemented`)
+      }
+
+      const fetchPromise = (async () => {
+        let result: any
+        if (endpoint && storage.request) {
+          const response = (await storage.request('GET', `${endpoint}/${id}`, {
+            context,
+          })) as { data?: any }
+          result = response.data ?? response
+        } else {
+          result = await storage.get(id, context)
+          if (!result) {
+            throw new Error(
+              `[EntityManager:${this.name}] Entity not found: ${id}`
+            )
+          }
+        }
+
+        // Store in detail cache
+        if (this.isDetailCacheEnabled) {
+          this._detailCache.items.set(idStr, { item: result, loadedAt: Date.now() })
+        }
+
+        return result
+      })()
+
+      // Register inflight promise
+      this._detailInflight.set(idStr, fetchPromise)
+      try {
+        const result = await fetchPromise
+        return result
+      } finally {
+        this._detailInflight.delete(idStr)
+      }
+    }
+
+    // ── Symmetric mode (default): try list cache ──
 
     // Try cache first if valid and complete
     if (cache.valid && !this.overflow) {
-      const idStr = String(id)
       const cached = cache.items.find(
         (item: any) => String(item[this.idField]) === idStr
       )
@@ -263,6 +324,41 @@ export function applyCrudMethods(EntityManagerClass: { prototype: any }): void {
 
     const stats = this._stats
     const cache = this._cache
+
+    // ── Asymmetric mode: check detail cache, fetch missing via get() ──
+    if (this.isAsymmetric) {
+      const found: any[] = []
+      const missingIds: Array<string | number> = []
+
+      if (this.isDetailCacheEnabled) {
+        for (const id of ids) {
+          const entry = this._detailCache.items.get(String(id))
+          if (entry && !this._isDetailCacheEntryExpired(entry.loadedAt)) {
+            stats.detailCacheHits++
+            found.push({ ...entry.item })
+          } else {
+            missingIds.push(id)
+          }
+        }
+      } else {
+        missingIds.push(...ids)
+      }
+
+      // Fetch missing via individual get() calls (which populate detail cache)
+      if (missingIds.length > 0) {
+        const fetched = await Promise.all(
+          missingIds.map((id) => this.get(id, context).catch((): null => null))
+        )
+        // get() already counted stats, so just merge results
+        for (const item of fetched) {
+          if (item !== null) found.push(item)
+        }
+      }
+
+      return found
+    }
+
+    // ── Symmetric mode (default): try list cache ──
 
     // Try cache first if valid and complete
     if (cache.valid && !this.overflow) {

@@ -29,6 +29,21 @@ export interface CacheState<T> {
 }
 
 /**
+ * Detail cache entry for asymmetric entities (full detail per item)
+ */
+export interface DetailCacheEntry<T> {
+  item: T
+  loadedAt: number
+}
+
+/**
+ * Detail cache state for asymmetric entities
+ */
+export interface DetailCacheState<T> {
+  items: Map<string, DetailCacheEntry<T>>
+}
+
+/**
  * Operation stats for debugging
  */
 export interface OperationStats {
@@ -39,6 +54,8 @@ export interface OperationStats {
   delete: number
   cacheHits: number
   cacheMisses: number
+  detailCacheHits: number
+  detailCacheMisses: number
   maxItemsSeen: number
   maxTotal: number
 }
@@ -145,6 +162,14 @@ export interface CacheInfo {
   expiresAt: number | null
   /** Whether the cache has expired based on TTL */
   expired: boolean
+  /** Whether the entity uses asymmetric mode (list vs detail separation) */
+  asymmetric: boolean
+  /** Detail cache info (only populated when asymmetric + detail cache enabled) */
+  detailCache: {
+    enabled: boolean
+    ttlMs: number
+    size: number
+  } | null
 }
 
 /**
@@ -188,6 +213,10 @@ export interface EntityManagerOptions<T extends EntityRecord = EntityRecord> {
   localFilterThreshold?: number | null
   /** Cache TTL in milliseconds (0=disabled, -1=infinite, >0=TTL). Overrides global, overridden by storage. */
   cacheTtlMs?: number | null
+  /** Asymmetric mode: list() and get() return different structures. get() skips list cache. */
+  asymmetric?: boolean
+  /** Detail cache TTL in milliseconds (0=disabled (default), -1=infinite, >0=TTL). Only used when asymmetric=true. */
+  detailCacheTtlMs?: number
   readOnly?: boolean
   warmup?: boolean
   authSensitive?: boolean
@@ -226,6 +255,10 @@ export type EntityManagerInternal<T extends EntityRecord = EntityRecord> = Entit
   _cache: CacheState<T>
   _cacheLoading: Promise<boolean> | null
   _cacheTtlMs: number | null
+  _asymmetric: boolean
+  _detailCache: DetailCacheState<T>
+  _detailCacheTtlMs: number
+  _detailInflight: Map<string, Promise<T>>
   _orchestrator: Orchestrator | null
   _parents: Record<string, ParentConfig>
   _parent: ParentConfig | null

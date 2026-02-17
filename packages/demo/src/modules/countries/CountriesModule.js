@@ -96,7 +96,9 @@ export class CountriesModule extends Module {
       },
       idField: 'cca3',
       readOnly: true,
-      localFilterThreshold: 0,
+      asymmetric: true, // list and get return different fields
+      localFilterThreshold: 300,
+      detailCacheTtlMs: 300000,
       fields: {
         cca3: { type: 'text', label: 'Code', readOnly: true },
         name: { type: 'object', label: 'Name', readOnly: true },

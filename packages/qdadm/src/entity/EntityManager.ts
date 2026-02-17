@@ -24,6 +24,7 @@ import type { QueryObject } from '../query/QueryExecutor'
 // Import types from dedicated types file
 import type {
   CacheState,
+  DetailCacheState,
   OperationStats,
   ResolvedStorage,
   StorageResolution,
@@ -83,6 +84,10 @@ export class EntityManager<T extends EntityRecord = EntityRecord> {
 
   localFilterThreshold: number | null
   protected _cacheTtlMs: number | null
+  protected _asymmetric: boolean
+  protected _detailCache: DetailCacheState<T> = { items: new Map() }
+  protected _detailCacheTtlMs: number
+  protected _detailInflight: Map<string, Promise<T>> = new Map()
   protected _readOnly: boolean
   protected _warmup: boolean
   protected _authSensitive: boolean
@@ -122,6 +127,8 @@ export class EntityManager<T extends EntityRecord = EntityRecord> {
     delete: 0,
     cacheHits: 0,
     cacheMisses: 0,
+    detailCacheHits: 0,
+    detailCacheMisses: 0,
     maxItemsSeen: 0,
     maxTotal: 0,
   }
@@ -145,6 +152,8 @@ export class EntityManager<T extends EntityRecord = EntityRecord> {
       fields = {},
       localFilterThreshold = null,
       cacheTtlMs = null,
+      asymmetric = false,
+      detailCacheTtlMs = 0,
       readOnly = false,
       warmup = true,
       authSensitive,
@@ -172,6 +181,8 @@ export class EntityManager<T extends EntityRecord = EntityRecord> {
 
     this.localFilterThreshold = localFilterThreshold
     this._cacheTtlMs = cacheTtlMs
+    this._asymmetric = asymmetric
+    this._detailCacheTtlMs = detailCacheTtlMs
     this._readOnly = readOnly
     this._warmup = warmup
     this._authSensitive = authSensitive ?? this._getStorageRequiresAuth()
@@ -861,9 +872,14 @@ export interface EntityManager<T extends EntityRecord = EntityRecord> {
   readonly isCacheEnabled: boolean
   readonly overflow: boolean
   readonly warmupEnabled: boolean
+  readonly isAsymmetric: boolean
+  readonly effectiveDetailCacheTtlMs: number
+  readonly isDetailCacheEnabled: boolean
 
   // --- Cache methods ---
   /** @internal */ _isCacheExpired(): boolean
+  /** @internal */ _isDetailCacheEntryExpired(loadedAt: number): boolean
+  invalidateDetailCache(): void
   /** @internal */ _getStorageRequiresAuth(): boolean
   /** @internal */ _parseSearchFields(overrideSearchFields?: string[] | null): { ownFields: string[]; parentFields: Record<string, string[]> }
   /** @internal */ _resolveSearchFields(items: T[]): Promise<void>

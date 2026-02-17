@@ -102,6 +102,34 @@ export function applyCacheMethods(EntityManagerClass: { prototype: any }): void 
     configurable: true,
   })
 
+  // ============ ASYMMETRIC MODE ============
+
+  Object.defineProperty(proto, 'isAsymmetric', {
+    get(this: Self): boolean {
+      if (this._asymmetric) return true
+      // Fallback to storage capabilities
+      const caps =
+        (this.storage as unknown as { capabilities?: StorageCapabilities })?.capabilities ||
+        (this.storage?.constructor as { capabilities?: StorageCapabilities })?.capabilities
+      return caps?.asymmetric ?? false
+    },
+    configurable: true,
+  })
+
+  Object.defineProperty(proto, 'effectiveDetailCacheTtlMs', {
+    get(this: Self): number {
+      return this._detailCacheTtlMs
+    },
+    configurable: true,
+  })
+
+  Object.defineProperty(proto, 'isDetailCacheEnabled', {
+    get(this: Self): boolean {
+      return this.isAsymmetric && this._detailCacheTtlMs !== 0
+    },
+    configurable: true,
+  })
+
   // ============ INTERNAL METHODS ============
 
   proto._isCacheExpired = function (this: Self): boolean {
@@ -110,6 +138,13 @@ export function applyCacheMethods(EntityManagerClass: { prototype: any }): void 
     const ttl = this.effectiveCacheTtlMs
     if (ttl <= 0) return false // 0 = disabled (handled elsewhere), -1 = infinite
     return Date.now() - cache.loadedAt > ttl
+  }
+
+  proto._isDetailCacheEntryExpired = function (this: Self, loadedAt: number): boolean {
+    const ttl = this.effectiveDetailCacheTtlMs
+    if (ttl < 0) return false // -1 = infinite
+    if (ttl === 0) return true // 0 = disabled
+    return Date.now() - loadedAt > ttl
   }
 
   proto._getStorageRequiresAuth = function (this: Self): boolean {
@@ -274,6 +309,21 @@ export function applyCacheMethods(EntityManagerClass: { prototype: any }): void 
       )
     }
 
+    // Listen for own entity data changes to invalidate detail cache
+    if (this.isAsymmetric && this.isDetailCacheEnabled) {
+      cleanups.push(
+        signals.on(
+          'entity:data-invalidate',
+          (event: { name: string; data: unknown }) => {
+            const { entity } = (event.data || {}) as { entity?: string }
+            if (entity === this.name) {
+              this.invalidateDetailCache()
+            }
+          }
+        )
+      )
+    }
+
     // Listen for datalayer invalidation
     cleanups.push(
       signals.on(
@@ -317,6 +367,11 @@ export function applyCacheMethods(EntityManagerClass: { prototype: any }): void 
 
   // ============ CACHE STATE ============
 
+  proto.invalidateDetailCache = function (this: Self): void {
+    this._detailCache.items.clear()
+    this._detailInflight.clear()
+  }
+
   proto.invalidateCache = function (this: Self): void {
     const cache = this._cache
     cache.valid = false
@@ -324,6 +379,8 @@ export function applyCacheMethods(EntityManagerClass: { prototype: any }): void 
     cache.total = 0
     cache.loadedAt = null
     this._cacheLoading = null
+    // Also clear detail cache
+    this.invalidateDetailCache()
   }
 
   proto.invalidateDataLayer = function (this: Self): void {
@@ -423,6 +480,7 @@ export function applyCacheMethods(EntityManagerClass: { prototype: any }): void 
   proto.getCacheInfo = function (this: Self): CacheInfo {
     const ttlMs = this.effectiveCacheTtlMs
     const cache = this._cache
+    const asymmetric = this.isAsymmetric
     return {
       enabled: this.isCacheEnabled,
       storageSupportsTotal: this.storageSupportsTotal,
@@ -437,6 +495,14 @@ export function applyCacheMethods(EntityManagerClass: { prototype: any }): void 
         ? cache.loadedAt + ttlMs
         : null,
       expired: this._isCacheExpired(),
+      asymmetric,
+      detailCache: asymmetric && this.isDetailCacheEnabled
+        ? {
+            enabled: true,
+            ttlMs: this.effectiveDetailCacheTtlMs,
+            size: this._detailCache.items.size,
+          }
+        : null,
     }
   }
 }

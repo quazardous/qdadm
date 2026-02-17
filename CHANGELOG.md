@@ -3,6 +3,25 @@
 All notable changes to qdadm will be documented in this file.
 This is not a commit log. Keep entries simple, user-focused.
 
+## [1.11.0] - 2026-02-17
+
+### Added
+- **Asymmetric entity mode**: New `asymmetric` option on EntityManager for APIs where `list()` returns summaries and `get()` returns full details; `get()` bypasses the list cache entirely
+- **Detail cache**: Optional per-item cache for asymmetric entities with configurable TTL (`detailCacheTtlMs`: 0=disabled, -1=infinite, >0=ms); includes per-entry expiration and stats tracking (`detailCacheHits`/`detailCacheMisses`)
+- **Concurrent get() deduplication**: `_detailInflight` Map prevents duplicate network requests when multiple callers request the same entity ID simultaneously (e.g., StackHydrator + useEntityItemPage)
+- **`invalidateDetailCache()` method**: Clear only the detail cache without affecting the list cache
+- **Signal-based detail cache invalidation**: `entity:data-invalidate` signal automatically clears the detail cache for the targeted entity
+- **`asymmetric` storage capability**: Storages can declare `asymmetric: true` in their capabilities as a fallback when the EntityManager option is not set
+- **Debug panel**: Asymmetric entity badge (purple icon), detail cache size/TTL display, detail cache hit/miss stats in EntitiesPanel
+- **Asymmetric mode tests**: 22 tests covering configuration, cache behavior, TTL, invalidation, deduplication, getMany, and non-regression
+
+### Documentation
+- **README rewrite**: Updated all code snippets to match current API (`EntityManager`, `MockApiStorage`, hooks, signals, Kernel init)
+- **Tutorial**: New step-by-step guide (`docs/tutorial-mini-admin.md`) for building a parent-child admin
+
+### Demo
+- **Countries module**: Enabled asymmetric mode (`asymmetric: true`, `localFilterThreshold: 300`, `detailCacheTtlMs: 300000`) to showcase list/detail cache separation
+
 ## [1.10.4] - 2026-02-13
 
 ### Changed

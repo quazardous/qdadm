@@ -48,6 +48,12 @@ export interface MultiStorageInfo {
 /**
  * Cache info structure
  */
+export interface DetailCacheInfo {
+  enabled: boolean
+  ttlMs: number
+  size: number
+}
+
 export interface CacheInfo {
   enabled: boolean
   valid: boolean
@@ -63,6 +69,10 @@ export interface CacheInfo {
   expiresAt: number | null
   /** Whether the cache has expired based on TTL */
   expired: boolean
+  /** Whether the entity uses asymmetric mode */
+  asymmetric: boolean
+  /** Detail cache info (only when asymmetric + detail cache enabled) */
+  detailCache: DetailCacheInfo | null
 }
 
 /**
@@ -94,6 +104,8 @@ export interface StatsInfo {
   delete: number
   cacheHits: number
   cacheMisses: number
+  detailCacheHits: number
+  detailCacheMisses: number
   maxItemsSeen: number
   maxTotal: number
 }
@@ -285,7 +297,9 @@ export class EntitiesCollector extends Collector<EntityEntry> {
           currentStats.update !== prevStats.update ||
           currentStats.delete !== prevStats.delete ||
           currentStats.cacheHits !== prevStats.cacheHits ||
-          currentStats.cacheMisses !== prevStats.cacheMisses
+          currentStats.cacheMisses !== prevStats.cacheMisses ||
+          currentStats.detailCacheHits !== prevStats.detailCacheHits ||
+          currentStats.detailCacheMisses !== prevStats.detailCacheMisses
 
         if (hasChanged) {
           this._activeEntities.add(name)
@@ -359,6 +373,8 @@ export class EntitiesCollector extends Collector<EntityEntry> {
         ttlMs?: number
         expiresAt?: number | null
         expired?: boolean
+        asymmetric?: boolean
+        detailCache?: { enabled: boolean; ttlMs: number; size: number } | null
       }
       getStats?: () => StatsInfo
       getRequiredFields?: () => string[]
@@ -426,7 +442,9 @@ export class EntitiesCollector extends Collector<EntityEntry> {
         items: this._getCacheItems(extManager, 50),
         ttlMs: cache.ttlMs ?? -1,
         expiresAt: cache.expiresAt ?? null,
-        expired: cache.expired ?? false
+        expired: cache.expired ?? false,
+        asymmetric: cache.asymmetric ?? false,
+        detailCache: cache.detailCache ?? null,
       },
 
       permissions: {
@@ -451,6 +469,8 @@ export class EntitiesCollector extends Collector<EntityEntry> {
         delete: 0,
         cacheHits: 0,
         cacheMisses: 0,
+        detailCacheHits: 0,
+        detailCacheMisses: 0,
         maxItemsSeen: 0,
         maxTotal: 0
       },

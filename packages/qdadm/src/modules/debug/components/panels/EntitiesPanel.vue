@@ -34,6 +34,12 @@ interface MultiStorage {
   }>
 }
 
+interface DetailCacheInfo {
+  enabled: boolean
+  ttlMs: number
+  size: number
+}
+
 interface CacheInfo {
   enabled: boolean
   valid?: boolean
@@ -47,6 +53,10 @@ interface CacheInfo {
   expiresAt?: number | null
   /** Whether the cache has expired based on TTL */
   expired?: boolean
+  /** Whether the entity uses asymmetric mode */
+  asymmetric?: boolean
+  /** Detail cache info */
+  detailCache?: DetailCacheInfo | null
 }
 
 interface RelationInfo {
@@ -74,6 +84,8 @@ interface EntityStats {
   delete: number
   cacheHits: number
   cacheMisses: number
+  detailCacheHits: number
+  detailCacheMisses: number
   maxItemsSeen: number
   maxTotal: number
 }
@@ -278,6 +290,11 @@ function formatExpiresIn(expiresAt: number | null | undefined): string {
             class="pi pi-shield perm-icon-auth-sensitive"
             title="Auth-sensitive"
           />
+          <i
+            v-if="entity.cache.asymmetric"
+            class="pi pi-arrows-v perm-icon-asymmetric"
+            title="Asymmetric: list and detail return different structures"
+          />
         </div>
         <span class="entity-label">{{ entity.label }}</span>
         <span v-if="entity.cache.enabled" class="entity-cache" :class="{ 'entity-cache-valid': entity.cache.valid }">
@@ -435,6 +452,15 @@ function formatExpiresIn(expiresAt: number | null | undefined): string {
           <span class="entity-key">Cache:</span>
           <span class="entity-value entity-cache-na">Disabled</span>
         </div>
+        <div v-if="entity.cache.detailCache" class="entity-row">
+          <span class="entity-key">Detail cache:</span>
+          <span class="entity-value">
+            {{ entity.cache.detailCache.size }} items
+            <span class="entity-cache-ttl">
+              TTL: {{ formatTtl(entity.cache.detailCache.ttlMs) }}
+            </span>
+          </span>
+        </div>
         <div class="entity-row">
           <span class="entity-key">Fields:</span>
           <span class="entity-value">{{ entity.fields.count }} fields</span>
@@ -494,6 +520,18 @@ function formatExpiresIn(expiresAt: number | null | undefined): string {
                 {{ entity.stats.cacheMisses }}
               </span>
               <span class="entity-stat-label">miss</span>
+            </div>
+            <div v-if="entity.cache.asymmetric" class="entity-stat entity-stat-cache">
+              <span class="entity-stat-value" :class="{ 'stat-positive': entity.stats.detailCacheHits > 0 }">
+                {{ entity.stats.detailCacheHits }}
+              </span>
+              <span class="entity-stat-label">d-hits</span>
+            </div>
+            <div v-if="entity.cache.asymmetric" class="entity-stat entity-stat-cache">
+              <span class="entity-stat-value" :class="{ 'stat-negative': entity.stats.detailCacheMisses > 0 }">
+                {{ entity.stats.detailCacheMisses }}
+              </span>
+              <span class="entity-stat-label">d-miss</span>
             </div>
             <div class="entity-stat entity-stat-max">
               <span class="entity-stat-value">{{ entity.stats.maxItemsSeen }}</span>

@@ -20,20 +20,22 @@ TypeScript-first. Module-driven. Zero boilerplate.
 - **Extensible by design** - Hooks, signals, zones for any customization
 - **PrimeVue powered** - Beautiful UI out of the box
 
-```ts
+```js
 // That's it. Full CRUD for books.
-ctx.entity('books', {
+ctx.entity('books', new EntityManager({
+  name: 'books',
+  labelField: 'title',
   fields: {
-    title: { type: 'text', required: true },
-    author: { type: 'text' }
+    title: { type: 'text', label: 'Title', required: true, default: '' },
+    author: { type: 'text', label: 'Author', default: '' }
   },
-  storage: new ApiStorage({ endpoint: '/api/books' })
-})
+  storage: new MockApiStorage({ entityName: 'books', initialData: [] })
+}))
 
 ctx.crud('books', {
-  list: () => import('./BookList.vue'),
-  form: () => import('./BookForm.vue')
-})
+  list: () => import('./pages/BookList.vue'),
+  form: () => import('./pages/BookForm.vue')
+}, { nav: { section: 'Library', icon: 'pi pi-book' } })
 ```
 
 ---
@@ -41,7 +43,7 @@ ctx.crud('books', {
 ## Quick Start
 
 ```bash
-# Clone and run
+# Clone and run the demo
 git clone https://github.com/quazardous/qdadm.git
 cd qdadm && npm install && npm run dev
 ```
@@ -54,15 +56,20 @@ cd my-admin
 npm install qdadm primevue @primeuix/themes
 ```
 
-```ts
-// main.ts
-import { Kernel, MockApiStorage } from 'qdadm'
+```js
+// main.js
+import { Kernel } from 'qdadm'
 import PrimeVue from 'primevue/config'
 import Aura from '@primeuix/themes/aura'
 import 'qdadm/styles'
+import 'primeicons/primeicons.css'
+
+import App from './App.vue'
+import { moduleDefs } from './config/modules'
 
 const kernel = new Kernel({
   root: App,
+  moduleDefs,
   primevue: { plugin: PrimeVue, theme: Aura },
   app: { name: 'My Admin' }
 })
@@ -76,73 +83,106 @@ kernel.createApp().mount('#app')
 
 ### Modules own everything
 
-```ts
+Each module is self-contained: entity, storage, routes, navigation, zones.
+
+```js
+import { Module, EntityManager, MockApiStorage } from 'qdadm'
+
 export class BooksModule extends Module {
   static name = 'books'
 
   async connect(ctx) {
     // Entity + storage
-    ctx.entity('books', { ... })
+    ctx.entity('books', new EntityManager({
+      name: 'books',
+      labelField: 'title',
+      fields: {
+        title: { type: 'text', label: 'Title', required: true, default: '' },
+        author: { type: 'text', label: 'Author', default: '' }
+      },
+      storage: new MockApiStorage({ entityName: 'books', initialData: [] })
+    }))
 
-    // Routes + navigation
-    ctx.crud('books', { list, form }, { nav: { section: 'Library' } })
-
-    // Custom routes
-    ctx.routes('books', [{ path: 'stats', component: BookStats }])
+    // CRUD routes + navigation (generates list, create, edit routes)
+    ctx.crud('books', {
+      list: () => import('./pages/BookList.vue'),
+      form: () => import('./pages/BookForm.vue')
+    }, { nav: { section: 'Library', icon: 'pi pi-book' } })
   }
 }
 ```
 
 ### Storage adapters
 
-```ts
-// Mock (localStorage, dev/demo)
-new MockApiStorage({ key: 'books', initialData: [...] })
+```js
+// Mock (localStorage persistence, dev/demo)
+new MockApiStorage({ entityName: 'books', initialData: [...] })
 
-// REST API
-new ApiStorage({ endpoint: '/api/books' })
+// REST API (axios-based)
+new ApiStorage({ endpoint: '/api/books', client: axiosInstance })
 
 // Generated SDK (OpenAPI)
-new SdkStorage({ sdk: myGeneratedSdk, methods: { list: 'getBooks', ... } })
+new SdkStorage({ sdk: myGeneratedSdk, methods: { list: 'getBooks', get: 'getBook' } })
+```
+
+### Parent-child entities
+
+```js
+// In BooksModule: declare children
+ctx.entity('books', new EntityManager({
+  name: 'books',
+  children: { loans: { entity: 'loans', foreignKey: 'book_id', label: 'Loans' } },
+  // ...
+}))
+
+// Child CRUD mounted under parent route
+ctx.crud('loans', {
+  list: () => import('./pages/BookLoans.vue'),
+  form: () => import('./pages/BookLoanForm.vue')
+}, { parentRoute: 'book', foreignKey: 'book_id', label: 'Loans' })
 ```
 
 ### Security built-in
 
-```ts
+```js
+import { createLocalStorageRolesProvider } from 'qdadm/security'
+
 const kernel = new Kernel({
+  // ...
   security: {
     rolesProvider: createLocalStorageRolesProvider({
       defaults: {
         role_hierarchy: { ROLE_ADMIN: ['ROLE_USER'] },
         role_permissions: {
-          ROLE_USER: ['entity:*:read'],
-          ROLE_ADMIN: ['entity:**', 'admin:**']
+          ROLE_USER: ['entity:*:read', 'entity:*:list'],
+          ROLE_ADMIN: ['entity:*:create', 'entity:*:update', 'entity:*:delete', 'admin:**']
         }
       }
     })
   }
 })
 
-// Check anywhere
+// Check anywhere via ctx.security
 ctx.security.isGranted('entity:books:delete')
 ```
 
 ### Extend everything
 
-```ts
-// Hooks - alter behavior
-ctx.hooks.register('entity:books:before-save', (data) => {
-  data.updatedAt = new Date()
-  return data
-})
+```js
+// Hooks - alter behavior (registered on kernel after createApp())
+kernel.hooks.register('entity:presave', (context) => {
+  if (context.entity !== 'books') return
+  context.record.updated_at = new Date().toISOString()
+}, { priority: 50 })
 
-// Signals - react to events
-ctx.signals.on('auth:login', ({ user }) => {
-  analytics.identify(user.id)
+// Signals - react to events (in module connect())
+ctx.on('auth:login', (event) => {
+  console.log('User logged in:', event.data)
 })
 
 // Zones - inject UI
-ctx.block('books-list-header', { component: ExportButton })
+ctx.zone('books-list-header')
+ctx.block('books-list-header', { id: 'export-btn', component: ExportButton, weight: 10 })
 ```
 
 ---
@@ -172,10 +212,7 @@ ctx.block('books-list-header', { component: ExportButton })
 ## Docs
 
 - [QDADM_CREDO](packages/qdadm/QDADM_CREDO.md) - Philosophy & patterns
-- [CRUD Pages](docs/crud.md) - List, form, show, children
-- [Architecture](docs/architecture.md) - PAC pattern
-- [Extension](docs/extension.md) - Hooks, signals, zones
-- [Security](docs/security.md) - Permissions & roles
+- [Tutorial: Mini Admin](docs/tutorial-mini-admin.md) - Build a parent-child admin from scratch
 
 ---
 
