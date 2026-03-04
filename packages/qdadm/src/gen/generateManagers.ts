@@ -5,13 +5,16 @@
  * This enables better IDE support and static analysis by creating explicit files
  * rather than relying on runtime factory creation.
  *
+ * Outputs TypeScript (.ts) files with auto-generated entity interfaces derived
+ * from the field schemas, providing end-to-end type safety.
+ *
  * @module gen/generateManagers
  */
 
 import { mkdir, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 
-import type { UnifiedEntitySchema, UnifiedFieldSchema } from './schema'
+import type { UnifiedEntitySchema, UnifiedFieldSchema, UnifiedFieldType } from './schema'
 import type { EntityDecorator } from './decorators'
 
 /**
@@ -65,6 +68,56 @@ function toPascalCase(name: string): string {
 }
 
 /**
+ * Map UnifiedFieldType to TypeScript type string
+ */
+export function fieldTypeToTsType(type: UnifiedFieldType, required: boolean): string {
+  const tsType = (() => {
+    switch (type) {
+      case 'text':
+      case 'email':
+      case 'url':
+      case 'uuid':
+      case 'date':
+      case 'datetime':
+        return 'string'
+      case 'number':
+        return 'number'
+      case 'boolean':
+        return 'boolean'
+      case 'array':
+        return 'unknown[]'
+      case 'object':
+        return 'Record<string, unknown>'
+    }
+  })()
+  return required ? tsType : `${tsType} | null`
+}
+
+/**
+ * Generate a TypeScript interface from entity fields
+ */
+export function generateEntityInterface(
+  entityName: string,
+  fields: Record<string, UnifiedFieldSchema>,
+  idField: string
+): string {
+  const className = toPascalCase(entityName)
+  const lines: string[] = []
+  lines.push(`export interface ${className}Entity extends EntityRecord {`)
+
+  for (const [fieldName, field] of Object.entries(fields)) {
+    if (field.hidden) continue
+    const isRequired = field.required || fieldName === idField
+    const tsType = fieldTypeToTsType(field.type, isRequired)
+    const optional = isRequired ? '' : '?'
+    lines.push(`  ${fieldName}${optional}: ${tsType}`)
+  }
+
+  lines.push('}')
+  return lines.join('\n')
+}
+
+/**
  * Serialize a value to JavaScript source code
  *
  * @param value - Value to serialize
@@ -105,7 +158,7 @@ function serializeValue(value: unknown, indent: number = 0): string {
  * @param entityName - Entity name
  * @param entityConfig - Entity configuration
  * @param globalOptions - Global generation options
- * @returns Generated JavaScript source code
+ * @returns Generated TypeScript source code
  */
 function generateManagerSource(
   entityName: string,
@@ -157,6 +210,10 @@ function generateManagerSource(
     }
   }
 
+  // Generate entity interface
+  const idField = finalSchema.idField || 'id'
+  const entityInterface = generateEntityInterface(entityName, finalSchema.fields, idField)
+
   // Class-based template for extension pattern
   if (classMode) {
     return `/**
@@ -173,14 +230,17 @@ function generateManagerSource(
 
 import { EntityManager } from 'qdadm'
 import { ${storageClass} } from '${storageImport}'
+import type { EntityRecord } from 'qdadm'
+
+${entityInterface}
 
 /**
  * Generated base manager for ${entityName}
  *
  * @extends EntityManager
  */
-export class Generated${className}Manager extends EntityManager {
-  constructor(options = {}) {
+export class Generated${className}Manager extends EntityManager<${className}Entity> {
+  constructor(options: Partial<{ name: string; idField: string; fields: Record<string, unknown>; storage: unknown; [key: string]: unknown }> = {}) {
     super({
       ...${serializeValue(managerOptions, 2)},
       storage: new ${storageClass}(${serializeValue(fullStorageOptions, 2)}),
@@ -204,12 +264,14 @@ export class Generated${className}Manager extends EntityManager {
 
 import { EntityManager } from 'qdadm'
 import { ${storageClass} } from '${storageImport}'
+import type { EntityRecord } from 'qdadm'
+
+${entityInterface}
 
 /**
  * Schema definition for ${entityName}
- * @type {import('qdadm/gen').UnifiedEntitySchema}
  */
-export const ${entityName}Schema = ${serializeValue(finalSchema, 0)}
+export const ${entityName}Schema = ${serializeValue(finalSchema, 0)} as const
 
 /**
  * Storage options for ${entityName}
@@ -220,10 +282,8 @@ const storageOptions = ${serializeValue(fullStorageOptions, 0)}
  * ${className}Manager instance
  *
  * Provides CRUD operations for ${entityName} entity.
- *
- * @type {EntityManager}
  */
-export const ${entityName}Manager = new EntityManager({
+export const ${entityName}Manager = new EntityManager<${className}Entity>({
   ...${serializeValue(managerOptions, 0)},
   storage: new ${storageClass}(storageOptions)
 })
@@ -233,8 +293,8 @@ export const ${entityName}Manager = new EntityManager({
 /**
  * Generate EntityManager files from configuration
  *
- * Creates one JavaScript file per entity in the output directory.
- * Each file exports the entity's schema and a configured EntityManager instance.
+ * Creates one TypeScript file per entity in the output directory.
+ * Each file exports the entity's interface, schema, and a configured EntityManager instance.
  *
  * @param config - Configuration object
  * @returns List of generated file paths
@@ -263,7 +323,7 @@ export const ${entityName}Manager = new EntityManager({
  * })
  *
  * console.log('Generated:', generatedFiles)
- * // ['src/generated/managers/usersManager.js']
+ * // ['src/generated/managers/usersManager.ts']
  * ```
  */
 export async function generateManagers(config: GenerateManagersConfig): Promise<string[]> {
@@ -309,8 +369,8 @@ export async function generateManagers(config: GenerateManagersConfig): Promise<
   // Generate files for each entity
   for (const [entityName, entityConfig] of Object.entries(config.entities)) {
     const isClassMode = entityConfig.classMode ?? globalOptions.classMode
-    // Use entity.js for classMode (matches existing pattern), entityManager.js for instance mode
-    const fileName = isClassMode ? `${entityName}.js` : `${entityName}Manager.js`
+    // Use entity.ts for classMode (matches existing pattern), entityManager.ts for instance mode
+    const fileName = isClassMode ? `${entityName}.ts` : `${entityName}Manager.ts`
     const filePath = join(outputDir, fileName)
 
     // Generate source code

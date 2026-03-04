@@ -3,6 +3,16 @@
 All notable changes to qdadm will be documented in this file.
 This is not a commit log. Keep entries simple, user-focused.
 
+## [1.12.0] - 2026-03-04
+
+### Added
+- **Generic typing on interfaces and composables**: `EntityManagerBase<T>`, `EntityManagerRead<T>`, `EntityManagerCrud<T>`, `useEntityItemPage<T>()`, `useEntityItemShowPage<T>()`, `useEntityItemFormPage<T>()`, `useListPage<T>()` — all default to `unknown` for full backward compatibility
+- **TypeScript manager generation**: `generateManagers` now outputs `.ts` files with auto-generated entity interfaces from field schemas and typed `EntityManager<XxxEntity>` instances
+- **`fieldTypeToTsType()` and `generateEntityInterface()` helpers**: Exported from `qdadm/gen` for custom generation workflows
+
+### Changed
+- **Demo modules use `static moduleName`**: All demo/hello-world modules standardized from `static name` to `static moduleName` for consistency with framework modules
+
 ## [1.11.1] - 2026-02-17
 
 ### Added

@@ -55,7 +55,7 @@ const productsStorage = new DummyJsonStorage({
 // ============================================================================
 
 export class ProductsModule extends Module {
-  static name = 'products'
+  static moduleName = 'products'
   static requires = []
   static priority = 0
 

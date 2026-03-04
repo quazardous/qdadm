@@ -24,7 +24,7 @@ const favoritesStorage = new LocalStorage({
 // ============================================================================
 
 export class FavoritesModule extends Module {
-  static name = 'favorites'
+  static moduleName = 'favorites'
   static requires = []
   static priority = 0
 

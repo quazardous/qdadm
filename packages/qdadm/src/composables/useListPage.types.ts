@@ -17,8 +17,8 @@ export type EntityManager = EntityManagerRead
 /**
  * List response from API
  */
-export interface ListResponse {
-  items: unknown[]
+export interface ListResponse<T = unknown> {
+  items: T[]
   total?: number
   fromCache?: boolean
   [key: string]: unknown
@@ -212,7 +212,7 @@ export interface AxiosError {
 /**
  * Options for useListPage
  */
-export interface UseListPageOptions {
+export interface UseListPageOptions<T = unknown> {
   /** Entity name for EntityManager */
   entity: string
   /** Custom data key field (default: manager.idField) */
@@ -240,9 +240,9 @@ export interface UseListPageOptions {
   /** Callback before load */
   onBeforeLoad?: ((params: Record<string, unknown>) => Record<string, unknown> | void) | null
   /** Callback after load */
-  onAfterLoad?: ((response: ListResponse, processedData: { items: unknown[]; total: number }) => void) | null
+  onAfterLoad?: ((response: ListResponse<T>, processedData: { items: T[]; total: number }) => void) | null
   /** Transform response */
-  transformResponse?: ((response: ListResponse) => { items: unknown[]; total: number }) | null
+  transformResponse?: ((response: ListResponse<T>) => { items: T[]; total: number }) | null
   /** Override manager.entityName */
   entityName?: string
   /** Override manager.labelPlural */
@@ -316,7 +316,7 @@ export interface BulkStatusActionOptions {
 /**
  * Return type for useListPage
  */
-export interface UseListPageReturn {
+export interface UseListPageReturn<T = unknown> {
   // Manager access
   manager: EntityManager
 
@@ -329,10 +329,10 @@ export interface UseListPageReturn {
   parentPage: UseEntityItemPageReturn | null
 
   // State
-  items: Ref<unknown[]>
-  displayItems: ComputedRef<unknown[]>
+  items: Ref<T[]>
+  displayItems: ComputedRef<T[]>
   loading: Ref<boolean>
-  selected: Ref<unknown[]>
+  selected: Ref<T[]>
   deleting: Ref<boolean>
 
   // Pagination
@@ -375,7 +375,7 @@ export interface UseListPageReturn {
   // Filters
   filters: ComputedRef<FilterConfig[]>
   filterValues: Ref<Record<string, unknown>>
-  filteredItems: ComputedRef<unknown[]>
+  filteredItems: ComputedRef<T[]>
   fromCache: Ref<boolean>
   addFilter: (name: string, config: Omit<FilterConfig, 'name'>) => void
   removeFilter: (name: string) => void

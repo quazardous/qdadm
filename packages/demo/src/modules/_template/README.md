@@ -42,7 +42,7 @@ export const moduleDefs = [..., ProductsModule]
 
 ```javascript
 export class {{EntityName}}Module extends Module {
-  static name = '{{entity_name}}'    // Module identifier
+  static moduleName = '{{entity_name}}'    // Module identifier
   static requires = []               // Dependencies (other module names)
   static priority = 10               // Load order (lower = first)
 

@@ -26,6 +26,7 @@ import {
   onUnmounted,
   inject,
   provide,
+  type Ref,
 } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useConfirm } from 'primevue/useconfirm'
@@ -50,6 +51,7 @@ import type {
   SearchConfig,
   EntityContext,
   BulkStatusActionReturn,
+  ListResponse,
   AxiosError,
   UseListPageOptions,
   ListPageProps,
@@ -143,7 +145,7 @@ const SMART_FILTER_THRESHOLD = 50
  * @param config - Configuration options
  * @returns List page API
  */
-export function useListPage(config: UseListPageOptions): UseListPageReturn {
+export function useListPage<T = unknown>(config: UseListPageOptions<T>): UseListPageReturn<T> {
   const {
     entity,
     dataKey,
@@ -266,9 +268,9 @@ export function useListPage(config: UseListPageOptions): UseListPageReturn {
   if (savedFilters) delete savedFilters._search
 
   // ============ STATE ============
-  const items = ref<unknown[]>([])
+  const items = ref<T[]>([]) as Ref<T[]>
   const loading = ref(false)
-  const selected = ref<unknown[]>([])
+  const selected = ref<T[]>([]) as Ref<T[]>
   const deleting = ref(false)
 
   // Pagination
@@ -968,12 +970,12 @@ export function useListPage(config: UseListPageOptions): UseListPageReturn {
 
       fromCache.value = response.fromCache || false
 
-      let processedData: { items: unknown[]; total: number }
+      let processedData: { items: T[]; total: number }
       if (transformResponse) {
-        processedData = transformResponse(response)
+        processedData = transformResponse(response as ListResponse<T>)
       } else {
         processedData = {
-          items: response.items || [],
+          items: (response.items || []) as T[],
           total: response.total || response.items?.length || 0,
         }
       }
@@ -982,7 +984,7 @@ export function useListPage(config: UseListPageOptions): UseListPageReturn {
       totalRecords.value = processedData.total
 
       if (onAfterLoad) {
-        onAfterLoad(response, processedData)
+        onAfterLoad(response as ListResponse<T>, processedData)
       }
     } catch (error) {
       toast.add({
@@ -1409,7 +1411,7 @@ export function useListPage(config: UseListPageOptions): UseListPageReturn {
 
   const listEvents: ListPageEvents = {
     'update:selected': (value) => {
-      selected.value = value
+      selected.value = value as T[]
     },
     'update:searchQuery': (value) => {
       searchQuery.value = value

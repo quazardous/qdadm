@@ -40,6 +40,7 @@ import {
   useEntityItemPage,
   type ParentConfig,
   type EntityManager,
+  type UseEntityItemPageReturn,
 } from './useEntityItemPage'
 import type { StackHydratorReturn } from '../chain/useStackHydrator'
 import {
@@ -83,7 +84,7 @@ export interface FieldDefinition {
   currencyCode?: string
   locale?: string
   booleanLabels?: { true: string; false: string }
-  severity?: string | ((value: unknown) => string)
+  severity?: string | ((value: unknown) => string | { severity: string; icon?: string; label?: string })
   imageWidth?: string
   imageHeight?: string
   render?: (value: unknown) => string
@@ -215,15 +216,15 @@ const TYPE_MAPPINGS: Record<string, string> = {
 /**
  * Options for useEntityItemShowPage
  */
-export interface UseEntityItemShowPageOptions {
+export interface UseEntityItemShowPageOptions<T = unknown> {
   /** Entity name */
   entity: string
   /** Auto-load entity on mount (default: true) */
   loadOnMount?: boolean
   /** Transform hook for loaded data */
-  transformLoad?: (data: unknown) => unknown
+  transformLoad?: (data: unknown) => T
   /** Callback on successful load */
-  onLoadSuccess?: ((data: unknown) => Promise<void> | void) | null
+  onLoadSuccess?: ((data: T) => Promise<void> | void) | null
   /** Callback on load error */
   onLoadError?: ((error: unknown) => Promise<void> | void) | null
 }
@@ -243,9 +244,9 @@ export interface GenerateFieldsOptions {
 /**
  * Return type for useEntityItemShowPage
  */
-export interface UseEntityItemShowPageReturn {
+export interface UseEntityItemShowPageReturn<T = unknown> {
   // State from base
-  data: Ref<unknown>
+  data: Ref<T | null>
   loading: Ref<boolean>
   error: Ref<string | null>
   entityId: ComputedRef<string | number | null>
@@ -259,28 +260,28 @@ export interface UseEntityItemShowPageReturn {
 
   // Field management
   fields: ComputedRef<ResolvedFieldConfig[]>
-  generateFields: (options?: GenerateFieldsOptions) => UseEntityItemShowPageReturn
-  addField: (name: string, fieldConfig: Partial<FieldDefinition>, options?: AddFieldOptions) => UseEntityItemShowPageReturn
-  updateField: (name: string, updates: Partial<FieldDefinition>) => UseEntityItemShowPageReturn
-  removeField: (name: string) => UseEntityItemShowPageReturn
-  excludeField: (name: string) => UseEntityItemShowPageReturn
-  reorderFields: (fieldNames: string[]) => UseEntityItemShowPageReturn
+  generateFields: (options?: GenerateFieldsOptions) => UseEntityItemShowPageReturn<T>
+  addField: (name: string, fieldConfig: Partial<FieldDefinition>, options?: AddFieldOptions) => UseEntityItemShowPageReturn<T>
+  updateField: (name: string, updates: Partial<FieldDefinition>) => UseEntityItemShowPageReturn<T>
+  removeField: (name: string) => UseEntityItemShowPageReturn<T>
+  excludeField: (name: string) => UseEntityItemShowPageReturn<T>
+  reorderFields: (fieldNames: string[]) => UseEntityItemShowPageReturn<T>
   getField: (name: string) => ResolvedFieldConfig | undefined
 
   // Group management
   groups: ComputedRef<FieldGroup<ResolvedFieldConfig>[]>
-  group: (name: string, fieldsOrOptions?: string[] | GroupOptions, options?: GroupOptions) => UseEntityItemShowPageReturn
-  defineGroups: (definitions: Record<string, GroupDefinition>) => UseEntityItemShowPageReturn
+  group: (name: string, fieldsOrOptions?: string[] | GroupOptions, options?: GroupOptions) => UseEntityItemShowPageReturn<T>
+  defineGroups: (definitions: Record<string, GroupDefinition>) => UseEntityItemShowPageReturn<T>
   getGroup: (name: string) => FieldGroup<ResolvedFieldConfig> | undefined
 
   // Action management
   actions: ComputedRef<ResolvedAction[]>
-  addAction: (action: ActionConfig) => UseEntityItemShowPageReturn
-  addLazyAction: (action: LazyActionConfig) => UseEntityItemShowPageReturn
-  addEditAction: (options?: { label?: string; icon?: string }) => UseEntityItemShowPageReturn
-  addDeleteAction: (options?: { label?: string; icon?: string; confirm?: boolean }) => UseEntityItemShowPageReturn
-  addBackAction: (options?: { label?: string; icon?: string; route?: string }) => UseEntityItemShowPageReturn
-  removeAction: (name: string) => UseEntityItemShowPageReturn
+  addAction: (action: ActionConfig) => UseEntityItemShowPageReturn<T>
+  addLazyAction: (action: LazyActionConfig) => UseEntityItemShowPageReturn<T>
+  addEditAction: (options?: { label?: string; icon?: string }) => UseEntityItemShowPageReturn<T>
+  addDeleteAction: (options?: { label?: string; icon?: string; confirm?: boolean }) => UseEntityItemShowPageReturn<T>
+  addBackAction: (options?: { label?: string; icon?: string; route?: string }) => UseEntityItemShowPageReturn<T>
+  removeAction: (name: string) => UseEntityItemShowPageReturn<T>
 
   // Permissions
   canEdit: ComputedRef<boolean>
@@ -295,8 +296,8 @@ export interface UseEntityItemShowPageReturn {
   events: ShowPageEvents
 
   // Actions
-  load: (id?: string | number | null) => Promise<unknown | null>
-  reload: () => Promise<unknown | null>
+  load: (id?: string | number | null) => Promise<T | null>
+  reload: () => Promise<T | null>
   goToEdit: () => void
   goBack: () => void
   deleteEntity: () => Promise<void>
@@ -320,9 +321,9 @@ interface ConfirmService {
   }) => void
 }
 
-export function useEntityItemShowPage(
-  options: UseEntityItemShowPageOptions
-): UseEntityItemShowPageReturn {
+export function useEntityItemShowPage<T = unknown>(
+  options: UseEntityItemShowPageOptions<T>
+): UseEntityItemShowPageReturn<T> {
   const { entity, loadOnMount = true, transformLoad, onLoadSuccess, onLoadError } = options
 
   const router: Router = useRouter()
@@ -358,7 +359,7 @@ export function useEntityItemShowPage(
   }
 
   // Use base composable — wrap onLoadSuccess to run lazy resolvers after entity load
-  const base = useEntityItemPage({
+  const base = useEntityItemPage<T>({
     entity,
     loadOnMount,
     transformLoad,
@@ -436,10 +437,10 @@ export function useEntityItemShowPage(
   const { fields, groups } = fieldManager
 
   // Chainable method wrappers (return returnValue for fluent API)
-  const chain = <T extends unknown[], R>(fn: (...args: T) => R) =>
-    (...args: T): UseEntityItemShowPageReturn => { fn(...args); return returnValue }
+  const chain = <A extends unknown[], R>(fn: (...args: A) => R) =>
+    (...args: A): UseEntityItemShowPageReturn<T> => { fn(...args); return returnValue }
 
-  const generateFields = (opts?: GenerateFieldsOptions): UseEntityItemShowPageReturn => {
+  const generateFields = (opts?: GenerateFieldsOptions): UseEntityItemShowPageReturn<T> => {
     const formFields = manager.getFormFields?.() || []
     fieldManager.generateFields(formFields, opts)
     return returnValue
@@ -465,7 +466,7 @@ export function useEntityItemShowPage(
   const canEdit = computed(() => manager.canUpdate?.(data.value) ?? true)
   const canDelete = computed(() => manager.canDelete?.(data.value) ?? true)
 
-  function addAction(action: ActionConfig): UseEntityItemShowPageReturn {
+  function addAction(action: ActionConfig): UseEntityItemShowPageReturn<T> {
     actionsMap.value.set(action.name, action)
     if (!actionOrder.value.includes(action.name)) {
       actionOrder.value.push(action.name)
@@ -473,7 +474,7 @@ export function useEntityItemShowPage(
     return returnValue
   }
 
-  function addLazyAction(action: LazyActionConfig): UseEntityItemShowPageReturn {
+  function addLazyAction(action: LazyActionConfig): UseEntityItemShowPageReturn<T> {
     lazyActionsMap.value.set(action.name, action)
     if (!actionOrder.value.includes(action.name)) {
       actionOrder.value.push(action.name)
@@ -481,7 +482,7 @@ export function useEntityItemShowPage(
     return returnValue
   }
 
-  function addEditAction(editOptions: { label?: string; icon?: string } = {}): UseEntityItemShowPageReturn {
+  function addEditAction(editOptions: { label?: string; icon?: string } = {}): UseEntityItemShowPageReturn<T> {
     const { label = 'Edit', icon = 'pi pi-pencil' } = editOptions
     return addAction({
       name: 'edit',
@@ -495,7 +496,7 @@ export function useEntityItemShowPage(
 
   function addDeleteAction(
     deleteOptions: { label?: string; icon?: string; confirm?: boolean } = {}
-  ): UseEntityItemShowPageReturn {
+  ): UseEntityItemShowPageReturn<T> {
     const { label = 'Delete', icon = 'pi pi-trash', confirm: confirmDelete = true } = deleteOptions
     return addAction({
       name: 'delete',
@@ -519,7 +520,7 @@ export function useEntityItemShowPage(
     })
   }
 
-  function addBackAction(backOptions: { label?: string; icon?: string; route?: string } = {}): UseEntityItemShowPageReturn {
+  function addBackAction(backOptions: { label?: string; icon?: string; route?: string } = {}): UseEntityItemShowPageReturn<T> {
     const { label = 'Back', icon = 'pi pi-arrow-left', route: backRoute } = backOptions
     return addAction({
       name: 'back',
@@ -536,7 +537,7 @@ export function useEntityItemShowPage(
     })
   }
 
-  function removeAction(name: string): UseEntityItemShowPageReturn {
+  function removeAction(name: string): UseEntityItemShowPageReturn<T> {
     actionsMap.value.delete(name)
     lazyActionsMap.value.delete(name)
     lazyResolvedStates.value.delete(name)
@@ -652,7 +653,7 @@ export function useEntityItemShowPage(
 
   // ============ RETURN ============
 
-  const returnValue: UseEntityItemShowPageReturn = {
+  const returnValue: UseEntityItemShowPageReturn<T> = {
     // State from base
     data,
     loading,

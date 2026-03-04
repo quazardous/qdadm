@@ -33,7 +33,7 @@ export const usersStorageInternal = new MockApiStorage({
 // ============================================================================
 
 export class UsersModule extends Module {
-  static name = 'users'
+  static moduleName = 'users'
   static requires = []
   static priority = 0
 

@@ -28,7 +28,7 @@ const settingsStorage = new MemoryStorage({
 // ============================================================================
 
 export class SettingsModule extends Module {
-  static name = 'settings'
+  static moduleName = 'settings'
   static requires = []
   static priority = 0
 

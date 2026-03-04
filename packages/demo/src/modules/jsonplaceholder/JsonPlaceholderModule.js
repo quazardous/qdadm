@@ -29,7 +29,7 @@ const todosStorage = new ApiStorage({ endpoint: '/todos', client: jpClient })
 // ============================================================================
 
 export class JsonPlaceholderModule extends Module {
-  static name = 'jsonplaceholder'
+  static moduleName = 'jsonplaceholder'
   static requires = []
   static priority = 0
 

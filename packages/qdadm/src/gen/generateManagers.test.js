@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
-import { generateManagers } from './generateManagers'
+import { generateManagers, fieldTypeToTsType, generateEntityInterface } from './generateManagers'
 import { rm, readFile, stat } from 'node:fs/promises'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
@@ -115,7 +115,7 @@ describe('generateManagers', () => {
       expect(dirStat.isDirectory()).toBe(true)
     })
 
-    it('generates one file per entity with correct naming', async () => {
+    it('generates .ts files with correct naming', async () => {
       const files = await generateManagers({
         output: testOutputDir,
         entities: {
@@ -135,8 +135,8 @@ describe('generateManagers', () => {
       })
 
       expect(files).toHaveLength(2)
-      expect(files).toContain(join(testOutputDir, 'usersManager.js'))
-      expect(files).toContain(join(testOutputDir, 'blog_postsManager.js'))
+      expect(files).toContain(join(testOutputDir, 'usersManager.ts'))
+      expect(files).toContain(join(testOutputDir, 'blog_postsManager.ts'))
     })
 
     it('returns file paths in generation order', async () => {
@@ -152,12 +152,12 @@ describe('generateManagers', () => {
         }
       })
 
-      expect(files[0]).toBe(join(testOutputDir, 'alphaManager.js'))
+      expect(files[0]).toBe(join(testOutputDir, 'alphaManager.ts'))
     })
   })
 
   describe('generated file content', () => {
-    it('generates valid JavaScript with imports', async () => {
+    it('generates valid TypeScript with imports and interface', async () => {
       await generateManagers({
         output: testOutputDir,
         entities: {
@@ -177,11 +177,20 @@ describe('generateManagers', () => {
         }
       })
 
-      const content = await readFile(join(testOutputDir, 'usersManager.js'), 'utf-8')
+      const content = await readFile(join(testOutputDir, 'usersManager.ts'), 'utf-8')
 
       // Check imports
       expect(content).toContain("import { EntityManager } from 'qdadm'")
       expect(content).toContain("import { ApiStorage } from 'qdadm'")
+      expect(content).toContain("import type { EntityRecord } from 'qdadm'")
+
+      // Check entity interface
+      expect(content).toContain('export interface UsersEntity extends EntityRecord')
+      expect(content).toContain('id: number')
+      expect(content).toContain('email: string')
+
+      // Check typed manager
+      expect(content).toContain('new EntityManager<UsersEntity>')
 
       // Check exports
       expect(content).toContain('export const usersSchema')
@@ -206,7 +215,7 @@ describe('generateManagers', () => {
         }
       })
 
-      const content = await readFile(join(testOutputDir, 'usersManager.js'), 'utf-8')
+      const content = await readFile(join(testOutputDir, 'usersManager.ts'), 'utf-8')
       expect(content).toContain('DO NOT EDIT MANUALLY')
     })
 
@@ -223,7 +232,7 @@ describe('generateManagers', () => {
         }
       })
 
-      const content = await readFile(join(testOutputDir, 'usersManager.js'), 'utf-8')
+      const content = await readFile(join(testOutputDir, 'usersManager.ts'), 'utf-8')
       expect(content).toContain('endpoint: "/api/v1/users"')
     })
 
@@ -244,7 +253,7 @@ describe('generateManagers', () => {
         }
       })
 
-      const content = await readFile(join(testOutputDir, 'usersManager.js'), 'utf-8')
+      const content = await readFile(join(testOutputDir, 'usersManager.ts'), 'utf-8')
       expect(content).toContain('timeout: 5000')
       expect(content).toContain('retries: 3')
     })
@@ -276,13 +285,16 @@ describe('generateManagers', () => {
         }
       })
 
-      const content = await readFile(join(testOutputDir, 'usersManager.js'), 'utf-8')
+      const content = await readFile(join(testOutputDir, 'usersManager.ts'), 'utf-8')
 
       // Password field should have hidden: true
       expect(content).toContain('hidden: true')
 
       // Email field should have custom label
       expect(content).toContain('label: "Email Address"')
+
+      // Hidden fields should not appear in the interface
+      expect(content).not.toMatch(/password\??: string/)
     })
 
     it('generates PascalCase class name in comments', async () => {
@@ -298,8 +310,9 @@ describe('generateManagers', () => {
         }
       })
 
-      const content = await readFile(join(testOutputDir, 'blog_postsManager.js'), 'utf-8')
+      const content = await readFile(join(testOutputDir, 'blog_postsManager.ts'), 'utf-8')
       expect(content).toContain('BlogPostsManager')
+      expect(content).toContain('BlogPostsEntity')
     })
 
     it('handles schema with all optional properties', async () => {
@@ -325,13 +338,86 @@ describe('generateManagers', () => {
         }
       })
 
-      const content = await readFile(join(testOutputDir, 'usersManager.js'), 'utf-8')
+      const content = await readFile(join(testOutputDir, 'usersManager.ts'), 'utf-8')
       expect(content).toContain('label: "User"')
       expect(content).toContain('labelPlural: "Users"')
       expect(content).toContain('labelField: "name"')
       expect(content).toContain('routePrefix: "user"')
       expect(content).toContain('idField: "uuid"')
       expect(content).toContain('readOnly: true')
+    })
+
+    it('generates entity interface with correct field types', async () => {
+      await generateManagers({
+        output: testOutputDir,
+        entities: {
+          products: {
+            schema: {
+              name: 'products',
+              endpoint: '/products',
+              fields: {
+                id: { name: 'id', type: 'number', required: true },
+                name: { name: 'name', type: 'text', required: true },
+                price: { name: 'price', type: 'number' },
+                active: { name: 'active', type: 'boolean', required: true },
+                created_at: { name: 'created_at', type: 'datetime' },
+                tags: { name: 'tags', type: 'array' },
+                metadata: { name: 'metadata', type: 'object' },
+                email: { name: 'email', type: 'email' },
+                website: { name: 'website', type: 'url' },
+                uuid: { name: 'uuid', type: 'uuid' },
+                birth_date: { name: 'birth_date', type: 'date' }
+              }
+            },
+            endpoint: '/products',
+            storageImport: 'qdadm',
+            storageClass: 'ApiStorage'
+          }
+        }
+      })
+
+      const content = await readFile(join(testOutputDir, 'productsManager.ts'), 'utf-8')
+
+      // Required fields (no optional marker, no null union)
+      expect(content).toContain('id: number')
+      expect(content).toContain('name: string')
+      expect(content).toContain('active: boolean')
+
+      // Optional fields (with ? and null union)
+      expect(content).toContain('price?: number | null')
+      expect(content).toContain('created_at?: string | null')
+      expect(content).toContain('tags?: unknown[] | null')
+      expect(content).toContain('metadata?: Record<string, unknown> | null')
+      expect(content).toContain('email?: string | null')
+      expect(content).toContain('website?: string | null')
+      expect(content).toContain('uuid?: string | null')
+      expect(content).toContain('birth_date?: string | null')
+    })
+
+    it('generates class mode with typed interface', async () => {
+      await generateManagers({
+        output: testOutputDir,
+        classMode: true,
+        entities: {
+          users: {
+            schema: {
+              name: 'users',
+              endpoint: '/users',
+              fields: {
+                id: { name: 'id', type: 'number' },
+                name: { name: 'name', type: 'text', required: true }
+              }
+            },
+            endpoint: '/users',
+            storageImport: 'qdadm',
+            storageClass: 'ApiStorage'
+          }
+        }
+      })
+
+      const content = await readFile(join(testOutputDir, 'users.ts'), 'utf-8')
+      expect(content).toContain('export interface UsersEntity extends EntityRecord')
+      expect(content).toContain('extends EntityManager<UsersEntity>')
     })
   })
 
@@ -354,5 +440,62 @@ describe('generateManagers', () => {
       // The function validates before writing, so a valid config should work
       expect(() => generateManagers(config)).not.toThrow()
     })
+  })
+})
+
+describe('fieldTypeToTsType', () => {
+  it('maps text types to string', () => {
+    expect(fieldTypeToTsType('text', true)).toBe('string')
+    expect(fieldTypeToTsType('email', true)).toBe('string')
+    expect(fieldTypeToTsType('url', true)).toBe('string')
+    expect(fieldTypeToTsType('uuid', true)).toBe('string')
+    expect(fieldTypeToTsType('date', true)).toBe('string')
+    expect(fieldTypeToTsType('datetime', true)).toBe('string')
+  })
+
+  it('maps number to number', () => {
+    expect(fieldTypeToTsType('number', true)).toBe('number')
+  })
+
+  it('maps boolean to boolean', () => {
+    expect(fieldTypeToTsType('boolean', true)).toBe('boolean')
+  })
+
+  it('maps array to unknown[]', () => {
+    expect(fieldTypeToTsType('array', true)).toBe('unknown[]')
+  })
+
+  it('maps object to Record<string, unknown>', () => {
+    expect(fieldTypeToTsType('object', true)).toBe('Record<string, unknown>')
+  })
+
+  it('adds null union for optional fields', () => {
+    expect(fieldTypeToTsType('text', false)).toBe('string | null')
+    expect(fieldTypeToTsType('number', false)).toBe('number | null')
+    expect(fieldTypeToTsType('boolean', false)).toBe('boolean | null')
+  })
+})
+
+describe('generateEntityInterface', () => {
+  it('generates interface with correct field types', () => {
+    const result = generateEntityInterface('users', {
+      id: { name: 'id', type: 'number' },
+      name: { name: 'name', type: 'text', required: true },
+      email: { name: 'email', type: 'email' }
+    }, 'id')
+
+    expect(result).toContain('export interface UsersEntity extends EntityRecord')
+    expect(result).toContain('id: number') // id field is always required
+    expect(result).toContain('name: string') // required field
+    expect(result).toContain('email?: string | null') // optional field
+  })
+
+  it('excludes hidden fields', () => {
+    const result = generateEntityInterface('users', {
+      id: { name: 'id', type: 'number' },
+      password: { name: 'password', type: 'text', hidden: true }
+    }, 'id')
+
+    expect(result).not.toContain('password')
   })
 })

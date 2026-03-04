@@ -24,7 +24,7 @@
  * </FormPage>
  * ```
  */
-import { ref, computed, watch, onMounted, onUnmounted, provide } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted, provide, type Ref } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useConfirm } from 'primevue/useconfirm'
 import { useDirtyState } from './useDirtyState'
@@ -92,9 +92,9 @@ import type {
  * @param config - Configuration options
  * @returns Form builder API
  */
-export function useEntityItemFormPage(
-  config: UseEntityItemFormPageOptions
-): UseEntityItemFormPageReturn {
+export function useEntityItemFormPage<T extends Record<string, unknown> = Record<string, unknown>>(
+  config: UseEntityItemFormPageOptions<T>
+): UseEntityItemFormPageReturn<T> {
   const {
     entity,
     // Mode detection
@@ -179,7 +179,7 @@ export function useEntityItemFormPage(
 
   // ============ STATE ============
 
-  const data = ref<Record<string, unknown>>(deepClone(initialData) as Record<string, unknown>)
+  const data = ref(deepClone(initialData)) as Ref<T>
   const originalData = ref<unknown>(null)
   const loading = ref(false)
   const saving = ref(false)
@@ -236,7 +236,7 @@ export function useEntityItemFormPage(
 
   async function load(): Promise<void> {
     if (!isEdit.value) {
-      data.value = deepClone(initialData) as Record<string, unknown>
+      data.value = deepClone(initialData) as T
       takeSnapshot()
       return
     }
@@ -245,7 +245,7 @@ export function useEntityItemFormPage(
     try {
       const responseData = await manager.get(entityId.value!)
       const transformed = transformLoad(responseData)
-      data.value = transformed as Record<string, unknown>
+      data.value = transformed as T
       originalData.value = deepClone(transformed)
       takeSnapshot()
 
@@ -253,7 +253,7 @@ export function useEntityItemFormPage(
       hydrator.setCurrentData(transformed)
 
       if (onLoadSuccess) {
-        await onLoadSuccess(transformed)
+        await onLoadSuccess(transformed as T)
       }
     } catch (error) {
       const axiosError = error as AxiosError
@@ -314,7 +314,7 @@ export function useEntityItemFormPage(
 
       // Update data and snapshot
       const savedData = transformLoad(responseData)
-      data.value = savedData as Record<string, unknown>
+      data.value = savedData as T
       originalData.value = deepClone(savedData)
       takeSnapshot()
 
@@ -399,9 +399,9 @@ export function useEntityItemFormPage(
 
   function reset(): void {
     if (originalData.value) {
-      data.value = deepClone(originalData.value) as Record<string, unknown>
+      data.value = deepClone(originalData.value) as T
     } else {
-      data.value = deepClone(initialData) as Record<string, unknown>
+      data.value = deepClone(initialData) as T
     }
     takeSnapshot()
     // Clear validation state on reset
@@ -509,7 +509,7 @@ export function useEntityItemFormPage(
   /**
    * Generate fields from manager schema
    */
-  function generateFields(options: GenerateFieldsOptions = {}): UseEntityItemFormPageReturn {
+  function generateFields(options: GenerateFieldsOptions = {}): UseEntityItemFormPageReturn<T> {
     const formFields = manager.getFormFields()
     fieldManager.generateFields(formFields, options)
     // Auto-resolve reference options (async, non-blocking)
@@ -537,8 +537,8 @@ export function useEntityItemFormPage(
   }
 
   // Chainable method wrapper (returns builderApi for fluent API)
-  const chain = <T extends unknown[], R>(fn: (...args: T) => R) =>
-    (...args: T): UseEntityItemFormPageReturn => { fn(...args); return builderApi }
+  const chain = <A extends unknown[], R>(fn: (...args: A) => R) =>
+    (...args: A): UseEntityItemFormPageReturn<T> => { fn(...args); return builderApi }
 
   // Field management (chainable)
   const addField = chain(fieldManager.addField)
@@ -548,7 +548,7 @@ export function useEntityItemFormPage(
   const moveField = chain(fieldManager.moveField)
 
   // updateField needs custom validation logic
-  function updateField(name: string, fieldConfig: Partial<FieldDefinition>): UseEntityItemFormPageReturn {
+  function updateField(name: string, fieldConfig: Partial<FieldDefinition>): UseEntityItemFormPageReturn<T> {
     if (!fieldsMap.value.has(name)) {
       throw new Error(`Field '${name}' does not exist. Use addField() to create new fields.`)
     }
@@ -816,7 +816,7 @@ export function useEntityItemFormPage(
 
   // ============ BUILDER API ============
 
-  const builderApi: UseEntityItemFormPageReturn = {
+  const builderApi: UseEntityItemFormPageReturn<T> = {
     // Manager access
     manager,
 

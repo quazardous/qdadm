@@ -59,6 +59,8 @@ export { applyDecorators, type FieldDecorator, type EntityDecorator } from './de
 // T00319: generateManagers - Build-time file generation for EntityManagers
 export {
   generateManagers,
+  fieldTypeToTsType,
+  generateEntityInterface,
   type GenerateManagersConfig,
   type GenerateManagersEntityConfig,
 } from './generateManagers'

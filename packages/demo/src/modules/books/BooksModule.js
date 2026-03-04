@@ -56,7 +56,7 @@ const BooksListHeader = defineAsyncComponent(() => import('./components/BooksLis
 const BooksDetailPanel = defineAsyncComponent(() => import('./components/BooksDetailPanel.vue'))
 
 export class BooksModule extends Module {
-  static name = 'books'
+  static moduleName = 'books'
   static requires = []
   static priority = 10  // After core modules
 

@@ -172,7 +172,7 @@ export interface ConfirmService {
 /**
  * Options for useEntityItemFormPage
  */
-export interface UseEntityItemFormPageOptions {
+export interface UseEntityItemFormPageOptions<T extends Record<string, unknown> = Record<string, unknown>> {
   /** Entity name for EntityManager */
   entity: string
   /** Custom function to extract ID from route */
@@ -188,11 +188,11 @@ export interface UseEntityItemFormPageOptions {
   /** Use PATCH instead of PUT for updates (default: false) */
   usePatch?: boolean
   /** Transform loaded data before setting form */
-  transformLoad?: (data: unknown) => unknown
+  transformLoad?: (data: unknown) => T
   /** Transform form data before saving */
   transformSave?: (data: unknown) => unknown
   /** Callback on successful load */
-  onLoadSuccess?: ((data: unknown) => Promise<void> | void) | null
+  onLoadSuccess?: ((data: T) => Promise<void> | void) | null
   /** Callback on successful save */
   onSaveSuccess?: ((data: unknown, andClose: boolean) => Promise<void> | void) | null
   /** Callback on successful delete */
@@ -264,7 +264,7 @@ export interface AddCancelActionOptions {
 /**
  * Return type for useEntityItemFormPage
  */
-export interface UseEntityItemFormPageReturn {
+export interface UseEntityItemFormPageReturn<T extends Record<string, unknown> = Record<string, unknown>> {
   // Manager access
   manager: EntityManager
 
@@ -282,7 +282,7 @@ export interface UseEntityItemFormPageReturn {
   getChainDepth: (config?: ParentConfig | null) => number
 
   // State
-  data: Ref<Record<string, unknown>>
+  data: Ref<T>
   loading: Ref<boolean>
   saving: Ref<boolean>
   dirty: Ref<boolean>
@@ -306,25 +306,25 @@ export interface UseEntityItemFormPageReturn {
 
   // Field management
   fields: ComputedRef<ResolvedFieldConfig[]>
-  generateFields: (options?: GenerateFieldsOptions) => UseEntityItemFormPageReturn
+  generateFields: (options?: GenerateFieldsOptions) => UseEntityItemFormPageReturn<T>
   resolveReferences: () => Promise<void>
   addField: (
     name: string,
     fieldConfig: Partial<FieldDefinition>,
     options?: AddFieldOptions
-  ) => UseEntityItemFormPageReturn
-  updateField: (name: string, fieldConfig: Partial<FieldDefinition>) => UseEntityItemFormPageReturn
-  removeField: (name: string) => UseEntityItemFormPageReturn
-  excludeField: (name: string) => UseEntityItemFormPageReturn
+  ) => UseEntityItemFormPageReturn<T>
+  updateField: (name: string, fieldConfig: Partial<FieldDefinition>) => UseEntityItemFormPageReturn<T>
+  removeField: (name: string) => UseEntityItemFormPageReturn<T>
+  excludeField: (name: string) => UseEntityItemFormPageReturn<T>
   getFieldConfig: (name: string) => ResolvedFieldConfig | undefined
   getFields: () => ResolvedFieldConfig[]
-  setFieldOrder: (order: string[]) => UseEntityItemFormPageReturn
-  moveField: (name: string, position: MoveFieldPosition) => UseEntityItemFormPageReturn
+  setFieldOrder: (order: string[]) => UseEntityItemFormPageReturn<T>
+  moveField: (name: string, position: MoveFieldPosition) => UseEntityItemFormPageReturn<T>
 
   // Group management
   groups: ComputedRef<FieldGroup<ResolvedFieldConfig>[]>
-  group: (name: string, fieldsOrOptions?: string[] | GroupOptions, options?: GroupOptions) => UseEntityItemFormPageReturn
-  defineGroups: (definitions: Record<string, GroupDefinition>) => UseEntityItemFormPageReturn
+  group: (name: string, fieldsOrOptions?: string[] | GroupOptions, options?: GroupOptions) => UseEntityItemFormPageReturn<T>
+  defineGroups: (definitions: Record<string, GroupDefinition>) => UseEntityItemFormPageReturn<T>
   getGroup: (name: string) => FieldGroup<ResolvedFieldConfig> | undefined
   getFieldsByGroup: (groupName: string) => ResolvedFieldConfig[]
   getUngroupedFields: () => ResolvedFieldConfig[]

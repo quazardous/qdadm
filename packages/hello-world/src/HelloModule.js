@@ -10,7 +10,7 @@
 import { Module } from 'qdadm'
 
 export class HelloModule extends Module {
-  static name = 'hello'
+  static moduleName = 'hello'
   static requires = []
   static priority = 0
 

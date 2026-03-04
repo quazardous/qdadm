@@ -95,7 +95,7 @@ const AvailabilityWrapper = defineAsyncComponent(() => import('./components/Avai
 // ============================================================================
 
 export class LoansModule extends Module {
-  static name = 'loans'
+  static moduleName = 'loans'
   static requires = ['books', 'users']  // Dependencies for enrichment + zone extension
   static priority = 10  // Load after books
 

@@ -71,7 +71,7 @@ interface Orchestrator {
 /**
  * Options for useEntityItemPage
  */
-export interface UseEntityItemPageOptions {
+export interface UseEntityItemPageOptions<T = unknown> {
   /** Entity name */
   entity: string
   /** Auto-load entity on mount (default: true) */
@@ -81,9 +81,9 @@ export interface UseEntityItemPageOptions {
   /** Custom ID extraction function */
   getId?: (() => string | number | null) | null
   /** Transform hook for loaded data */
-  transformLoad?: (data: unknown) => unknown
+  transformLoad?: (data: unknown) => T
   /** Callback on successful load */
-  onLoadSuccess?: ((data: unknown) => Promise<void> | void) | null
+  onLoadSuccess?: ((data: T) => Promise<void> | void) | null
   /** Callback on load error */
   onLoadError?: ((error: unknown) => Promise<void> | void) | null
 }
@@ -91,9 +91,9 @@ export interface UseEntityItemPageOptions {
 /**
  * Return type for useEntityItemPage
  */
-export interface UseEntityItemPageReturn {
+export interface UseEntityItemPageReturn<T = unknown> {
   // State
-  data: Ref<unknown>
+  data: Ref<T | null>
   loading: Ref<boolean>
   error: Ref<string | null>
 
@@ -115,8 +115,8 @@ export interface UseEntityItemPageReturn {
   getInitialDataWithParent: () => Record<string, unknown>
 
   // Actions
-  load: (id?: string | number | null) => Promise<unknown | null>
-  reload: () => Promise<unknown | null>
+  load: (id?: string | number | null) => Promise<T | null>
+  reload: () => Promise<T | null>
 
   // References
   manager: EntityManager
@@ -126,7 +126,7 @@ export interface UseEntityItemPageReturn {
   hydrator: StackHydratorReturn
 }
 
-export function useEntityItemPage(config: UseEntityItemPageOptions): UseEntityItemPageReturn {
+export function useEntityItemPage<T = unknown>(config: UseEntityItemPageOptions<T>): UseEntityItemPageReturn<T> {
   const {
     entity,
     // Loading options
@@ -136,7 +136,7 @@ export function useEntityItemPage(config: UseEntityItemPageOptions): UseEntityIt
     // ID extraction (custom function for special cases, otherwise uses manager.idField)
     getId = null,
     // Transform hook
-    transformLoad = (data: unknown) => data,
+    transformLoad = ((data: unknown) => data) as (data: unknown) => T,
     // Callbacks
     onLoadSuccess = null,
     onLoadError = null,
@@ -165,7 +165,7 @@ export function useEntityItemPage(config: UseEntityItemPageOptions): UseEntityIt
 
   // ============ STATE ============
 
-  const data = ref<unknown>(null)
+  const data = ref<T | null>(null) as Ref<T | null>
   const loading = ref(false)
   const error = ref<string | null>(null)
 
@@ -317,7 +317,7 @@ export function useEntityItemPage(config: UseEntityItemPageOptions): UseEntityIt
    * @param id - Optional ID override (defaults to route param)
    * @returns Loaded entity data or null on error
    */
-  async function load(id: string | number | null = entityId.value): Promise<unknown | null> {
+  async function load(id: string | number | null = entityId.value): Promise<T | null> {
     if (!id) {
       error.value = 'No entity ID provided'
       return null
@@ -334,7 +334,7 @@ export function useEntityItemPage(config: UseEntityItemPageOptions): UseEntityIt
         return null
       }
 
-      const transformed = transformLoad(responseData)
+      const transformed = transformLoad(responseData) as T
       data.value = transformed
 
       // Update active stack
@@ -366,7 +366,7 @@ export function useEntityItemPage(config: UseEntityItemPageOptions): UseEntityIt
   /**
    * Reload current entity
    */
-  async function reload(): Promise<unknown | null> {
+  async function reload(): Promise<T | null> {
     return load(entityId.value)
   }
 

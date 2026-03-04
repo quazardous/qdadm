@@ -71,7 +71,7 @@ const countriesStorage = new RestCountriesStorage({
 // ============================================================================
 
 export class CountriesModule extends Module {
-  static name = 'countries'
+  static moduleName = 'countries'
   static requires = []
   static priority = 0
 

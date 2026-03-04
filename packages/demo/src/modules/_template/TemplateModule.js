@@ -51,7 +51,7 @@ const {{entityName}}Storage = new MockApiStorage({
 // ============================================================================
 
 export class {{EntityName}}Module extends Module {
-  static name = '{{entity_name}}'
+  static moduleName = '{{entity_name}}'
   static requires = []  // Add dependencies: ['other-module']
   static priority = 10  // Lower = loads first
 
