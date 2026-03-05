@@ -29,6 +29,8 @@ export { default as FormInput } from './edit/FormInput.vue'
 export { default as FormActions } from './edit/FormActions.vue'
 export { default as FormTabs } from './edit/FormTabs.vue' // Deprecated: use FieldGroups with layout="tabs"
 export { default as FormTab } from './edit/FormTab.vue' // Deprecated: use FieldGroups with layout="tabs"
+export { default as LookupField } from './edit/LookupField.vue'
+export { default as LookupPickerDialog } from './edit/LookupPickerDialog.vue'
 
 // Show (read-only detail pages)
 export { default as ShowPage } from './show/ShowPage.vue'

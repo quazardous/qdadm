@@ -2,24 +2,24 @@
 /**
  * FavoriteForm - Create/Edit form for favorites
  *
- * DEMO: useOptionsLookup (Mapped Mode with hidden display)
- * =========================================================
- * The entityId field uses useOptionsLookup in mapped mode with displayMode: 'hidden'.
- * Source items are book objects with label (title) ≠ value (bookId).
- * The user sees only the title — the ID is resolved via internal lookup.
- * On save, decode() finds the matching value by label.
- * On load, resolve() converts the stored ID back to the label.
+ * DEMO: LookupField with two picker modes
+ * ==========================================
+ * The entityId field uses LookupField to select a book.
+ * Two modes are demonstrated via a toggle:
+ * - **inline**: AutoComplete with dropdown — type to filter, user sees title only (hidden display).
+ * - **picker**: Readonly input + search button — opens a modal DataTable for rich search.
  *
- * If the user types a value not in the list, decode() returns it as-is.
+ * LookupField handles encode/decode/resolve internally via the useOptionsLookup return.
+ * The form just v-models the raw value (bookId) — no manual transformLoad/transformSave needed.
  */
 
-import { computed, ref, watch } from 'vue'
-import { useEntityItemFormPage, FormPage, FormField, useOptionsLookup } from 'qdadm'
+import { computed, ref } from 'vue'
+import { useEntityItemFormPage, FormPage, FormField, LookupField, useOptionsLookup } from 'qdadm'
 import InputText from 'primevue/inputtext'
 import Select from 'primevue/select'
-import AutoComplete from 'primevue/autocomplete'
+import SelectButton from 'primevue/selectbutton'
 
-// Mapped mode autocomplete: books with hidden ID (user sees title only)
+// Mapped mode: books with hidden ID (user sees title only)
 const bookLookup = useOptionsLookup({
   entity: 'books',
   label: 'title',
@@ -27,28 +27,14 @@ const bookLookup = useOptionsLookup({
   displayMode: 'hidden',
 })
 
-// Display value for the AutoComplete (encoded string, not the raw ID)
-const entityIdDisplay = ref('')
+// Toggle between inline and picker mode (demo purposes)
+const pickerMode = ref('inline')
+const pickerModeOptions = [
+  { label: 'Inline', value: 'inline' },
+  { label: 'Picker', value: 'picker' },
+]
 
-const form = useEntityItemFormPage({
-  entity: 'favorites',
-  // On load: convert raw entityId to encoded display string
-  transformLoad: (data) => {
-    if (data.entityType === 'book' && data.entityId) {
-      entityIdDisplay.value = bookLookup.resolve(data.entityId)
-    } else {
-      entityIdDisplay.value = data.entityId ?? ''
-    }
-    return data
-  },
-  // On save: decode display string back to raw ID
-  transformSave: (data) => {
-    if (data.entityType === 'book' && entityIdDisplay.value) {
-      data.entityId = bookLookup.decode(entityIdDisplay.value)
-    }
-    return data
-  },
-})
+const form = useEntityItemFormPage({ entity: 'favorites' })
 
 form.generateFields()
 form.addSaveAction({ andClose: true })
@@ -57,22 +43,8 @@ if (form.isEdit.value) {
   form.addDeleteAction()
 }
 
-// Show autocomplete only when entityType is 'book'
-const showBookAutocomplete = computed(() => form.data.value.entityType === 'book')
-
-// When options load after initial render, resolve display for edit mode
-watch(() => bookLookup.options.value.length, () => {
-  if (form.isEdit.value && form.data.value.entityId && !entityIdDisplay.value) {
-    entityIdDisplay.value = bookLookup.resolve(form.data.value.entityId)
-  }
-})
-
-// Sync display changes back to form data (for dirty detection)
-watch(entityIdDisplay, (val) => {
-  if (showBookAutocomplete.value) {
-    form.data.value.entityId = val
-  }
-})
+// Show book lookup only when entityType is 'book'
+const showBookLookup = computed(() => form.data.value.entityType === 'book')
 </script>
 
 <template>
@@ -80,17 +52,27 @@ watch(entityIdDisplay, (val) => {
     <template #fields>
       <div class="form-grid">
         <FormField v-for="f in form.fields.value" :key="f.name" :name="f.name" :label="f.label">
-          <!-- entityId when type=book: mapped autocomplete "Title [bookId]" -->
-          <AutoComplete
-            v-if="f.name === 'entityId' && showBookAutocomplete"
-            v-model="entityIdDisplay"
-            :suggestions="bookLookup.suggestions.value"
-            @complete="bookLookup.search($event.query)"
-            :loading="bookLookup.loading.value"
-            dropdown
-            placeholder="Search books by title..."
-            class="w-full"
-          />
+          <!-- entityId when type=book: LookupField with mode toggle -->
+          <template v-if="f.name === 'entityId' && showBookLookup">
+            <div class="flex flex-column gap-2">
+              <SelectButton
+                v-model="pickerMode"
+                :options="pickerModeOptions"
+                optionLabel="label"
+                optionValue="value"
+                :allowEmpty="false"
+                size="small"
+              />
+              <LookupField
+                v-model="form.data.value[f.name]"
+                :lookup="bookLookup"
+                :pickerMode="pickerMode"
+                :pickerColumns="['title', 'author', 'year', 'genre']"
+                pickerTitle="Select a Book"
+                placeholder="Search books by title..."
+              />
+            </div>
+          </template>
 
           <!-- Default text input -->
           <InputText
