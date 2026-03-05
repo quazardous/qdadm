@@ -2,8 +2,8 @@
 /**
  * LookupPickerDialog - Modal search dialog for entity lookup
  *
- * Opens a DataTable with search to select an item from a large dataset.
- * The current field value is NOT modified until the user confirms a selection.
+ * Opens a DataTable with search to select item(s) from a large dataset.
+ * Supports single selection (click row) and multiple selection (checkboxes).
  *
  * Used internally by LookupField in 'picker' mode.
  */
@@ -27,34 +27,52 @@ interface Props {
   items: Record<string, unknown>[]
   columns: (string | LookupColumn)[]
   loading?: boolean
-  labelField?: string
   valueField?: string
+  /** Current value(s) — single value or array for multiple mode */
   currentValue?: unknown
   width?: string
+  /** Enable checkbox multi-selection */
+  multiple?: boolean
 }
 
 const props = withDefaults(defineProps<Props>(), {
   title: 'Select item',
   loading: false,
-  labelField: 'name',
   valueField: 'id',
   currentValue: undefined,
   width: '700px',
+  multiple: false,
 })
 
 const emit = defineEmits<{
   'update:visible': [value: boolean]
+  /** Single selection (multiple=false) */
   'select': [item: Record<string, unknown>]
+  /** Multi selection (multiple=true) */
+  'select-multiple': [items: Record<string, unknown>[]]
 }>()
 
 const searchQuery = ref('')
+// Single mode
 const selectedRow = ref<Record<string, unknown> | null>(null)
+// Multi mode
+const selectedRows = ref<Record<string, unknown>[]>([])
 
-// Reset state when dialog opens
+// Reset state + pre-select current values when dialog opens
 watch(() => props.visible, (open) => {
   if (open) {
     searchQuery.value = ''
     selectedRow.value = null
+    if (props.multiple && props.currentValue != null) {
+      // Pre-select rows matching currentValue array
+      const vals = Array.isArray(props.currentValue) ? props.currentValue : [props.currentValue]
+      const valStrings = new Set(vals.map(String))
+      selectedRows.value = props.items.filter((item) =>
+        valStrings.has(String(item[props.valueField])),
+      )
+    } else {
+      selectedRows.value = []
+    }
   }
 })
 
@@ -80,8 +98,9 @@ const filteredItems = computed(() => {
   )
 })
 
-// Highlight the row that matches currentValue
+// Highlight the row(s) matching currentValue (single mode only)
 const rowClass = (data: Record<string, unknown>): string | undefined => {
+  if (props.multiple) return undefined
   const val = data[props.valueField]
   if (val != null && props.currentValue != null && String(val) === String(props.currentValue)) {
     return 'lookup-current-row'
@@ -90,24 +109,42 @@ const rowClass = (data: Record<string, unknown>): string | undefined => {
 }
 
 function onRowSelect(event: { data: Record<string, unknown> }): void {
-  selectedRow.value = event.data
+  if (!props.multiple) {
+    selectedRow.value = event.data
+  }
 }
 
 function onRowDblClick(event: { data: Record<string, unknown> }): void {
-  emit('select', event.data)
-  emit('update:visible', false)
+  if (!props.multiple) {
+    emit('select', event.data)
+    emit('update:visible', false)
+  }
 }
 
 function onConfirm(): void {
-  if (selectedRow.value) {
+  if (props.multiple) {
+    emit('select-multiple', selectedRows.value)
+  } else if (selectedRow.value) {
     emit('select', selectedRow.value)
-    emit('update:visible', false)
   }
+  emit('update:visible', false)
 }
 
 function onCancel(): void {
   emit('update:visible', false)
 }
+
+const confirmDisabled = computed(() => {
+  if (props.multiple) return false // allow confirming empty selection (clear all)
+  return !selectedRow.value
+})
+
+const confirmLabel = computed(() => {
+  if (props.multiple && selectedRows.value.length > 0) {
+    return `Select (${selectedRows.value.length})`
+  }
+  return 'Select'
+})
 </script>
 
 <template>
@@ -137,19 +174,21 @@ function onCancel(): void {
     <DataTable
       :value="filteredItems"
       :loading="loading"
-      :selection="selectedRow"
-      selectionMode="single"
+      v-model:selection="selectedRows"
+      :selectionMode="multiple ? undefined : 'single'"
       @row-select="onRowSelect"
       @row-dblclick="onRowDblClick"
       :rowClass="rowClass"
       :paginator="filteredItems.length > 10"
       :rows="10"
-      dataKey=""
+      :dataKey="valueField"
       scrollable
       scrollHeight="400px"
       stripedRows
       class="lookup-picker-table"
     >
+      <!-- Checkbox column for multi mode -->
+      <Column v-if="multiple" selectionMode="multiple" headerStyle="width: 3rem" />
       <Column
         v-for="col in resolvedColumns"
         :key="col.field"
@@ -172,9 +211,9 @@ function onCancel(): void {
         @click="onCancel"
       />
       <Button
-        label="Select"
+        :label="confirmLabel"
         icon="pi pi-check"
-        :disabled="!selectedRow"
+        :disabled="confirmDisabled"
         @click="onConfirm"
       />
     </template>
