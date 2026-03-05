@@ -87,6 +87,7 @@ watch(entityIdDisplay, (val) => {
             :suggestions="bookLookup.suggestions.value"
             @complete="bookLookup.search($event.query)"
             :loading="bookLookup.loading.value"
+            dropdown
             placeholder="Search books by title..."
             class="w-full"
           />

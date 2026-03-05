@@ -71,6 +71,7 @@ form.addDeleteAction()
                 :suggestions="authorLookup.suggestions.value"
                 @complete="authorLookup.search($event.query)"
                 :loading="authorLookup.loading.value"
+                dropdown
                 placeholder="Type to search existing authors..."
                 class="w-full"
               />
