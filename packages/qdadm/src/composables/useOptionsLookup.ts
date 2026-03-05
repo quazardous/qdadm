@@ -212,6 +212,9 @@ export function useOptionsLookup(config: UseOptionsLookupConfig): UseOptionsLook
     }
 
     useAutocomplete.value = items.length > threshold
+
+    // Pre-fill suggestions so dropdown button works on first click
+    suggestions.value = encodedStrings
   }
 
   async function load(): Promise<void> {
@@ -271,14 +274,22 @@ export function useOptionsLookup(config: UseOptionsLookupConfig): UseOptionsLook
   }
 
   function search(query: string): void {
+    let result: string[]
     if (!query) {
-      suggestions.value = encodedStrings
-      return
+      result = encodedStrings
+    } else {
+      const q = query.toLowerCase()
+      const filtered = encodedStrings.filter(
+        (s) => s.toLowerCase().includes(q),
+      )
+      // When query exactly matches a single option (e.g. dropdown click with
+      // current value), show all options so the user can browse alternatives
+      result = (filtered.length === 1 && filtered[0].toLowerCase() === q)
+        ? encodedStrings
+        : filtered
     }
-    const q = query.toLowerCase()
-    suggestions.value = encodedStrings.filter(
-      (s) => s.toLowerCase().includes(q),
-    )
+    // Always assign a new array reference so PrimeVue detects the change
+    suggestions.value = [...result]
   }
 
   function decode(encoded: string): unknown {
