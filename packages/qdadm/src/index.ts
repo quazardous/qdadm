@@ -298,6 +298,7 @@ export {
   type UseOptionsLookupConfig,
   type UseOptionsLookupReturn,
   type OptionsLookupItem,
+  type OptionsDisplayMode,
 } from './composables/useOptionsLookup'
 export { useChildPage, type UseChildPageReturn } from './composables/useChildPage'
 export { useSidebarState, SIDEBAR_COLLAPSED_KEY } from './composables/useSidebarState'

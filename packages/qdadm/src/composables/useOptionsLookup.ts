@@ -2,46 +2,37 @@
  * useOptionsLookup - Generic composable for autocomplete/dropdown options
  *
  * Fetches options from entity managers or API endpoints for use in any form field.
- * Three modes:
+ * Two modes:
  * - **Pure mode** (default for string/number arrays): returns raw values directly.
  *   Use with MultiSelect :options or AutoComplete :suggestions on string[] fields.
  * - **Mapped mode** (objects with label/value): returns { label, value } items.
  *   Use when source items are objects and you need label ≠ value.
- *   In this mode, suggestions are encoded strings "Label [value]" so PrimeVue
- *   AutoComplete works with plain strings. Use decode() to extract the value,
- *   resolve() to convert a raw value back to its encoded form.
+ *
+ * Mapped mode display strategies (displayMode):
+ * - **bracket** (default): suggestions show "Label [value]", decode extracts from brackets.
+ * - **hidden**: suggestions show only "Label", value is resolved via internal lookup.
+ *   If the user types a label not in the list, decode returns the typed string as-is.
  *
  * Usage:
  * ```ts
  * // Pure strings — suggestions are string[]
  * const tags = useOptionsLookup({ endpoint: '/api/admin/tags' })
- * // <AutoComplete :suggestions="tags.suggestions.value" @complete="tags.search($event.query)" />
  *
- * // Pure strings from a sub-key
- * const countries = useOptionsLookup({
- *   endpoint: '/api/admin/config-rules/condition-options',
- *   pick: 'geoCountry',
- * })
- * // <MultiSelect :options="countries.values.value" />
- *
- * // Static pure values
- * const connectivity = useOptionsLookup({ static: ['online', 'offline'] })
- *
- * // Mapped mode — entity objects with label ≠ value
+ * // Mapped mode with bracket display (default)
  * const pools = useOptionsLookup({ entity: 'botPools', label: 'name', value: 'id' })
  * // suggestions = ["Pool Alpha [pool-1]", "Pool Beta [pool-2]"]
  * // pools.decode("Pool Alpha [pool-1]") → "pool-1"
- * // pools.resolve("pool-1") → "Pool Alpha [pool-1]"
- * // <AutoComplete v-model="encoded" :suggestions="pools.suggestions.value"
- * //   @complete="pools.search($event.query)" />
- * // On save: pools.decode(encoded) → raw value
- * // On load: pools.resolve(rawValue) → encoded display string
  *
- * // Entity mode — pure values extracted from a field
- * const authors = useOptionsLookup({ entity: 'books', field: 'author' })
- * // <AutoComplete :suggestions="authors.suggestions.value" />
+ * // Mapped mode with hidden display — user sees labels only
+ * const pools = useOptionsLookup({
+ *   entity: 'botPools', label: 'name', value: 'id',
+ *   displayMode: 'hidden',
+ * })
+ * // suggestions = ["Pool Alpha", "Pool Beta"]
+ * // pools.decode("Pool Alpha") → "pool-1"
+ * // pools.resolve("pool-1") → "Pool Alpha"
  *
- * // Custom encode/decode
+ * // Custom encode/decode (overrides displayMode)
  * const custom = useOptionsLookup({
  *   entity: 'users', label: 'username', value: 'id',
  *   encode: (item) => `${item.label} (#${item.value})`,
@@ -68,6 +59,8 @@ function defaultDecode(encoded: string): unknown {
   return match ? match[1] : encoded
 }
 
+export type OptionsDisplayMode = 'bracket' | 'hidden'
+
 export interface UseOptionsLookupConfig {
   /** Fetch options from an entity manager (via orchestrator) */
   entity?: string
@@ -83,9 +76,16 @@ export interface UseOptionsLookupConfig {
   label?: string
   /** Field to use as value (default: 'id'). Only for mapped mode. */
   value?: string
-  /** Custom encode function: item → display string (default: "Label [value]") */
+  /**
+   * How to display mapped values in autocomplete (default: 'bracket').
+   * - 'bracket': "Label [value]" — value visible, decode parses brackets
+   * - 'hidden': "Label" — value hidden, decode uses internal label→value lookup
+   * Ignored when custom encode/decode are provided.
+   */
+  displayMode?: OptionsDisplayMode
+  /** Custom encode function: item → display string (overrides displayMode) */
   encode?: (item: OptionsLookupItem) => string
-  /** Custom decode function: display string → raw value (default: extract from [value]) */
+  /** Custom decode function: display string → raw value (overrides displayMode) */
   decode?: (encoded: string) => unknown
   /** Post-process mapped options */
   transform?: (items: OptionsLookupItem[]) => OptionsLookupItem[]
@@ -137,8 +137,30 @@ export function useOptionsLookup(config: UseOptionsLookupConfig): UseOptionsLook
   const labelField = config.label ?? 'name'
   const valueField = config.value ?? 'id'
   const threshold = config.autocompleteThreshold ?? 50
-  const encodeFn = config.encode ?? defaultEncode
-  const decodeFn = config.decode ?? defaultDecode
+  const displayMode = config.displayMode ?? 'bracket'
+
+  // Label→value map for hidden mode decode (rebuilt on processItems)
+  let labelToValue = new Map<string, unknown>()
+
+  // Resolve encode/decode based on displayMode (custom overrides all)
+  const encodeFn = config.encode ?? (
+    displayMode === 'hidden'
+      ? (item: OptionsLookupItem) => item.label
+      : defaultEncode
+  )
+  const decodeFn = config.decode ?? (
+    displayMode === 'hidden'
+      ? (encoded: string) => {
+          // Exact match first, then case-insensitive
+          if (labelToValue.has(encoded)) return labelToValue.get(encoded)
+          const lower = encoded.toLowerCase()
+          for (const [label, value] of labelToValue) {
+            if (label.toLowerCase() === lower) return value
+          }
+          return encoded // Not found → return as-is (manual input)
+        }
+      : defaultDecode
+  )
 
   // Resolve orchestrator lazily (only if entity mode)
   let getManager: ((name: string) => { list: (params?: Record<string, unknown>) => Promise<{ items: unknown[] }> }) | null = null
@@ -184,6 +206,9 @@ export function useOptionsLookup(config: UseOptionsLookupConfig): UseOptionsLook
 
       // Pre-compute encoded strings for suggestions
       encodedStrings = options.value.map(encodeFn)
+
+      // Build label→value map for hidden mode decode
+      labelToValue = new Map(options.value.map((opt) => [encodeFn(opt), opt.value]))
     }
 
     useAutocomplete.value = items.length > threshold

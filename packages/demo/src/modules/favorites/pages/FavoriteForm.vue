@@ -2,15 +2,15 @@
 /**
  * FavoriteForm - Create/Edit form for favorites
  *
- * DEMO: useOptionsLookup (Mapped Mode with encode/decode)
- * ========================================================
- * The entityId field uses useOptionsLookup in mapped mode: source items are
- * book objects with label (title) ≠ value (bookId). Suggestions are encoded
- * as "Title [bookId]" strings. On save, decode() extracts the raw ID.
- * On load, resolve() converts the stored ID back to the display string.
+ * DEMO: useOptionsLookup (Mapped Mode with hidden display)
+ * =========================================================
+ * The entityId field uses useOptionsLookup in mapped mode with displayMode: 'hidden'.
+ * Source items are book objects with label (title) ≠ value (bookId).
+ * The user sees only the title — the ID is resolved via internal lookup.
+ * On save, decode() finds the matching value by label.
+ * On load, resolve() converts the stored ID back to the label.
  *
- * If the user types a custom value without selecting from the list,
- * decode() returns it as-is (no brackets → whole string is the value).
+ * If the user types a value not in the list, decode() returns it as-is.
  */
 
 import { computed, ref, watch } from 'vue'
@@ -19,11 +19,12 @@ import InputText from 'primevue/inputtext'
 import Select from 'primevue/select'
 import AutoComplete from 'primevue/autocomplete'
 
-// Mapped mode autocomplete: books with "Title [bookId]"
+// Mapped mode autocomplete: books with hidden ID (user sees title only)
 const bookLookup = useOptionsLookup({
   entity: 'books',
   label: 'title',
   value: 'bookId',
+  displayMode: 'hidden',
 })
 
 // Display value for the AutoComplete (encoded string, not the raw ID)
