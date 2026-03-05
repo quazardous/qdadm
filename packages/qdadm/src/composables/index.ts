@@ -134,6 +134,12 @@ export {
 } from './useUserImpersonator'
 export { useCurrentEntity, type UseCurrentEntityReturn } from './useCurrentEntity'
 export {
+  useOptionsLookup,
+  type UseOptionsLookupConfig,
+  type UseOptionsLookupReturn,
+  type OptionsLookupItem,
+} from './useOptionsLookup'
+export {
   useFieldManager,
   snakeCaseToTitle,
   type BaseFieldDefinition,

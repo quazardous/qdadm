@@ -17,12 +17,22 @@
  * availability status around the form content.
  *
  * See: modules/loans/components/LoansZoneSetup.vue for wrap operation
+ *
+ * DEMO: useOptionsLookup (Pure Value Autocomplete)
+ * =================================================
+ * The author field uses useOptionsLookup to suggest existing author names.
+ * Demonstrates pure value mode: options are plain strings extracted from
+ * the 'author' field of existing books. No label/value mapping needed.
  */
-import { useEntityItemFormPage, FormPage, FormField, FormInput, FieldGroups, Zone, PageNav } from 'qdadm'
+import { useEntityItemFormPage, FormPage, FormField, FormInput, FieldGroups, Zone, PageNav, useOptionsLookup } from 'qdadm'
+import AutoComplete from 'primevue/autocomplete'
 
 // Route param uses manager.idField ('bookId') automatically
 const form = useEntityItemFormPage({ entity: 'books' })
 form.generateFields()
+
+// Pure value autocomplete: extract distinct author names from existing books
+const authorLookup = useOptionsLookup({ entity: 'books', field: 'author' })
 
 // Organize fields into 2 accordion groups with icons
 form.group('basic', ['title', 'author'], {
@@ -54,7 +64,17 @@ form.addDeleteAction()
         >
           <template #field="{ field }">
             <FormField :name="field.name" :label="field.label">
-              <FormInput :field="field" v-model="form.data.value[field.name]" />
+              <!-- Author: pure value autocomplete from existing books -->
+              <AutoComplete
+                v-if="field.name === 'author'"
+                v-model="form.data.value.author"
+                :suggestions="authorLookup.suggestions.value"
+                @complete="authorLookup.search($event.query)"
+                :loading="authorLookup.loading.value"
+                placeholder="Type to search existing authors..."
+                class="w-full"
+              />
+              <FormInput v-else :field="field" v-model="form.data.value[field.name]" />
             </FormField>
           </template>
         </FieldGroups>

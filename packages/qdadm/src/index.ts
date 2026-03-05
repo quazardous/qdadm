@@ -293,6 +293,12 @@ export {
   type UserRecord,
 } from './composables/useUserImpersonator'
 export { useCurrentEntity, type UseCurrentEntityReturn } from './composables/useCurrentEntity'
+export {
+  useOptionsLookup,
+  type UseOptionsLookupConfig,
+  type UseOptionsLookupReturn,
+  type OptionsLookupItem,
+} from './composables/useOptionsLookup'
 export { useChildPage, type UseChildPageReturn } from './composables/useChildPage'
 export { useSidebarState, SIDEBAR_COLLAPSED_KEY } from './composables/useSidebarState'
 
