@@ -307,6 +307,7 @@ function clearValue(): void {
             :label="chip.label"
             removable
             @remove="removeMultiChip(chip.raw)"
+            @click.stop
           />
         </template>
         <span v-else class="lookup-multi-placeholder">
