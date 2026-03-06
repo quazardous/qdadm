@@ -70,6 +70,8 @@ export interface UseOptionsLookupConfig {
   endpoint?: string
   /** When using endpoint: pick a sub-key from the response data */
   pick?: string
+  /** Extra headers for endpoint fetch (e.g. Authorization) */
+  headers?: Record<string, string> | (() => Record<string, string>)
   /** Static options (no fetch needed) */
   static?: unknown[]
   /** Field to use as display label (default: 'name'). Only for mapped mode. */
@@ -249,9 +251,10 @@ export function useOptionsLookup(config: UseOptionsLookupConfig): UseOptionsLook
           items = rawItems
         }
       } else if (config.endpoint) {
+        const extraHeaders = typeof config.headers === 'function' ? config.headers() : config.headers
         const response = await fetch(config.endpoint, {
           credentials: 'include',
-          headers: { 'Accept': 'application/json' },
+          headers: { 'Accept': 'application/json', ...extraHeaders },
         })
         if (!response.ok) throw new Error(`HTTP ${response.status}`)
         const json = await response.json()
