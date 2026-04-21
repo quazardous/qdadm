@@ -23,3 +23,6 @@ npm-debug.log*
 .env.local
 .env.*.local
 POSTIT.md
+
+# Codegen output (source of truth is the schema, not the generated file)
+packages/qdadm/src/generated/
