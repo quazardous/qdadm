@@ -19,7 +19,10 @@ const settingsStorage = new MemoryStorage({
   initialData: [
     { id: 'theme', key: 'theme', value: 'light', type: 'string' },
     { id: 'language', key: 'language', value: 'en', type: 'string' },
-    { id: 'pageSize', key: 'pageSize', value: '20', type: 'number' }
+    { id: 'pageSize', key: 'pageSize', value: '20', type: 'number' },
+    { id: 'rateLimits', key: 'rateLimits', value: JSON.stringify({ 'jobs:create': 60, 'jobs:read': 200, 'files:write': 20 }), type: 'json' },
+    { id: 'features', key: 'features', value: JSON.stringify({ darkMode: true, notifications: false, maxRetries: 3 }), type: 'json' },
+    { id: 'uiConfig', key: 'uiConfig', value: JSON.stringify({ primary: '#10b981', radius: 8, dark: false }), type: 'json-structured' }
   ]
 })
 
@@ -49,7 +52,9 @@ export class SettingsModule extends Module {
           options: [
             { label: 'String', value: 'string' },
             { label: 'Number', value: 'number' },
-            { label: 'Boolean', value: 'boolean' }
+            { label: 'Boolean', value: 'boolean' },
+            { label: 'JSON', value: 'json' },
+            { label: 'JSON (structured)', value: 'json-structured' }
           ],
           default: 'string'
         }
@@ -61,7 +66,8 @@ export class SettingsModule extends Module {
     // ROUTES (list only - read-only entity)
     // ════════════════════════════════════════════════════════════════════════
     ctx.crud('settings', {
-      list: () => import('./pages/SettingsPage.vue')
+      list: () => import('./pages/SettingsPage.vue'),
+      form: () => import('./pages/SettingsEditPage.vue')
     }, {
       nav: { section: 'Memory Storage', icon: 'pi pi-cog' }
     })

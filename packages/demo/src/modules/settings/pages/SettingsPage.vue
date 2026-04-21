@@ -10,6 +10,7 @@
  * Uses editMode="cell" for inline editing.
  */
 import { ref } from 'vue'
+import { useRouter } from 'vue-router'
 import { useOrchestrator, useSignalToast } from 'qdadm'
 import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
@@ -18,6 +19,8 @@ import Select from 'primevue/select'
 import { InfoBanner } from 'qdadm/components'
 import Button from 'primevue/button'
 import Tag from 'primevue/tag'
+
+const router = useRouter()
 
 const { getManager } = useOrchestrator()
 const settingsManager = getManager('settings')
@@ -31,7 +34,9 @@ const loading = ref(false)
 const typeOptions = [
   { label: 'String', value: 'string' },
   { label: 'Number', value: 'number' },
-  { label: 'Boolean', value: 'boolean' }
+  { label: 'Boolean', value: 'boolean' },
+  { label: 'JSON', value: 'json' },
+  { label: 'JSON (structured)', value: 'json-structured' }
 ]
 
 // ============ LOAD DATA ============
@@ -181,9 +186,26 @@ function getTypeSeverity(type) {
   const map = {
     string: 'info',
     number: 'success',
-    boolean: 'warn'
+    boolean: 'warn',
+    json: 'contrast',
+    'json-structured': 'success'
   }
   return map[type] || 'secondary'
+}
+
+function editSetting(setting) {
+  router.push({ name: 'setting-edit', params: { id: setting.id } })
+}
+
+function valuePreview(data) {
+  if (data.type === 'json' || data.type === 'json-structured') {
+    try {
+      const obj = typeof data.value === 'string' ? JSON.parse(data.value) : data.value
+      const keys = Object.keys(obj)
+      return `{${keys.length} keys}`
+    } catch { return '{...}' }
+  }
+  return data.value
 }
 </script>
 
@@ -268,10 +290,14 @@ function getTypeSeverity(type) {
 
         <Column field="value" header="Value" style="width: 40%">
           <template #body="{ data }">
-            {{ data.value }}
+            <span v-if="data.type === 'json' || data.type === 'json-structured'" class="json-preview" @click="editSetting(data)">
+              {{ valuePreview(data) }}
+            </span>
+            <span v-else>{{ data.value }}</span>
           </template>
           <template #editor="{ data, field }">
-            <InputText v-model="data[field]" autofocus class="w-full" />
+            <InputText v-if="data.type !== 'json' && data.type !== 'json-structured'" v-model="data[field]" autofocus class="w-full" />
+            <span v-else class="json-preview" @click="editSetting(data)">{{ valuePreview(data) }} (click to edit)</span>
           </template>
         </Column>
 
@@ -290,8 +316,15 @@ function getTypeSeverity(type) {
           </template>
         </Column>
 
-        <Column header="Actions" style="width: 100px">
+        <Column header="Actions" style="width: 120px">
           <template #body="{ data }">
+            <Button
+              icon="pi pi-pencil"
+              text
+              rounded
+              @click="editSetting(data)"
+              v-tooltip.top="'Edit'"
+            />
             <Button
               icon="pi pi-trash"
               severity="danger"
@@ -313,5 +346,11 @@ code {
   background: var(--p-surface-100);
   border-radius: 4px;
   font-size: 0.875rem;
+}
+.json-preview {
+  font-family: monospace;
+  font-size: 0.8125rem;
+  color: var(--p-primary-color);
+  cursor: pointer;
 }
 </style>
