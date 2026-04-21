@@ -31,10 +31,17 @@
  * - jsonMode: Mode for JSON editor - 'tree' or 'text' (default: 'text')
  * - defaultMode: Initial mode if not using v-model:mode (default: 'structured')
  * - showToggle: Whether to show the toggle (default: true, useful to hide in nested usage)
+ * - guardInvalidJson: Block switching to structured view while JSON is invalid (default: true)
+ * - invalidJsonMessage: Error message shown when JSON is invalid (default: 'Invalid JSON — fix errors before switching views')
+ *
+ * Events:
+ * - update:modelValue, update:jsonValue, update:mode: standard v-model
+ * - json-error: emitted with true when JSON becomes invalid, false when valid again
  */
 
 import { ref, computed, watch } from 'vue'
 import SelectButton from 'primevue/selectbutton'
+import Message from 'primevue/message'
 import VanillaJsonEditor from './VanillaJsonEditor.vue'
 import type { Mode } from 'vanilla-jsoneditor'
 
@@ -56,6 +63,8 @@ interface Props {
   jsonMode?: Mode
   defaultMode?: ViewMode
   showToggle?: boolean
+  guardInvalidJson?: boolean
+  invalidJsonMessage?: string
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -66,22 +75,37 @@ const props = withDefaults(defineProps<Props>(), {
   jsonHeight: '400px',
   jsonMode: 'text' as Mode,
   defaultMode: 'structured',
-  showToggle: true
+  showToggle: true,
+  guardInvalidJson: true,
+  invalidJsonMessage: 'Invalid JSON — fix errors before switching views'
 })
 
 const emit = defineEmits<{
   'update:modelValue': [value: JsonValue]
   'update:jsonValue': [value: JsonValue]
   'update:mode': [value: ViewMode]
+  'json-error': [hasError: boolean]
 }>()
 
 // Internal view mode (used when not controlled externally)
 const internalMode = ref<ViewMode>(props.defaultMode)
 
+// Invalid JSON state, tracked from VanillaJsonEditor error/update events
+const hasJsonError = ref<boolean>(false)
+
 // Computed view mode - use external if provided, else internal
 const viewMode = computed<ViewMode>({
   get: () => props.mode ?? internalMode.value,
   set: (val: ViewMode) => {
+    // Guard: block json → structured while JSON is invalid
+    if (
+      props.guardInvalidJson &&
+      hasJsonError.value &&
+      (props.mode ?? internalMode.value) === 'json' &&
+      val === 'structured'
+    ) {
+      return
+    }
     if (props.mode !== null) {
       emit('update:mode', val)
     } else {
@@ -100,14 +124,26 @@ const effectiveJsonValue = computed<JsonValue>(() => {
   return props.jsonValue !== null ? props.jsonValue : props.modelValue
 })
 
-// Handle JSON editor updates
+// Handle JSON editor updates (fires only when JSON is valid)
 function onJsonUpdate(newValue: JsonValue): void {
+  if (hasJsonError.value) {
+    hasJsonError.value = false
+    emit('json-error', false)
+  }
   if (props.jsonValue !== null) {
     // Using separate jsonValue binding
     emit('update:jsonValue', newValue)
   } else {
     // Using modelValue for both
     emit('update:modelValue', newValue)
+  }
+}
+
+// Track invalid JSON state from the editor
+function onJsonError(): void {
+  if (!hasJsonError.value) {
+    hasJsonError.value = true
+    emit('json-error', true)
   }
 }
 
@@ -142,11 +178,20 @@ watch(() => props.mode, (newMode: ViewMode | null | undefined) => {
 
     <!-- JSON View -->
     <div v-if="viewMode === 'json'" class="json-view">
+      <Message
+        v-if="guardInvalidJson && hasJsonError"
+        severity="error"
+        :closable="false"
+        class="json-error"
+      >
+        {{ invalidJsonMessage }}
+      </Message>
       <VanillaJsonEditor
         :modelValue="effectiveJsonValue"
-        @update:modelValue="onJsonUpdate"
         :mode="jsonMode"
         :height="jsonHeight"
+        @update:modelValue="onJsonUpdate"
+        @error="onJsonError"
       />
     </div>
 
@@ -207,6 +252,10 @@ watch(() => props.mode, (newMode: ViewMode | null | undefined) => {
 
 .json-view {
   margin-top: 0.25rem;
+}
+
+.json-error {
+  margin-bottom: 0.5rem;
 }
 
 .structured-view {

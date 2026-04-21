@@ -3,6 +3,13 @@
 All notable changes to qdadm will be documented in this file.
 This is not a commit log. Keep entries simple, user-focused.
 
+## [1.13.0] - 2026-04-21
+
+### Added
+- **`JsonStructuredField` invalid-JSON guard**: New `guardInvalidJson` prop (default `true`) blocks switching from JSON to structured view while the raw JSON is invalid, preventing silent data loss on toggle
+- **`invalidJsonMessage` prop**: Customizable error banner text shown when JSON is invalid (default: `Invalid JSON — fix errors before switching views`)
+- **`json-error` event**: Emitted with `true` when JSON becomes invalid, `false` when valid again — lets parents react to validity changes
+
 ## [1.12.0] - 2026-03-04
 
 ### Added
