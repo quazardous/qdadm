@@ -1,6 +1,6 @@
 {
   "name": "qdadm",
-  "version": "1.13.0",
+  "version": "1.13.1",
   "description": "Vue 3 framework for admin dashboards with PrimeVue",
   "author": "quazardous",
   "license": "MIT",
@@ -48,7 +48,7 @@
     "pluralize": "^8.0.0"
   },
   "peerDependencies": {
-    "pinia": "^2.0.0",
+    "pinia": "^2.0.0 || ^3.0.0",
     "primevue": "^4.0.0",
     "vue": "^3.3.0",
     "vue-router": "^4.0.0"

@@ -3,6 +3,11 @@
 All notable changes to qdadm will be documented in this file.
 This is not a commit log. Keep entries simple, user-focused.
 
+## [1.13.1] - 2026-04-21
+
+### Changed
+- **Peer dep `pinia` elargi** : `^2.0.0 || ^3.0.0` (avant: `^2.0.0` strict) — permet l'usage avec pinia 3.x (ex. skybot) sans `--legacy-peer-deps`
+
 ## [1.13.0] - 2026-04-21
 
 ### Added
