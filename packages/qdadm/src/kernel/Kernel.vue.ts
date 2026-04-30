@@ -13,6 +13,7 @@ import Toast from 'primevue/toast'
 import ToastListener from '../toast/ToastListener.vue'
 import { createQdadm } from '../plugin.js'
 import { createNotificationStore, NOTIFICATION_KEY } from '../notifications/NotificationStore'
+import { I18N_INJECTION_KEY } from '../i18n/useI18n'
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Self = any
 
@@ -144,6 +145,7 @@ export function applyVueMethods(KernelClass: { prototype: any }): void {
         stackHydrator: this.stackHydrator,
         deferred: this.deferred,
         router: this.router,
+        i18n: this.i18nInstance,
         get: (name: string) => this.orchestrator!.get(name),
         managers: () => this.orchestrator!.getRegisteredNames(),
       }
@@ -155,6 +157,11 @@ export function applyVueMethods(KernelClass: { prototype: any }): void {
     }
 
     app.provide('qdadmSignals', this.signals)
+
+    if (this.i18nInstance) {
+      app.provide(I18N_INJECTION_KEY, this.i18nInstance)
+      app.provide('qdadmI18n', this.i18nInstance)
+    }
 
     if (this.sseBridge) {
       app.provide('qdadmSSEBridge', this.sseBridge)

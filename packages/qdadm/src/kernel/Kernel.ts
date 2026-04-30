@@ -75,6 +75,8 @@ import { applyModuleMethods } from './Kernel.modules'
 import { applyRegistryMethods } from './Kernel.registries'
 import { setQdadmDebugBar, applyVueMethods } from './Kernel.vue'
 import { applyApiMethods } from './Kernel.api'
+import { applyI18nMethods } from './Kernel.i18n'
+import type { I18n } from '../i18n/I18n'
 
 export class Kernel {
   options: KernelOptions
@@ -94,6 +96,7 @@ export class Kernel {
   activeStack: ActiveStack | null = null
   stackHydrator: StackHydrator | null = null
   notificationStore: NotificationStore | null = null
+  i18nInstance: I18n | null = null
 
   /** Pending provides from modules (applied after vueApp creation) */
   _pendingProvides: Map<string | symbol, unknown> = new Map()
@@ -152,6 +155,7 @@ export class Kernel {
   createApp(): App {
     this._resolveEntityAuthAdapter()
     this._createSignalBus()
+    this._createI18n()
     this._createHookRegistry()
     this._createZoneRegistry()
     this._createActiveStack()
@@ -185,6 +189,7 @@ export class Kernel {
   async createAppAsync(): Promise<App> {
     this._resolveEntityAuthAdapter()
     this._createSignalBus()
+    this._createI18n()
     this._createHookRegistry()
     this._createZoneRegistry()
     this._createActiveStack()
@@ -355,6 +360,13 @@ export class Kernel {
     const debugModule = this.getDebugModule()
     return debugModule?.getBridge?.() ?? null
   }
+
+  /**
+   * I18n subsystem accessor
+   */
+  get i18n(): I18n | null {
+    return this.i18nInstance
+  }
 }
 
 // Declare prototype-patched methods
@@ -382,6 +394,10 @@ export interface Kernel {
   _wireModules(): void
   _wireModulesAsync(): Promise<void>
   _fireWarmups(): void
+
+  // i18n (Kernel.i18n.ts)
+  _createI18n(): void
+  _bootstrapI18n(): Promise<void>
 
   // Registries (Kernel.registries.ts)
   _createSignalBus(): void
@@ -415,3 +431,4 @@ applyModuleMethods(Kernel)
 applyRegistryMethods(Kernel)
 applyVueMethods(Kernel)
 applyApiMethods(Kernel)
+applyI18nMethods(Kernel)
