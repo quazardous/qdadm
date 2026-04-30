@@ -39,6 +39,44 @@ export class UsersModule extends Module {
 
   async connect(ctx) {
     // ════════════════════════════════════════════════════════════════════════
+    // I18N
+    // ════════════════════════════════════════════════════════════════════════
+    ctx.messages('en', {
+      entities: {
+        users: {
+          label: 'User',
+          labelPlural: 'Users',
+          fields: {
+            username: 'Username',
+            password: 'Password',
+            role: 'Role',
+          },
+        },
+      },
+      nav: {
+        sections: { Security: 'Security' },
+        routes: { user: 'Users' },
+      },
+    })
+    ctx.messages('fr', {
+      entities: {
+        users: {
+          label: 'Utilisateur',
+          labelPlural: 'Utilisateurs',
+          fields: {
+            username: "Nom d'utilisateur",
+            password: 'Mot de passe',
+            role: 'Rôle',
+          },
+        },
+      },
+      nav: {
+        sections: { Security: 'Sécurité' },
+        routes: { user: 'Utilisateurs' },
+      },
+    })
+
+    // ════════════════════════════════════════════════════════════════════════
     // ENTITY - Using ctx.userEntity() helper
     // ════════════════════════════════════════════════════════════════════════
     // Creates a UsersManager with:

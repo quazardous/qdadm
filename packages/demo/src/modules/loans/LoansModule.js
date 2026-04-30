@@ -101,6 +101,43 @@ export class LoansModule extends Module {
 
   async connect(ctx) {
     // ════════════════════════════════════════════════════════════════════════
+    // I18N
+    // ════════════════════════════════════════════════════════════════════════
+    ctx.messages('en', {
+      entities: {
+        loans: {
+          label: 'Loan',
+          labelPlural: 'Loans',
+          fields: {
+            book_id: 'Book',
+            user_id: 'Borrower',
+            borrowed_at: 'Borrowed at',
+            returned_at: 'Returned at',
+            read: 'Read?',
+          },
+        },
+      },
+    })
+    ctx.messages('fr', {
+      entities: {
+        loans: {
+          label: 'Emprunt',
+          labelPlural: 'Emprunts',
+          fields: {
+            book_id: 'Livre',
+            user_id: 'Emprunteur',
+            borrowed_at: 'Emprunté le',
+            returned_at: 'Retourné le',
+            read: 'Lu ?',
+          },
+        },
+      },
+      nav: {
+        routes: { loan: 'Emprunts' },
+      },
+    })
+
+    // ════════════════════════════════════════════════════════════════════════
     // ENTITY
     // ════════════════════════════════════════════════════════════════════════
     ctx.entity('loans', new LoansManager({

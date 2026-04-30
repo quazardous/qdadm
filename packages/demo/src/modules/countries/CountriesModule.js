@@ -77,6 +77,52 @@ export class CountriesModule extends Module {
 
   async connect(ctx) {
     // ════════════════════════════════════════════════════════════════════════
+    // I18N
+    // ════════════════════════════════════════════════════════════════════════
+    ctx.messages('en', {
+      entities: {
+        countries: {
+          label: 'Country',
+          labelPlural: 'Countries',
+          fields: {
+            cca3: 'Code',
+            name: 'Name',
+            capital: 'Capital',
+            region: 'Region',
+            subregion: 'Subregion',
+            population: 'Population',
+            flag: 'Flag',
+          },
+        },
+      },
+      nav: {
+        sections: { 'REST Countries': 'REST Countries' },
+        routes: { country: 'Countries' },
+      },
+    })
+    ctx.messages('fr', {
+      entities: {
+        countries: {
+          label: 'Pays',
+          labelPlural: 'Pays',
+          fields: {
+            cca3: 'Code',
+            name: 'Nom',
+            capital: 'Capitale',
+            region: 'Région',
+            subregion: 'Sous-région',
+            population: 'Population',
+            flag: 'Drapeau',
+          },
+        },
+      },
+      nav: {
+        sections: { 'REST Countries': 'Pays (REST)' },
+        routes: { country: 'Pays' },
+      },
+    })
+
+    // ════════════════════════════════════════════════════════════════════════
     // ENTITY
     // ════════════════════════════════════════════════════════════════════════
     ctx.entity('countries', new EntityManager({

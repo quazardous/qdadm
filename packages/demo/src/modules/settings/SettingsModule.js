@@ -37,6 +37,62 @@ export class SettingsModule extends Module {
 
   async connect(ctx) {
     // ════════════════════════════════════════════════════════════════════════
+    // I18N
+    // ════════════════════════════════════════════════════════════════════════
+    ctx.messages('en', {
+      entities: {
+        settings: {
+          label: 'Setting',
+          labelPlural: 'Settings',
+          fields: {
+            key: 'Key',
+            value: 'Value',
+            type: {
+              _label: 'Type',
+              options: {
+                string: 'String',
+                number: 'Number',
+                boolean: 'Boolean',
+                json: 'JSON',
+                'json-structured': 'JSON (structured)',
+              },
+            },
+          },
+        },
+      },
+      nav: {
+        sections: { 'Memory Storage': 'Memory Storage' },
+        routes: { setting: 'Settings' },
+      },
+    })
+    ctx.messages('fr', {
+      entities: {
+        settings: {
+          label: 'Paramètre',
+          labelPlural: 'Paramètres',
+          fields: {
+            key: 'Clé',
+            value: 'Valeur',
+            type: {
+              _label: 'Type',
+              options: {
+                string: 'Chaîne',
+                number: 'Nombre',
+                boolean: 'Booléen',
+                json: 'JSON',
+                'json-structured': 'JSON (structuré)',
+              },
+            },
+          },
+        },
+      },
+      nav: {
+        sections: { 'Memory Storage': 'Stockage en mémoire' },
+        routes: { setting: 'Paramètres' },
+      },
+    })
+
+    // ════════════════════════════════════════════════════════════════════════
     // ENTITY
     // ════════════════════════════════════════════════════════════════════════
     ctx.entity('settings', {

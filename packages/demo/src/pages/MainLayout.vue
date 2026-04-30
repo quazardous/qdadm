@@ -9,6 +9,7 @@
 import { ref, onMounted, onUnmounted, inject } from 'vue'
 import { AppLayout } from 'qdadm/components'
 import UserImpersonator from '../components/UserImpersonator.vue'
+import LocaleSwitcher from '../components/LocaleSwitcher.vue'
 
 const orchestrator = inject('qdadmOrchestrator')
 
@@ -47,6 +48,7 @@ onUnmounted(() => {
 <template>
   <AppLayout :class="{ 'layout--impersonating': isImpersonating }">
     <template #sidebar-after-nav>
+      <LocaleSwitcher />
       <UserImpersonator />
     </template>
   </AppLayout>
