@@ -13,7 +13,40 @@
  */
 
 import { ref, shallowReactive, type Ref, type ShallowReactive } from 'vue'
-import type { Collector, CollectorContext } from './Collector'
+import type {
+  Collector,
+  CollectorContext,
+  CollectorManifest,
+  CollectorSnapshot,
+} from './Collector'
+
+/**
+ * Aggregated manifest returned by `bridge.describe()`.
+ * Stable JSON shape consumed by agents / MCP / dev endpoints.
+ */
+export interface BridgeManifest {
+  /** Schema version — bump when the shape changes incompatibly */
+  version: '1'
+  /** Whether the bridge is currently collecting data */
+  enabled: boolean
+  /** Generation tick (changes on each collector update) */
+  tick: number
+  /** Manifest for each collector, keyed by collector name */
+  collectors: Record<string, CollectorManifest>
+}
+
+/**
+ * Aggregated snapshot returned by `bridge.dump()`.
+ */
+export interface BridgeSnapshot {
+  version: '1'
+  enabled: boolean
+  tick: number
+  /** Wall-clock millis at snapshot time */
+  takenAt: number
+  /** Snapshot per collector, keyed by collector name */
+  collectors: Record<string, CollectorSnapshot>
+}
 
 /**
  * Debug bridge options
@@ -162,6 +195,88 @@ export class DebugBridge {
       total += collector.getBadge(countAll)
     }
     return total
+  }
+
+  /**
+   * Aggregated manifest — what every collector exposes.
+   *
+   * This is the primary entry point for agents/MCP: a single JSON object
+   * describing all collectors, their entry shapes, and their callable actions.
+   */
+  describe(): BridgeManifest {
+    const collectors: Record<string, CollectorManifest> = {}
+    for (const [name, collector] of this.collectors) {
+      try {
+        collectors[name] = collector.describe()
+      } catch (e) {
+        collectors[name] = {
+          name,
+          records: collector.records,
+          summary: `[error producing manifest: ${(e as Error).message}]`,
+          actions: [],
+        }
+      }
+    }
+    return {
+      version: '1',
+      enabled: this.enabled.value,
+      tick: this.tick.value,
+      collectors,
+    }
+  }
+
+  /**
+   * Aggregated snapshot — current state of every collector.
+   *
+   * Each collector decides how to serialize itself; the bridge just glues
+   * them together and stamps the result with `takenAt` and the tick.
+   */
+  dump(): BridgeSnapshot {
+    const collectors: Record<string, CollectorSnapshot> = {}
+    for (const [name, collector] of this.collectors) {
+      try {
+        collectors[name] = collector.snapshot()
+      } catch (e) {
+        collectors[name] = {
+          name,
+          entries: [],
+          count: 0,
+          unseen: 0,
+          error: (e as Error).message,
+        }
+      }
+    }
+    return {
+      version: '1',
+      enabled: this.enabled.value,
+      tick: this.tick.value,
+      takenAt: Date.now(),
+      collectors,
+    }
+  }
+
+  /**
+   * Invoke an action on a named collector.
+   *
+   * Routes through `Collector.call()` which knows the universal verbs
+   * (clear/markSeen/getEntries) plus any actions the collector registered.
+   *
+   * @throws if the collector does not exist
+   */
+  async call(
+    collectorName: string,
+    actionName: string,
+    args: Record<string, unknown> = {}
+  ): Promise<unknown> {
+    const collector = this.collectors.get(collectorName)
+    if (!collector) {
+      throw new Error(
+        `[DebugBridge] unknown collector "${collectorName}". Available: ${Array.from(
+          this.collectors.keys()
+        ).join(', ')}`
+      )
+    }
+    return await collector.call(actionName, args)
   }
 }
 

@@ -12,7 +12,7 @@
  * collector.uninstall()
  */
 
-import { Collector, type CollectorContext, type CollectorEntry } from './Collector'
+import { Collector, type CollectorContext, type CollectorEntry, type CollectorManifest } from './Collector'
 
 /**
  * Error entry type
@@ -74,6 +74,24 @@ export class ErrorCollector extends Collector<ErrorEntry> {
     if (this._rejectionHandler) {
       window.removeEventListener('unhandledrejection', this._rejectionHandler)
       this._rejectionHandler = null
+    }
+  }
+
+  override describe(): CollectorManifest {
+    return {
+      name: this.name,
+      records: true,
+      summary: 'Captures uncaught window errors and unhandled promise rejections.',
+      entryShape: {
+        message: 'string',
+        filename: 'string?',
+        lineno: 'number?',
+        colno: 'number?',
+        error: 'string? (stack)',
+        reason: 'string? (rejection reason)',
+        timestamp: 'number',
+      },
+      actions: this._builtinActionManifests(),
     }
   }
 }

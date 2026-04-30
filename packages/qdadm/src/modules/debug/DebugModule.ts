@@ -171,6 +171,10 @@ export class DebugModule extends Module {
 
     // Register global component for use in App.vue
     extCtx.component('QdadmDebugBar', QdadmDebugBar)
+
+    // The HTTP debug bridge (qdadmDebugPlugin) is wired entirely from the
+    // injected client script (see transformIndexHtml in the plugin). The
+    // DebugModule itself stays browser-pure and HMR-agnostic.
   }
 
   /**

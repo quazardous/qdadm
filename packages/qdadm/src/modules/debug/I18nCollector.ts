@@ -15,8 +15,20 @@ import {
   Collector,
   type CollectorContext,
   type CollectorEntry,
+  type CollectorManifest,
   type CollectorOptions,
+  type CollectorSnapshot,
 } from './Collector'
+
+interface I18nLike {
+  locale?: { value?: string }
+  fallbackLocale?: { value?: string }
+  availableLocales?: () => string[] | Promise<string[]>
+  t?: (key: string, params?: Record<string, unknown>) => string
+  resolve?: (key: string, params?: Record<string, unknown>) => unknown
+  dump?: (locale: string) => unknown
+  changeLocale?: (locale: string) => Promise<unknown> | unknown
+}
 
 export interface MissingKeyEntry extends CollectorEntry {
   key: string
@@ -185,5 +197,124 @@ export class I18nCollector extends Collector<MissingKeyEntry> {
   override clear(): void {
     super.clear()
     this._localeHistory = []
+  }
+
+  private _i18n(): I18nLike | null {
+    const ctx = this._ctx as (CollectorContext & { kernel?: { i18n?: I18nLike }; i18n?: I18nLike }) | null
+    return ctx?.i18n ?? ctx?.kernel?.i18n ?? null
+  }
+
+  override describe(): CollectorManifest {
+    return {
+      name: this.name,
+      records: true,
+      summary:
+        'Tracks missing i18n keys (deduplicated) and locale switches. Exposes resolution and skeleton-export helpers for agents.',
+      entryShape: {
+        key: 'string (dotted i18n key)',
+        locale: 'string',
+        count: 'number',
+        firstSeen: 'number',
+        lastSeen: 'number',
+      },
+      stateShape: {
+        locale: 'string?',
+        fallbackLocale: 'string?',
+        localeHistory: 'LocaleChange[]',
+      },
+      actions: [
+        ...this._builtinActionManifests(),
+        {
+          name: 'resolve',
+          summary: 'Resolve a key against the live i18n instance and return the trace.',
+          args: { key: 'string', params: 'json?' },
+        },
+        {
+          name: 'translate',
+          summary: 'Resolve and return the final string (alias of i18n.t).',
+          args: { key: 'string', params: 'json?' },
+        },
+        {
+          name: 'dumpBundle',
+          summary: 'Return the merged messages bundle for a locale.',
+          args: { locale: 'string' },
+        },
+        {
+          name: 'changeLocale',
+          summary: 'Switch the active locale.',
+          args: { locale: 'string' },
+          mutates: true,
+        },
+        {
+          name: 'asJsonSkeleton',
+          summary: 'Build a nested-object skeleton of every missing key, ready for ctx.messages().',
+          args: { placeholder: 'string?' },
+        },
+        {
+          name: 'byNamespace',
+          summary: 'Group missing keys by their first dotted segment.',
+        },
+        {
+          name: 'getLocaleHistory',
+          summary: 'Return the recent locale-switch history.',
+        },
+        {
+          name: 'availableLocales',
+          summary: 'Return the union of locales discovered across providers (async).',
+        },
+      ],
+    }
+  }
+
+  override snapshot(): CollectorSnapshot {
+    // Note: availableLocales() is async — surfaced via the callable action
+    // instead of state, so the snapshot stays sync and JSON-clean.
+    const i18n = this._i18n()
+    return {
+      name: this.name,
+      entries: this.entries.map((e) => ({ ...e })),
+      count: this.entries.length,
+      unseen: this.getUnseenCount(),
+      state: {
+        locale: i18n?.locale?.value ?? null,
+        fallbackLocale: i18n?.fallbackLocale?.value ?? null,
+        localeHistory: this.getLocaleHistory(),
+      },
+    }
+  }
+
+  override async call(actionName: string, args: Record<string, unknown> = {}): Promise<unknown> {
+    const i18n = this._i18n()
+    if (actionName === 'resolve') {
+      if (!i18n?.resolve) throw new Error('[i18n] resolve is unavailable (no i18n instance)')
+      return i18n.resolve(String(args.key ?? ''), args.params as Record<string, unknown>)
+    }
+    if (actionName === 'translate') {
+      if (!i18n?.t) throw new Error('[i18n] t is unavailable (no i18n instance)')
+      return i18n.t(String(args.key ?? ''), args.params as Record<string, unknown>)
+    }
+    if (actionName === 'dumpBundle') {
+      if (!i18n?.dump) throw new Error('[i18n] dump is unavailable (no i18n instance)')
+      return i18n.dump(String(args.locale ?? ''))
+    }
+    if (actionName === 'changeLocale') {
+      if (!i18n?.changeLocale) throw new Error('[i18n] changeLocale is unavailable')
+      await i18n.changeLocale(String(args.locale ?? ''))
+      return { ok: true, locale: args.locale }
+    }
+    if (actionName === 'asJsonSkeleton') {
+      return this.asJsonSkeleton(args.placeholder ? String(args.placeholder) : undefined)
+    }
+    if (actionName === 'byNamespace') {
+      return this.byNamespace()
+    }
+    if (actionName === 'getLocaleHistory') {
+      return this.getLocaleHistory()
+    }
+    if (actionName === 'availableLocales') {
+      if (!i18n?.availableLocales) throw new Error('[i18n] availableLocales unavailable')
+      return await i18n.availableLocales()
+    }
+    return super.call(actionName, args)
   }
 }

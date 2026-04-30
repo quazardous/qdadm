@@ -10,7 +10,14 @@
  * Only shows content when auth is configured in the application.
  */
 
-import { Collector, type CollectorContext, type CollectorEntry, type CollectorOptions } from './Collector'
+import {
+  Collector,
+  type CollectorContext,
+  type CollectorEntry,
+  type CollectorManifest,
+  type CollectorOptions,
+  type CollectorSnapshot,
+} from './Collector'
 import type { ISessionAuthAdapter, AuthUser } from '../../auth/SessionAuthAdapter'
 import type { SecurityChecker } from '../../entity/auth/SecurityChecker'
 
@@ -449,6 +456,46 @@ export class AuthCollector extends Collector<AuthEntry> {
       return JSON.parse(decoded)
     } catch {
       return null
+    }
+  }
+
+  override describe(): CollectorManifest {
+    return {
+      name: this.name,
+      records: false,
+      summary:
+        'Surfaces current authentication state: user, roles, permissions, hierarchy, token claims, adapter capabilities, plus a TTL-bounded log of recent auth events.',
+      entryShape: {
+        type: 'string (user|impersonated|token|user-permissions|hierarchy|role-permissions|permissions|adapter|status|error)',
+        label: 'string?',
+        message: 'string?',
+        data: 'json',
+      },
+      stateShape: {
+        recentEvents: 'AuthEvent[] (TTL-bounded)',
+        lastEvent: 'string?',
+      },
+      actions: this._builtinActionManifests(),
+    }
+  }
+
+  override snapshot(): CollectorSnapshot {
+    const entries = this.getEntries()
+    return {
+      name: this.name,
+      entries,
+      count: entries.length,
+      unseen: this.getBadge(),
+      state: {
+        recentEvents: this._recentEvents.map((e) => ({
+          type: e.type,
+          timestamp: e.timestamp.toISOString(),
+          id: e.id,
+          seen: e.seen,
+          data: e.data,
+        })),
+        lastEvent: this.getLastEvent(),
+      },
     }
   }
 }

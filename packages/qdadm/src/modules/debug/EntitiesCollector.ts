@@ -11,7 +11,14 @@
  * Shows current state rather than historical events.
  */
 
-import { Collector, type CollectorContext, type CollectorEntry, type CollectorOptions } from './Collector'
+import {
+  Collector,
+  type CollectorContext,
+  type CollectorEntry,
+  type CollectorManifest,
+  type CollectorOptions,
+  type CollectorSnapshot,
+} from './Collector'
 import type { EntityManager } from '../../entity/EntityManager'
 
 /**
@@ -706,6 +713,95 @@ export class EntitiesCollector extends Collector<EntityEntry> {
         status: (e as Error & { status?: number }).status
       }
     }
+  }
+
+  override describe(): CollectorManifest {
+    return {
+      name: this.name,
+      records: false,
+      summary:
+        'Lists every registered EntityManager with its storage, cache state, permissions, stats, fields and relations.',
+      entryShape: {
+        name: 'string',
+        system: 'boolean',
+        hasActivity: 'boolean',
+        label: 'string?',
+        labelPlural: 'string?',
+        routePrefix: 'string?',
+        idField: 'string?',
+        storage: 'StorageInfo',
+        multiStorage: 'MultiStorageInfo?',
+        cache: 'CacheInfo',
+        permissions: 'PermissionsInfo',
+        authSensitive: 'boolean',
+        warmup: 'WarmupInfo',
+        stats: 'StatsInfo',
+        fields: 'FieldsInfo',
+        relations: 'RelationsInfo',
+      },
+      stateShape: {
+        registered: 'string[] (entity names)',
+        activeEntities: 'string[] (entities with unseen activity)',
+      },
+      actions: [
+        ...this._builtinActionManifests(),
+        {
+          name: 'refreshCache',
+          summary: 'Invalidate one entity\'s cache (and optionally reload).',
+          args: { entity: 'string', reload: 'boolean?' },
+          mutates: true,
+        },
+        {
+          name: 'invalidateCache',
+          summary: 'Mark one entity\'s cache invalid without reloading.',
+          args: { entity: 'string' },
+          mutates: true,
+        },
+        {
+          name: 'testFetch',
+          summary: 'Probe an entity\'s primary storage with a list({page:1,page_size:1}).',
+          args: { entity: 'string' },
+        },
+        {
+          name: 'testStorageFetch',
+          summary: 'Probe a specific named storage on an entity.',
+          args: { entity: 'string', storage: 'string' },
+        },
+      ],
+    }
+  }
+
+  override snapshot(): CollectorSnapshot {
+    const entries = this.getEntries()
+    const registered = this._orchestrator?.getRegisteredNames() ?? []
+    return {
+      name: this.name,
+      entries,
+      count: entries.length,
+      unseen: this.getBadge(),
+      state: {
+        registered,
+        activeEntities: Array.from(this._activeEntities),
+      },
+    }
+  }
+
+  override async call(actionName: string, args: Record<string, unknown> = {}): Promise<unknown> {
+    if (actionName === 'refreshCache') {
+      const ok = await this.refreshCache(String(args.entity ?? ''), Boolean(args.reload))
+      return { ok }
+    }
+    if (actionName === 'invalidateCache') {
+      this.invalidateCache(String(args.entity ?? ''))
+      return { ok: true }
+    }
+    if (actionName === 'testFetch') {
+      return await this.testFetch(String(args.entity ?? ''))
+    }
+    if (actionName === 'testStorageFetch') {
+      return await this.testStorageFetch(String(args.entity ?? ''), String(args.storage ?? ''))
+    }
+    return super.call(actionName, args)
   }
 
   /**

@@ -33,6 +33,3 @@ export {
 
 // Type exports
 export type { KeyValuePair, LanguageObject } from './transformers'
-
-// Debug Injector
-export { default as debugInjector, DebugInjector } from './debugInjector'

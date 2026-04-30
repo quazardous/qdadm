@@ -68,6 +68,69 @@ export interface DebugBridgeInterface {
 }
 
 /**
+ * Action handler signature.
+ * Args is a single JSON-friendly object (so it survives HTTP/MCP transport).
+ */
+export type CollectorAction = (args?: Record<string, unknown>) => unknown | Promise<unknown>
+
+/**
+ * Manifest describing one named action exposed by a collector.
+ */
+export interface CollectorActionManifest {
+  /** Action name (used as call() identifier) */
+  name: string
+  /** One-line summary, displayed to agents and humans */
+  summary: string
+  /** Optional JSON-Schema-ish description of the args object */
+  args?: Record<string, unknown>
+  /** Whether the action mutates state. Default false. */
+  mutates?: boolean
+}
+
+/**
+ * Manifest describing a collector — what it stores, what it can do.
+ *
+ * Agents and external tooling consume this to understand a collector
+ * without prior knowledge of the codebase.
+ */
+export interface CollectorManifest {
+  /** Stable identifier (matches collectorName) */
+  name: string
+  /** Whether the collector records events vs displays current state */
+  records: boolean
+  /** Human-readable summary of what the collector exposes */
+  summary: string
+  /** Shape of one entry — keys are field names, values are short type hints */
+  entryShape?: Record<string, string>
+  /** State fields exposed alongside entries (for non-recording collectors) */
+  stateShape?: Record<string, string>
+  /** Actions an agent can invoke via bridge.call(collectorName, action, args) */
+  actions: CollectorActionManifest[]
+}
+
+/**
+ * Snapshot of a collector — JSON-serializable state.
+ *
+ * Always returns at minimum `entries`. Recording collectors add usage stats;
+ * state-style collectors add a `state` payload. Custom collectors can extend
+ * this freely.
+ */
+export interface CollectorSnapshot {
+  /** Collector name */
+  name: string
+  /** All entries currently held (sanitized for JSON) */
+  entries: unknown[]
+  /** Number of entries */
+  count: number
+  /** Number of unseen entries */
+  unseen: number
+  /** Optional state object for non-recording collectors */
+  state?: Record<string, unknown>
+  /** Free-form extras (kept stable across calls) */
+  [key: string]: unknown
+}
+
+/**
  * Base class for debug collectors
  */
 export class Collector<TEntry extends CollectorEntry = CollectorEntry> {
@@ -302,5 +365,114 @@ export class Collector<TEntry extends CollectorEntry = CollectorEntry> {
    */
   protected _doUninstall(): void {
     // Override in subclass
+  }
+
+  /**
+   * Describe what this collector exposes — for agent/MCP introspection.
+   *
+   * Default returns the actions registered via `registerAction()` and a generic
+   * summary. Subclasses can override to advertise richer entry/state shapes.
+   */
+  describe(): CollectorManifest {
+    return {
+      name: this.name,
+      records: this.records,
+      summary: this.records
+        ? `Records ${this.name} events (max ${this.maxEntries}).`
+        : `Exposes current ${this.name} state.`,
+      actions: [
+        ...this._builtinActionManifests(),
+        ...Array.from(this._actions.values()).map((a) => a.manifest),
+      ],
+    }
+  }
+
+  /**
+   * JSON-serializable snapshot — for agent/MCP consumption.
+   *
+   * Default snapshot returns the raw entries plus counts. Subclasses should
+   * override to add `state` for non-recording collectors or to sanitize
+   * non-serializable fields.
+   */
+  snapshot(): CollectorSnapshot {
+    return {
+      name: this.name,
+      entries: this.entries.map((e) => ({ ...e })),
+      count: this.entries.length,
+      unseen: this.getUnseenCount(),
+    }
+  }
+
+  /**
+   * Registered actions, keyed by action name.
+   * @protected
+   */
+  protected _actions: Map<string, { manifest: CollectorActionManifest; handler: CollectorAction }> =
+    new Map()
+
+  /**
+   * Register a named action that an agent can call.
+   *
+   * @param manifest - Description of the action surface
+   * @param handler - Handler invoked with the args object
+   */
+  registerAction(manifest: CollectorActionManifest, handler: CollectorAction): void {
+    this._actions.set(manifest.name, { manifest, handler })
+  }
+
+  /**
+   * Invoke a registered action by name.
+   *
+   * Built-in actions `clear`, `markSeen`, and `getEntries` are always available
+   * (they operate on the base collector regardless of subclass).
+   *
+   * @param actionName - Name of the action
+   * @param args - JSON-friendly args object
+   * @returns Action result
+   */
+  async call(actionName: string, args: Record<string, unknown> = {}): Promise<unknown> {
+    if (actionName === 'clear') {
+      this.clear()
+      this.notifyChange()
+      return { ok: true }
+    }
+    if (actionName === 'markSeen') {
+      this.markAsSeen()
+      this.notifyChange()
+      return { ok: true }
+    }
+    if (actionName === 'getEntries') {
+      const limit = typeof args.limit === 'number' ? args.limit : undefined
+      return limit ? this.getLatest(limit) : this.getEntries()
+    }
+    const reg = this._actions.get(actionName)
+    if (!reg) {
+      throw new Error(
+        `[${this.name}] unknown action "${actionName}". Available: ${[
+          'clear',
+          'markSeen',
+          'getEntries',
+          ...this._actions.keys(),
+        ].join(', ')}`
+      )
+    }
+    return await reg.handler(args)
+  }
+
+  /**
+   * Built-in action manifests, prepended by describe() so agents always see
+   * the universal verbs.
+   * @protected
+   */
+  protected _builtinActionManifests(): CollectorActionManifest[] {
+    return [
+      { name: 'clear', summary: 'Clear all recorded entries.', mutates: true },
+      { name: 'markSeen', summary: 'Mark all current entries as seen.', mutates: true },
+      {
+        name: 'getEntries',
+        summary: 'Return entries (optionally limited to the latest N).',
+        args: { limit: 'number?' },
+      },
+    ]
   }
 }

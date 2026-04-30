@@ -11,7 +11,14 @@
  * collector.install(ctx)
  */
 
-import { Collector, type CollectorContext, type CollectorEntry, type CollectorOptions } from './Collector'
+import {
+  Collector,
+  type CollectorContext,
+  type CollectorEntry,
+  type CollectorManifest,
+  type CollectorOptions,
+  type CollectorSnapshot,
+} from './Collector'
 import { computeSemanticBreadcrumb } from '../../composables/useSemanticBreadcrumb'
 import type { Router, RouteLocationNormalized, RouteRecordNormalized } from 'vue-router'
 import type { ActiveStack, StackLevel } from '../../chain/ActiveStack'
@@ -345,5 +352,74 @@ export class RouterCollector extends Collector<NavigationEntry> {
   async navigate(path: string): Promise<void> {
     if (!this._router) return
     await this._router.push(path)
+  }
+
+  override describe(): CollectorManifest {
+    return {
+      name: this.name,
+      records: true,
+      summary:
+        'Captures navigations (afterEach) and exposes the current route, registered routes and the live ActiveStack.',
+      entryShape: {
+        id: 'number',
+        to: 'SerializedRoute',
+        from: 'SerializedRoute?',
+        seen: 'boolean',
+        timestamp: 'number',
+      },
+      stateShape: {
+        currentRoute: 'SerializedRoute?',
+        routes: 'RouteListEntry[]',
+        breadcrumb: 'unknown[]',
+        activeStack: 'ActiveStackInfo?',
+      },
+      actions: [
+        ...this._builtinActionManifests(),
+        {
+          name: 'navigate',
+          summary: 'Push a path onto the router (router.push).',
+          args: { path: 'string' },
+          mutates: true,
+        },
+        {
+          name: 'getCurrentRoute',
+          summary: 'Return the serialized current route.',
+        },
+        {
+          name: 'getRoutes',
+          summary: 'List every registered route.',
+        },
+        {
+          name: 'getBreadcrumb',
+          summary: 'Return the semantic breadcrumb for the current route.',
+        },
+      ],
+    }
+  }
+
+  override snapshot(): CollectorSnapshot {
+    return {
+      name: this.name,
+      entries: this._history.map((e) => ({ ...e })),
+      count: this._history.length,
+      unseen: this.getBadge(),
+      state: {
+        currentRoute: this.getCurrentRoute(),
+        routes: this.getRoutes(),
+        breadcrumb: this.getBreadcrumb(),
+        activeStack: this.getActiveStack(),
+      },
+    }
+  }
+
+  override async call(actionName: string, args: Record<string, unknown> = {}): Promise<unknown> {
+    if (actionName === 'navigate') {
+      await this.navigate(String(args.path ?? ''))
+      return { ok: true }
+    }
+    if (actionName === 'getCurrentRoute') return this.getCurrentRoute()
+    if (actionName === 'getRoutes') return this.getRoutes()
+    if (actionName === 'getBreadcrumb') return this.getBreadcrumb()
+    return super.call(actionName, args)
   }
 }
