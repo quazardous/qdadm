@@ -47,19 +47,23 @@ watch(maxSignals, (val) => {
   localStorage.setItem(STORAGE_KEY_MAX, String(val))
 })
 
-// Convert wildcard pattern to regex
+// Convert wildcard pattern(s) to regex.
+// Supports whitespace-separated alternatives, e.g. "auth:** cache:**".
 function wildcardToRegex(pattern: string): RegExp | null {
-  if (!pattern || pattern === '**') return null // No filter
+  const trimmed = pattern.trim()
+  if (!trimmed || trimmed === '**') return null // No filter
 
-  // Escape regex special chars except * and :
-  const regex = pattern
-    .replace(/[.+^${}()|[\]\\]/g, '\\$&')
-    // ** matches anything (including colons)
-    .replace(/\*\*/g, '.*')
-    // * matches anything except colon
-    .replace(/\*/g, '[^:]*')
+  const parts = trimmed.split(/\s+/).map((p) =>
+    p
+      // Escape regex special chars except * and :
+      .replace(/[.+^${}()|[\]\\]/g, '\\$&')
+      // ** matches anything (including colons)
+      .replace(/\*\*/g, '.*')
+      // * matches anything except colon
+      .replace(/\*/g, '[^:]*')
+  )
 
-  return new RegExp(`^${regex}$`)
+  return new RegExp(`^(?:${parts.join('|')})$`)
 }
 
 const filterRegex = computed<RegExp | null>(() => wildcardToRegex(filterPattern.value.trim()))
@@ -91,7 +95,8 @@ const presets: FilterPreset[] = [
   { label: 'datalayer', pattern: 'entity:datalayer-invalidate' },
   { label: 'auth', pattern: 'auth:**' },
   { label: 'entity', pattern: 'entity:**' },
-  { label: 'toast', pattern: 'toast:**' }
+  { label: 'toast', pattern: 'toast:**' },
+  { label: 'i18n', pattern: 'i18n:** locale:**' }
 ]
 
 function applyPreset(pattern: string): void {
@@ -114,7 +119,9 @@ const domainColors: Record<string, string> = {
   entity: '#3b82f6',
   toast: '#8b5cf6',
   route: '#06b6d4',
-  error: '#ef4444'
+  error: '#ef4444',
+  i18n: '#ec4899',
+  locale: '#ec4899'
 }
 
 function getDomainColor(name: string): string {
