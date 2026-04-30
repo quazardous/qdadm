@@ -27,6 +27,12 @@ export {
   type StatsInfo
 } from './EntitiesCollector'
 export { RouterCollector, type NavigationEntry, type RouterCollectorOptions } from './RouterCollector'
+export {
+  I18nCollector,
+  type MissingKeyEntry,
+  type LocaleChange,
+  type I18nCollectorOptions
+} from './I18nCollector'
 export { LocalStorageAdapter, createLocalStorageAdapter } from './LocalStorageAdapter'
 
 // Module System v2 integration

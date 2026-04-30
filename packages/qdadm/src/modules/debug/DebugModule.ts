@@ -21,6 +21,7 @@ import { ZonesCollector } from './ZonesCollector'
 import { AuthCollector } from './AuthCollector'
 import { EntitiesCollector } from './EntitiesCollector'
 import { RouterCollector } from './RouterCollector'
+import { I18nCollector } from './I18nCollector'
 import DebugBar from './components/DebugBar.vue'
 import type { KernelContext } from '../../kernel/KernelContext'
 
@@ -60,6 +61,7 @@ export interface DebugModuleOptions extends ModuleOptions {
   authCollector?: boolean
   entitiesCollector?: boolean
   routerCollector?: boolean
+  i18nCollector?: boolean
   _kernelManaged?: boolean
 }
 
@@ -128,6 +130,10 @@ export class DebugModule extends Module {
 
     if (this.options.routerCollector !== false) {
       this._bridge.addCollector(new RouterCollector(collectorOptions))
+    }
+
+    if (this.options.i18nCollector !== false) {
+      this._bridge.addCollector(new I18nCollector(collectorOptions))
     }
 
     // Install collectors with context
