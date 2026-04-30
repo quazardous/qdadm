@@ -411,6 +411,39 @@ export * from './notifications/index'
 // ════════════════════════════════════════════════════════════════════════════
 
 // ════════════════════════════════════════════════════════════════════════════
+// I18N (schema-derived keys, pluggable providers, signal-driven locale)
+// ════════════════════════════════════════════════════════════════════════════
+export {
+  I18n,
+  MessagesRegistry,
+  Resolver,
+  snakeCaseToTitle,
+  InlineTranslationProvider,
+  defineStrategy,
+  resolveStrategy,
+  STRATEGIES,
+  coreEn,
+  useI18n,
+  I18N_INJECTION_KEY,
+} from './i18n'
+export type {
+  AliasPattern,
+  CoreMessages,
+  EntityMessages,
+  I18nDeps,
+  I18nOptions,
+  KeyStrategy,
+  KeyStrategyName,
+  MessagesBundle,
+  MessagesNode,
+  NavMessages,
+  ResolveStep,
+  ResolveTrace,
+  TranslateParams,
+  TranslationProvider,
+} from './i18n'
+
+// ════════════════════════════════════════════════════════════════════════════
 // ASSETS
 // ════════════════════════════════════════════════════════════════════════════
 export { default as qdadmLogo } from './assets/logo.svg'

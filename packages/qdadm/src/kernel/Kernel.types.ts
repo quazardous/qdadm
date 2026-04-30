@@ -10,6 +10,7 @@ import type { RoutesConfig } from './EventRouter'
 import type { EntityManager } from '../entity/EntityManager'
 import type { EntityAuthAdapter } from '../entity/auth/EntityAuthAdapter'
 import type { RoleProvider } from '../security/RolesProvider'
+import type { I18nOptions } from '../i18n/types'
 
 /**
  * Auth adapter interface (app-level authentication)
@@ -167,6 +168,7 @@ export interface KernelOptions {
   toast?: Record<string, unknown>
   debug?: boolean
   onAuthExpired?: (payload: unknown) => void
+  i18n?: I18nOptions
 }
 
 /**

@@ -15,6 +15,12 @@ export function applyModuleMethods(KernelClass: { prototype: any }): void {
    * Fire entity cache warmups
    */
   proto._fireWarmups = function (this: Self): void {
+    if (this.i18nInstance) {
+      // Fire-and-forget bootstrap; locale-sensitive pages await
+      // 'i18n:locale:{loc}:ready' via DeferredRegistry if needed.
+      void this._bootstrapI18n()
+    }
+
     const warmup = this.options.warmup ?? true
     if (!warmup) return
 

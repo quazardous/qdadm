@@ -38,6 +38,8 @@ import type { DeferredRegistry } from '../deferred/DeferredRegistry.js'
 import type { SecurityChecker } from '../entity/auth/SecurityChecker'
 import type { PermissionRegistry } from '../security/PermissionRegistry'
 import type { EntityManager } from '../entity/EntityManager'
+import type { I18n } from '../i18n/I18n'
+import type { AliasPattern, MessagesBundle, TranslationProvider } from '../i18n/types'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -87,6 +89,7 @@ interface KernelInterface {
   activeStack: unknown
   stackHydrator: unknown
   options: KernelOptions
+  i18nInstance: I18n | null
   _pendingProvides: Map<string | symbol, unknown>
   _pendingComponents: Map<string, Component>
 }
@@ -339,6 +342,13 @@ export class KernelContext {
     return this._kernel.stackHydrator ?? null
   }
 
+  /**
+   * Get the I18n subsystem
+   */
+  get i18n(): I18n | null {
+    return this._kernel.i18nInstance ?? null
+  }
+
   // ─────────────────────────────────────────────────────────────────────────────
   // Fluent registration methods (return this for chaining)
   // ─────────────────────────────────────────────────────────────────────────────
@@ -384,6 +394,14 @@ export class KernelContext {
         // Register entity-own:* permissions if manager has isOwn configured
         hasOwnership: !!(manager as unknown as { _isOwn?: unknown })._isOwn,
       })
+    }
+
+    // Track entity → module for the 'module' i18n key strategy
+    if (this._kernel.i18nInstance) {
+      const moduleName = (this._module?.constructor as { name?: string })?.name
+      if (moduleName) {
+        this._kernel.i18nInstance.registerEntityModule(name, moduleName)
+      }
     }
 
     return this
@@ -947,6 +965,62 @@ export class KernelContext {
     permissions: Record<string, string | PermissionMeta>
   ): this {
     return this.permissions(entity, permissions, { isEntity: true })
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // i18n
+  // ─────────────────────────────────────────────────────────────────────────────
+
+  /**
+   * Declare translations for a locale.
+   *
+   * Bundles follow the convention key shape:
+   *   { entities: { books: { fields: { title: 'Titre' } } }, core: {...} }
+   *
+   * Multiple calls (across modules and locales) are merged. A leaf value
+   * starting with '@' is a value-level alias to another key (use '@@' to
+   * escape a literal '@').
+   *
+   * @example
+   * ctx.messages('en', {
+   *   entities: { books: { label: 'Book', labelPlural: 'Books',
+   *                        fields: { title: 'Title', author: 'Author' } } }
+   * })
+   */
+  messages(locale: string, bundle: MessagesBundle): this {
+    if (this._kernel.i18nInstance) {
+      this._kernel.i18nInstance.addMessages(locale, bundle)
+    }
+    return this
+  }
+
+  /**
+   * Declare pattern aliases. Useful for project- or module-specific routing
+   * of common keys.
+   *
+   * @example
+   * ctx.aliases([
+   *   { pattern: 'entities.*.fields.email', target: 'core.fields.email' }
+   * ])
+   */
+  aliases(patterns: AliasPattern[]): this {
+    if (this._kernel.i18nInstance) {
+      this._kernel.i18nInstance.addAliases(patterns)
+    }
+    return this
+  }
+
+  /**
+   * Register an additional TranslationProvider (JSON, HTTP, custom…).
+   *
+   * @example
+   * ctx.messagesProvider(new JsonTranslationProvider({ path: './locales/{locale}.json' }))
+   */
+  messagesProvider(provider: TranslationProvider): this {
+    if (this._kernel.i18nInstance) {
+      this._kernel.i18nInstance.addProvider(provider)
+    }
+    return this
   }
 }
 
