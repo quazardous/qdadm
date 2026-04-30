@@ -117,6 +117,9 @@ export class LoansModule extends Module {
           },
         },
       },
+      nav: {
+        routes: { loan: 'Loans' },
+      },
     })
     ctx.messages('fr', {
       entities: {

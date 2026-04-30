@@ -55,7 +55,7 @@ export class UsersModule extends Module {
       },
       nav: {
         sections: { Security: 'Security' },
-        routes: { user: 'Users' },
+        routes: { user: 'Users', role: 'Roles' },
       },
     })
     ctx.messages('fr', {
@@ -72,7 +72,7 @@ export class UsersModule extends Module {
       },
       nav: {
         sections: { Security: 'Sécurité' },
-        routes: { user: 'Utilisateurs' },
+        routes: { user: 'Utilisateurs', role: 'Rôles' },
       },
     })
 
