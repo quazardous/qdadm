@@ -431,6 +431,7 @@ export function useEntityItemShowPage<T = unknown>(
   const fieldManager = useFieldManager<ResolvedFieldConfig>({
     resolveFieldConfig,
     getSchemaFieldConfig: (name) => manager.getFieldConfig?.(name) || null,
+    entity,
   })
 
   // Direct access to computed values

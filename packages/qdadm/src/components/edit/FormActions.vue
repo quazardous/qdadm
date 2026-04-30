@@ -14,6 +14,9 @@
  */
 
 import Button from 'primevue/button'
+import { useI18n } from '../../i18n/useI18n'
+
+const { t } = useI18n()
 
 interface Props {
   isEdit?: boolean
@@ -41,31 +44,31 @@ const emit = defineEmits<{
     <div class="form-actions-left">
       <Button
         type="button"
-        :label="isEdit ? 'Update' : 'Create'"
+        :label="isEdit ? t('core.actions.update') : t('core.actions.create')"
         :loading="saving"
         :disabled="!dirty || saving"
         icon="pi pi-check"
         @click="emit('save')"
-        v-tooltip.top="'Save and continue editing'"
+        v-tooltip.top="t('core.tooltips.saveAndContinue')"
       />
       <Button
         v-if="showSaveAndClose"
         type="button"
-        :label="isEdit ? 'Update & Close' : 'Create & Close'"
+        :label="isEdit ? t('core.actions.updateAndClose') : t('core.actions.createAndClose')"
         :loading="saving"
         :disabled="!dirty || saving"
         icon="pi pi-check-circle"
         severity="success"
         @click="emit('saveAndClose')"
-        v-tooltip.top="'Save and return to list'"
+        v-tooltip.top="t('core.tooltips.saveAndReturn')"
       />
-      <span v-if="dirty" class="dirty-indicator" v-tooltip.top="'Unsaved changes'">
+      <span v-if="dirty" class="dirty-indicator" v-tooltip.top="t('core.tooltips.unsavedChanges')">
         <i class="pi pi-circle-fill"></i>
       </span>
     </div>
     <Button
       type="button"
-      label="Cancel"
+      :label="t('core.actions.cancel')"
       severity="secondary"
       icon="pi pi-times"
       @click="emit('cancel')"

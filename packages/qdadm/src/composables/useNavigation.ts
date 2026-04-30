@@ -13,6 +13,7 @@ import { computed, inject, ref, onMounted, type ComputedRef, type Ref } from 'vu
 import { useRoute, useRouter } from 'vue-router'
 import { getNavSections, alterMenuSections, isMenuAltered } from '../module/moduleRegistry'
 import { useSemanticBreadcrumb } from './useSemanticBreadcrumb'
+import { useI18n } from '../i18n/useI18n'
 import type { HookRegistry } from '../hooks/HookRegistry'
 
 /**
@@ -81,6 +82,9 @@ export function useNavigation(): UseNavigationReturn {
   const orchestrator = inject<Orchestrator | null>('qdadmOrchestrator', null)
   const hooks = inject<HookRegistry | null>('qdadmHooks', null)
 
+  // i18n integration — labels resolve through nav.sections.* / nav.routes.*
+  const { i18n: kernelI18n, locale: i18nLocale } = useI18n()
+
   // Semantic breadcrumb for entity-based active detection
   const { breadcrumb } = useSemanticBreadcrumb()
 
@@ -112,18 +116,37 @@ export function useNavigation(): UseNavigationReturn {
     }
   })
 
+  /**
+   * Resolve a label through i18n with the given convention key, falling back
+   * to the inline label when the bundle has no matching translation.
+   */
+  function resolveNavLabel(key: string, fallback: string): string {
+    if (!kernelI18n) return fallback
+    const trace = kernelI18n.resolve(key)
+    return trace.hit ? trace.result : fallback
+  }
+
   // Get nav sections from registry, filtering items based on permissions
-  // Depends on alterVersion to trigger re-computation after alteration
+  // Depends on alterVersion + i18nLocale to trigger re-computation after
+  // alteration or locale change.
   const navSections = computed(() => {
-    // Force dependency on alterVersion for reactivity
+    // Force dependencies for reactivity
     // eslint-disable-next-line @typescript-eslint/no-unused-expressions
     alterVersion.value
+    // eslint-disable-next-line @typescript-eslint/no-unused-expressions
+    i18nLocale.value
 
     const sections = getNavSections()
     return sections
       .map((section) => ({
         ...section,
-        items: section.items.filter((item) => canAccessNavItem(item)),
+        title: resolveNavLabel(`nav.sections.${section.title}`, section.title),
+        items: section.items
+          .filter((item) => canAccessNavItem(item))
+          .map((item) => ({
+            ...item,
+            label: resolveNavLabel(`nav.routes.${item.route}`, item.label),
+          })),
       }))
       .filter((section) => section.items.length > 0) // Hide empty sections
   })
