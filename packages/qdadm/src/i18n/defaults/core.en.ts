@@ -16,6 +16,9 @@ export const coreEn: MessagesBundle = {
       delete: 'Delete',
       edit: 'Edit',
       create: 'Create',
+      update: 'Update',
+      createAndClose: 'Create & Close',
+      updateAndClose: 'Update & Close',
       add: 'Add',
       remove: 'Remove',
       submit: 'Submit',
@@ -32,6 +35,15 @@ export const coreEn: MessagesBundle = {
       export: 'Export',
       import: 'Import',
     },
+    tooltips: {
+      saveAndContinue: 'Save and continue editing',
+      saveAndReturn: 'Save and return to list',
+      unsavedChanges: 'Unsaved changes',
+    },
+    placeholders: {
+      search: 'Search…',
+      noSelection: 'Click to select…',
+    },
     fields: {
       id: 'ID',
       created_at: 'Created at',
@@ -40,9 +52,10 @@ export const coreEn: MessagesBundle = {
       updated_by: 'Updated by',
     },
     messages: {
-      empty: 'No items',
+      empty: 'No items available',
       loading: 'Loading…',
       noResults: 'No results',
+      noMatching: 'No matching items',
       saved: 'Saved',
       deleted: 'Deleted',
       created: 'Created',

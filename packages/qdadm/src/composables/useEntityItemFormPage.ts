@@ -501,6 +501,7 @@ export function useEntityItemFormPage<T extends Record<string, unknown> = Record
   const fieldManager = useFieldManager<ResolvedFieldConfig>({
     resolveFieldConfig,
     getSchemaFieldConfig: (name) => manager.getFieldConfig(name) || null,
+    entity,
   })
 
   // Expose refs for validation (which needs direct access)

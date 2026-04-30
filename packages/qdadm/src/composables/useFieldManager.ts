@@ -18,7 +18,8 @@
  * fieldManager.group('info', ['name', 'email'], { label: 'Information' })
  * ```
  */
-import { ref, computed, type Ref, type ComputedRef } from 'vue'
+import { ref, computed, watch, type Ref, type ComputedRef } from 'vue'
+import { useI18n } from '../i18n/useI18n'
 
 /**
  * Base field definition (minimal common interface)
@@ -155,6 +156,15 @@ export interface UseFieldManagerOptions<T extends ResolvedFieldConfig = Resolved
   resolveFieldConfig?: FieldResolver<T>
   /** Get field config from schema (e.g., manager.getFieldConfig) */
   getSchemaFieldConfig?: (name: string) => Partial<BaseFieldDefinition> | null
+  /**
+   * Entity name. When set, field and group labels are resolved through
+   * `entities.{entity}.fields.{name}` / `entities.{entity}.groups.{name}` via
+   * i18n. The result wins over inline `label:` props if found; otherwise the
+   * inline label (then `snakeCaseToTitle`) is used. Required for the i18n
+   * forcing function — modules without an entity context fall back to legacy
+   * behaviour.
+   */
+  entity?: string
 }
 
 /**
@@ -189,6 +199,13 @@ export interface UseFieldManagerReturn<T extends ResolvedFieldConfig = ResolvedF
   hasField: (name: string) => boolean
   hasGroup: (name: string) => boolean
   getUngroupedFields: () => T[]
+
+  /**
+   * Re-resolve labels for all fields and groups against the active locale.
+   * Called automatically when `i18n.locale` changes; exposed for manual
+   * triggering after asynchronous bundle loads.
+   */
+  relabel: () => void
 }
 
 /**
@@ -224,9 +241,40 @@ export function useFieldManager<T extends ResolvedFieldConfig = ResolvedFieldCon
   options: UseFieldManagerOptions<T> = {}
 ): UseFieldManagerReturn<T> {
   const {
-    resolveFieldConfig = defaultResolveFieldConfig as FieldResolver<T>,
+    resolveFieldConfig: userResolveFieldConfig = defaultResolveFieldConfig as FieldResolver<T>,
     getSchemaFieldConfig,
+    entity: entityName,
   } = options
+
+  // i18n integration — looked up from the kernel injection. Returns a no-op
+  // shim if no kernel i18n is available (tests, isolated examples).
+  const { i18n, locale: i18nLocale } = useI18n()
+
+  /**
+   * Wrapped resolver: runs the user's resolver, then overlays the i18n label
+   * if the convention key resolves to a real translation. Tags the resolved
+   * config with `_labelKey` so relabel() can re-resolve on locale change.
+   */
+  function resolveFieldConfig(
+    name: string,
+    fieldConfig: Partial<BaseFieldDefinition>
+  ): T {
+    const resolved = userResolveFieldConfig(name, fieldConfig) as T & {
+      _labelKey?: string
+      _inlineLabel?: string
+    }
+    if (!entityName || !i18n) return resolved
+    const key = `entities.${entityName}.fields.${name}`
+    resolved._labelKey = key
+    // Preserve the inline label (if the user supplied one) so relabel() can
+    // fall back to it when the i18n bundle has no matching key.
+    resolved._inlineLabel = fieldConfig.label as string | undefined
+    const trace = i18n.resolve(key)
+    if (trace.hit) {
+      resolved.label = trace.result
+    }
+    return resolved
+  }
 
   // ============ FIELD STORAGE ============
 
@@ -405,9 +453,17 @@ export function useFieldManager<T extends ResolvedFieldConfig = ResolvedFieldCon
 
     // Create or update group
     const existing = groupsMap.value.get(name)
+    // Resolve label: i18n hit (entities.X.groups.{name}) wins; fall back to
+    // explicit option, then existing label, then humanized form.
+    let resolvedLabel =
+      groupOptions?.label || existing?.label || snakeCaseToTitle(groupName)
+    if (entityName && i18n) {
+      const trace = i18n.resolve(`entities.${entityName}.groups.${name}`)
+      if (trace.hit) resolvedLabel = trace.result
+    }
     groupsMap.value.set(name, {
       name,
-      label: groupOptions?.label || existing?.label || snakeCaseToTitle(groupName),
+      label: resolvedLabel,
       fields: [...(existing?.fields || []), ...fieldNames],
       parent: parentName,
       // Tab/accordion options (preserve existing if not specified)
@@ -558,6 +614,44 @@ export function useFieldManager<T extends ResolvedFieldConfig = ResolvedFieldCon
     return rootGroups
   })
 
+  // ============ I18N RELABEL ============
+
+  /**
+   * Re-resolve labels for all fields and groups against the active locale.
+   * Iterates the existing maps and replaces each entry's label using the
+   * stored convention key, falling back to the inline label or
+   * snakeCaseToTitle when the key has no translation.
+   */
+  function relabel(): void {
+    if (!entityName || !i18n) return
+
+    for (const [name, field] of fieldsMap.value.entries()) {
+      const meta = field as T & { _labelKey?: string; _inlineLabel?: string }
+      const key = meta._labelKey ?? `entities.${entityName}.fields.${name}`
+      const trace = i18n.resolve(key)
+      const newLabel = trace.hit
+        ? trace.result
+        : meta._inlineLabel || snakeCaseToTitle(name)
+      if (field.label !== newLabel) {
+        fieldsMap.value.set(name, { ...field, label: newLabel } as T)
+      }
+    }
+
+    for (const [name, internal] of groupsMap.value.entries()) {
+      const key = `entities.${entityName}.groups.${name}`
+      const trace = i18n.resolve(key)
+      if (trace.hit && internal.label !== trace.result) {
+        groupsMap.value.set(name, { ...internal, label: trace.result })
+      }
+    }
+  }
+
+  if (entityName && i18n) {
+    // Auto-relabel on locale change. Vue's watcher tracks the ref returned
+    // from useI18n(), so this fires for both immediate and async switches.
+    watch(i18nLocale, () => relabel())
+  }
+
   // ============ RETURN ============
 
   const returnValue: UseFieldManagerReturn<T> = {
@@ -589,6 +683,9 @@ export function useFieldManager<T extends ResolvedFieldConfig = ResolvedFieldCon
     hasField,
     hasGroup,
     getUngroupedFields,
+
+    // i18n
+    relabel,
   }
 
   return returnValue

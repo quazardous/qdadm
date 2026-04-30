@@ -34,6 +34,7 @@ import { useHooks } from './useHooks.js'
 import { useEntityItemPage, type ParentConfig, type UseEntityItemPageReturn } from './useEntityItemPage.js'
 import { useActiveStack } from '../chain/useActiveStack.js'
 import { FilterQuery } from '../query/FilterQuery'
+import { useI18n } from '../i18n/useI18n'
 
 // Import types from dedicated types file
 import type {
@@ -168,6 +169,9 @@ export function useListPage<T = unknown>(config: UseListPageOptions<T>): UseList
   // Mobile detection (viewport width < 768px)
   const isMobile = ref(window.innerWidth < 768)
 
+  // i18n integration — column headers resolve via entities.{entity}.fields.{field}
+  const { i18n: kernelI18n, locale: i18nLocale } = useI18n()
+
   // Get EntityManager via orchestrator
   const orchestrator = inject<Orchestrator | null>('qdadmOrchestrator')
 
@@ -293,14 +297,43 @@ export function useListPage<T = unknown>(config: UseListPageOptions<T>): UseList
 
   // ============ COLUMNS ============
   const columnsMap = ref<Map<string, ColumnConfig>>(new Map())
+  // Track inline-supplied column headers so relabel() can fall back to them
+  // when the i18n bundle has no translation for the field.
+  const columnInlineHeaders = new Map<string, string | undefined>()
+
+  /**
+   * Resolve a column header: i18n hit on entities.{entity}.fields.{field} wins,
+   * otherwise the inline `header` option, otherwise a capitalized field name.
+   */
+  function resolveColumnHeader(field: string, inline?: string): string {
+    if (entity && kernelI18n) {
+      const trace = kernelI18n.resolve(`entities.${entity}.fields.${field}`)
+      if (trace.hit) return trace.result
+    }
+    return inline || field.charAt(0).toUpperCase() + field.slice(1)
+  }
 
   function addColumn(field: string, columnConfig: Partial<ColumnConfig> = {}): void {
+    columnInlineHeaders.set(field, columnConfig.header)
     columnsMap.value.set(field, {
       field,
-      header: columnConfig.header || field.charAt(0).toUpperCase() + field.slice(1),
+      header: resolveColumnHeader(field, columnConfig.header),
       ...columnConfig,
+      // Re-apply resolved header after spread so it wins over a stale inline.
+      ...(columnConfig.header ? {} : { header: resolveColumnHeader(field) }),
     })
   }
+
+  // Re-resolve column headers when locale changes.
+  watch(i18nLocale, () => {
+    if (!entity || !kernelI18n) return
+    for (const [field, current] of columnsMap.value.entries()) {
+      const newHeader = resolveColumnHeader(field, columnInlineHeaders.get(field))
+      if (current.header !== newHeader) {
+        columnsMap.value.set(field, { ...current, header: newHeader })
+      }
+    }
+  })
 
   function removeColumn(field: string): void {
     columnsMap.value.delete(field)

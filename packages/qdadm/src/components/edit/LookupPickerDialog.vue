@@ -13,6 +13,9 @@ import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
 import InputText from 'primevue/inputtext'
 import Button from 'primevue/button'
+import { useI18n } from '../../i18n/useI18n'
+
+const { t } = useI18n()
 
 export interface LookupColumn {
   field: string
@@ -163,7 +166,7 @@ const confirmLabel = computed(() => {
         <i class="pi pi-search" />
         <InputText
           v-model="searchQuery"
-          placeholder="Search..."
+          :placeholder="t('core.placeholders.search')"
           class="w-full"
           autofocus
         />
@@ -199,14 +202,14 @@ const confirmLabel = computed(() => {
       />
       <template #empty>
         <div class="text-center text-color-secondary py-4">
-          {{ searchQuery ? 'No matching items' : 'No items available' }}
+          {{ searchQuery ? t('core.messages.noMatching') : t('core.messages.empty') }}
         </div>
       </template>
     </DataTable>
 
     <template #footer>
       <Button
-        label="Cancel"
+        :label="t('core.actions.cancel')"
         severity="secondary"
         @click="onCancel"
       />
