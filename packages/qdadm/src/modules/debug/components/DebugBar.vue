@@ -12,7 +12,7 @@
 import { ref, computed, watch, onMounted, onUnmounted, type Ref } from 'vue'
 import Badge from 'primevue/badge'
 import Button from 'primevue/button'
-import { ZonesPanel, AuthPanel, EntitiesPanel, ToastsPanel, EntriesPanel, SignalsPanel, RouterPanel } from './panels'
+import { ZonesPanel, AuthPanel, EntitiesPanel, ToastsPanel, EntriesPanel, SignalsPanel, RouterPanel, I18nPanel } from './panels'
 
 type DisplayMode = 'bottom' | 'right' | 'window'
 
@@ -493,13 +493,15 @@ function getCollectorIcon(name: string | undefined): string {
     auth: 'pi-user',
     entities: 'pi-database',
     router: 'pi-directions',
+    i18n: 'pi-globe',
     ErrorCollector: 'pi-exclamation-triangle',
     SignalCollector: 'pi-bolt',
     ToastCollector: 'pi-bell',
     ZonesCollector: 'pi-th-large',
     AuthCollector: 'pi-user',
     EntitiesCollector: 'pi-database',
-    RouterCollector: 'pi-directions'
+    RouterCollector: 'pi-directions',
+    I18nCollector: 'pi-globe'
   }
   return (name && icons[name]) || 'pi-database'
 }
@@ -513,13 +515,15 @@ function getCollectorLabel(name: string | undefined): string {
     auth: 'Auth',
     entities: 'Entities',
     router: 'Router',
+    i18n: 'i18n',
     ErrorCollector: 'Errors',
     SignalCollector: 'Signals',
     ToastCollector: 'Toasts',
     ZonesCollector: 'Zones',
     AuthCollector: 'Auth',
     EntitiesCollector: 'Entities',
-    RouterCollector: 'Router'
+    RouterCollector: 'Router',
+    I18nCollector: 'i18n'
   }
   return (name && labels[name]) || name || ''
 }
@@ -532,7 +536,8 @@ function getCollectorColor(name: string | undefined): string {
     zones: '#06b6d4',
     auth: '#10b981',
     entities: '#3b82f6',
-    router: '#ec4899'
+    router: '#ec4899',
+    i18n: '#ec4899'
   }
   return (name && colors[name]) || '#6b7280'
 }
@@ -751,6 +756,13 @@ function getCollectorColor(name: string | undefined): string {
       <!-- Router collector -->
       <RouterPanel
         v-else-if="currentCollector.name === 'router' || currentCollector.name === 'RouterCollector'"
+        :collector="(currentCollector.collector as any)"
+        :entries="(currentCollector.entries as any[])"
+      />
+
+      <!-- i18n collector -->
+      <I18nPanel
+        v-else-if="currentCollector.name === 'i18n' || currentCollector.name === 'I18nCollector'"
         :collector="(currentCollector.collector as any)"
         :entries="(currentCollector.entries as any[])"
       />
