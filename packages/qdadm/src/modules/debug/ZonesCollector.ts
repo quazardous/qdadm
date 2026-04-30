@@ -15,7 +15,14 @@
  * collector.getZoneInfo() // { zones: [...], totalBlocks: n }
  */
 
-import { Collector, type CollectorContext, type CollectorEntry, type CollectorOptions } from './Collector'
+import {
+  Collector,
+  type CollectorContext,
+  type CollectorEntry,
+  type CollectorManifest,
+  type CollectorOptions,
+  type CollectorSnapshot,
+} from './Collector'
 import type { ZoneRegistry } from '../../zones/ZoneRegistry'
 import type { Router } from 'vue-router'
 
@@ -351,5 +358,90 @@ export class ZonesCollector extends Collector<ZoneEntry> {
       this.highlightZone(zoneName)
       return true
     }
+  }
+
+  override describe(): CollectorManifest {
+    return {
+      name: this.name,
+      records: false,
+      summary:
+        'Lists every zone defined in the running app and the blocks/wrappers registered in each. Reflects current page (filterable).',
+      entryShape: {
+        name: 'string',
+        isOnPage: 'boolean',
+        hasDefault: 'boolean',
+        defaultName: 'string?',
+        blocksCount: 'number',
+        blocks: 'ZoneBlock[]',
+      },
+      stateShape: {
+        showCurrentPageOnly: 'boolean',
+        showInternalZones: 'boolean',
+        highlightedZone: 'string?',
+      },
+      actions: [
+        ...this._builtinActionManifests(),
+        {
+          name: 'highlight',
+          summary: 'Draw an overlay on the page around a zone (browser-only).',
+          args: { name: 'string' },
+          mutates: true,
+        },
+        {
+          name: 'clearHighlights',
+          summary: 'Remove every zone overlay.',
+          mutates: true,
+        },
+        {
+          name: 'setShowCurrentPageOnly',
+          summary: 'Filter zones to those rendered on the current page.',
+          args: { value: 'boolean' },
+          mutates: true,
+        },
+        {
+          name: 'setShowInternalZones',
+          summary: 'Show internal zones (prefixed with _).',
+          args: { value: 'boolean' },
+          mutates: true,
+        },
+      ],
+    }
+  }
+
+  override snapshot(): CollectorSnapshot {
+    const entries = this.getEntries(true)
+    return {
+      name: this.name,
+      entries,
+      count: entries.length,
+      unseen: 0,
+      state: {
+        showCurrentPageOnly: this._showCurrentPageOnly,
+        showInternalZones: this._showInternalZones,
+        highlightedZone: this._highlightedZone,
+      },
+    }
+  }
+
+  override async call(actionName: string, args: Record<string, unknown> = {}): Promise<unknown> {
+    if (actionName === 'highlight') {
+      this.highlightZone(String(args.name ?? ''))
+      return { ok: true }
+    }
+    if (actionName === 'clearHighlights') {
+      this.clearHighlights()
+      return { ok: true }
+    }
+    if (actionName === 'setShowCurrentPageOnly') {
+      this._showCurrentPageOnly = Boolean(args.value)
+      this.notifyChange()
+      return { ok: true, value: this._showCurrentPageOnly }
+    }
+    if (actionName === 'setShowInternalZones') {
+      this._showInternalZones = Boolean(args.value)
+      this.notifyChange()
+      return { ok: true, value: this._showInternalZones }
+    }
+    return super.call(actionName, args)
   }
 }

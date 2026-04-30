@@ -134,6 +134,31 @@ export function applyVueMethods(KernelClass: { prototype: any }): void {
     app.provide('qdadmStackHydrator', this.stackHydrator)
 
     if (this.options.debug && typeof window !== 'undefined') {
+      const self = this
+      // Single namespaced surface for browser-console & agent introspection.
+      // The `debug` sub-object proxies to whatever DebugBridge the DebugModule
+      // installed (resolved lazily so we don't depend on module load order).
+      const debugProxy = {
+        get bridge() {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const debugMod = (self as any).moduleLoader?.getModules?.()?.get?.('debug')
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          return debugMod?.getBridge?.() ?? (debugMod as any)?._bridge ?? null
+        },
+        describe(): unknown {
+          const b = this.bridge
+          return b ? b.describe() : null
+        },
+        dump(): unknown {
+          const b = this.bridge
+          return b ? b.dump() : null
+        },
+        call(name: string, action: string, args: Record<string, unknown> = {}): Promise<unknown> {
+          const b = this.bridge
+          if (!b) return Promise.reject(new Error('[qdadm] DebugBridge unavailable'))
+          return b.call(name, action, args)
+        },
+      }
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       ;(window as any).__qdadm = {
         kernel: this,
@@ -148,11 +173,10 @@ export function applyVueMethods(KernelClass: { prototype: any }): void {
         i18n: this.i18nInstance,
         get: (name: string) => this.orchestrator!.get(name),
         managers: () => this.orchestrator!.getRegisteredNames(),
+        debug: debugProxy,
       }
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      ;(window as any).__qdadmZones = this.zoneRegistry
       console.debug(
-        '[qdadm] Debug mode: window.__qdadm exposed (orchestrator, signals, hooks, zones, deferred, router)'
+        '[qdadm] Debug mode: window.__qdadm.{kernel,orchestrator,signals,hooks,zones,router,i18n,debug.{describe,dump,call}}'
       )
     }
 

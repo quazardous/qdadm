@@ -12,7 +12,16 @@
  * collector.getEntries() // [{ name, data, source, timestamp }, ...]
  */
 
-import { Collector, type CollectorContext, type CollectorEntry } from './Collector'
+import {
+  Collector,
+  type CollectorContext,
+  type CollectorEntry,
+  type CollectorManifest,
+} from './Collector'
+
+interface SignalsBusEmit {
+  emit?: (name: string, data?: unknown) => void
+}
 
 /**
  * Signal entry type
@@ -148,5 +157,58 @@ export class SignalCollector extends Collector<SignalEntry> {
    */
   getByDomain(domain: string): SignalEntry[] {
     return this.entries.filter((entry) => entry.name.startsWith(`${domain}:`))
+  }
+
+  override describe(): CollectorManifest {
+    return {
+      name: this.name,
+      records: true,
+      summary:
+        'Records every signal emitted on the SignalBus (kernel internals filtered out). Use getByDomain/getByPattern to slice.',
+      entryShape: {
+        name: 'string (e.g. entity:data-invalidate)',
+        data: 'json',
+        source: 'string?',
+        timestamp: 'number',
+      },
+      actions: [
+        ...this._builtinActionManifests(),
+        {
+          name: 'getByDomain',
+          summary: 'Return entries whose signal name starts with `<domain>:`.',
+          args: { domain: 'string' },
+        },
+        {
+          name: 'getByPattern',
+          summary: 'Return entries whose signal name matches a regex pattern.',
+          args: { pattern: 'string (regex source)' },
+        },
+        {
+          name: 'emit',
+          summary: 'Emit a signal on the bus from outside (debug-only).',
+          args: { name: 'string', data: 'json?' },
+          mutates: true,
+        },
+      ],
+    }
+  }
+
+  override async call(actionName: string, args: Record<string, unknown> = {}): Promise<unknown> {
+    if (actionName === 'getByDomain') {
+      return this.getByDomain(String(args.domain ?? ''))
+    }
+    if (actionName === 'getByPattern') {
+      return this.getByPattern(String(args.pattern ?? ''))
+    }
+    if (actionName === 'emit') {
+      const bus = this._ctx?.signals as SignalsBusEmit | undefined
+      const name = String(args.name ?? '')
+      if (!bus?.emit || !name) {
+        throw new Error('[signals] emit requires a name and an active signal bus')
+      }
+      bus.emit(name, args.data)
+      return { ok: true, name }
+    }
+    return super.call(actionName, args)
   }
 }

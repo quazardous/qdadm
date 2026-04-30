@@ -18,7 +18,12 @@
  * // Toasts emitted via signals are now automatically recorded
  */
 
-import { Collector, type CollectorContext, type CollectorEntry } from './Collector'
+import {
+  Collector,
+  type CollectorContext,
+  type CollectorEntry,
+  type CollectorManifest,
+} from './Collector'
 
 /**
  * Toast entry type
@@ -89,5 +94,36 @@ export class ToastCollector extends Collector<ToastEntry> {
    */
   getErrorCount(): number {
     return this.entries.filter((e) => e.severity === 'error').length
+  }
+
+  override describe(): CollectorManifest {
+    return {
+      name: this.name,
+      records: true,
+      summary: 'Records toast notifications (toast:* signals).',
+      entryShape: {
+        severity: 'string (success|info|warn|error)',
+        summary: 'string?',
+        detail: 'string?',
+        life: 'number?',
+        emitter: 'string',
+        timestamp: 'number',
+      },
+      actions: [
+        ...this._builtinActionManifests(),
+        {
+          name: 'getBySeverity',
+          summary: 'Return entries matching a severity.',
+          args: { severity: 'string' },
+        },
+      ],
+    }
+  }
+
+  override async call(actionName: string, args: Record<string, unknown> = {}): Promise<unknown> {
+    if (actionName === 'getBySeverity') {
+      return this.getBySeverity(String(args.severity ?? ''))
+    }
+    return super.call(actionName, args)
   }
 }

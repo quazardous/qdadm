@@ -1,10 +1,11 @@
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import { resolve } from 'path'
+import { qdadmDebugPlugin } from 'qdadm/vite-plugin-debug'
 
 export default defineConfig({
   base: process.env.GITHUB_PAGES ? '/qdadm/' : '/',
-  plugins: [vue()],
+  plugins: [vue(), qdadmDebugPlugin()],
   resolve: {
     alias: [
       { find: '@', replacement: resolve(__dirname, 'src') },
