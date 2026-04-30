@@ -3,6 +3,35 @@
 All notable changes to qdadm will be documented in this file.
 This is not a commit log. Keep entries simple, user-focused.
 
+## [1.14.0] - 2026-04-30
+
+### Added — i18n subsystem
+- **i18n core**: `kernel.i18n` orchestrator with reactive locale, schema-derived keys (`entities.{entity}.fields.{name}`, `core.actions.*`, `nav.*`), `_label` shorthand, value-level `@key` aliases (with `@@` escape), wildcard pattern aliases (`*` + `$1`/`$2` captures), and key-strategy presets (`global`, `module`, `entity`)
+- **`TranslationProvider` interface**: pluggable `name`, `load(locale)`, optional `availableLocales`/`save`/`watch`. Built-in `InlineTranslationProvider` backs `ctx.messages(locale, bundle)`
+- **Module API**: `ctx.messages(locale, bundle)`, `ctx.aliases([...])`, `ctx.messagesProvider(p)`, plus auto entity→module tracking for module-scoped key strategies
+- **`useI18n()` composable**: `{ t, locale, i18n }` with no-op shim outside a kernel
+- **Composables wired**: `useFieldManager`, `useListPage`, `useNavigation` resolve labels via i18n and re-render on locale change (no template churn)
+- **Components migrated**: `FormActions`, `LookupPickerDialog` use `t('core.actions.update')` etc. — apps not opting into i18n keep their inline labels via fallback
+- **Default `core.*` bundle (en)**: actions, fields, messages, errors, tooltips, placeholders
+- **Locale switching via signal bus**: emit `locale:change` on the bus → kernel switches locale and re-resolves
+- **Documentation**: `docs/i18n.md` (usage + recipes), `docs/todo-i18n.md` (open questions tracker)
+
+### Added — Debug HTTP API for agents
+- **Self-describing collector contract**: every `Collector` exposes `describe()` (manifest with entry shape + actions), `snapshot()` (JSON-clean state), and `call(action, args)` with universal verbs `clear`/`markSeen`/`getEntries`
+- **`DebugBridge.dump()` / `describe()` / `call()`**: aggregate JSON surface across all collectors
+- **Vite dev plugin `qdadm/vite-plugin-debug`**: serves `/__qdadm/{describe,snapshot,call,sessions}.json` as a true HTTP API. Per-tab session keying (uuid), push+cache via Vite's HMR socket, `X-Qdadm-{Source,Stale-Ms,Session}` response headers, configurable session TTL
+- **Per-collector actions**: `signals.{emit,getByDomain,getByPattern}`, `entities.{refreshCache,invalidateCache,testFetch,testStorageFetch}`, `router.{navigate,getCurrentRoute,getRoutes,getBreadcrumb}`, `i18n.{resolve,translate,dumpBundle,changeLocale,asJsonSkeleton,byNamespace,getLocaleHistory,availableLocales}`, `zones.{highlight,clearHighlights,setShowCurrentPageOnly,setShowInternalZones}`, `toasts.getBySeverity`
+- **`I18nCollector`**: deduplicating buffer for `i18n:missing` (count, firstSeen, lastSeen) plus locale-change history; powers a dedicated `I18nPanel` (state, resolve, missing, coverage matrix, bundle download)
+- **Signals panel filter**: i18n preset (`'i18n:** locale:**'`) and multi-pattern whitespace alternatives
+- **`AGENTS.md` at repo root**: documents the API, recipes, custom-collector authoring
+
+### Changed
+- **`window.__qdadm` unified**: single `debug` namespace exposing `{describe, dump, call, bridge}`. Drops the duplicate `window.__qdadmZones` (already in `ZonesCollector`) and the legacy `window.__debug` `DebugInjector`
+- **DebugBar**: new I18n tab (globe icon) alongside existing collectors
+
+### Removed
+- **`utils/debugInjector.ts`** (`window.__debug`): unused PrimeVue probing utility, superseded by the new bridge surface
+
 ## [1.13.1] - 2026-04-21
 
 ### Changed
