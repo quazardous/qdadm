@@ -62,6 +62,98 @@ export class BooksModule extends Module {
 
   async connect(ctx) {
     // ════════════════════════════════════════════════════════════════════════
+    // I18N (POC scaffold — convention-derived keys, not yet wired into
+    // composables; existing `label:` props still drive form/list rendering)
+    // ════════════════════════════════════════════════════════════════════════
+    ctx.messages('en', {
+      entities: {
+        books: {
+          label: 'Book',
+          labelPlural: 'Books',
+          fields: {
+            title: 'Title',
+            author: 'Author',
+            year: 'Year',
+            genre: {
+              _label: 'Genre',
+              options: {
+                fiction: 'Fiction',
+                'non-fiction': 'Non-Fiction',
+                'sci-fi': 'Sci-Fi',
+                fantasy: 'Fantasy',
+                mystery: 'Mystery',
+              },
+            },
+          },
+        },
+        genres: {
+          label: 'Genre',
+          labelPlural: 'Genres',
+          fields: { name: 'Name', description: 'Description' },
+        },
+      },
+      nav: {
+        sections: { Library: 'Library' },
+        routes: { 'book-stats': 'Stats' },
+      },
+    })
+
+    ctx.messages('fr', {
+      entities: {
+        books: {
+          label: 'Livre',
+          labelPlural: 'Livres',
+          fields: {
+            title: 'Titre',
+            author: 'Auteur',
+            year: 'Année',
+            genre: {
+              _label: 'Genre',
+              options: {
+                fiction: 'Fiction',
+                'non-fiction': 'Documentaire',
+                'sci-fi': 'Science-fiction',
+                fantasy: 'Fantastique',
+                mystery: 'Mystère',
+              },
+            },
+          },
+        },
+        genres: {
+          label: 'Genre',
+          labelPlural: 'Genres',
+          fields: { name: 'Nom', description: 'Description' },
+        },
+      },
+      core: {
+        actions: {
+          save: 'Enregistrer',
+          cancel: 'Annuler',
+          delete: 'Supprimer',
+          edit: 'Modifier',
+          create: 'Créer',
+          back: 'Retour',
+          search: 'Rechercher',
+          filter: 'Filtrer',
+        },
+        fields: {
+          id: 'Identifiant',
+          created_at: 'Créé le',
+          updated_at: 'Modifié le',
+        },
+        errors: {
+          required: 'Requis',
+          tooShort: 'Trop court (min {min})',
+          invalid: 'Valeur invalide',
+        },
+      },
+      nav: {
+        sections: { Library: 'Bibliothèque' },
+        routes: { 'book-stats': 'Statistiques' },
+      },
+    })
+
+    // ════════════════════════════════════════════════════════════════════════
     // ENTITY
     // ════════════════════════════════════════════════════════════════════════
     ctx.entity('books', new EntityManager({
