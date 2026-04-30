@@ -30,6 +30,52 @@ export class FavoritesModule extends Module {
 
   async connect(ctx) {
     // ════════════════════════════════════════════════════════════════════════
+    // I18N
+    // ════════════════════════════════════════════════════════════════════════
+    ctx.messages('en', {
+      entities: {
+        favorites: {
+          label: 'Favorite',
+          labelPlural: 'Favorites',
+          fields: {
+            name: 'Name',
+            type: {
+              _label: 'Type',
+              options: { book: 'Book', user: 'User', genre: 'Genre', loan: 'Loan' },
+            },
+            entityId: 'Entity ID',
+            createdAt: 'Created at',
+          },
+        },
+      },
+      nav: {
+        sections: { 'Local Storage': 'Local Storage' },
+        routes: { favorite: 'Favorites' },
+      },
+    })
+    ctx.messages('fr', {
+      entities: {
+        favorites: {
+          label: 'Favori',
+          labelPlural: 'Favoris',
+          fields: {
+            name: 'Nom',
+            type: {
+              _label: 'Type',
+              options: { book: 'Livre', user: 'Utilisateur', genre: 'Genre', loan: 'Emprunt' },
+            },
+            entityId: "Identifiant d'entité",
+            createdAt: 'Créé le',
+          },
+        },
+      },
+      nav: {
+        sections: { 'Local Storage': 'Stockage local' },
+        routes: { favorite: 'Favoris' },
+      },
+    })
+
+    // ════════════════════════════════════════════════════════════════════════
     // ENTITY
     // ════════════════════════════════════════════════════════════════════════
     ctx.entity('favorites', {

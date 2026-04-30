@@ -61,6 +61,56 @@ export class ProductsModule extends Module {
 
   async connect(ctx) {
     // ════════════════════════════════════════════════════════════════════════
+    // I18N
+    // ════════════════════════════════════════════════════════════════════════
+    ctx.messages('en', {
+      entities: {
+        products: {
+          label: 'Product',
+          labelPlural: 'Products',
+          fields: {
+            title: 'Title',
+            description: 'Description',
+            price: 'Price',
+            discountPercentage: 'Discount %',
+            rating: 'Rating',
+            stock: 'Stock',
+            brand: 'Brand',
+            category: 'Category',
+            thumbnail: 'Thumbnail',
+          },
+        },
+      },
+      nav: {
+        sections: { DummyJSON: 'DummyJSON' },
+        routes: { product: 'Products' },
+      },
+    })
+    ctx.messages('fr', {
+      entities: {
+        products: {
+          label: 'Produit',
+          labelPlural: 'Produits',
+          fields: {
+            title: 'Titre',
+            description: 'Description',
+            price: 'Prix',
+            discountPercentage: 'Remise %',
+            rating: 'Note',
+            stock: 'Stock',
+            brand: 'Marque',
+            category: 'Catégorie',
+            thumbnail: 'Vignette',
+          },
+        },
+      },
+      nav: {
+        sections: { DummyJSON: 'DummyJSON' },
+        routes: { product: 'Produits' },
+      },
+    })
+
+    // ════════════════════════════════════════════════════════════════════════
     // ENTITY
     // ════════════════════════════════════════════════════════════════════════
     ctx.entity('products', {

@@ -35,6 +35,50 @@ export class JsonPlaceholderModule extends Module {
 
   async connect(ctx) {
     // ════════════════════════════════════════════════════════════════════════
+    // I18N
+    // ════════════════════════════════════════════════════════════════════════
+    ctx.messages('en', {
+      entities: {
+        jp_users: {
+          label: 'User', labelPlural: 'Users',
+          fields: { name: 'Full name', username: 'Username', email: 'Email', phone: 'Phone', website: 'Website' },
+        },
+        posts: {
+          label: 'Post', labelPlural: 'Posts',
+          fields: { title: 'Title', body: 'Body', userId: 'Author' },
+        },
+        todos: {
+          label: 'Todo', labelPlural: 'Todos',
+          fields: { title: 'Title', completed: 'Completed', userId: 'Assigned to' },
+        },
+      },
+      nav: {
+        sections: { JSONPlaceholder: 'JSONPlaceholder' },
+        routes: { jp_user: 'JP Users', post: 'Posts', todo: 'Todos' },
+      },
+    })
+    ctx.messages('fr', {
+      entities: {
+        jp_users: {
+          label: 'Utilisateur', labelPlural: 'Utilisateurs',
+          fields: { name: 'Nom complet', username: "Nom d'utilisateur", email: 'E-mail', phone: 'Téléphone', website: 'Site web' },
+        },
+        posts: {
+          label: 'Article', labelPlural: 'Articles',
+          fields: { title: 'Titre', body: 'Contenu', userId: 'Auteur' },
+        },
+        todos: {
+          label: 'Tâche', labelPlural: 'Tâches',
+          fields: { title: 'Titre', completed: 'Terminée', userId: 'Assignée à' },
+        },
+      },
+      nav: {
+        sections: { JSONPlaceholder: 'JSONPlaceholder' },
+        routes: { jp_user: 'Utilisateurs JP', post: 'Articles', todo: 'Tâches' },
+      },
+    })
+
+    // ════════════════════════════════════════════════════════════════════════
     // ENTITIES
     // ════════════════════════════════════════════════════════════════════════
 
