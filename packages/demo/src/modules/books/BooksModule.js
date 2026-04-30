@@ -94,7 +94,7 @@ export class BooksModule extends Module {
       },
       nav: {
         sections: { Library: 'Library' },
-        routes: { 'book-stats': 'Stats' },
+        routes: { book: 'Books', genre: 'Genres', 'book-stats': 'Stats' },
       },
     })
 
@@ -189,7 +189,7 @@ export class BooksModule extends Module {
       },
       nav: {
         sections: { Library: 'Bibliothèque' },
-        routes: { 'book-stats': 'Statistiques' },
+        routes: { book: 'Livres', genre: 'Genres', 'book-stats': 'Statistiques' },
       },
     })
 
