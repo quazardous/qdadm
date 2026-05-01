@@ -3,6 +3,11 @@
 All notable changes to qdadm will be documented in this file.
 This is not a commit log. Keep entries simple, user-focused.
 
+## [1.16.2] - 2026-05-01
+
+### Fixed
+- **Demo `LocaleSwitcher` hides in compact sidebar mode**: switcher was always rendered with its own padding-only wrapper, so it stayed visible when the sidebar collapsed. Refactored to use the `SidebarBox` component with the `#full` slot — same pattern as `UserImpersonator` — so it picks up the existing `.sidebar--collapsed .sidebar-box--full` rule for free. Also adds a "LANGUAGE" label for visual consistency with the other footer boxes (USER, IMPERSONATE)
+
 ## [1.16.1] - 2026-05-01
 
 ### Fixed

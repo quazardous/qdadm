@@ -8,6 +8,7 @@
  */
 import { inject, computed } from 'vue'
 import Select from 'primevue/select'
+import { SidebarBox } from 'qdadm/components'
 
 const i18n = inject('qdadmI18n', null)
 const signals = inject('qdadmSignals', null)
@@ -30,20 +31,19 @@ const current = computed({
 </script>
 
 <template>
-  <div v-if="i18n" class="locale-switcher">
-    <Select
-      v-model="current"
-      :options="options"
-      option-label="label"
-      option-value="value"
-      size="small"
-      :pt="{ root: { 'aria-label': 'Locale' } }"
-    />
-  </div>
+  <SidebarBox v-if="i18n">
+    <template #full>
+      <span class="sidebar-box-full-label">Language</span>
+      <Select
+        v-model="current"
+        :options="options"
+        option-label="label"
+        option-value="value"
+        size="small"
+        class="sidebar-box-full-input"
+        appendTo="self"
+        :pt="{ root: { 'aria-label': 'Locale' } }"
+      />
+    </template>
+  </SidebarBox>
 </template>
-
-<style scoped>
-.locale-switcher {
-  padding: 0.5rem 1rem;
-}
-</style>
