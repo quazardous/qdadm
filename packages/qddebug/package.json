@@ -1,0 +1,46 @@
+{
+  "name": "@quazardous/qddebug",
+  "version": "0.1.0",
+  "description": "Symfony-style debug panel for qdadm and qdcms — bridge, collectors, and floating debug bar",
+  "author": "quazardous",
+  "license": "MIT",
+  "type": "module",
+  "main": "src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./bridge": "./src/bridge/index.ts",
+    "./collectors": "./src/collectors/index.ts",
+    "./components": "./src/components/index.ts"
+  },
+  "files": [
+    "src",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "type-check": "vue-tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "@quazardous/qdcore": "*"
+  },
+  "peerDependencies": {
+    "primevue": "^4.0.0",
+    "vue": "^3.3.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.3",
+    "vue": "^3.5.13",
+    "vue-tsc": "^3.2.2",
+    "vitest": "^2.1.8"
+  },
+  "keywords": [
+    "debug",
+    "debug-panel",
+    "vue",
+    "qdadm",
+    "qdcms",
+    "symfony-style"
+  ]
+}

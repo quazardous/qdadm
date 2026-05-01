@@ -1,0 +1,42 @@
+{
+  "name": "@quazardous/qdcore",
+  "version": "0.1.0",
+  "description": "Generic event bus and navigation stack primitives shared by qdadm and qdcms",
+  "author": "quazardous",
+  "license": "MIT",
+  "type": "module",
+  "main": "src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./signal": "./src/signal/index.ts",
+    "./hook": "./src/hook/index.ts",
+    "./event": "./src/event/index.ts",
+    "./sse": "./src/sse/index.ts",
+    "./stack": "./src/stack/index.ts"
+  },
+  "files": [
+    "src",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "type-check": "tsc --noEmit",
+    "build:types": "tsc --declaration --emitDeclarationOnly --outDir dist/types"
+  },
+  "dependencies": {
+    "@quazardous/quarkernel": "^2.1.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.3",
+    "vitest": "^2.1.8"
+  },
+  "keywords": [
+    "event-bus",
+    "signals",
+    "navigation-stack",
+    "qdadm",
+    "qdcms"
+  ]
+}

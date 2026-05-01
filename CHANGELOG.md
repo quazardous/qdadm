@@ -3,6 +3,31 @@
 All notable changes to qdadm will be documented in this file.
 This is not a commit log. Keep entries simple, user-focused.
 
+## [1.15.0] - 2026-05-01
+
+### Added — `@quazardous/qdcore` (new package)
+- **`signal/`**: generic `SignalBus` (was `qdadm/kernel/SignalBus`). Framework-agnostic, no qdadm-specific signal registry. `once()` supports both callback-style (subscribe + unbind) and Promise-style (resolves on first emission, optional timeout)
+- **`hook/`**: `HookRegistry` (Drupal-style hooks: lifecycle `invoke()` + chained `alter()`)
+- **`event/`**: `EventRouter` (declarative signal routing). `RouteContext` is now extensible via index signature + new `context` constructor option for arbitrary extras
+- **`sse/`**: `SSEBridge` with configurable `connectOnSignal` / `disconnectOnSignal` (defaults remain `auth:login` / `auth:logout`)
+- **`stack/`**: generic `Stack<L>` + `ContentStackLevel` + `StackBuilder<L>` + `Hydrator<L>` interfaces — extracted as the canonical stack abstraction shared with qdcms
+
+### Added — `@quazardous/qddebug` (new package)
+- **`bridge/`**: `Collector` base class, `DebugBridge` aggregator, `LocalStorageAdapter`
+- **`collectors/`**: generic collectors `SignalCollector`, `ErrorCollector`, `ToastCollector`, `I18nCollector`
+- **`components/`**: panel-pluggable `DebugBar` (new `panels` and `collectorMeta` props let consumers register their own panels and tab metadata), `ObjectTree`, generic panels (`EntriesPanel`, `SignalsPanel`, `ToastsPanel`)
+
+### Changed — qdadm internals
+- **`SignalBus`, `HookRegistry`, `EventRouter`, `SSEBridge`** now live in `@quazardous/qdcore`. qdadm files in `kernel/` and `hooks/` are thin re-export shims; the public API surface is unchanged
+- **`ActiveStack`** rewritten as a composition over `Stack<EntityStackLevel>` from qdcore. `EntityStackLevel extends ContentStackLevel` and dual-carries `name` + `entity` so existing readers (`level.entity`) keep working unchanged. `StackHydrator` now formally implements qdcore's `Hydrator<EntityStackLevel, HydratedLevel>` interface
+- **`DebugBridge`, `Collector`, generic collectors and UI** now live in `@quazardous/qddebug`. qdadm `modules/debug/` files are re-export shims; the public API is unchanged
+- **`DebugBar`** in qdadm becomes a thin wrapper that injects qdadm's admin panels (auth, entities, router, zones, i18n) and tab metadata into the qddebug bar via the new `panels` / `collectorMeta` props
+- **`EventRouter`**: dropped the unused `orchestrator` constructor option (was never read by any registered callback). Consumers needing extras can pass them via the new generic `context` option
+
+### Fixed
+- **quarkernel 2.3 type renames**: `QuarKernel` → `Kernel`, `ListenerCallback` → `ListenerFunction` — previously masked by `skipLibCheck` in qdadm
+- **`once()` against quarkernel 2.3**: the legacy callback-style was silently broken (2.3 reused `once()` for the Promise-returning variant). qdcore's `SignalBus.once()` overload now routes correctly to `on(..., { once: true })` for callbacks and to the kernel's Promise-based `once()` otherwise
+
 ## [1.14.0] - 2026-04-30
 
 ### Added — i18n subsystem

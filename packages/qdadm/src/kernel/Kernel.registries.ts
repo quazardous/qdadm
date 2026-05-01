@@ -189,7 +189,6 @@ export function applyRegistryMethods(KernelClass: { prototype: any }): void {
     const debug = this.options.debug ?? false
     this.eventRouter = createEventRouter({
       signals: this.signals!,
-      orchestrator: this.orchestrator,
       routes,
       debug,
     })

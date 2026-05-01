@@ -10,7 +10,7 @@
  *  - Bundle: dump of the merged inline bundle for a chosen locale
  */
 import { ref, computed, inject, watch, onMounted } from 'vue'
-import ObjectTree from '../ObjectTree.vue'
+import { ObjectTree } from '@quazardous/qddebug'
 import type { I18n } from '../../../../i18n/I18n'
 import type { ResolveTrace } from '../../../../i18n/types'
 import type { I18nCollector, MissingKeyEntry } from '../../I18nCollector'

@@ -9,7 +9,7 @@
  * - All registered routes
  */
 import { ref, computed, watch } from 'vue'
-import ObjectTree from '../ObjectTree.vue'
+import { ObjectTree } from '@quazardous/qddebug'
 
 interface RouteLocation {
   name?: string

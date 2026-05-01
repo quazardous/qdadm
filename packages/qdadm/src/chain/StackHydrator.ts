@@ -14,7 +14,8 @@
  * signalBus.on('stack:hydrated', (event) => console.log('Hydrated:', event.data.levels))
  */
 
-import type { ActiveStack, StackLevel } from './ActiveStack'
+import type { Hydrator } from '@quazardous/qdcore'
+import type { ActiveStack, EntityStackLevel, StackLevel } from './ActiveStack'
 import type { Orchestrator } from '../orchestrator/Orchestrator'
 import type { SignalBus } from '../kernel/SignalBus'
 import type { EntityRecord } from '../types'
@@ -52,7 +53,7 @@ export interface HydratedPayload {
   levels: HydratedLevel[]
 }
 
-export class StackHydrator {
+export class StackHydrator implements Hydrator<EntityStackLevel, HydratedLevel> {
   private _activeStack: ActiveStack
   private _orchestrator: Orchestrator
   private _signalBus: SignalBus | null

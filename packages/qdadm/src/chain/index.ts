@@ -11,7 +11,13 @@
  */
 
 // Sync stack (context only)
-export { ActiveStack, type StackLevel, type StackChangePayload } from './ActiveStack'
+export {
+  ActiveStack,
+  type StackLevel,
+  type EntityStackLevel,
+  type EntityStackLevelInput,
+  type StackChangePayload,
+} from './ActiveStack'
 export { useActiveStack, type UseActiveStackReturn } from './useActiveStack'
 
 // Async hydration (data + labels)

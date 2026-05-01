@@ -3,7 +3,7 @@
  * EntitiesPanel - Entities collector display with expandable details
  */
 import { ref, onMounted } from 'vue'
-import ObjectTree from '../ObjectTree.vue'
+import { ObjectTree } from '@quazardous/qddebug'
 
 interface StorageCapabilities {
   supportsTotal?: boolean

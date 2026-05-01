@@ -4,7 +4,7 @@
  * Each event has its own timer and fades out before destruction
  */
 import { onMounted, ref, onUnmounted, inject } from 'vue'
-import ObjectTree from '../ObjectTree.vue'
+import { ObjectTree } from '@quazardous/qddebug'
 
 interface AuthEntry {
   type: string

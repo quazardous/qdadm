@@ -1,31 +1,40 @@
 /**
- * ActiveStack - Sync navigation context from route
+ * ActiveStack - Sync navigation context from route (qdadm flavour).
  *
- * Pure vanilla JS container using SignalBus for events.
- * Rebuilt from route.meta on navigation.
+ * Composes a generic `Stack<EntityStackLevel>` from `@quazardous/qdcore` and
+ * adds qdadm-specific lookups (e.g. `getLevelByEntity`). The underlying levels
+ * dual-carry `name` (qdcore-aligned) and `entity` (legacy qdadm field), so all
+ * existing consumers continue to read `level.entity` unchanged.
  *
  * Stack only contains levels WITH IDs (entities with context).
  * - /bots/bot-xyz/commands → stack = [bots(id:bot-xyz)]
  * - /bots/bot-xyz/commands/cmd-123 → stack = [bots(id:bot-xyz), commands(id:cmd-123)]
  *
- * Signals emitted:
- * - stack:change - when stack levels change
+ * Signals emitted (via SignalBus):
+ * - stack:change — when stack levels change
  *
- * For Vue reactivity, use useActiveStack composable.
+ * For Vue reactivity, use the `useActiveStack` composable.
  *
  * @example
  * const stack = new ActiveStack(signalBus)
  * signalBus.on('stack:change', ({ levels }) => console.log('Stack:', levels))
- * stack.set([{ entity: 'bots', param: 'uuid', id: 'bot-123' }])
+ * stack.set([{ entity: 'bots', param: 'uuid', foreignKey: null, id: 'bot-123' }])
  */
 
+import { Stack, type ContentStackLevel } from '@quazardous/qdcore'
 import type { SignalBus } from '../kernel/SignalBus'
 
 /**
- * Stack level definition
+ * qdadm stack level: entity-bound `ContentStackLevel`.
+ *
+ * `name` and `entity` always carry the same value. `name` is the qdcore-canonical
+ * field; `entity` is preserved for backwards compatibility with qdadm callers.
  */
-export interface StackLevel {
-  /** Entity name (e.g., 'bots', 'commands') */
+export interface EntityStackLevel extends ContentStackLevel {
+  type: 'entity'
+  /** qdcore-aligned name (= entity) */
+  name: string
+  /** Entity name (e.g., 'bots', 'commands') — alias of `name` */
   entity: string
   /** Route param name (e.g., 'uuid', 'id') */
   param: string
@@ -36,137 +45,109 @@ export interface StackLevel {
 }
 
 /**
+ * Legacy alias kept for backwards compatibility. New code should prefer
+ * {@link EntityStackLevel}.
+ */
+export type StackLevel = EntityStackLevel
+
+/**
+ * Input shape accepted by {@link ActiveStack.set} — `name` is optional and
+ * defaults to `entity` so existing callers (`{ entity, param, foreignKey, id }`)
+ * keep working without changes.
+ */
+export type EntityStackLevelInput = Omit<EntityStackLevel, 'type' | 'name'> & {
+  type?: 'entity'
+  name?: string
+}
+
+/**
  * Stack change event payload
  */
 export interface StackChangePayload {
-  levels: StackLevel[]
+  levels: EntityStackLevel[]
+}
+
+/**
+ * Normalize loose input into a fully-typed EntityStackLevel.
+ */
+function normalize(input: EntityStackLevelInput): EntityStackLevel {
+  return {
+    type: 'entity',
+    name: input.name ?? input.entity,
+    entity: input.entity,
+    param: input.param,
+    foreignKey: input.foreignKey,
+    id: input.id,
+  }
 }
 
 export class ActiveStack {
-  private _levels: StackLevel[] = []
-  private _signalBus: SignalBus | null
+  private _stack: Stack<EntityStackLevel>
 
   /**
    * @param signalBus - Optional signal bus for events
    */
   constructor(signalBus: SignalBus | null = null) {
-    this._signalBus = signalBus
+    this._stack = new Stack<EntityStackLevel>(signalBus)
   }
 
-  // ═══════════════════════════════════════════════════════════════════════════
-  // Mutators
-  // ═══════════════════════════════════════════════════════════════════════════
+  // ─── Mutators ─────────────────────────────────────────────────────────────
 
   /**
-   * Replace entire stack (called on route change)
-   * Only emits if levels actually changed (prevents duplicate emissions)
-   *
-   * BUG: Still getting duplicate signals (4 instead of 2) on navigation.
-   * Equality check should prevent this but something is triggering multiple calls
-   * with different levels. Need to investigate router.afterEach timing.
+   * Replace entire stack (called on route change).
+   * Only emits if levels actually changed (handled by qdcore Stack).
+   * Accepts either fully-typed `EntityStackLevel` or the legacy
+   * `{ entity, param, foreignKey, id }` shape.
    */
-  set(levels: StackLevel[]): void {
-    // Quick equality check - same length and same entity+id pairs
-    if (this._levelsEqual(levels)) {
-      return
-    }
-    this._levels = levels
-    this._emit('stack:change', { levels: this._levels })
+  set(levels: EntityStackLevelInput[]): void {
+    this._stack.set(levels.map(normalize))
   }
 
   /**
-   * Check if new levels match current levels
-   * @private
-   */
-  private _levelsEqual(newLevels: StackLevel[]): boolean {
-    if (this._levels.length !== newLevels.length) return false
-    for (let i = 0; i < this._levels.length; i++) {
-      const curr = this._levels[i]
-      const next = newLevels[i]
-      // Both are guaranteed to exist because we checked lengths match
-      if (!curr || !next) continue
-      if (curr.entity !== next.entity || curr.id !== next.id) {
-        return false
-      }
-    }
-    return true
-  }
-
-  /**
-   * Clear the stack
-   * Only emits if not already empty
+   * Clear the stack.
    */
   clear(): void {
-    if (this._levels.length === 0) return
-    this._levels = []
-    this._emit('stack:change', { levels: this._levels })
+    this._stack.clear()
   }
 
-  // ═══════════════════════════════════════════════════════════════════════════
-  // Accessors
-  // ═══════════════════════════════════════════════════════════════════════════
+  // ─── Accessors ────────────────────────────────────────────────────────────
 
-  /**
-   * All stack levels
-   */
-  getLevels(): StackLevel[] {
-    return this._levels
+  getLevels(): EntityStackLevel[] {
+    return this._stack.getLevels()
+  }
+
+  getLevel(index: number): EntityStackLevel | null {
+    return this._stack.getLevel(index)
   }
 
   /**
-   * Get level by index
+   * Get level by entity name (qdadm-specific helper).
    */
-  getLevel(index: number): StackLevel | null {
-    return this._levels[index] ?? null
+  getLevelByEntity(entity: string): EntityStackLevel | null {
+    return this._stack.getLevels().find(l => l.entity === entity) ?? null
   }
 
-  /**
-   * Get level by entity name
-   */
-  getLevelByEntity(entity: string): StackLevel | null {
-    return this._levels.find(l => l.entity === entity) ?? null
+  getCurrent(): EntityStackLevel | null {
+    return this._stack.getCurrent()
   }
 
-  /**
-   * Current (deepest) level
-   */
-  getCurrent(): StackLevel | null {
-    return this._levels.at(-1) ?? null
+  getParent(): EntityStackLevel | null {
+    return this._stack.getParent()
   }
 
-  /**
-   * Parent level (one above current)
-   */
-  getParent(): StackLevel | null {
-    return this._levels.at(-2) ?? null
+  getRoot(): EntityStackLevel | null {
+    return this._stack.getRoot()
   }
 
-  /**
-   * Root level (first/topmost)
-   */
-  getRoot(): StackLevel | null {
-    return this._levels[0] ?? null
-  }
-
-  /**
-   * Stack depth
-   */
   getDepth(): number {
-    return this._levels.length
+    return this._stack.getDepth()
   }
 
-  // ═══════════════════════════════════════════════════════════════════════════
-  // Internal
-  // ═══════════════════════════════════════════════════════════════════════════
-
   /**
-   * Emit event via SignalBus
-   * @private
+   * Underlying qdcore Stack instance (escape hatch for advanced use).
    */
-  private _emit(signal: string, payload: StackChangePayload): void {
-    if (this._signalBus) {
-      this._signalBus.emit(signal, payload)
-    }
+  getCoreStack(): Stack<EntityStackLevel> {
+    return this._stack
   }
 }
 

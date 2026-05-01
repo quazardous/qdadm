@@ -1,8 +1,9 @@
 /**
- * Debug Components Exports
+ * Debug Components — qdadm.
  *
- * Vue components for the debug panel UI.
+ * Re-exports the qdadm DebugBar wrapper and the qddebug ObjectTree to
+ * preserve qdadm's public API.
  */
 
 export { default as DebugBar } from './DebugBar.vue'
-export { default as ObjectTree } from './ObjectTree.vue'
+export { ObjectTree } from '@quazardous/qddebug'

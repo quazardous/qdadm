@@ -45,7 +45,9 @@ vi.mock('../../src/modules/debug/components/panels', () => ({
   EntitiesPanel: { template: '<div class="entities-panel">Entities</div>' },
   ToastsPanel: { template: '<div class="toasts-panel">Toasts</div>' },
   EntriesPanel: { template: '<div class="entries-panel">Entries</div>' },
-  SignalsPanel: { template: '<div class="signals-panel">Signals</div>' }
+  SignalsPanel: { template: '<div class="signals-panel">Signals</div>' },
+  RouterPanel: { template: '<div class="router-panel">Router</div>' },
+  I18nPanel: { template: '<div class="i18n-panel">i18n</div>' }
 }))
 
 /**
