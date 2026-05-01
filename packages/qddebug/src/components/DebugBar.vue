@@ -17,10 +17,13 @@
 import { ref, computed, watch, onMounted, onUnmounted, type Ref, type Component } from 'vue'
 import Badge from 'primevue/badge'
 import Button from 'primevue/button'
+import pkg from '../../package.json'
 
 import EntriesPanel from './panels/EntriesPanel.vue'
 import SignalsPanel from './panels/SignalsPanel.vue'
 import ToastsPanel from './panels/ToastsPanel.vue'
+
+const QDDEBUG_VERSION = pkg.version
 
 type DisplayMode = 'bottom' | 'right' | 'window'
 
@@ -560,7 +563,11 @@ const currentPanel = computed<Component | null>(() => panelFor(currentCollector.
     } : { zIndex }">
       <!-- Header -->
       <div ref="headerRef" class="debug-header" @mousedown="displayMode === 'window' && !fullscreen ? startDrag($event) : null" :class="{ 'debug-header-draggable': displayMode === 'window' && !fullscreen }">
-        <div class="debug-title" :class="{ 'debug-title-draggable': displayMode === 'window' && !fullscreen }">
+        <div
+          class="debug-title"
+          :class="{ 'debug-title-draggable': displayMode === 'window' && !fullscreen }"
+          :title="`@quazardous/qddebug v${QDDEBUG_VERSION}`"
+        >
           <svg viewBox="0 0 100 100" width="18" height="18">
             <polygon points="50,5 93,27.5 93,72.5 50,95 7,72.5 7,27.5" fill="#1E3A8A"/>
             <text x="48" y="50" text-anchor="middle" dominant-baseline="central" font-family="system-ui" font-size="58" font-weight="800" letter-spacing="-4">
@@ -568,6 +575,7 @@ const currentPanel = computed<Component | null>(() => panelFor(currentCollector.
             </text>
           </svg>
           <span>Debug</span>
+          <span class="debug-version">v{{ QDDEBUG_VERSION }}</span>
           <span v-if="errorBadge > 0" class="debug-header-badge debug-header-badge-error" title="Errors">
             <i class="pi pi-exclamation-triangle" />{{ errorBadge }}
           </span>
@@ -723,3 +731,14 @@ const currentPanel = computed<Component | null>(() => panelFor(currentCollector.
     </div>
   </Teleport>
 </template>
+
+<style scoped>
+.debug-version {
+  font-size: 0.65rem;
+  font-weight: 500;
+  opacity: 0.55;
+  letter-spacing: 0.02em;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  margin-left: 0.1rem;
+}
+</style>
