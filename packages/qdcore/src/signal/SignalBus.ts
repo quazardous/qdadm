@@ -10,12 +10,27 @@
  * the dispatch primitive and a `name:action` helper.
  */
 
-import {
-  createKernel,
-  type Kernel as QuarKernel,
-  type ListenerFunction as ListenerCallback,
-  type ListenerOptions,
-} from '@quazardous/quarkernel'
+import { createKernel, type ListenerOptions } from '@quazardous/quarkernel'
+
+/**
+ * Minimal kernel interface that this module relies on. Kept local because
+ * quarkernel 2.3's bundled `.d.ts` re-export chain trips `vue-tsc` when it
+ * tries to surface `Kernel`/`ListenerFunction` through workspace symlinks
+ * (the renamed re-exports `a as Kernel` / `l as ListenerFunction` resolve
+ * fine in `tsc` but flake in `vue-tsc`). Defining the surface locally is
+ * structurally compatible and self-contained.
+ */
+type ListenerCallback = (event: { name: string; data: unknown }) => unknown
+interface QuarKernel {
+  emit: (eventName: string, data?: unknown) => Promise<unknown>
+  emitSerial: (eventName: string, data?: unknown) => Promise<unknown>
+  on: (eventName: string, listener: ListenerCallback, options?: ListenerOptions) => () => void
+  once: (eventName: string, options?: { timeout?: number }) => Promise<unknown>
+  off: (eventName: string, listener?: ListenerCallback) => void
+  debug: (enabled: boolean) => void
+  clearExecutionErrors: () => void
+  getExecutionErrors: () => Array<{ listenerId: string; error: Error }>
+}
 
 /**
  * Standard action verbs used in `name:action` signal names.
@@ -66,12 +81,12 @@ export class SignalBus {
       wildcard: true,
       errorBoundary: true,
       debug: options.debug ?? false,
-    })
+    }) as unknown as QuarKernel
   }
 
   /** Emit a signal with payload. */
   async emit(signal: string, payload?: unknown): Promise<void> {
-    return this._kernel.emit(signal, payload)
+    await this._kernel.emit(signal, payload)
   }
 
   /** Subscribe to a signal. Returns an unbind function. */

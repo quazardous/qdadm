@@ -32,7 +32,18 @@
  * const altered = await hooks.alter('list:alter', baseConfig)
  */
 
-import { createKernel, type Kernel as QuarKernel, type ListenerOptions } from '@quazardous/quarkernel'
+import { createKernel, type ListenerOptions } from '@quazardous/quarkernel'
+
+// Local minimal kernel surface — see SignalBus.ts for the rationale (vue-tsc
+// flakes on quarkernel 2.3's bundled `.d.ts` re-export chain through
+// workspace symlinks).
+interface QuarKernel {
+  on: (eventName: string, listener: (event: { name: string; data: unknown }) => unknown, options?: ListenerOptions) => () => void
+  emitSerial: (eventName: string, data?: unknown) => Promise<unknown>
+  clearExecutionErrors: () => void
+  getExecutionErrors: () => Array<{ listenerId: string; error: Error }>
+  debug: (enabled: boolean) => void
+}
 
 const DEFAULT_PRIORITY = 50
 
@@ -67,7 +78,11 @@ interface HookEntryWithDeps extends HookEntry {
 }
 
 export interface HookRegistryOptions {
-  kernel?: QuarKernel
+  /**
+   * Pre-built quarkernel instance to share with another bus (e.g. SignalBus).
+   * Accepts any quarkernel-shaped object; cast internally.
+   */
+  kernel?: unknown
   debug?: boolean
 }
 
@@ -84,14 +99,13 @@ export class HookRegistry {
   private _hooks: Map<string, HookEntry[]>
 
   constructor(options: HookRegistryOptions = {}) {
-    this._kernel =
-      options.kernel ??
+    this._kernel = (options.kernel ??
       createKernel({
         delimiter: ':',
         wildcard: true,
         errorBoundary: true,
         debug: options.debug ?? false,
-      })
+      })) as unknown as QuarKernel
     this._hooks = new Map()
   }
 

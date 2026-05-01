@@ -12,7 +12,8 @@
     "./hook": "./src/hook/index.ts",
     "./event": "./src/event/index.ts",
     "./sse": "./src/sse/index.ts",
-    "./stack": "./src/stack/index.ts"
+    "./stack": "./src/stack/index.ts",
+    "./i18n": "./src/i18n/index.ts"
   },
   "files": [
     "src",

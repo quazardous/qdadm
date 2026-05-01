@@ -3,6 +3,21 @@
 All notable changes to qdadm will be documented in this file.
 This is not a commit log. Keep entries simple, user-focused.
 
+## [1.16.0] - 2026-05-01
+
+### Added — `@quazardous/qdcore/i18n` (extraction)
+- **`MessagesRegistry`, `Resolver`, `InlineTranslationProvider`, strategies, types** moved from `qdadm/i18n/` into `@quazardous/qdcore/i18n`. qdadm files are now thin re-export shims; the public API surface is unchanged
+- **`I18N_SIGNALS`** (new) — signal name constants (`LOCALE_CHANGE`, `LOCALE_CHANGED`, `I18N_MISSING`) shared with qdcms via `@quazardous/qdcore`. Lets a vue-i18n-based qdcms talk to qdadm i18n through the SignalBus with a one-line bridge
+- **`BaseI18nOptions`** (new) — generic shape that qdadm extends with the admin-only `disableDefaultCoreBundle` flag (declared in `qdadm/i18n/types.ts`)
+- **`./i18n` subpath export** added to `@quazardous/qdcore/package.json`
+
+### Changed — qdadm internals
+- `qdadm/i18n/I18n.ts` now imports its primitives from `@quazardous/qdcore` instead of local files. The qdadm orchestrator (`I18n` class), `useI18n()` composable, and `defaults/core.en.ts` admin bundle stay in qdadm — they're admin-flavoured and not relevant to qdcms
+- `qdadm/i18n/{types,MessagesRegistry,Resolver,InlineTranslationProvider,strategies}.ts` reduced to re-export shims
+
+### Fixed
+- **vue-tsc resolution of quarkernel 2.3 types in workspace symlinks**: `vue-tsc` couldn't resolve `Kernel` / `ListenerFunction` from `@quazardous/quarkernel` when reaching them through the `qdcore` workspace symlink (the bundled `.d.ts` chain `a as Kernel` / `l as ListenerFunction` confused vue-tsc but not `tsc`). Replaced the public-typed imports with locally-defined structural interfaces inside `qdcore/signal/SignalBus.ts` and `qdcore/hook/HookRegistry.ts`. Runtime behaviour unchanged
+
 ## [1.15.0] - 2026-05-01
 
 ### Added — `@quazardous/qdcore` (new package)

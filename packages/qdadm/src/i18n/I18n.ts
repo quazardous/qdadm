@@ -23,19 +23,21 @@
 
 import { ref, type Ref } from 'vue'
 
-import { MessagesRegistry } from './MessagesRegistry'
-import { Resolver } from './Resolver'
-import { InlineTranslationProvider } from './InlineTranslationProvider'
-import { resolveStrategy } from './strategies'
-import { coreEn } from './defaults/core.en'
+import {
+  MessagesRegistry,
+  Resolver,
+  InlineTranslationProvider,
+  resolveStrategy,
+} from '@quazardous/qdcore'
 import type {
   AliasPattern,
-  I18nOptions,
   MessagesBundle,
   ResolveTrace,
   TranslateParams,
   TranslationProvider,
-} from './types'
+} from '@quazardous/qdcore'
+import { coreEn } from './defaults/core.en'
+import type { I18nOptions } from './types'
 
 export interface I18nDeps {
   /** SignalBus instance for emitting locale:changed and i18n:missing. */
