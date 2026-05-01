@@ -3,6 +3,14 @@
 All notable changes to qdadm will be documented in this file.
 This is not a commit log. Keep entries simple, user-focused.
 
+## [1.16.1] - 2026-05-01
+
+### Fixed
+- **Demo pagination on `/posts`, `/jp_users`, `/todos`**: JSONPlaceholder ignores `?page` / `?page_size` and returns the full collection on every request, so cycling pages or filtering by author kept showing the same 10 items. Added a small `JsonPlaceholderStorage` subclass that fetches once and slices/filters/sorts client-side, mirroring the `RestCountriesStorage` pattern already used for `/countries`
+
+### Chore
+- Tighten `.gitignore` to catch stray codegen runs launched from the repo root instead of the package
+
 ## [1.16.0] - 2026-05-01
 
 ### Added — `@quazardous/qdcore/i18n` (extraction)

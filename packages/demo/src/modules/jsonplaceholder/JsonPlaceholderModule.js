@@ -20,9 +20,33 @@ const jpClient = axios.create({
   baseURL: 'https://jsonplaceholder.typicode.com'
 })
 
-const jpUsersStorage = new ApiStorage({ endpoint: '/users', client: jpClient })
-const postsStorage = new ApiStorage({ endpoint: '/posts', client: jpClient })
-const todosStorage = new ApiStorage({ endpoint: '/todos', client: jpClient })
+// JSONPlaceholder ignores ?page / ?page_size and returns the full collection
+// every time, so we slice client-side. Same approach as RestCountriesStorage.
+class JsonPlaceholderStorage extends ApiStorage {
+  async list({ page = 1, page_size = 20, sort_by, sort_order, filters = {} } = {}) {
+    const response = await this.client.get(this.endpoint)
+    let items = response.data
+    for (const [k, v] of Object.entries(filters)) {
+      if (v == null || v === '') continue
+      items = items.filter((it) => String(it[k]) === String(v))
+    }
+    if (sort_by) {
+      const dir = sort_order === 'desc' ? -1 : 1
+      items = [...items].sort((a, b) => {
+        const av = a[sort_by], bv = b[sort_by]
+        if (av === bv) return 0
+        return av > bv ? dir : -dir
+      })
+    }
+    const total = items.length
+    const start = (page - 1) * page_size
+    return { items: items.slice(start, start + page_size), total }
+  }
+}
+
+const jpUsersStorage = new JsonPlaceholderStorage({ endpoint: '/users', client: jpClient })
+const postsStorage = new JsonPlaceholderStorage({ endpoint: '/posts', client: jpClient })
+const todosStorage = new JsonPlaceholderStorage({ endpoint: '/todos', client: jpClient })
 
 // ============================================================================
 // MODULE

@@ -27,3 +27,5 @@ POSTIT.md
 
 # Codegen output (source of truth is the schema, not the generated file)
 packages/qdadm/src/generated/
+# Catches stray gen runs launched from the repo root instead of the package
+/src/generated/
