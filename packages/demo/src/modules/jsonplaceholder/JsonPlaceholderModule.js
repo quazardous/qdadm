@@ -46,7 +46,94 @@ class JsonPlaceholderStorage extends ApiStorage {
 
 const jpUsersStorage = new JsonPlaceholderStorage({ endpoint: '/users', client: jpClient })
 const postsStorage = new JsonPlaceholderStorage({ endpoint: '/posts', client: jpClient })
-const todosStorage = new JsonPlaceholderStorage({ endpoint: '/todos', client: jpClient })
+
+// ────────────────────────────────────────────────────────────────────────────
+// DEMO HACK — todos `completed` toggle persists in localStorage
+// ────────────────────────────────────────────────────────────────────────────
+// JSONPlaceholder is a public mock API that accepts PATCH (200 OK) but never
+// persists anything server-side. By default that means a user clicks the
+// checkbox on /todos, sees the toggle apply locally, but as soon as anything
+// triggers a re-fetch (pagination, filter change, page reload, browser back/
+// forward) the original `completed` value comes back from the API and the
+// toggle disappears. That makes the demo look broken even though it isn't.
+//
+// To keep the demo self-explanatory without standing up a real backend, we
+// overlay user patches on top of the API response. Each patch from `patch()`
+// is stored under `qdadm-demo:todos:patches` in localStorage, keyed by todo
+// id, and re-applied to every `list()` / `get()` result before filtering/
+// sorting. Only `todos` use this — `posts` and `jp_users` keep raw
+// JSONPlaceholder behaviour because they're not meant to be edited in the
+// demo.
+//
+// Reset: open DevTools → Application → Local Storage and delete the key.
+// If/when this demo swaps for a real persistent backend, drop the wrapper.
+// ────────────────────────────────────────────────────────────────────────────
+const TODOS_PATCH_KEY = 'qdadm-demo:todos:patches'
+
+class TodosLocalOverlayStorage extends JsonPlaceholderStorage {
+  _readPatches() {
+    try {
+      return JSON.parse(localStorage.getItem(TODOS_PATCH_KEY) || '{}') || {}
+    } catch {
+      return {}
+    }
+  }
+
+  _writePatches(patches) {
+    try {
+      localStorage.setItem(TODOS_PATCH_KEY, JSON.stringify(patches))
+    } catch {
+      // quota exceeded or storage disabled — silently ignore (demo)
+    }
+  }
+
+  _applyPatches(item, patches) {
+    const patch = item && patches[item.id]
+    return patch ? { ...item, ...patch } : item
+  }
+
+  async list(params = {}) {
+    const patches = this._readPatches()
+    // Fetch + filter/sort/slice via parent. Patches must be applied BEFORE
+    // filtering & sorting so a user-toggled `completed` lands in the right
+    // bucket — so we shadow the parent and inline the same pipeline.
+    const { page = 1, page_size = 20, sort_by, sort_order, filters = {} } = params
+    const response = await this.client.get(this.endpoint)
+    let items = response.data.map((it) => this._applyPatches(it, patches))
+    for (const [k, v] of Object.entries(filters)) {
+      if (v == null || v === '') continue
+      items = items.filter((it) => String(it[k]) === String(v))
+    }
+    if (sort_by) {
+      const dir = sort_order === 'desc' ? -1 : 1
+      items = [...items].sort((a, b) => {
+        const av = a[sort_by], bv = b[sort_by]
+        if (av === bv) return 0
+        return av > bv ? dir : -dir
+      })
+    }
+    const total = items.length
+    const start = (page - 1) * page_size
+    return { items: items.slice(start, start + page_size), total }
+  }
+
+  async get(id, context = null) {
+    const item = await super.get(id, context)
+    return this._applyPatches(item, this._readPatches())
+  }
+
+  async patch(id, data) {
+    const patches = this._readPatches()
+    patches[id] = { ...(patches[id] || {}), ...data }
+    this._writePatches(patches)
+    // Mirror server "200 OK" by returning the merged item — and still hit
+    // the API so the network panel shows real traffic.
+    const item = await super.patch(id, data).catch(() => null)
+    return { ...(item || { id }), ...patches[id] }
+  }
+}
+
+const todosStorage = new TodosLocalOverlayStorage({ endpoint: '/todos', client: jpClient })
 
 // ============================================================================
 // MODULE

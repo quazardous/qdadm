@@ -60,8 +60,12 @@ list.addFilter('completed', {
 })
 
 // ============ COMPLETION TOGGLE ============
-// Simulate PATCH to toggle completed status
-// Note: JSONPlaceholder doesn't persist changes, but simulates success
+// Toggle completed status. JSONPlaceholder accepts the PATCH (200 OK) but
+// doesn't persist anything server-side, so the demo wraps the todos storage
+// with a localStorage overlay that re-applies user patches on every fetch
+// (see TodosLocalOverlayStorage in JsonPlaceholderModule.js). The mutation
+// below also flips the prop directly so the checkbox UI reflects the change
+// before the next re-fetch.
 const togglingId = ref(null)
 
 async function toggleCompleted(todo) {
@@ -70,7 +74,7 @@ async function toggleCompleted(todo) {
     const todosManager = getManager('todos')
     await todosManager.patch(todo.id, { completed: !todo.completed })
 
-    // Update local state (JSONPlaceholder doesn't persist)
+    // Flip the prop locally for instant UI feedback
     todo.completed = !todo.completed
 
     toast.add({

@@ -3,6 +3,12 @@
 All notable changes to qdadm will be documented in this file.
 This is not a commit log. Keep entries simple, user-focused.
 
+## qdadm-demo [0.22.0] - 2026-05-04
+
+### Added — `/todos` toggles persist in localStorage (demo hack)
+
+- The `completed` checkbox on `/todos` now survives reloads, pagination, filters, and tab switches. Demo-only quality-of-life: JSONPlaceholder accepts PATCH but never persists, so a `TodosLocalOverlayStorage` wrapper stores user patches under `qdadm-demo:todos:patches` in localStorage and re-applies them on every `list()` / `get()` before filter/sort. Reset by clearing the key in DevTools. See the big comment block at the top of `JsonPlaceholderModule.js`
+
 ## [1.19.0] - 2026-05-04
 
 ### Changed — `@quazardous/qdcore` 0.1.0 → 0.2.0 (BREAKING)
