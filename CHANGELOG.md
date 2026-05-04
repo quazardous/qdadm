@@ -3,6 +3,12 @@
 All notable changes to qdadm will be documented in this file.
 This is not a commit log. Keep entries simple, user-focused.
 
+## [1.18.1] - 2026-05-04
+
+### Fixed
+- **Debug Router panel: active stack label stayed stuck on the previous entity's value after navigating** to another entity (`/users/<id>/edit` showing `june` after switching to admin). The panel only re-rendered on `afterEach` (a new navigation entry), but `StackHydrator` finishes its async fetch *after* the navigation and the panel never noticed. `RouterCollector` now subscribes to `stack:change` + `stack:hydrated` and calls `notifyChange()` so the label refreshes once the entity is hydrated
+- **Debug Router panel: breadcrumb section was rendered with elements centred at ~1/3 width** instead of full-width. Conflict with the global `.breadcrumb-list` rule from `styles/_main.scss` (AppLayout breadcrumb: `align-items: center`, gap, list-style…) which overrode the debug rule. Namespaced every `.breadcrumb-*` rule in the debug stylesheet under `.router-panel`
+
 ## [1.18.0] - 2026-05-04
 
 ### Added — i18n: lazy YAML defaults + incremental domain loading
