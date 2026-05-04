@@ -422,7 +422,11 @@ export {
   defineStrategy,
   resolveStrategy,
   STRATEGIES,
-  coreEn,
+  LazyTranslationProvider,
+  IncrementalDomainProvider,
+  isDomainAwareProvider,
+  createYamlLoader,
+  createDefaultCoreProvider,
   useI18n,
   I18N_INJECTION_KEY,
 } from './i18n'

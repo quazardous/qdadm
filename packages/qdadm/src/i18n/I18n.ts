@@ -36,7 +36,8 @@ import type {
   TranslateParams,
   TranslationProvider,
 } from '@quazardous/qdcore'
-import { coreEn } from './defaults/core.en'
+import { createDefaultCoreProvider } from './defaults/DefaultCoreProvider'
+import { isDomainAwareProvider } from './IncrementalDomainProvider'
 import type { I18nOptions } from './types'
 
 export interface I18nDeps {
@@ -61,6 +62,13 @@ export class I18n {
   private _defaultLocale: string
   private _fallbackLocale: string
   private _loadedLocales: Set<string> = new Set()
+  // Track which (locale::domain) pairs have already been resolved through a
+  // domain-aware provider, so we don't re-trigger an async load on every
+  // subsequent miss for the same domain.
+  private _loadedDomains: Set<string> = new Set()
+  // Concurrent domain loads — share one in-flight promise per (locale, domain)
+  // pair across providers and t() callers.
+  private _inflightDomains: Map<string, Promise<void>> = new Map()
 
   constructor(options: I18nOptions = {}, deps: I18nDeps = {}) {
     this._defaultLocale = options.defaultLocale ?? 'en'
@@ -71,7 +79,18 @@ export class I18n {
 
     this._registry = new MessagesRegistry()
     this.inline = new InlineTranslationProvider()
-    this._providers = [this.inline, ...(options.providers ?? [])]
+
+    // Provider chain: framework defaults (lazy) → inline (ctx.messages) → user.
+    // _loadLocale merges providers in order, so later entries override earlier
+    // ones. The default core is first so app-level overrides always win.
+    const defaultCoreProviders: TranslationProvider[] = options.disableDefaultCoreBundle
+      ? []
+      : [createDefaultCoreProvider()]
+    this._providers = [
+      ...defaultCoreProviders,
+      this.inline,
+      ...(options.providers ?? []),
+    ]
 
     this.locale = ref(this._defaultLocale)
 
@@ -83,11 +102,6 @@ export class I18n {
         this._signals?.emit('i18n:missing', { key, locale })
       },
     })
-
-    // Default core bundle (overridable by app/module messages declared later).
-    if (!options.disableDefaultCoreBundle) {
-      this.inline.push(this._defaultLocale, coreEn)
-    }
 
     // App-level messages from kernel options.
     if (options.messages) {
@@ -111,9 +125,32 @@ export class I18n {
 
   /**
    * Translate a convention-derived key.
+   *
+   * On a miss whose top-level segment matches a domain known to one of the
+   * registered domain-aware providers (e.g. `IncrementalDomainProvider`),
+   * triggers a lazy load for that (locale, domain) pair in the background
+   * and emits `i18n:domain-loaded` once merged. The current call still
+   * returns the raw key — callers that want to react to the late arrival
+   * should listen to `i18n:domain-loaded`.
    */
   t(key: string, params?: TranslateParams): string {
-    return this._resolver.translate(key, this.locale.value, params)
+    const trace = this._resolver.resolve(key, this.locale.value, params)
+    if (!trace.hit) {
+      this._maybeEnsureDomain(key, this.locale.value)
+    }
+    return trace.result
+  }
+
+  /**
+   * Explicitly request a domain to be loaded for a locale, ahead of any
+   * `t()` miss that would have triggered it. Useful when a screen is about
+   * to need a rare domain and the dev wants to avoid the placeholder flash.
+   *
+   * Resolves once the domain is merged into the registry (or rejects if no
+   * domain-aware provider knows it).
+   */
+  loadDomain(domain: string, locale: string = this.locale.value): Promise<void> {
+    return this._ensureDomain(locale, domain)
   }
 
   /**
@@ -216,6 +253,57 @@ export class I18n {
       }
     }
     this._loadedLocales.add(locale)
+  }
+
+  /**
+   * Fire-and-forget: invoked from t() on a miss to opportunistically pull in
+   * a domain-aware provider's bundle for the missed top-level segment.
+   * Errors are swallowed (logged as a missing-domain signal) — the current
+   * t() call has already returned.
+   */
+  private _maybeEnsureDomain(key: string, locale: string): void {
+    const dot = key.indexOf('.')
+    const domain = dot === -1 ? key : key.slice(0, dot)
+    if (!domain) return
+    if (this._loadedDomains.has(`${locale}::${domain}`)) return
+    if (!this._providers.some((p) => isDomainAwareProvider(p) && p.knowsDomain(domain))) {
+      return
+    }
+    void this._ensureDomain(locale, domain).catch(() => {
+      // Already surfaced via i18n:missing on the original miss; silent here.
+    })
+  }
+
+  /**
+   * Resolves once a domain has been pulled from any domain-aware provider
+   * that knows it. Safe to call concurrently — loads are deduped per
+   * (locale, domain) pair. Emits `i18n:domain-loaded` after the merge.
+   */
+  private _ensureDomain(locale: string, domain: string): Promise<void> {
+    const cacheKey = `${locale}::${domain}`
+    if (this._loadedDomains.has(cacheKey)) return Promise.resolve()
+    const existing = this._inflightDomains.get(cacheKey)
+    if (existing) return existing
+
+    const promise = (async () => {
+      let merged = false
+      for (const p of this._providers) {
+        if (!isDomainAwareProvider(p) || !p.knowsDomain(domain)) continue
+        const bundle = await p.loadDomain(locale, domain)
+        if (bundle && Object.keys(bundle).length > 0) {
+          this._registry.merge(locale, bundle)
+          merged = true
+        }
+      }
+      this._loadedDomains.add(cacheKey)
+      this._inflightDomains.delete(cacheKey)
+      if (merged) {
+        this._signals?.emit('i18n:domain-loaded', { locale, domain })
+      }
+    })()
+
+    this._inflightDomains.set(cacheKey, promise)
+    return promise
   }
 
   private _currentStrategyAliases(): AliasPattern[] {

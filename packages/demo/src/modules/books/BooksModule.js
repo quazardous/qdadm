@@ -62,8 +62,11 @@ export class BooksModule extends Module {
 
   async connect(ctx) {
     // ════════════════════════════════════════════════════════════════════════
-    // I18N (POC scaffold — convention-derived keys, not yet wired into
-    // composables; existing `label:` props still drive form/list rendering)
+    // I18N
+    // Convention-derived keys: `entities.<entity>.fields.<field>` are picked
+    // up by useFieldManager; `nav.sections.*` / `nav.routes.*` by useNavigation.
+    // Inline `label:` props on entity fields stay as fallback when a key is
+    // missing.
     // ════════════════════════════════════════════════════════════════════════
     ctx.messages('en', {
       entities: {
@@ -123,68 +126,6 @@ export class BooksModule extends Module {
           label: 'Genre',
           labelPlural: 'Genres',
           fields: { name: 'Nom', description: 'Description' },
-        },
-      },
-      core: {
-        actions: {
-          save: 'Enregistrer',
-          cancel: 'Annuler',
-          delete: 'Supprimer',
-          edit: 'Modifier',
-          create: 'Créer',
-          update: 'Mettre à jour',
-          createAndClose: 'Créer et fermer',
-          updateAndClose: 'Mettre à jour et fermer',
-          add: 'Ajouter',
-          remove: 'Retirer',
-          submit: 'Valider',
-          reset: 'Réinitialiser',
-          back: 'Retour',
-          next: 'Suivant',
-          previous: 'Précédent',
-          close: 'Fermer',
-          confirm: 'Confirmer',
-          search: 'Rechercher',
-          filter: 'Filtrer',
-          clear: 'Effacer',
-          refresh: 'Actualiser',
-          export: 'Exporter',
-          import: 'Importer',
-        },
-        tooltips: {
-          saveAndContinue: 'Enregistrer et continuer la modification',
-          saveAndReturn: 'Enregistrer et revenir à la liste',
-          unsavedChanges: 'Modifications non enregistrées',
-        },
-        placeholders: {
-          search: 'Rechercher…',
-          noSelection: 'Cliquez pour sélectionner…',
-        },
-        fields: {
-          id: 'Identifiant',
-          created_at: 'Créé le',
-          updated_at: 'Modifié le',
-          created_by: 'Créé par',
-          updated_by: 'Modifié par',
-        },
-        messages: {
-          empty: 'Aucun élément',
-          loading: 'Chargement…',
-          noResults: 'Aucun résultat',
-          noMatching: 'Aucune correspondance',
-          saved: 'Enregistré',
-          deleted: 'Supprimé',
-          created: 'Créé',
-          updated: 'Modifié',
-          confirmDelete: 'Êtes-vous sûr de vouloir supprimer cet élément ?',
-        },
-        errors: {
-          required: 'Requis',
-          tooShort: 'Trop court (min {min})',
-          tooLong: 'Trop long (max {max})',
-          invalid: 'Valeur invalide',
-          notFound: 'Introuvable',
-          unknown: 'Une erreur inconnue est survenue',
         },
       },
       nav: {

@@ -3,7 +3,7 @@
  *
  * Generic types come from `@quazardous/qdcore/i18n`; this module adds the
  * admin-specific `I18nOptions` (kernel constructor option that toggles the
- * default `core.en` admin bundle).
+ * default core admin bundles shipped via DefaultCoreProvider).
  */
 
 import type { BaseI18nOptions } from '@quazardous/qdcore'
@@ -29,6 +29,6 @@ export type {
  * admin-only knobs.
  */
 export interface I18nOptions extends BaseI18nOptions {
-  /** Disable shipping qdadm's default EN core.* bundle. Default: false. */
+  /** Disable shipping qdadm's default core.* bundles (EN + FR). Default: false. */
   disableDefaultCoreBundle?: boolean
 }

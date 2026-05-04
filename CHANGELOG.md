@@ -3,6 +3,30 @@
 All notable changes to qdadm will be documented in this file.
 This is not a commit log. Keep entries simple, user-focused.
 
+## [1.18.0] - 2026-05-04
+
+### Added — i18n: lazy YAML defaults + incremental domain loading
+
+- **Default core bundles ship as YAML, lazy-loaded.** `core.en.yml` and `core.fr.yml` replace the inline TypeScript files. They're fetched on demand via `?raw` + the `yaml` parser, so an app that uses only one locale doesn't pay the JS-bundle cost of the others. Adds `yaml@^2` as a direct qdadm dependency. French is now shipped by the framework — no more duplicated `core.actions.*` block in the demo `BooksModule.js`
+- **`LazyTranslationProvider`** — generic, format-agnostic provider that runs a cascade of `(locale) => Promise<bundle | null>` loaders and deep-merges their partial bundles (last-merge-wins). Lets apps split a locale across multiple files (one per domain, e.g. `core` / `shop` / `legal`) without coupling the provider to any specific transport
+- **`IncrementalDomainProvider`** — declares one loader per top-level translation domain and loads each `(locale, domain)` pair only when requested. `t('shop.cart.title')` on an unloaded domain returns the raw key synchronously, kicks off a background load, then emits `i18n:domain-loaded { locale, domain }` once merged. `eagerDomains` for boot-critical domains; `i18n.loadDomain(domain)` for explicit pre-warming. Inflight loads are deduped per `(locale, domain)`. The host app subscribes to `i18n:domain-loaded` if it wants to react to the late arrival
+- **`createYamlLoader`** helper — wraps a `locale → () => import('./xx.yml?raw')` map into a `LazyLoader` for use in either provider above
+- **`isDomainAwareProvider`** type guard — used by `I18n.t()` to recover from misses without coupling the I18n class to the new provider type
+
+### Changed
+- Demo `BooksModule.js` no longer overrides `core.actions.*` in French — those defaults now ship from `core.fr.yml`
+
+## [1.17.0] - 2026-05-01
+
+### Changed — `@quazardous/qddebug` 0.1.0 → 0.2.0
+- **Dropped the PrimeVue peer dependency.** The DebugBar now ships native HTML buttons + badges with scoped CSS, so the debug panel can be reused in apps that don't run PrimeVue (notably qdcms). PrimeIcons (`pi-*` class names) are still referenced as visual hints and rendered as glyphs when the consumer loads PrimeIcons CSS — otherwise buttons stay functional via `title` attributes.
+- **Tab badge now overlays the icon** (small red bubble at the top-right corner) in every display mode, no longer relying on consumer CSS to position itself.
+- Loose duck-typed `Collector` / `DebugBridge` interfaces in `DebugBar.vue` no longer carry an index signature, so the real classes from `@quazardous/qddebug/bridge` are accepted as props without casts.
+- qdadm `modules/debug/styles.scss` updated: `.p-badge` → `.qd-badge` to match the new native badge class.
+
+### Fixed
+- **DebugBar tests** updated to query the new native HTML structure (badge text content + child icon class) instead of the removed PrimeVue mock attributes.
+
 ## [1.16.2] - 2026-05-01
 
 ### Fixed

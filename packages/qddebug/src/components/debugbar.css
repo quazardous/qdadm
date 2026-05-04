@@ -1,0 +1,1214 @@
+/**
+ * @quazardous/qddebug — debug bar styles
+ *
+ * All rules are scoped under `.qd-debug` (the wrapper class added by
+ * DebugBar.vue). This guarantees that consumer CSS never leaks INTO the
+ * debug bar (via the reset below) and that qddebug rules never leak OUT
+ * to the host page (via the prefix).
+ *
+ * Custom panels passed via the `panels` prop render INSIDE `.qd-debug`,
+ * so they can rely on the reset and on shared utility classes
+ * (`.debug-toolbar-btn`, `.filter-input`, `.obj-line`, …) without needing
+ * to re-import this stylesheet.
+ */
+
+/* ============================================================================= */
+/* SCOPE RESET — prevents host CSS from bleeding into the debug bar.            */
+/* ============================================================================= */
+
+.qd-debug,
+.qd-debug *,
+.qd-debug *::before,
+.qd-debug *::after {
+  box-sizing: border-box;
+}
+
+.qd-debug {
+  /* Baseline typography — host can override with higher specificity but this
+     avoids inheriting weird line-heights or font stacks from the page. */
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-size: 13px;
+  line-height: 1.4;
+  color: #f4f4f5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-align: left;
+  letter-spacing: normal;
+  word-spacing: normal;
+}
+
+.qd-debug button {
+  font: inherit;
+  color: inherit;
+}
+
+.qd-debug input,
+.qd-debug select,
+.qd-debug textarea {
+  font: inherit;
+}
+
+/**
+ * qdadm Debug Module Styles
+ *
+ * Consolidated styles for debug bar and panels.
+ * Loaded dynamically when DebugModule is used.
+ */
+
+/* ============================================================================= */
+/* VARIABLES */
+/* ============================================================================= */
+
+/* Zinc palette (dark theme) */
+/* var $1 = $2 */
+/* var $1 = $2 */
+/* var $1 = $2 */
+/* var $1 = $2 */
+/* var $1 = $2 */
+/* var $1 = $2 */
+/* var $1 = $2 */
+
+/* Accent colors */
+/* var $1 = $2 */
+/* var $1 = $2 */
+/* var $1 = $2 */
+/* var $1 = $2 */
+/* var $1 = $2 */
+/* var $1 = $2 */
+
+/* ============================================================================= */
+/* DEBUG BAR */
+/* ============================================================================= */
+
+/* Minimized button */
+.qd-debug .debug-minimized {
+  position: fixed;
+  bottom: 1rem;
+  right: 1rem;
+  width: 44px;
+  height: 44px;
+  border-radius: 8px;
+  background: #18181b;
+  border: 1px solid #3f3f46;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: transform 0.15s;
+}
+.qd-debug .debug-minimized:hover {
+  transform: scale(1.08);
+  border-color: #60a5fa;
+}
+
+/* Separate badges */
+.qd-debug .debug-badge {
+  position: absolute;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 8px;
+  font-size: 10px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+}
+.qd-debug .debug-badge .pi {
+  font-size: 8px;
+}
+
+/* Header inline badges */
+.qd-debug .debug-header-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 6px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 600;
+}
+.qd-debug .debug-header-badge .pi {
+  font-size: 10px;
+}
+.qd-debug .debug-header-badge-error {
+  background: #ef4444;
+  color: white;
+}
+.qd-debug .debug-header-badge-signal {
+  background: #8b5cf6;
+  color: white;
+}
+.qd-debug .debug-badge-error {
+  top: -4px;
+  right: -4px;
+  background: #ef4444;
+  color: white;
+}
+.qd-debug .debug-badge-signal {
+  bottom: -4px;
+  right: -4px;
+  background: #8b5cf6;
+  color: white;
+}
+
+/* Panel base */
+.qd-debug .debug-panel {
+  position: fixed;
+  background: #18181b;
+  border: 1px solid #3f3f46;
+  font-family: system-ui, sans-serif;
+  font-size: 13px;
+  color: #f4f4f5;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Bottom mode */
+.qd-debug .debug-bottom {
+  bottom: 0; left: 0; right: 0;
+  border-top: 1px solid #3f3f46;
+  border-left: none; border-right: none; border-bottom: none;
+}
+.qd-debug .debug-bottom.debug-expanded {
+  min-height: 100px;
+  max-height: 600px;
+}
+
+/* Right mode - vertical header on left, horizontal slide */
+.qd-debug .debug-right {
+  top: 0; right: 0; bottom: 0;
+  flex-direction: row;
+  border-left: 1px solid #3f3f46;
+  border-top: none; border-right: none; border-bottom: none;
+  transition: transform 0.2s ease-out;
+}
+.qd-debug .debug-right:not(.debug-expanded) {
+  transform: translateX(calc(100% - 44px));
+}
+.qd-debug .debug-right.debug-expanded {
+  min-width: 200px;
+  max-width: 800px;
+  transform: translateX(0);
+}
+
+/* Window mode - floating draggable/resizable */
+.qd-debug .debug-window {
+  /* Window appearance */
+  position: fixed;
+  border-radius: 8px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+  border: 1px solid #3f3f46;
+  min-width: 280px;
+  min-height: 200px;
+}
+.qd-debug .debug-window .debug-header {
+  cursor: move;
+  user-select: none;
+  flex-wrap: nowrap;
+}
+.qd-debug .debug-window .debug-tabs {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+}
+.qd-debug .debug-window .debug-actions {
+  flex-shrink: 0;
+}
+.qd-debug .debug-window .debug-content {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+}
+.qd-debug .debug-resize-handle {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  width: 16px;
+  height: 16px;
+  cursor: nwse-resize;
+  background: linear-gradient(135deg, transparent 50%, #3f3f46 50%);
+  border-bottom-right-radius: 8px;
+  z-index: 10;
+}
+.qd-debug .debug-resize-handle:hover {
+  background: linear-gradient(135deg, transparent 50%, #60a5fa 50%);
+}
+
+/* Panel resize handles for docked modes */
+.qd-debug .debug-panel-resize {
+  position: absolute;
+  z-index: 10;
+  background: transparent;
+}
+.qd-debug .debug-panel-resize-top {
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  cursor: ns-resize;
+}
+.qd-debug .debug-panel-resize-top:hover {
+  background: linear-gradient(180deg, #60a5fa 0%, transparent 100%);
+}
+.qd-debug .debug-panel-resize-left {
+  top: 0;
+  left: 0;
+  bottom: 0;
+  width: 4px;
+  cursor: ew-resize;
+}
+.qd-debug .debug-panel-resize-left:hover {
+  background: linear-gradient(90deg, #60a5fa 0%, transparent 100%);
+}
+
+.qd-debug .debug-right .debug-header {
+  flex-direction: column;
+  width: 44px;
+  padding: 8px 6px;
+  border-bottom: none;
+  border-right: 1px solid #3f3f46;
+  align-items: center;
+  gap: 4px;
+}
+.qd-debug .debug-right .debug-title {
+  flex-direction: column;
+  gap: 4px;
+}
+.qd-debug .debug-right .debug-title span:not(.debug-header-badge) {
+  display: none;
+}
+.qd-debug .debug-right .debug-tabs {
+  flex-direction: column;
+  margin-left: 0;
+  margin-top: 8px;
+  gap: 2px;
+}
+.qd-debug .debug-right .debug-tab {
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  justify-content: center;
+  position: relative;
+}
+.qd-debug .debug-right .debug-tab-label {
+  display: none;
+}
+.qd-debug .debug-right .debug-tab .qd-badge {
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  min-width: 14px;
+  height: 14px;
+  font-size: 9px;
+  padding: 0 3px;
+}
+/* Content header for right mode */
+.qd-debug .debug-content-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 12px;
+  background: #27272a;
+  border-bottom: 1px solid #3f3f46;
+  flex-shrink: 0;
+}
+.qd-debug .debug-content-title {
+  font-weight: 600;
+  font-size: 12px;
+  color: #a1a1aa;
+}
+.qd-debug .debug-content-controls {
+  display: flex;
+  gap: 4px;
+}
+.qd-debug .debug-content-controls .debug-tab-toggle, .qd-debug .debug-content-controls .debug-tab-clear {
+  margin-left: 0;
+  width: 22px;
+  height: 22px;
+}
+.qd-debug .debug-right .debug-actions {
+  flex-direction: column;
+  margin-left: 0;
+  margin-top: auto;
+  gap: 2px;
+}
+.qd-debug .debug-right .debug-actions .p-button {
+  width: 28px;
+  height: 28px;
+}
+.qd-debug .debug-right .debug-content {
+  flex: 1;
+  min-width: 0;
+}
+
+/* Fullscreen - standalone mode like window but full viewport */
+.qd-debug .debug-fullscreen {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: auto;
+  height: auto;
+  border: none;
+  border-radius: 0;
+  flex-direction: column;
+}
+.qd-debug .debug-fullscreen .debug-header {
+  flex-direction: row;
+  width: auto;
+  height: auto;
+  padding: 8px 16px;
+  border-bottom: 1px solid #3f3f46;
+  border-right: none;
+}
+.qd-debug .debug-fullscreen .debug-title {
+  flex-direction: row;
+}
+.qd-debug .debug-fullscreen .debug-title span:not(.debug-header-badge) {
+  display: inline;
+}
+.qd-debug .debug-fullscreen .debug-tabs {
+  flex-direction: row;
+  margin-left: 12px;
+  margin-top: 0;
+}
+.qd-debug .debug-fullscreen .debug-tab {
+  width: auto;
+  height: auto;
+  padding: 4px 10px;
+}
+.qd-debug .debug-fullscreen .debug-tab-label {
+  display: inline;
+}
+.qd-debug .debug-fullscreen .debug-tab .qd-badge {
+  position: static;
+}
+.qd-debug .debug-fullscreen .debug-actions {
+  flex-direction: row;
+  margin-left: auto;
+  margin-top: 0;
+}
+.qd-debug .debug-fullscreen .debug-actions .p-button {
+  width: auto;
+  height: auto;
+}
+.qd-debug .debug-fullscreen .debug-content {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+}
+
+/* Mobile mode - fullscreen with vertical menu like right panel */
+.qd-debug .debug-mobile {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: auto;
+  height: auto;
+  border: none;
+  border-radius: 0;
+  flex-direction: row; /* Like right panel: header on left, content on right */
+}
+.qd-debug .debug-mobile .debug-header {
+  flex-direction: column;
+  width: 44px;
+  padding: 8px 6px;
+  border-bottom: none;
+  border-right: 1px solid #3f3f46;
+  align-items: center;
+  gap: 4px;
+  height: 100%;
+  overflow: hidden;
+}
+.qd-debug .debug-mobile .debug-title {
+  flex-direction: column;
+  gap: 4px;
+  flex-shrink: 0;
+}
+.qd-debug .debug-mobile .debug-title span:not(.debug-header-badge) {
+  display: none;
+}
+.qd-debug .debug-mobile .debug-tabs {
+  flex-direction: column;
+  margin-left: 0;
+  margin-top: 8px;
+  gap: 2px;
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: visible;
+  min-height: 0;
+  padding-right: 4px; /* Space for badge overflow */
+}
+.qd-debug .debug-mobile .debug-tab {
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  justify-content: center;
+  position: relative;
+}
+.qd-debug .debug-mobile .debug-tab-label {
+  display: none;
+}
+.qd-debug .debug-mobile .debug-tab .qd-badge {
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  min-width: 14px;
+  height: 14px;
+  font-size: 9px;
+  padding: 0 3px;
+}
+.qd-debug .debug-mobile .debug-actions {
+  flex-direction: column;
+  margin-left: 0;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid #3f3f46;
+  gap: 2px;
+  flex-shrink: 0;
+}
+.qd-debug .debug-mobile .debug-actions .p-button {
+  width: 28px;
+  height: 28px;
+}
+.qd-debug .debug-mobile .debug-content {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  overflow: auto;
+}
+
+/* Header */
+.qd-debug .debug-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  background: #27272a;
+  border-bottom: 1px solid #3f3f46;
+  flex-shrink: 0;
+}
+.qd-debug .debug-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 600;
+}
+.qd-debug .debug-title-draggable {
+  cursor: grab;
+}
+.qd-debug .debug-title-draggable:active {
+  cursor: grabbing;
+}
+.qd-debug .debug-tabs {
+  display: flex;
+  gap: 2px;
+  margin-left: 12px;
+}
+.qd-debug .debug-tabs-compact {
+  gap: 1px;
+}
+.qd-debug .debug-tabs-compact .debug-tab {
+  padding: 4px 6px;
+}
+.qd-debug .debug-tab {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+  color: #a1a1aa;
+  cursor: pointer;
+  font-size: 12px;
+}
+.qd-debug .debug-tab:hover {
+  background: #3f3f46;
+  color: #f4f4f5;
+}
+.qd-debug .debug-tab-active {
+  background: #3f3f46;
+  color: #a78bfa;
+}
+
+/* Tabs dropdown mode */
+.qd-debug .debug-tabs-dropdown {
+  position: relative;
+  margin-left: 12px;
+  overflow: visible;
+}
+.qd-debug .debug-dropdown-trigger {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  background: #3f3f46;
+  border: none;
+  border-radius: 4px;
+  color: #f4f4f5;
+  cursor: pointer;
+  font-size: 12px;
+}
+.qd-debug .debug-dropdown-trigger:hover {
+  background: #52525b;
+}
+.qd-debug .debug-dropdown-trigger .pi-chevron-down {
+  font-size: 10px;
+  color: #71717a;
+  margin-left: 4px;
+}
+.qd-debug .debug-dropdown-menu {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  margin-top: 4px;
+  background: #27272a;
+  border: 1px solid #3f3f46;
+  border-radius: 6px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+  min-width: 160px;
+  z-index: 10001;
+  padding: 4px;
+}
+.qd-debug .debug-dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 6px 10px;
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+  color: #a1a1aa;
+  cursor: pointer;
+  font-size: 12px;
+  text-align: left;
+}
+.qd-debug .debug-dropdown-item:hover {
+  background: #3f3f46;
+  color: #f4f4f5;
+}
+.qd-debug .debug-dropdown-item-active {
+  background: #3f3f46;
+  color: #a78bfa;
+}
+.qd-debug .debug-actions {
+  display: flex;
+  gap: 2px;
+  margin-left: auto;
+}
+
+/* Content */
+.qd-debug .debug-content {
+  flex: 1;
+  overflow: auto;
+  background: #18181b;
+}
+.qd-debug .debug-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: #71717a;
+  gap: 8px;
+}
+
+/* Per-collector toggle button */
+.qd-debug .debug-tab-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  margin-left: 4px;
+  padding: 0;
+  background: transparent;
+  border: none;
+  border-radius: 3px;
+  color: #71717a;
+  cursor: pointer;
+  font-size: 9px;
+}
+.qd-debug .debug-tab-toggle:hover {
+  background: #52525b;
+  color: #f4f4f5;
+}
+.qd-debug .debug-tab-toggle-paused {
+  color: #f59e0b;
+}
+.qd-debug .debug-tab-clear {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  margin-left: 2px;
+  padding: 0;
+  background: transparent;
+  border: none;
+  border-radius: 3px;
+  color: #71717a;
+  cursor: pointer;
+  font-size: 9px;
+}
+.qd-debug .debug-tab-clear:hover {
+  background: #ef4444;
+  color: white;
+}
+
+/* Custom mode toggle button */
+.qd-debug .debug-mode-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  padding: 0;
+  background: transparent;
+  border: none;
+  border-radius: 50%;
+  color: #a1a1aa;
+  cursor: pointer;
+  font-size: 18px;
+  font-weight: bold;
+  font-family: monospace;
+  line-height: 1;
+  transition: background-color 0.15s, color 0.15s;
+}
+.qd-debug .debug-mode-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #f4f4f5;
+}
+
+/* =============================================================================
+   PANEL TOOLBAR (unified action bar at top of panels)
+   ============================================================================= */
+
+.qd-debug .debug-panel-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: #27272a;
+  border-bottom: 1px solid #3f3f46;
+}
+
+/* Toolbar button - standard */
+.qd-debug .debug-toolbar-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  background: #3f3f46;
+  border: none;
+  border-radius: 3px;
+  color: #a1a1aa;
+  cursor: pointer;
+  font-size: 10px;
+  white-space: nowrap;
+}
+
+.qd-debug .debug-toolbar-btn:hover {
+  background: #52525b;
+  color: #f4f4f5;
+}
+
+.qd-debug .debug-toolbar-btn .pi {
+  font-size: 10px;
+}
+
+/* Toolbar button - danger variant */
+.qd-debug .debug-toolbar-btn--danger {
+  background: rgba(239, 68, 68, 0.15);
+  color: #f87171;
+}
+
+.qd-debug .debug-toolbar-btn--danger:hover {
+  background: rgba(239, 68, 68, 0.3);
+  color: #fca5a5;
+}
+
+/* Toolbar button - active/pressed state */
+.qd-debug .debug-toolbar-btn--active {
+  background: #8b5cf6;
+  color: white;
+}
+
+.qd-debug .debug-toolbar-btn--active:hover {
+  background: #7c3aed;
+}
+
+/* Toolbar input */
+.qd-debug .debug-toolbar-input {
+  flex: 1;
+  min-width: 0;
+  font-size: 11px;
+  padding: 4px 8px;
+  background: #18181b;
+  border: 1px solid #3f3f46;
+  border-radius: 4px;
+  color: #f4f4f5;
+}
+
+.qd-debug .debug-toolbar-input:focus {
+  outline: none;
+  border-color: #8b5cf6;
+}
+
+.qd-debug .debug-toolbar-input::placeholder {
+  color: #71717a;
+}
+
+/* Toolbar icon (standalone) */
+.qd-debug .debug-toolbar-icon {
+  color: #71717a;
+  font-size: 12px;
+}
+
+/* Toolbar label/text */
+.qd-debug .debug-toolbar-label {
+  font-size: 10px;
+  color: #71717a;
+}
+
+/* Toolbar separator */
+.qd-debug .debug-toolbar-separator {
+  width: 1px;
+  height: 16px;
+  background: #3f3f46;
+}
+
+/* =============================================================================
+   OBJECT TREE
+   ============================================================================= */
+
+.qd-debug .obj-node {
+  font-family: 'JetBrains Mono', 'Fira Code', Consolas, monospace;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.qd-debug .obj-line {
+  display: flex;
+  align-items: flex-start;
+  gap: 4px;
+  padding: 1px 0;
+  cursor: default;
+  white-space: nowrap;
+}
+
+.qd-debug .obj-line:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.qd-debug .obj-toggle {
+  color: #71717a;
+  font-size: 10px;
+  width: 12px;
+  flex-shrink: 0;
+  cursor: pointer;
+  transition: transform 0.1s;
+  display: inline-block;
+}
+
+.qd-debug .obj-toggle.obj-expanded {
+  transform: rotate(90deg);
+}
+
+.qd-debug .obj-key {
+  color: #a78bfa;
+}
+
+.qd-debug .obj-preview {
+  color: #71717a;
+  font-style: italic;
+}
+
+.qd-debug .obj-empty {
+  color: #71717a;
+}
+
+.qd-debug .obj-children {
+  border-left: 1px solid #3f3f46;
+  margin-left: 5px;
+}
+
+.qd-debug .obj-string {
+  color: #fbbf24;
+}
+
+.qd-debug .obj-number {
+  color: #34d399;
+}
+
+.qd-debug .obj-boolean {
+  color: #60a5fa;
+}
+
+.qd-debug .obj-null, .qd-debug .obj-undefined {
+  color: #71717a;
+  font-style: italic;
+}
+
+.qd-debug .obj-function {
+  color: #c084fc;
+  font-style: italic;
+}
+
+.qd-debug .obj-truncated, .qd-debug .obj-max-depth {
+  color: #71717a;
+  font-style: italic;
+  padding-left: 16px;
+}
+
+/* =============================================================================
+   SIGNALS PANEL
+   ============================================================================= */
+
+.qd-debug .signals-panel {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow-x: hidden;
+}
+
+.qd-debug .signals-filter {
+  padding: 8px 12px;
+  background: #27272a;
+  border-bottom: 1px solid #3f3f46;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.qd-debug .signals-filter-input {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.qd-debug .signals-filter-input .pi {
+  color: #71717a;
+  font-size: 12px;
+}
+
+.qd-debug .filter-input {
+  flex: 1;
+  font-size: 12px;
+  padding: 4px 8px;
+  background: #18181b;
+  border: 1px solid #3f3f46;
+  border-radius: 4px;
+  color: #f4f4f5;
+}
+
+.qd-debug .filter-input:focus {
+  border-color: #8b5cf6;
+  outline: none;
+}
+
+.qd-debug .signals-count {
+  font-size: 11px;
+  color: #71717a;
+  min-width: 40px;
+  text-align: right;
+}
+
+.qd-debug .signals-max-label {
+  font-size: 10px;
+  color: #52525b;
+  margin-left: 8px;
+}
+
+.qd-debug .max-input {
+  width: 50px;
+  font-size: 11px;
+  padding: 2px 4px;
+  background: #18181b;
+  border: 1px solid #3f3f46;
+  border-radius: 3px;
+  color: #a1a1aa;
+  text-align: center;
+}
+
+.qd-debug .max-input:focus {
+  border-color: #8b5cf6;
+  outline: none;
+  color: #f4f4f5;
+}
+
+.qd-debug .max-select {
+  padding: 2px 6px;
+  font-size: 11px;
+  background: #18181b;
+  border: 1px solid #3f3f46;
+  border-radius: 4px;
+  color: #f4f4f5;
+  cursor: pointer;
+}
+
+.qd-debug .max-select:focus {
+  border-color: #3b82f6;
+  outline: none;
+}
+
+.qd-debug .signals-presets {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.qd-debug .signals-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 4px;
+}
+
+.qd-debug .signals-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: #71717a;
+  gap: 8px;
+}
+
+.qd-debug .signal-entry {
+  padding: 6px 8px;
+  margin-bottom: 2px;
+  background: #27272a;
+  border-radius: 4px;
+  font-size: 12px;
+}
+
+.qd-debug .signal-entry:hover {
+  background: #3f3f46;
+}
+
+.qd-debug .signal-entry.signal-new {
+  border-left: 2px solid #f59e0b;
+  padding-left: 6px;
+}
+
+.qd-debug .signal-new-dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  background: #f59e0b;
+  border-radius: 50%;
+  margin-right: 4px;
+  flex-shrink: 0;
+}
+
+.qd-debug .signal-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.qd-debug .signal-time {
+  font-size: 10px;
+  color: #71717a;
+  font-family: monospace;
+}
+
+.qd-debug .signal-name {
+  font-weight: 500;
+  font-family: monospace;
+}
+
+.qd-debug .signal-data {
+  margin-top: 4px;
+  padding-left: 12px;
+  font-size: 11px;
+}
+
+/* =============================================================================
+   TOASTS PANEL
+   ============================================================================= */
+
+.qd-debug .toasts-panel {
+  display: flex;
+  flex-direction: column;
+}
+.qd-debug .toast-entry {
+  padding: 8px 12px;
+  border-bottom: 1px solid #27272a;
+  border-left: 3px solid;
+}
+.qd-debug .toast-entry:hover {
+  background: #1f1f23;
+}
+.qd-debug .toast-success { border-left-color: #22c55e; }
+.qd-debug .toast-info { border-left-color: #3b82f6; }
+.qd-debug .toast-warn { border-left-color: #f59e0b; }
+.qd-debug .toast-error { border-left-color: #ef4444; }
+
+.qd-debug .toast-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 4px;
+}
+.qd-debug .toast-time {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: #71717a;
+  background: #27272a;
+  padding: 1px 4px;
+  border-radius: 2px;
+}
+.qd-debug .toast-severity {
+  padding: 1px 6px;
+  border-radius: 3px;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+.qd-debug .toast-severity-success { background: #22c55e; color: white; }
+.qd-debug .toast-severity-info { background: #3b82f6; color: white; }
+.qd-debug .toast-severity-warn { background: #f59e0b; color: white; }
+.qd-debug .toast-severity-error { background: #ef4444; color: white; }
+
+.qd-debug .toast-summary {
+  font-weight: 500;
+  color: #f4f4f5;
+}
+.qd-debug .toast-detail {
+  color: #a1a1aa;
+  font-size: 11px;
+  margin-top: 4px;
+}
+.qd-debug .toast-emitter {
+  margin-left: auto;
+  padding: 1px 6px;
+  background: #3f3f46;
+  border-radius: 3px;
+  font-size: 10px;
+  color: #a1a1aa;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+/* =============================================================================
+   ENTRIES PANEL (generic fallback)
+   ============================================================================= */
+
+.qd-debug .entries-h {
+  display: flex;
+  gap: 1px;
+  height: 100%;
+  overflow-x: auto;
+}
+.qd-debug .entry-h {
+  flex: 0 0 auto;
+  min-width: 200px;
+  max-width: 320px;
+  padding: 8px 12px;
+  border-right: 1px solid #3f3f46;
+  overflow: hidden;
+}
+.qd-debug .entry-h:last-child {
+  border-right: none;
+}
+
+.qd-debug .entries-v {
+  display: flex;
+  flex-direction: column;
+}
+.qd-debug .entry-v {
+  padding: 8px 12px;
+  border-bottom: 1px solid #27272a;
+}
+.qd-debug .entry-v:hover {
+  background: #1f1f23;
+}
+
+.qd-debug .entry-new {
+  position: relative;
+  background: rgba(245, 158, 11, 0.08);
+}
+.qd-debug .entry-v.entry-new::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: #f59e0b;
+}
+.qd-debug .entry-h.entry-new {
+  border-left: 3px solid #f59e0b;
+}
+
+.qd-debug .entry-new-dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  background: #f59e0b;
+  border-radius: 50%;
+  margin-right: 4px;
+  flex-shrink: 0;
+}
+
+.qd-debug .entry-meta, .qd-debug .entry-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 4px;
+}
+.qd-debug .entry-time {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: #71717a;
+  background: #27272a;
+  padding: 1px 4px;
+  border-radius: 2px;
+}
+.qd-debug .entry-name {
+  color: #a78bfa;
+  font-weight: 500;
+  font-size: 12px;
+}
+.qd-debug .entry-message {
+  color: #f87171;
+  font-size: 12px;
+}
+.qd-debug .entry-copy {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  background: transparent;
+  border: none;
+  border-radius: 3px;
+  color: #71717a;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.15s, background 0.15s, color 0.15s;
+}
+.qd-debug .entry-v:hover .entry-copy {
+  opacity: 1;
+}
+.qd-debug .entry-copy:hover {
+  background: #3f3f46;
+  color: #d4d4d8;
+}
+.qd-debug .entry-copied {
+  opacity: 1;
+  color: #22c55e;
+}
+.qd-debug .entry-copy .pi {
+  font-size: 12px;
+}

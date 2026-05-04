@@ -20,23 +20,9 @@ import { mount } from '@vue/test-utils'
 import { ref, reactive } from 'vue'
 import DebugBar from '../../src/modules/debug/components/DebugBar.vue'
 
-// Mock PrimeVue components
-vi.mock('primevue/badge', () => ({
-  default: {
-    name: 'Badge',
-    props: ['value', 'severity'],
-    template: '<span class="p-badge" :data-value="value" :data-severity="severity">{{ value }}</span>'
-  }
-}))
-
-vi.mock('primevue/button', () => ({
-  default: {
-    name: 'Button',
-    props: ['icon', 'severity', 'size', 'text', 'rounded', 'label', 'title'],
-    template: '<button class="p-button" :data-icon="icon" :title="title" @click="$emit(\'click\')"><slot /></button>',
-    emits: ['click']
-  }
-}))
+// PrimeVue mocks removed: qddebug 0.2.0 dropped the primevue peer dep and
+// renders native HTML buttons / badges directly. Tests now query the actual
+// elements (`.qd-badge`, `.qd-btn` with child `<i class="pi pi-…">` icons).
 
 // Mock panel components to avoid complex dependencies
 vi.mock('../../src/modules/debug/components/panels', () => ({
@@ -247,9 +233,9 @@ describe('DebugBar', () => {
 
       await wrapper.find('.debug-minimized').trigger('click')
 
-      const badge = wrapper.find('.debug-tab .p-badge')
+      const badge = wrapper.find('.debug-tab .qd-badge')
       expect(badge.exists()).toBe(true)
-      expect(badge.attributes('data-value')).toBe('2')
+      expect(badge.text()).toBe('2')
     })
 
     it('shows content area when expanded with collectors', async () => {
@@ -279,7 +265,7 @@ describe('DebugBar', () => {
 
       const toggleBtn = wrapper.find('[title="Pause"]')
       expect(toggleBtn.exists()).toBe(true)
-      expect(toggleBtn.attributes('data-icon')).toBe('pi pi-pause')
+      expect(toggleBtn.find('i').classes()).toContain('pi-pause')
     })
 
     it('shows play button when disabled', async () => {
@@ -294,7 +280,7 @@ describe('DebugBar', () => {
 
       const toggleBtn = wrapper.find('[title="Resume"]')
       expect(toggleBtn.exists()).toBe(true)
-      expect(toggleBtn.attributes('data-icon')).toBe('pi pi-play')
+      expect(toggleBtn.find('i').classes()).toContain('pi-play')
     })
 
     it('calls bridge.toggle when toggle button clicked', async () => {

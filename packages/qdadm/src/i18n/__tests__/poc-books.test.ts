@@ -136,8 +136,8 @@ describe('POC — books module messages', () => {
 
     expect(i18n.t('entities.books.fields.id')).toBe('Identifiant')
     expect(i18n.t('entities.books.fields.created_at')).toBe('Créé le')
-    // updated_at not declared in fr.core → falls back to en core defaults
-    expect(i18n.t('entities.books.fields.updated_at')).toBe('Updated at')
+    // updated_at resolves through the shipped FR core defaults
+    expect(i18n.t('entities.books.fields.updated_at')).toBe('Modifié le')
   })
 
   it('snakeCaseToTitle still rescues unknown fields without breaking prototyping', async () => {

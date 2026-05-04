@@ -88,9 +88,16 @@ describe('I18n — locale change', () => {
   })
 
   it('falls back to fallbackLocale for missing keys', async () => {
-    const i18n = new I18n({ defaultLocale: 'en', fallbackLocale: 'en' })
-    await i18n.bootstrap()
+    // disableDefaultCoreBundle so we can assert pure fallback behavior without
+    // the shipped FR bundle filling `core.actions.save` first.
+    const i18n = new I18n({
+      defaultLocale: 'en',
+      fallbackLocale: 'en',
+      disableDefaultCoreBundle: true,
+    })
+    i18n.addMessages('en', { core: { actions: { save: 'Save' } } })
     i18n.addMessages('fr', { entities: { books: { fields: { title: 'Titre' } } } })
+    await i18n.bootstrap()
     await i18n.changeLocale('fr')
     expect(i18n.t('entities.books.fields.title')).toBe('Titre')
     // 'core.actions.save' not declared in fr → falls back to en
@@ -149,12 +156,14 @@ describe('I18n — providers', () => {
 })
 
 describe('I18n — dump', () => {
-  it('returns the merged inline bundle', async () => {
+  it('returns the inline bundle (app-level messages only, not framework defaults)', async () => {
     const i18n = new I18n()
     await i18n.bootstrap()
     i18n.addMessages('en', { entities: { books: { fields: { title: 'Title' } } } })
     const dumped = i18n.dump('en')
-    expect(dumped.core).toBeDefined()
     expect(dumped.entities?.books?.fields?.title).toBe('Title')
+    // Framework defaults (core.*) ship via DefaultCoreProvider, not the inline
+    // provider, so they don't show up in dump().
+    expect(dumped.core).toBeUndefined()
   })
 })

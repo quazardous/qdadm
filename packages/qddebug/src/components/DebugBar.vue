@@ -15,13 +15,17 @@
  * built in; qdadm/qdcms layer their own (auth, entities, router, zones, …).
  */
 import { ref, computed, watch, onMounted, onUnmounted, type Ref, type Component } from 'vue'
-import Badge from 'primevue/badge'
-import Button from 'primevue/button'
 import pkg from '../../package.json'
 
 import EntriesPanel from './panels/EntriesPanel.vue'
 import SignalsPanel from './panels/SignalsPanel.vue'
 import ToastsPanel from './panels/ToastsPanel.vue'
+
+// Layout/theming CSS + PrimeIcons font are shipped with qddebug so consumers
+// don't have to supply their own. Side-effect imports = registered once
+// globally. PrimeIcons is a small, self-contained icon font (no JS).
+import './debugbar.css'
+import 'primeicons/primeicons.css'
 
 const QDDEBUG_VERSION = pkg.version
 
@@ -49,6 +53,10 @@ interface SavedState {
   countAllBadges?: boolean
 }
 
+// Loose duck-typed shapes — kept minimal so the real `Collector` /
+// `DebugBridge` classes from `@quazardous/qddebug/bridge` structurally
+// satisfy them at the consumer's prop site. No index signatures: those
+// caused TS to reject the real classes (which don't carry one).
 interface Collector {
   getBadge: (countAll?: boolean) => number
   getEntries: () => unknown[]
@@ -57,7 +65,6 @@ interface Collector {
   clear: () => void
   toggle: () => void
   markAsSeen?: () => void
-  [key: string]: unknown
 }
 
 interface CollectorEntry {
@@ -76,7 +83,6 @@ interface DebugBridge {
   toggle: () => void
   clearAll: () => void
   notify: () => void
-  [key: string]: unknown
 }
 
 export interface CollectorMeta {
@@ -526,6 +532,11 @@ const currentPanel = computed<Component | null>(() => panelFor(currentCollector.
 
 <template>
   <Teleport to="body">
+    <!-- `qd-debug` is the CSS isolation root: every selector in
+         debugbar.css is scoped under it so host styles can't bleed in
+         and ours can't bleed out. The wrapper is `display: contents`
+         so it doesn't add a layout box. -->
+    <div class="qd-debug" style="display: contents">
     <!-- Minimized: corner button with separate badges -->
     <div v-if="minimized" class="debug-minimized" :style="{ zIndex }" @click="expand">
       <svg viewBox="0 0 100 100" width="28" height="28">
@@ -575,7 +586,7 @@ const currentPanel = computed<Component | null>(() => panelFor(currentCollector.
             </text>
           </svg>
           <span>Debug</span>
-          <span class="debug-version">v{{ QDDEBUG_VERSION }}</span>
+          <span class="debug-version" :title="`@quazardous/qddebug v${QDDEBUG_VERSION}`">v{{ QDDEBUG_VERSION }}</span>
           <span v-if="errorBadge > 0" class="debug-header-badge debug-header-badge-error" title="Errors">
             <i class="pi pi-exclamation-triangle" />{{ errorBadge }}
           </span>
@@ -589,7 +600,7 @@ const currentPanel = computed<Component | null>(() => panelFor(currentCollector.
           <button class="debug-dropdown-trigger" @click="showTabsDropdown = !showTabsDropdown">
             <i :class="['pi', getCollectorIcon(currentCollector?.name)]" :style="{ color: getCollectorColor(currentCollector?.name) }" />
             <span>{{ getCollectorLabel(currentCollector?.name) }}</span>
-            <Badge v-if="currentCollector && currentCollector.badge > 0" :value="currentCollector.badge" severity="secondary" />
+            <span v-if="currentCollector && currentCollector.badge > 0" class="qd-badge">{{ currentCollector.badge }}</span>
             <i class="pi pi-chevron-down" />
           </button>
           <div v-if="showTabsDropdown" class="debug-dropdown-menu" @click="showTabsDropdown = false">
@@ -602,7 +613,7 @@ const currentPanel = computed<Component | null>(() => panelFor(currentCollector.
             >
               <i :class="['pi', getCollectorIcon(c.name)]" :style="{ color: getCollectorColor(c.name) }" />
               <span>{{ getCollectorLabel(c.name) }}</span>
-              <Badge v-if="c.badge > 0" :value="c.badge" severity="secondary" />
+              <span v-if="c.badge > 0" class="qd-badge">{{ c.badge }}</span>
             </button>
           </div>
         </div>
@@ -619,7 +630,7 @@ const currentPanel = computed<Component | null>(() => panelFor(currentCollector.
           >
             <i :class="['pi', getCollectorIcon(c.name)]" :style="{ color: getCollectorColor(c.name) }" />
             <span v-if="!tabsCompact" class="debug-tab-label">{{ getCollectorLabel(c.name) }}</span>
-            <Badge v-if="c.badge > 0" :value="c.badge" severity="secondary" />
+            <span v-if="c.badge > 0" class="qd-badge">{{ c.badge }}</span>
             <button
               v-if="c.records && displayMode === 'bottom' && !tabsCompact && !isMobile"
               class="debug-tab-toggle"
@@ -641,20 +652,36 @@ const currentPanel = computed<Component | null>(() => panelFor(currentCollector.
         </div>
 
         <div class="debug-actions">
-          <Button :icon="isEnabled ? 'pi pi-pause' : 'pi pi-play'" :severity="isEnabled ? 'success' : 'secondary'" size="small" text rounded :title="isEnabled ? 'Pause' : 'Resume'" @click="toggleEnabled" />
-          <Button icon="pi pi-trash" severity="secondary" size="small" text rounded title="Clear all" @click="clearAll" />
-          <Button :icon="countAllBadges ? 'pi pi-hashtag' : 'pi pi-eye'" :severity="countAllBadges ? 'info' : 'secondary'" size="small" text rounded :title="countAllBadges ? 'Showing all (click for unseen only)' : 'Showing unseen (click for all)'" @click="toggleCountMode" />
+          <button type="button" class="qd-btn" :class="{ 'qd-btn-active': isEnabled }" :title="isEnabled ? 'Pause' : 'Resume'" @click="toggleEnabled">
+            <i :class="['pi', isEnabled ? 'pi-pause' : 'pi-play']" />
+          </button>
+          <button type="button" class="qd-btn" title="Clear all" @click="clearAll">
+            <i class="pi pi-trash" />
+          </button>
+          <button type="button" class="qd-btn" :class="{ 'qd-btn-active': countAllBadges }" :title="countAllBadges ? 'Showing all (click for unseen only)' : 'Showing unseen (click for all)'" @click="toggleCountMode">
+            <i :class="['pi', countAllBadges ? 'pi-hashtag' : 'pi-eye']" />
+          </button>
           <button
             v-if="!isMobile && displayMode !== 'window' && !fullscreen"
             class="debug-mode-btn"
             :title="getModeTitle()"
             @click="toggleMode"
           >{{ displayMode === 'bottom' ? '|' : '―' }}</button>
-          <Button v-if="!isMobile && displayMode !== 'window' && !fullscreen" icon="pi pi-external-link" severity="secondary" size="small" text rounded title="Detach window" @click="enterWindowMode" />
-          <Button v-if="!isMobile && displayMode === 'window'" icon="pi pi-link" severity="secondary" size="small" text rounded title="Dock panel" @click="exitWindowMode" />
-          <Button v-if="!isMobile && displayMode !== 'window'" :icon="fullscreen ? 'pi pi-window-minimize' : 'pi pi-window-maximize'" severity="secondary" size="small" text rounded :title="fullscreen ? 'Exit fullscreen' : 'Fullscreen'" @click="toggleFullscreen" />
-          <Button v-if="!isMobile && displayMode !== 'window' && !fullscreen" :icon="displayMode === 'right' ? (expanded ? 'pi pi-chevron-right' : 'pi pi-chevron-left') : (expanded ? 'pi pi-chevron-down' : 'pi pi-chevron-up')" severity="secondary" size="small" text rounded @click="toggle" />
-          <Button icon="pi pi-times" severity="secondary" size="small" text rounded title="Close" @click="minimize" />
+          <button v-if="!isMobile && displayMode !== 'window' && !fullscreen" type="button" class="qd-btn" title="Detach window" @click="enterWindowMode">
+            <i class="pi pi-external-link" />
+          </button>
+          <button v-if="!isMobile && displayMode === 'window'" type="button" class="qd-btn" title="Dock panel" @click="exitWindowMode">
+            <i class="pi pi-link" />
+          </button>
+          <button v-if="!isMobile && displayMode !== 'window'" type="button" class="qd-btn" :title="fullscreen ? 'Exit fullscreen' : 'Fullscreen'" @click="toggleFullscreen">
+            <i :class="['pi', fullscreen ? 'pi-window-minimize' : 'pi-window-maximize']" />
+          </button>
+          <button v-if="!isMobile && displayMode !== 'window' && !fullscreen" type="button" class="qd-btn" :title="expanded ? 'Collapse' : 'Expand'" @click="toggle">
+            <i :class="['pi', displayMode === 'right' ? (expanded ? 'pi-chevron-right' : 'pi-chevron-left') : (expanded ? 'pi-chevron-down' : 'pi-chevron-up')]" />
+          </button>
+          <button type="button" class="qd-btn" title="Close" @click="minimize">
+            <i class="pi pi-times" />
+          </button>
         </div>
       </div>
 
@@ -729,10 +756,76 @@ const currentPanel = computed<Component | null>(() => panelFor(currentCollector.
         />
       </div>
     </div>
+    </div>
   </Teleport>
 </template>
 
 <style scoped>
+/* Native replacements for the previous PrimeVue Badge/Button — no peer dep. */
+.qd-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.1rem;
+  height: 1.1rem;
+  padding: 0 0.35em;
+  font-size: 0.65rem;
+  font-weight: 600;
+  line-height: 1;
+  color: #f4f4f5;
+  background: #52525b;
+  border-radius: 999px;
+  vertical-align: middle;
+  box-sizing: border-box;
+}
+/* Inside tab buttons, overlay the badge on the corner of the icon — works in
+   every display mode without consumer CSS overrides. */
+.debug-tab,
+.debug-dropdown-trigger,
+.debug-dropdown-item {
+  position: relative;
+}
+.debug-tab > .qd-badge,
+.debug-dropdown-trigger > .qd-badge,
+.debug-dropdown-item > .qd-badge {
+  position: absolute;
+  top: -3px;
+  right: -3px;
+  min-width: 14px;
+  height: 14px;
+  padding: 0 3px;
+  font-size: 9px;
+  background: #ef4444;
+}
+.qd-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  padding: 0;
+  margin: 0;
+  font: inherit;
+  color: inherit;
+  background: transparent;
+  border: 0;
+  border-radius: 999px;
+  cursor: pointer;
+  line-height: 1;
+}
+.qd-btn:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+.qd-btn:focus-visible {
+  outline: 2px solid #60a5fa;
+  outline-offset: 1px;
+}
+.qd-btn-active {
+  color: #4ade80;
+}
+.qd-btn .pi {
+  font-size: 0.95rem;
+}
 .debug-version {
   font-size: 0.65rem;
   font-weight: 500;
@@ -742,3 +835,4 @@ const currentPanel = computed<Component | null>(() => panelFor(currentCollector.
   margin-left: 0.1rem;
 }
 </style>
+

@@ -246,7 +246,7 @@ $debug-info: #3b82f6;
 .debug-right .debug-tab-label {
   display: none;
 }
-.debug-right .debug-tab .p-badge {
+.debug-right .debug-tab .qd-badge {
   position: absolute;
   top: -2px;
   right: -2px;
@@ -335,7 +335,7 @@ $debug-info: #3b82f6;
 .debug-fullscreen .debug-tab-label {
   display: inline;
 }
-.debug-fullscreen .debug-tab .p-badge {
+.debug-fullscreen .debug-tab .qd-badge {
   position: static;
 }
 .debug-fullscreen .debug-actions {
@@ -406,7 +406,7 @@ $debug-info: #3b82f6;
 .debug-mobile .debug-tab-label {
   display: none;
 }
-.debug-mobile .debug-tab .p-badge {
+.debug-mobile .debug-tab .qd-badge {
   position: absolute;
   top: -2px;
   right: -2px;
