@@ -1,7 +1,7 @@
 {
   "name": "@quazardous/qdcore",
   "version": "0.1.0",
-  "description": "Generic event bus, navigation stack, plugin/migration/entity primitives shared by qdadm and qdcms",
+  "description": "Generic event bus and navigation stack primitives shared by qdadm and qdcms",
   "author": "quazardous",
   "license": "MIT",
   "type": "module",
@@ -13,11 +13,7 @@
     "./event": "./src/event/index.ts",
     "./sse": "./src/sse/index.ts",
     "./stack": "./src/stack/index.ts",
-    "./i18n": "./src/i18n/index.ts",
-    "./entity": "./src/entity/index.ts",
-    "./plugin": "./src/plugin/index.ts",
-    "./migration": "./src/migration/index.ts",
-    "./sql": "./src/sql/index.ts"
+    "./i18n": "./src/i18n/index.ts"
   },
   "files": [
     "src",
@@ -31,11 +27,7 @@
     "build:types": "tsc --declaration --emitDeclarationOnly --outDir dist/types"
   },
   "dependencies": {
-    "@mikro-orm/core": "^6.6.14",
-    "@mikro-orm/migrations": "^6.6.14",
-    "@mikro-orm/sqlite": "^6.6.14",
-    "@quazardous/quarkernel": "^2.1.0",
-    "better-sqlite3": "^12.9.0"
+    "@quazardous/quarkernel": "^2.1.0"
   },
   "devDependencies": {
     "typescript": "^5.9.3",
@@ -45,9 +37,6 @@
     "event-bus",
     "signals",
     "navigation-stack",
-    "plugin-framework",
-    "migration",
-    "entity",
     "qdadm",
     "qdcms"
   ]
