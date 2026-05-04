@@ -81,63 +81,21 @@ export type {
   UseListPageReturn,
 } from './useListPage.types'
 
-// Cookie utilities for pagination persistence
-const COOKIE_NAME = 'qdadm_pageSize'
-const COOKIE_EXPIRY_DAYS = 365
+// Stateless utilities (cookies, session storage, formatters, constants).
+import {
+  PAGE_SIZE_OPTIONS,
+  SMART_FILTER_THRESHOLD,
+  clearSessionFilters,
+  getSavedPageSize,
+  getSessionFilters,
+  persistPageSize,
+  setSessionFilters,
+  snakeToTitle,
+} from './useListPage.utils'
 
-function getCookie(name: string): string | null {
-  const match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'))
-  return match?.[2] ?? null
-}
-
-function setCookie(name: string, value: string | number, days: number): void {
-  const expires = new Date(Date.now() + days * 864e5).toUTCString()
-  document.cookie = `${name}=${value}; expires=${expires}; path=/; SameSite=Lax`
-}
-
-function getSavedPageSize(defaultSize: number): number {
-  const saved = getCookie(COOKIE_NAME)
-  if (saved) {
-    const parsed = parseInt(saved, 10)
-    if ([10, 50, 100].includes(parsed)) return parsed
-  }
-  return defaultSize
-}
-
-// Default label fallback: convert snake_case to Title Case
-function snakeToTitle(str: string): string {
-  if (!str) return 'Unknown'
-  return String(str)
-    .split('_')
-    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(' ')
-}
-
-// Standard pagination options
-export const PAGE_SIZE_OPTIONS = [10, 50, 100]
-
-// Session storage utilities for filter persistence
-const FILTER_SESSION_PREFIX = 'qdadm_filters_'
-
-function getSessionFilters(key: string): Record<string, unknown> | null {
-  try {
-    const stored = sessionStorage.getItem(FILTER_SESSION_PREFIX + key)
-    return stored ? JSON.parse(stored) : null
-  } catch {
-    return null
-  }
-}
-
-function setSessionFilters(key: string, filters: Record<string, unknown>): void {
-  try {
-    sessionStorage.setItem(FILTER_SESSION_PREFIX + key, JSON.stringify(filters))
-  } catch {
-    // Ignore storage errors
-  }
-}
-
-// Smart filter auto-discovery threshold
-const SMART_FILTER_THRESHOLD = 50
+// Re-export PAGE_SIZE_OPTIONS so existing consumers (qdadm/index.ts,
+// composables/index.ts) keep their import path.
+export { PAGE_SIZE_OPTIONS } from './useListPage.utils'
 
 
 /**
@@ -629,7 +587,7 @@ export function useListPage<T = unknown>(config: UseListPageOptions<T>): UseList
     filterValues.value = cleared
     searchQuery.value = ''
     if (persistFilters) {
-      sessionStorage.removeItem(FILTER_SESSION_PREFIX + filterSessionKey)
+      clearSessionFilters(filterSessionKey)
     }
     if (syncUrlParams) {
       const query = { ...route.query } as Record<string, string>
@@ -1036,7 +994,7 @@ export function useListPage<T = unknown>(config: UseListPageOptions<T>): UseList
   function onPage(event: { page: number; rows: number }): void {
     page.value = event.page + 1
     pageSize.value = event.rows
-    setCookie(COOKIE_NAME, event.rows, COOKIE_EXPIRY_DAYS)
+    persistPageSize(event.rows)
     loadItems()
   }
 
