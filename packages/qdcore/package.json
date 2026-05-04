@@ -1,6 +1,6 @@
 {
   "name": "@quazardous/qdcore",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Generic event bus and navigation stack primitives shared by qdadm and qdcms",
   "author": "quazardous",
   "license": "MIT",

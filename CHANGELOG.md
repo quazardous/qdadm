@@ -3,6 +3,16 @@
 All notable changes to qdadm will be documented in this file.
 This is not a commit log. Keep entries simple, user-focused.
 
+## [1.19.0] - 2026-05-04
+
+### Changed — `@quazardous/qdcore` 0.1.0 → 0.2.0 (BREAKING)
+
+- **Removed `entity`, `plugin`, `migration`, `sql` subpath exports.** They were briefly added in qdcore (Phase 1a/1b — commits `12a1c6e` and `eb37ae0`) under the "shared primitives" reasoning but in practice are qdcms-centric. They've moved to a new `@quazardous/qdcms-core` package in the qdcms repo. Consumers that imported `@quazardous/qdcore/{entity,plugin,migration,sql}` should switch to `@quazardous/qdcms-core/{entity,plugin,migration,sql}`. qdadm itself never consumed these — no internal impact.
+- **Removed dependencies**: `@mikro-orm/core`, `@mikro-orm/sqlite`, `@mikro-orm/migrations`, `better-sqlite3`, `semver`, `@types/semver`. They moved to qdcms-core. qdcore is back to a single dependency (`@quazardous/quarkernel`).
+
+### Kept in qdcore
+SignalBus, Stack, i18n, hooks, events, SSE — the truly cross-app primitives that BOTH qdadm and qdcms use today.
+
 ## [1.18.1] - 2026-05-04
 
 ### Fixed
