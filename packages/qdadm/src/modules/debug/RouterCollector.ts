@@ -118,6 +118,8 @@ export class RouterCollector extends Collector<NavigationEntry> {
   private _guardInstalled: boolean = false
   private _activeStack: ActiveStack | null = null
   private _stackHydrator: StackHydrator | null = null
+  private _removeHydratedListener: (() => void) | null = null
+  private _removeStackChangeListener: (() => void) | null = null
 
   constructor(options: RouterCollectorOptions = {}) {
     super(options)
@@ -142,6 +144,20 @@ export class RouterCollector extends Collector<NavigationEntry> {
     this._activeStack = routerCtx.activeStack ?? null
     this._stackHydrator = routerCtx.stackHydrator ?? null
     // Router guard will be installed lazily when router becomes available
+
+    // Re-render the panel when the active stack changes or finishes hydrating —
+    // otherwise level.label stays on its loading placeholder until the next
+    // navigation triggers reactivity. afterEach (the navigation guard) only
+    // fires when the route changes, not when the async hydrator resolves.
+    const signals = ctx.signals
+    if (signals) {
+      this._removeStackChangeListener = signals.on('stack:change', () => {
+        this.notifyChange()
+      })
+      this._removeHydratedListener = signals.on('stack:hydrated', () => {
+        this.notifyChange()
+      })
+    }
   }
 
   /**
@@ -219,6 +235,14 @@ export class RouterCollector extends Collector<NavigationEntry> {
     if (this._removeGuard) {
       this._removeGuard()
       this._removeGuard = null
+    }
+    if (this._removeStackChangeListener) {
+      this._removeStackChangeListener()
+      this._removeStackChangeListener = null
+    }
+    if (this._removeHydratedListener) {
+      this._removeHydratedListener()
+      this._removeHydratedListener = null
     }
     this._guardInstalled = false
     this._ctx = null

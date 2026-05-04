@@ -1881,14 +1881,18 @@ $debug-info: #3b82f6;
   word-break: break-all;
 }
 
-/* Breadcrumb list */
-.breadcrumb-list {
+/* Router-panel breadcrumb list — namespaced under .router-panel because
+   `.breadcrumb-list` already exists globally for the AppLayout breadcrumb
+   in styles/_main.scss (align-items: center, gap, etc.) and would otherwise
+   clobber these rules. */
+.router-panel .breadcrumb-list {
   display: flex;
   flex-direction: column;
+  align-items: stretch;
   gap: 4px;
 }
 
-.breadcrumb-entry {
+.router-panel .breadcrumb-entry {
   padding: 6px 8px;
   background: #27272a;
   border-radius: 4px;
@@ -1896,13 +1900,13 @@ $debug-info: #3b82f6;
   border-left: 2px solid #3f3f46;
 }
 
-.breadcrumb-entry-header {
+.router-panel .breadcrumb-entry-header {
   display: flex;
   align-items: center;
   gap: 8px;
 }
 
-.breadcrumb-index {
+.router-panel .breadcrumb-index {
   width: 16px;
   height: 16px;
   display: flex;
@@ -1914,12 +1918,12 @@ $debug-info: #3b82f6;
   color: #a1a1aa;
 }
 
-.breadcrumb-kind {
+.router-panel .breadcrumb-kind {
   font-weight: 500;
   color: #f4f4f5;
 }
 
-.breadcrumb-entry-props {
+.router-panel .breadcrumb-entry-props {
   display: flex;
   flex-wrap: wrap;
   gap: 12px;
@@ -1927,12 +1931,12 @@ $debug-info: #3b82f6;
   margin-top: 4px;
 }
 
-.breadcrumb-prop {
+.router-panel .breadcrumb-prop {
   color: #71717a;
   font-size: 10px;
 }
 
-.breadcrumb-prop code {
+.router-panel .breadcrumb-prop code {
   color: #60a5fa;
   background: #18181b;
   padding: 1px 4px;
@@ -1940,27 +1944,27 @@ $debug-info: #3b82f6;
 }
 
 /* Kind-based colors */
-.breadcrumb-route {
+.router-panel .breadcrumb-route {
   border-left-color: #71717a;
 }
 
-.breadcrumb-entity-list {
+.router-panel .breadcrumb-entity-list {
   border-left-color: #3b82f6;
 }
 
-.breadcrumb-entity-show {
+.router-panel .breadcrumb-entity-show {
   border-left-color: #10b981;
 }
 
-.breadcrumb-entity-edit {
+.router-panel .breadcrumb-entity-edit {
   border-left-color: #f59e0b;
 }
 
-.breadcrumb-entity-create {
+.router-panel .breadcrumb-entity-create {
   border-left-color: #8b5cf6;
 }
 
-.breadcrumb-entity-delete {
+.router-panel .breadcrumb-entity-delete {
   border-left-color: #ef4444;
 }
 
