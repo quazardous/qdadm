@@ -3,14 +3,33 @@
  * locale bundles via a cascade of lazy loaders.
  *
  * Each loader is a `(locale) => Promise<MessagesBundle | null>` function. On
- * `load(locale)`, the provider runs all loaders in order and deep-merges the
- * partial bundles they return (later loaders override earlier ones — same
- * "last-merge-wins" semantics as the rest of the i18n stack).
+ * `load(locale)`, the provider runs **all** loaders in order and deep-merges
+ * the partial bundles they return (later loaders override earlier ones —
+ * "last-merge-wins" semantics, same as the rest of the i18n stack).
  *
- * This lets consumers split bundles by domain — e.g. one loader for
- * `core.*`, one for `entities.*`, one for `nav.*` — each backed by its own
- * source (YAML file, JSON, fetch, etc.) without the provider knowing about
- * any of those formats.
+ * This lets consumers split bundles across multiple files — e.g. one loader
+ * for `core.*`, one for `entities.*`, one for `nav.*` — each backed by its
+ * own source (YAML file, JSON, fetch, etc.) without the provider knowing
+ * about any of those formats.
+ *
+ * ## When to use this vs `IncrementalDomainProvider`
+ *
+ * Use **`LazyTranslationProvider`** when you want one bundle per locale and
+ * don't care about loading domains independently:
+ *   - All loaders run on `_loadLocale(locale)` (i.e. bootstrap or locale
+ *     change). No partial state — once `bootstrap()` resolves, every key in
+ *     every domain is in the registry for that locale.
+ *   - Best for small/medium apps where the full bundle for a locale is
+ *     reasonable to fetch up-front.
+ *   - Domains are still split across files (the "cascade" lets you organise
+ *     translations by topic), they're just resolved together.
+ *
+ * Use **`IncrementalDomainProvider`** when domains should be loaded only on
+ * demand — `t('shop.cart.title')` for an unloaded `shop` domain triggers an
+ * async load in the background and emits `i18n:domain-loaded` once merged.
+ * Best for large apps with rarely-used sections (admin, legal, marketing
+ * landing pages, …) where shipping every domain on bootstrap would be
+ * wasteful. See `IncrementalDomainProvider.ts`.
  */
 
 import type { MessagesBundle, MessagesNode, TranslationProvider } from '@quazardous/qdcore'

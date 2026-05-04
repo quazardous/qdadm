@@ -1,7 +1,21 @@
 /**
  * qdadm i18n - public exports.
  *
- * See docs/todo-i18n.md for the design rationale.
+ * ## Two providers to choose from
+ *
+ *   - **`LazyTranslationProvider`** — full bundle on `load(locale)`, split
+ *     across multiple loaders (one per file/domain) deep-merged on resolve.
+ *     Use when the locale bundle is reasonable to fetch up-front.
+ *
+ *   - **`IncrementalDomainProvider`** — one loader per top-level domain,
+ *     fetched on demand. `t()` on an unloaded domain returns the raw key
+ *     synchronously and emits `i18n:domain-loaded` once merged. Use for
+ *     large apps with rarely-used sections.
+ *
+ * Both support `createYamlLoader({ <locale>: () => import('./xx.yml?raw') })`
+ * for the typical "split YAML files in a directory" setup.
+ *
+ * See docs/todo-i18n.md for the broader design rationale.
  */
 
 export { I18n } from './I18n'

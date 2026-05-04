@@ -3,16 +3,40 @@
  * domain (`core`, `shop`, `legal`, …) and only fetches each (locale, domain)
  * pair when it's first needed.
  *
- * Unlike `LazyTranslationProvider`, which loads its full bundle on
- * `load(locale)`, this provider keeps its `load(locale)` minimal: it only
- * eagerly resolves domains listed in `eagerDomains` (typically `['core']`).
- * The rest stay dormant until `loadDomain(locale, domain)` is called — which
- * `I18n.t()` triggers automatically on a miss whose top-level segment is a
- * known-but-not-yet-loaded domain.
+ * On `load(locale)` (bootstrap / locale change) the provider only resolves
+ * the domains listed in `eagerDomains` (typically `['core']`). The rest stay
+ * dormant until `loadDomain(locale, domain)` is called — which `I18n.t()`
+ * triggers automatically on a miss whose top-level segment is a
+ * known-but-not-yet-loaded domain. The host app can also pre-warm explicitly
+ * via `i18n.loadDomain(domain, locale?)`. Inflight loads are deduped per
+ * `(locale, domain)`.
  *
  * Bundles returned by domain loaders are wrapped under their domain key so
  * the registry merges them at the right place:
  *   loader('shop')(locale) → { cart: {...} } → merged as { shop: { cart: {...} } }
+ *
+ * ## When to use this vs `LazyTranslationProvider`
+ *
+ * Use **`IncrementalDomainProvider`** when at least one of these matters:
+ *   - **Bundle size**: large app with rarely-used sections (admin, legal,
+ *     marketing) and you want to defer their cost.
+ *   - **Per-domain caching**: domains have different freshness needs, or
+ *     come from different transports.
+ *   - **Granularity**: you want to know exactly when a domain has landed
+ *     (`i18n:domain-loaded` signal).
+ *
+ * Use **`LazyTranslationProvider`** when the full locale bundle is
+ * reasonable to fetch up-front and you just want to organise translations
+ * across multiple files. See `LazyTranslationProvider.ts`.
+ *
+ * ## Tradeoff
+ *
+ * `t()` returns synchronously even for an unloaded domain — on first miss
+ * it returns the raw key (which renders as a placeholder for one frame),
+ * kicks off the async load, then emits `i18n:domain-loaded` once merged.
+ * The host app subscribes to that signal if it wants to react (e.g. force a
+ * re-render of components that hit the placeholder). Pre-warming via
+ * `i18n.loadDomain(domain)` avoids the placeholder entirely.
  */
 
 import type { MessagesBundle, MessagesNode, TranslationProvider } from '@quazardous/qdcore'
