@@ -16,7 +16,8 @@
     "./i18n": "./src/i18n/index.ts",
     "./entity": "./src/entity/index.ts",
     "./plugin": "./src/plugin/index.ts",
-    "./migration": "./src/migration/index.ts"
+    "./migration": "./src/migration/index.ts",
+    "./sql": "./src/sql/index.ts"
   },
   "files": [
     "src",
@@ -30,7 +31,11 @@
     "build:types": "tsc --declaration --emitDeclarationOnly --outDir dist/types"
   },
   "dependencies": {
-    "@quazardous/quarkernel": "^2.1.0"
+    "@mikro-orm/core": "^6.6.14",
+    "@mikro-orm/migrations": "^6.6.14",
+    "@mikro-orm/sqlite": "^6.6.14",
+    "@quazardous/quarkernel": "^2.1.0",
+    "better-sqlite3": "^12.9.0"
   },
   "devDependencies": {
     "typescript": "^5.9.3",
