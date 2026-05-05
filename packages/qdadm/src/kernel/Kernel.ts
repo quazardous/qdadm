@@ -367,6 +367,32 @@ export class Kernel {
   get i18n(): I18n | null {
     return this.i18nInstance
   }
+
+  /**
+   * Build the merged context every qdadm debug collector expects.
+   *
+   * Used by hosts that own a shared `DebugBridge` (passed via
+   * `debugBar.bridge`) and need to install it themselves with a
+   * context covering both qdadm internals and host-side data. Hosts
+   * should `Object.assign({}, kernel.getDebugContext(), { … })` to
+   * weave in their own keys (e.g. cms) before calling
+   * `bridge.install()`.
+   *
+   * Returning a flat object keeps the surface stable as Kernel
+   * internals evolve — the host pokes nothing.
+   */
+  getDebugContext(): Record<string, unknown> {
+    return {
+      signals: this.signals,
+      router: this.router,
+      orchestrator: this.orchestrator,
+      zones: this.zoneRegistry,
+      hooks: this.hookRegistry,
+      activeStack: this.activeStack,
+      stackHydrator: this.stackHydrator,
+      i18n: this.i18nInstance,
+    }
+  }
 }
 
 // Declare prototype-patched methods

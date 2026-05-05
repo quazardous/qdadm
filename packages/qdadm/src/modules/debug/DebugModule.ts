@@ -72,7 +72,7 @@ export interface DebugModuleOptions extends ModuleOptions {
    * Existing DebugBridge to register collectors onto. When provided,
    * the module skips its own `createDebugBridge()` AND skips
    * `bridge.install(ctx)` — the host shell owns install timing so
-   * collectors from multiple sources (e.g. qcms + qdadm) end up on
+   * collectors from multiple sources (e.g. qdcms + qdadm) end up on
    * the same bridge with a single merged install. When omitted, the
    * module owns its bridge fully (legacy behaviour).
    */
