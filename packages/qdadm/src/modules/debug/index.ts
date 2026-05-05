@@ -50,7 +50,7 @@ export const debugBar = {
 
 // Admin-specific panels + tab metadata, exposed for hosts that own a
 // shared bridge and render a single `<DebugBar />` covering both
-// qdadm and host-side (e.g. qcms) collectors. Merge with your own
+// qdadm and host-side (e.g. qdcms) collectors. Merge with your own
 // panels and pass to `@quazardous/qddebug`'s `<DebugBar />`.
 export {
   adminPanels,
