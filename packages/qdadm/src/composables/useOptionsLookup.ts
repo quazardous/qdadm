@@ -170,7 +170,11 @@ export function useOptionsLookup(config: UseOptionsLookupConfig): UseOptionsLook
   if (config.entity) {
     try {
       const orc = useOrchestrator()
-      getManager = orc.getManager as typeof getManager
+      // Generic-vs-non-generic: getManager is parameterised by an
+      // EntityRecord type variable that the local alias intentionally
+      // erases. Bridge through `unknown` so strict TS doesn't reject
+      // the cross-shape assignment.
+      getManager = orc.getManager as unknown as typeof getManager
     } catch {
       // Orchestrator not available
     }
