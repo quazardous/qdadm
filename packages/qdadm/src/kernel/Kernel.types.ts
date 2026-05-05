@@ -116,6 +116,15 @@ export interface DebugBarConfig {
   component?: Component
   enabled?: boolean
   _kernelManaged?: boolean
+  /**
+   * Optional shared `DebugBridge` to register qdadm collectors onto.
+   * When provided, the host shell owns the bridge (collectors from
+   * other frameworks like qcms can be added too) and is responsible
+   * for calling `bridge.install(mergedCtx)` once everything is
+   * registered. Without it, the DebugModule creates and installs its
+   * own bridge as before.
+   */
+  bridge?: unknown
   [key: string]: unknown
 }
 

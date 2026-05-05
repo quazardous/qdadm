@@ -68,6 +68,15 @@ export interface DebugModuleOptions extends ModuleOptions {
   routerCollector?: boolean
   i18nCollector?: boolean
   _kernelManaged?: boolean
+  /**
+   * Existing DebugBridge to register collectors onto. When provided,
+   * the module skips its own `createDebugBridge()` AND skips
+   * `bridge.install(ctx)` — the host shell owns install timing so
+   * collectors from multiple sources (e.g. qcms + qdadm) end up on
+   * the same bridge with a single merged install. When omitted, the
+   * module owns its bridge fully (legacy behaviour).
+   */
+  bridge?: DebugBridge
 }
 
 /**
@@ -101,8 +110,10 @@ export class DebugModule extends Module {
   override async connect(ctx: KernelContext): Promise<void> {
     this.ctx = ctx as unknown as Record<string, unknown>
 
-    // Create debug bridge with options
-    this._bridge = createDebugBridge({
+    // External bridge (host-owned) when provided — the host installs
+    // it later with a merged context. Otherwise create our own.
+    const externalBridge = this.options.bridge ?? null
+    this._bridge = externalBridge ?? createDebugBridge({
       enabled: this.options.enabled ?? false
     })
 
@@ -141,8 +152,12 @@ export class DebugModule extends Module {
       this._bridge.addCollector(new I18nCollector(collectorOptions))
     }
 
-    // Install collectors with context
-    this._bridge.install(ctx as unknown as Record<string, unknown>)
+    // Install collectors with context — only when WE own the bridge.
+    // External bridges are installed by the host later with a merged
+    // context that may include data from other frameworks (e.g. cms).
+    if (!externalBridge) {
+      this._bridge.install(ctx as unknown as Record<string, unknown>)
+    }
 
     // Define the debug zone
     const extCtx = ctx as KernelContext & {
