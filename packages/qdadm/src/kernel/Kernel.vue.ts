@@ -21,19 +21,37 @@ type Self = any
 
 /**
  * Reactive reference to the debug bar component, set by the Kernel
- * constructor when `debugBar.component` is provided. Exposed as a
- * `Ref<Component | null>` so the `<QdadmRoot />` host helper can
- * pick it up reactively regardless of mount order.
+ * constructor when `debugBar.component` is provided.
+ *
+ * Why a window-stashed ref instead of a plain module-level export:
+ * Vite's HMR can fragment a single source module into multiple live
+ * instances (each importer getting a different `?t=…` version after
+ * HMR), so a module-level `const ref` is NOT shared across
+ * importers. Stashing the ref on `window.__qdadmDebugBarRef` (and
+ * lazy-initialising) is the only way to guarantee a single instance
+ * across all callers in dev. The Kernel writes via
+ * `setQdadmDebugBar()`; `<QdadmRoot />` reads via the same getter.
  */
-export const qdadmDebugBarRef: Ref<Component | null> = ref(null)
+const QDADM_DEBUG_BAR_GLOBAL_KEY = '__qdadmDebugBarRef'
+
+export function getQdadmDebugBarRef(): Ref<Component | null> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const w = typeof window !== 'undefined' ? (window as any) : null
+  if (w && w[QDADM_DEBUG_BAR_GLOBAL_KEY]) return w[QDADM_DEBUG_BAR_GLOBAL_KEY]
+  const r = ref<Component | null>(null)
+  if (w) w[QDADM_DEBUG_BAR_GLOBAL_KEY] = r
+  return r
+}
+
+/** Back-compat alias — same instance as `getQdadmDebugBarRef()`. */
+export const qdadmDebugBarRef: Ref<Component | null> = getQdadmDebugBarRef()
 
 /**
- * Set the debug bar component reference (called from Kernel constructor).
- * Kept as a function for back-compat; equivalent to
- * `qdadmDebugBarRef.value = component`.
+ * Set the debug bar component reference (called from Kernel
+ * constructor). Equivalent to `getQdadmDebugBarRef().value = component`.
  */
 export function setQdadmDebugBar(component: Component | null): void {
-  qdadmDebugBarRef.value = component
+  getQdadmDebugBarRef().value = component
 }
 
 /**
@@ -79,9 +97,10 @@ export function applyVueMethods(KernelClass: { prototype: any }): void {
     }
 
     const OriginalRoot = this.options.root
+    const debugBarRef = getQdadmDebugBarRef()
     const DebugBarComponent =
-      this.options.debugBar?.component && qdadmDebugBarRef.value
-        ? qdadmDebugBarRef.value
+      this.options.debugBar?.component && debugBarRef.value
+        ? debugBarRef.value
         : null
     const hasPrimeVue = !!this.options.primevue?.plugin
     const appKey = this._appKey

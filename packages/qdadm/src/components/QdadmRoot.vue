@@ -17,12 +17,14 @@
 import { computed, inject, type Component } from 'vue'
 import Toast from 'primevue/toast'
 import ToastListener from '../toast/ToastListener.vue'
-import { qdadmDebugBarRef } from '../kernel/Kernel.vue'
+import { getQdadmDebugBarRef } from '../kernel/Kernel.vue'
 
-// `qdadmDebugBarRef` is set by the Kernel constructor when a
-// debugBar.component is provided. Read it reactively so the
-// component picks it up regardless of mount order.
-const debugBar = computed<Component | null>(() => qdadmDebugBarRef.value)
+// Read the singleton-on-window debug bar ref. Using a getter (instead
+// of importing the module-level const) makes this resilient to Vite
+// HMR's module fragmentation in dev, where a top-level `const ref`
+// can be torn into separate instances per importer.
+const debugBarRef = getQdadmDebugBarRef()
+const debugBar = computed<Component | null>(() => debugBarRef.value)
 
 // `qdadmHasPrimeVue` is provided by the Kernel during _installPlugins.
 // True when PrimeVue is wired (so Toast / ToastListener are usable).

@@ -28,7 +28,12 @@ import type { KernelContext } from '../../kernel/KernelContext'
 /**
  * Symbol for debug bridge injection key
  */
-export const DEBUG_BRIDGE_KEY = Symbol('debugBridge')
+// Symbol.for() instead of Symbol() — the latter mints a fresh
+// instance each time the module evaluates, and Vite HMR can fragment
+// a single source module into multiple live instances per importer.
+// Provider and consumer would then hold DIFFERENT symbols and the
+// inject would fall back to its default (null), defeating the bridge.
+export const DEBUG_BRIDGE_KEY = Symbol.for('qdadm.debugBridge')
 
 /**
  * Debug zone name for the DebugBar component
