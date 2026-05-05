@@ -3,6 +3,15 @@
 All notable changes to qdadm will be documented in this file.
 This is not a commit log. Keep entries simple, user-focused.
 
+## [1.19.1] - 2026-05-05
+
+### Internal — refactor + test coverage
+
+- **`KernelContext.ts` split** (1035 → 225 LOC shell) into prototype-patch modules following the existing `Kernel.ts` pattern: `KernelContext.{types,entities,routing,zones,events,permissions,i18n}.ts`. Public API + behaviour preserved
+- **`useListPage.ts` stateless utils extracted** to `useListPage.utils.ts` (cookies, sessionStorage, formatters, `PAGE_SIZE_OPTIONS`, `SMART_FILTER_THRESHOLD`). 1577 → 1535 LOC. Re-exported through the same path so consumers don't change
+- **i18n providers documented**: enriched JSDoc on `LazyTranslationProvider` and `IncrementalDomainProvider` with a "when to use this vs the other one" section, plus an orientation block in `i18n/index.ts`
+- **Tests added**: 93 in `@quazardous/qdcore` and `@quazardous/qddebug` (both packages had 0 tests) covering SignalBus, HookRegistry, EventRouter, Stack, Collector, DebugBridge contracts; +18 in qdadm covering `EntityManager.relations.ts` (8 prototype methods that were previously only exercised through demo modules)
+
 ## qdadm-demo [0.22.0] - 2026-05-04
 
 ### Added — `/todos` toggles persist in localStorage (demo hack)
