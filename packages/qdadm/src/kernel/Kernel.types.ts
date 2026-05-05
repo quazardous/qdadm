@@ -136,7 +136,12 @@ export type HomeRoute = string | { name?: string; component?: Component }
  * Kernel options
  */
 export interface KernelOptions {
-  root: Component
+  /**
+   * Root component the Kernel should mount. Required UNLESS
+   * `existingApp` is provided (host shell already created and owns
+   * the Vue app). Validated at runtime in `_createVueApp`.
+   */
+  root?: Component
   modules?: Record<string, unknown>
   modulesOptions?: Record<string, unknown>
   moduleDefs?: unknown[]
@@ -169,6 +174,41 @@ export interface KernelOptions {
   debug?: boolean
   onAuthExpired?: (payload: unknown) => void
   i18n?: I18nOptions
+  /**
+   * Existing Vue app to install qdadm onto. When provided, the Kernel
+   * skips its own `createApp(WrappedRoot)` and reuses the supplied
+   * instance — useful when a host shell (e.g. a CMS) already owns the
+   * Vue app and wants qdadm as a guest. The host is responsible for
+   * rendering qdadm's DOM extras (debug bar, toast root); see
+   * `<QdadmRoot />` for a drop-in helper.
+   *
+   * Pinia / PrimeVue / vue-router are still installed by the Kernel
+   * unless the host has already done so — re-install is idempotent for
+   * the standard plugins.
+   */
+  existingApp?: import('vue').App
+  /**
+   * Existing vue-router to register Kernel routes onto. When provided,
+   * the Kernel skips `createRouter()` and adds its computed routes via
+   * `existingRouter.addRoute(...)` instead. Combine with `routePrefix`
+   * to mount qdadm under a sub-path of the host (e.g. `/admin`).
+   */
+  existingRouter?: import('vue-router').Router
+  /**
+   * Existing SignalBus to use instead of creating one. Critical when
+   * the host already runs a SignalBus that other frameworks (e.g.
+   * qdcms) emit on / listen to — sharing the bus is what makes
+   * cross-framework reactivity work.
+   */
+  existingSignals?: SignalBus
+  /**
+   * Prefix prepended to every route the Kernel registers. Use with
+   * `existingRouter` to mount the whole admin tree under a sub-path
+   * (e.g. `routePrefix: '/admin'` makes the layout-children land at
+   * `/admin/home`, `/admin/users`, etc., and the catch-all becomes
+   * `/admin/:pathMatch(.*)*`). Default: '' (no prefix — root mount).
+   */
+  routePrefix?: string
 }
 
 /**

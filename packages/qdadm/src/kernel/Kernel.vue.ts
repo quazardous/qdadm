@@ -2,8 +2,10 @@ import {
   createApp,
   h,
   defineComponent,
+  ref,
   type App,
   type Component,
+  type Ref,
 } from 'vue'
 import { createPinia } from 'pinia'
 import ToastService from 'primevue/toastservice'
@@ -17,14 +19,21 @@ import { I18N_INJECTION_KEY } from '../i18n/useI18n'
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Self = any
 
-// Module-level reference to debug bar component (set by constructor)
-let _QdadmDebugBar: Component | null = null
+/**
+ * Reactive reference to the debug bar component, set by the Kernel
+ * constructor when `debugBar.component` is provided. Exposed as a
+ * `Ref<Component | null>` so the `<QdadmRoot />` host helper can
+ * pick it up reactively regardless of mount order.
+ */
+export const qdadmDebugBarRef: Ref<Component | null> = ref(null)
 
 /**
- * Set the debug bar component reference (called from Kernel constructor)
+ * Set the debug bar component reference (called from Kernel constructor).
+ * Kept as a function for back-compat; equivalent to
+ * `qdadmDebugBarRef.value = component`.
  */
 export function setQdadmDebugBar(component: Component | null): void {
-  _QdadmDebugBar = component
+  qdadmDebugBarRef.value = component
 }
 
 /**
@@ -48,16 +57,32 @@ export function applyVueMethods(KernelClass: { prototype: any }): void {
   }
 
   /**
-   * Create Vue app instance
+   * Create Vue app instance.
+   *
+   * When `options.existingApp` is provided, the Kernel reuses the
+   * host's app and skips its own `createApp(WrappedRoot)`. The host
+   * is then responsible for rendering qdadm's DOM extras (Toast,
+   * ToastListener, DebugBar) — see `<QdadmRoot />` for a drop-in
+   * helper that does it.
+   *
+   * `options.root` is ignored in this mode (the host already mounted
+   * its own root).
    */
   proto._createVueApp = function (this: Self): void {
+    if (this.options.existingApp) {
+      this.vueApp = this.options.existingApp
+      return
+    }
+
     if (!this.options.root) {
-      throw new Error('[Kernel] root component is required')
+      throw new Error('[Kernel] root component is required (or pass options.existingApp)')
     }
 
     const OriginalRoot = this.options.root
     const DebugBarComponent =
-      this.options.debugBar?.component && _QdadmDebugBar ? _QdadmDebugBar : null
+      this.options.debugBar?.component && qdadmDebugBarRef.value
+        ? qdadmDebugBarRef.value
+        : null
     const hasPrimeVue = !!this.options.primevue?.plugin
     const appKey = this._appKey
 
@@ -89,15 +114,32 @@ export function applyVueMethods(KernelClass: { prototype: any }): void {
   }
 
   /**
-   * Install all plugins on Vue app
+   * Install all plugins on Vue app.
+   *
+   * When a host shell uses `existingApp`, it may have already
+   * installed Pinia / PrimeVue / vue-router. Calling `app.use(plugin)`
+   * twice is harmless for stateless plugins (vue-router, Pinia
+   * recognise the duplicate and no-op), but PrimeVue does not — guard
+   * with `_qdadmPluginsInstalled` markers on globalProperties so the
+   * Kernel never double-installs PrimeVue, ToastService, or
+   * ConfirmationService.
    */
   proto._installPlugins = function (this: Self): void {
     const app = this.vueApp!
-    const { authAdapter, features, primevue } = this.options
+    const { authAdapter, features, primevue, existingApp } = this.options
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const marks = (app.config.globalProperties as any).__qdadmInstalled ??= {
+      pinia: false,
+      primevue: false,
+      router: false,
+    }
 
-    app.use(createPinia())
+    if (!marks.pinia) {
+      app.use(createPinia())
+      marks.pinia = true
+    }
 
-    if (primevue?.plugin) {
+    if (primevue?.plugin && !marks.primevue) {
       const pvConfig = {
         theme: {
           preset: primevue.theme,
@@ -111,9 +153,20 @@ export function applyVueMethods(KernelClass: { prototype: any }): void {
       app.use(ToastService)
       app.use(ConfirmationService)
       app.directive('tooltip', Tooltip)
+      marks.primevue = true
     }
 
-    app.use(this.router!)
+    // Skip vue-router install when the host owned the router from the
+    // start — they already called `app.use(router)`. Calling it again
+    // emits Vue's "Plugin has already been applied" warning. When
+    // Kernel created the router itself, install is required.
+    if (!marks.router && !this.options.existingRouter) {
+      app.use(this.router!)
+      marks.router = true
+    }
+
+    // Avoid eslint unused-var warning when host owns the app
+    void existingApp
 
     for (const [key, value] of this._pendingProvides) {
       app.provide(key, value)
@@ -194,6 +247,9 @@ export function applyVueMethods(KernelClass: { prototype: any }): void {
     app.provide('qdadmHooks', this.hookRegistry)
     app.provide('qdadmDeferred', this.deferred)
     app.provide('qdadmLayoutComponents', this.layoutComponents)
+    // Surface PrimeVue presence so host-rendered <QdadmRoot /> can
+    // decide whether to mount Toast / ToastListener.
+    app.provide('qdadmHasPrimeVue', !!primevue?.plugin)
 
     if (this.securityChecker) {
       app.provide('qdadmSecurityChecker', this.securityChecker)

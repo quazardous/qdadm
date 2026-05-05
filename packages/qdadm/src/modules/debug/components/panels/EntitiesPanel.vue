@@ -210,7 +210,7 @@ async function testStorageFetch(entityName: string, storageName: string): Promis
   }
 }
 
-function getCapabilityIcon(cap: string): string {
+function getCapabilityIcon(cap: PropertyKey): string {
   const icons: Record<string, string> = {
     supportsTotal: 'pi-hashtag',
     supportsFilters: 'pi-filter',
@@ -218,10 +218,10 @@ function getCapabilityIcon(cap: string): string {
     supportsCaching: 'pi-database',
     requiresAuth: 'pi-lock'
   }
-  return icons[cap] || 'pi-question-circle'
+  return icons[cap as string] || 'pi-question-circle'
 }
 
-function getCapabilityLabel(cap: string): string {
+function getCapabilityLabel(cap: PropertyKey): string {
   const labels: Record<string, string> = {
     supportsTotal: 'Total count',
     supportsFilters: 'Filters',
@@ -229,7 +229,7 @@ function getCapabilityLabel(cap: string): string {
     supportsCaching: 'Caching',
     requiresAuth: 'Requires authentication'
   }
-  return labels[cap] || cap
+  return labels[cap as string] || String(cap)
 }
 
 function formatTtl(ttlMs: number | undefined): string {

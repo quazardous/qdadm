@@ -24,9 +24,18 @@ export function applyRegistryMethods(KernelClass: { prototype: any }): void {
   const proto = KernelClass.prototype as Self
 
   /**
-   * Create signal bus for event-driven communication
+   * Create signal bus for event-driven communication.
+   *
+   * When `options.existingSignals` is provided (host shell already
+   * owns a bus), reuse it instead of spinning up a fresh one. This
+   * is what lets qdcms and qdadm share entity events when they're
+   * mounted on the same Vue app.
    */
   proto._createSignalBus = function (this: Self): void {
+    if (this.options.existingSignals) {
+      this.signals = this.options.existingSignals
+      return
+    }
     const debug = this.options.debug ?? false
     this.signals = createSignalBus({ debug })
   }

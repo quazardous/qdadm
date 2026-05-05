@@ -75,3 +75,9 @@ export { default as BannerZone } from './display/BannerZone.vue'
 // Pages
 export { default as LoginPage } from './pages/LoginPage.vue'
 export { default as NotFoundPage } from './pages/NotFoundPage.vue'
+
+// Host integration helper — render in a host App.vue when using
+// `Kernel({ existingApp })` so qdadm's DOM extras (Toast,
+// ToastListener, DebugBar) appear without the Kernel-managed
+// WrappedRoot.
+export { default as QdadmRoot } from './QdadmRoot.vue'

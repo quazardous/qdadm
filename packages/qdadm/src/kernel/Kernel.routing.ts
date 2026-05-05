@@ -19,7 +19,14 @@ export function applyRoutingMethods(KernelClass: { prototype: any }): void {
   const proto = KernelClass.prototype as Self
 
   /**
-   * Create Vue Router
+   * Create Vue Router.
+   *
+   * When `options.existingRouter` is provided, the Kernel reuses it
+   * and registers its computed routes via `addRoute()` instead of
+   * calling `createRouter()`. Combined with `options.routePrefix`,
+   * this lets a host mount the whole admin tree under a sub-path
+   * (e.g. `routePrefix: '/admin'` shifts the layout to `/admin` and
+   * the catch-all to `/admin/:pathMatch(.*)*`).
    */
   proto._createRouter = function (this: Self): void {
     const { pages, homeRoute, coreRoutes, basePath } = this.options
@@ -110,6 +117,26 @@ export function applyRoutingMethods(KernelClass: { prototype: any }): void {
     }
 
     routes.push(notFoundRoute)
+
+    // ──────────────────────────────────────────────────────────────
+    // routePrefix: prepend to every Kernel-built route so the whole
+    // tree mounts under a sub-path (host scenarios like a CMS that
+    // lives at `/` and hosts qdadm at `/admin`). Empty by default.
+    const prefix = (this.options.routePrefix ?? '').replace(/\/+$/, '')
+    if (prefix) {
+      routes = routes.map((r) => prefixRoute(r, prefix))
+    }
+
+    if (this.options.existingRouter) {
+      // Host shell owns the router. Skip createRouter, register on
+      // the supplied instance. We do NOT touch history mode here —
+      // the host is responsible for that.
+      this.router = this.options.existingRouter
+      for (const r of routes) {
+        this.router.addRoute(r)
+      }
+      return
+    }
 
     const { hashMode } = this.options
     const history = hashMode
@@ -289,4 +316,19 @@ export function applyRoutingMethods(KernelClass: { prototype: any }): void {
 
     this.activeStack!.set(levels)
   }
+}
+
+/**
+ * Prepend a path prefix to a top-level route record. Children inherit
+ * relative paths so we only touch the outer record. Used by the
+ * `routePrefix` option to mount the whole admin tree under a sub-path
+ * of the host router.
+ */
+function prefixRoute(route: RouteRecordRaw, prefix: string): RouteRecordRaw {
+  if (!route.path) return route
+  // Normalise: ensure single leading slash.
+  const tail = route.path.startsWith('/') ? route.path : `/${route.path}`
+  // `/` becomes the prefix itself, otherwise prefix + tail.
+  const newPath = tail === '/' ? prefix : `${prefix}${tail}`
+  return { ...route, path: newPath }
 }
