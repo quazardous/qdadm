@@ -11,12 +11,14 @@ concurrency:
   cancel-in-progress: false
 
 # changesets/action needs to commit the Version PR and create release tags.
-# id-token=write enables BOTH npm provenance attestation AND OIDC Trusted
-# Publishing — npm trusts this exact workflow (owner/repo/workflow file)
-# as registered in each package's "Trusted Publisher" settings on npmjs.com,
-# so we don't need a long-lived NPM_TOKEN secret. The OIDC token minted at
-# job start is exchanged by `npm publish` for a short-lived publish-scoped
-# credential.
+# id-token=write is kept on for npm provenance attestation (signed with the
+# OIDC token, published to sigstore — independent of how publish auth itself
+# works). Publish auth uses NPM_TOKEN.
+#
+# OIDC Trusted Publishing was attempted (npm 11.5.1 feature) but the
+# self-upgrade step on the GitHub-Actions runner kept hitting npm's
+# MODULE_NOT_FOUND self-upgrade bug. Revisit when a runner image ships
+# npm 11.5+ natively.
 permissions:
   contents: write
   pull-requests: write
@@ -36,16 +38,6 @@ jobs:
           node-version: 22
           cache: npm
           registry-url: https://registry.npmjs.org
-
-      # Node 22.x bundles npm 10.9.x, but OIDC Trusted Publishing auth was
-      # only added in npm 11.5.1. npm 10 happily signs provenance (that's
-      # sigstore-only and works with any OIDC-capable runtime), then sends
-      # an unauthenticated PUT and receives 404 — npm's pattern for "you
-      # can't see this package" rather than a clear 401/403. Pin npm to
-      # ^11.5.1 explicitly so the publish step can exchange the GitHub
-      # OIDC token for a short-lived publish credential.
-      - name: Pin npm to a Trusted-Publishing-capable version
-        run: npm install -g npm@^11.5.1
 
       - name: Install
         run: npm ci
@@ -67,8 +59,8 @@ jobs:
           title: "chore(release): version packages"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          # No NPM_TOKEN — auth via OIDC Trusted Publishing. Each package
-          # (qdadm, @quazardous/qdcore, @quazardous/qddebug) is configured
-          # on npmjs.com to trust this repo + workflow file. Provenance is
-          # signed with the same OIDC token (NPM_CONFIG_PROVENANCE=true).
+          # Granular Automation token from npmjs.com, scope-limited to qdadm
+          # and @quazardous/*. Bypass-2FA on (required for CI). Provenance
+          # attestation is still signed via the OIDC token in id-token=write.
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
           NPM_CONFIG_PROVENANCE: "true"
