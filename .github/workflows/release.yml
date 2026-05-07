@@ -33,16 +33,19 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          # Node 22 ships npm 11.x which has automatic OIDC Trusted
-          # Publishing auth (introduced in npm 11.5.1). Earlier npm
-          # versions could only sign provenance — auth still needed
-          # NPM_TOKEN. With npm 11+, when .npmrc has no _authToken and
-          # `id-token: write` is granted, `npm publish` exchanges the
-          # GitHub OIDC token for a short-lived publish credential
-          # against the package's Trusted Publisher config on npmjs.com.
           node-version: 22
           cache: npm
           registry-url: https://registry.npmjs.org
+
+      # Node 22.x bundles npm 10.9.x, but OIDC Trusted Publishing auth was
+      # only added in npm 11.5.1. npm 10 happily signs provenance (that's
+      # sigstore-only and works with any OIDC-capable runtime), then sends
+      # an unauthenticated PUT and receives 404 — npm's pattern for "you
+      # can't see this package" rather than a clear 401/403. Pin npm to
+      # ^11.5.1 explicitly so the publish step can exchange the GitHub
+      # OIDC token for a short-lived publish credential.
+      - name: Pin npm to a Trusted-Publishing-capable version
+        run: npm install -g npm@^11.5.1
 
       - name: Install
         run: npm ci
@@ -69,7 +72,3 @@ jobs:
           # on npmjs.com to trust this repo + workflow file. Provenance is
           # signed with the same OIDC token (NPM_CONFIG_PROVENANCE=true).
           NPM_CONFIG_PROVENANCE: "true"
-          # Temporary: verbose npm logs to diagnose why the registry returns
-          # E404 on PUT despite the OIDC token signing the provenance
-          # statement successfully. Remove once the publish path is healthy.
-          NPM_CONFIG_LOGLEVEL: "verbose"
