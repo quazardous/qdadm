@@ -4,7 +4,7 @@
  *
  * Replace {{EntityName}} and {{entity_name}} with your entity names.
  */
-import { useListPage, ListPage } from 'qdadm'
+import { useListPage, ListPage } from '@quazardous/qdadm'
 
 const list = useListPage({ entity: '{{entity_name}}' })
 list.generateColumns()

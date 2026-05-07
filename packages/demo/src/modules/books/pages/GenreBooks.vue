@@ -5,7 +5,7 @@
  * Child route of genre: /genres/:id/books
  * Parent filter auto-applied via route.meta.parent (genre = id)
  */
-import { useListPage, ListPage, PageNav } from 'qdadm'
+import { useListPage, ListPage, PageNav } from '@quazardous/qdadm'
 import Column from 'primevue/column'
 
 const list = useListPage({ entity: 'books' })

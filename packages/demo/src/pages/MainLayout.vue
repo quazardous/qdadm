@@ -7,7 +7,7 @@
  */
 
 import { ref, onMounted, onUnmounted, inject } from 'vue'
-import { AppLayout } from 'qdadm/components'
+import { AppLayout } from '@quazardous/qdadm/components'
 import UserImpersonator from '../components/UserImpersonator.vue'
 import LocaleSwitcher from '../components/LocaleSwitcher.vue'
 

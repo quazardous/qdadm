@@ -35,7 +35,7 @@ export interface QdadmGenOptions {
  * ```ts
  * // vite.config.js
  * import { defineConfig } from 'vite'
- * import { qdadmGen } from 'qdadm/gen/vite-plugin'
+ * import { qdadmGen } from '@quazardous/qdadm/gen/vite-plugin'
  *
  * export default defineConfig({
  *   plugins: [
@@ -56,7 +56,7 @@ export interface QdadmGenOptions {
  *     users: {
  *       schema: { name: 'users', fields: { id: { type: 'integer' } } },
  *       endpoint: '/api/users',
- *       storageImport: 'qdadm',
+ *       storageImport: '@quazardous/qdadm',
  *       storageClass: 'ApiStorage'
  *     }
  *   }

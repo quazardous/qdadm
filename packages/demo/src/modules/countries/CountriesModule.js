@@ -10,7 +10,7 @@
  * Custom storage handles pagination and search.
  */
 
-import { Module, ApiStorage, EntityManager } from 'qdadm'
+import { Module, ApiStorage, EntityManager } from '@quazardous/qdadm'
 import axios from 'axios'
 
 // ============================================================================

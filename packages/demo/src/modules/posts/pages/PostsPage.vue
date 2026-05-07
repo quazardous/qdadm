@@ -13,7 +13,7 @@
 
 import { ref, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { useListPage, ListPage, useOrchestrator } from 'qdadm'
+import { useListPage, ListPage, useOrchestrator } from '@quazardous/qdadm'
 import Column from 'primevue/column'
 import Button from 'primevue/button'
 

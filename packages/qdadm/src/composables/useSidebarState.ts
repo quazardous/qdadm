@@ -7,7 +7,7 @@
  *
  * @example
  * ```ts
- * import { useSidebarState } from 'qdadm'
+ * import { useSidebarState } from '@quazardous/qdadm'
  *
  * const { collapsed } = useSidebarState()
  * // collapsed.value === true when sidebar is in icon-only mode

@@ -18,8 +18,8 @@
  */
 import { ref, onMounted, watch, computed } from 'vue'
 import { useRoute } from 'vue-router'
-import { useOrchestrator } from 'qdadm'
-import { InfoBanner } from 'qdadm/components'
+import { useOrchestrator } from '@quazardous/qdadm'
+import { InfoBanner } from '@quazardous/qdadm/components'
 
 const route = useRoute()
 const { getManager } = useOrchestrator()

@@ -46,7 +46,7 @@ Modules register blocks without touching BooksList.vue.
 ```vue
 <!-- In your layout/page component -->
 <script setup>
-import { Zone } from 'qdadm'
+import { Zone } from '@quazardous/qdadm'
 </script>
 
 <template>
@@ -85,7 +85,7 @@ export function init({ registry, zones }) {
 **Alternative: Composable** (for dynamic registration in components):
 
 ```js
-import { useZoneRegistry } from 'qdadm'
+import { useZoneRegistry } from '@quazardous/qdadm'
 
 const { registerBlock } = useZoneRegistry()
 

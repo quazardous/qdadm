@@ -8,7 +8,7 @@
  */
 
 import { ref, onMounted } from 'vue'
-import { useListPage, ListPage, PageNav, useOrchestrator, BoolCell } from 'qdadm'
+import { useListPage, ListPage, PageNav, useOrchestrator, BoolCell } from '@quazardous/qdadm'
 import Column from 'primevue/column'
 import Tag from 'primevue/tag'
 

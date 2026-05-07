@@ -4,7 +4,7 @@
  *
  * Showcases qdadm's modular architecture and key features.
  */
-import { usePageTitle, qdadmLogo } from 'qdadm'
+import { usePageTitle, qdadmLogo } from '@quazardous/qdadm'
 import Card from 'primevue/card'
 import Button from 'primevue/button'
 import Tag from 'primevue/tag'

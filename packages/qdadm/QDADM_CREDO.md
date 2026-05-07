@@ -8,8 +8,8 @@ qdadm is an **ultra-DRY** admin framework. 80% of admin pages are built by decla
 
 ```vue
 <script setup>
-import { ListPage } from 'qdadm/components'
-import { useListPageBuilder } from 'qdadm/composables'
+import { ListPage } from '@quazardous/qdadm/components'
+import { useListPageBuilder } from '@quazardous/qdadm/composables'
 
 const list = useListPageBuilder('books')
 list.addColumn('title', 'Title')
@@ -45,7 +45,7 @@ Pages never import or reference storage directly:
 
 ```javascript
 // WRONG - pages don't know about storage
-import { MockApiStorage } from 'qdadm'
+import { MockApiStorage } from '@quazardous/qdadm'
 const storage = new MockApiStorage({...})
 await storage.list()
 
@@ -150,7 +150,7 @@ const { items } = await booksManager.list()  // Uses preloaded cache
 Organize features as class-based modules with lifecycle hooks:
 
 ```javascript
-import { Module, EntityManager, MockApiStorage } from 'qdadm'
+import { Module, EntityManager, MockApiStorage } from '@quazardous/qdadm'
 
 export class BooksModule extends Module {
   static name = 'books'
@@ -204,7 +204,7 @@ const toast = useToast()
 toast.add({ severity: 'success', summary: 'Saved!' })
 
 // RIGHT - signal-based (decoupled)
-import { useSignalToast } from 'qdadm'
+import { useSignalToast } from '@quazardous/qdadm'
 const toast = useSignalToast()
 toast.success('Saved!')  // Emits toast:success signal
 ```

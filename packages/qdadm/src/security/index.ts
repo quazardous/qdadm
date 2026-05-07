@@ -21,7 +21,7 @@
  *   PersistableRoleProvider,
  *   createLocalStorageRolesProvider,
  *   UsersManager
- * } from 'qdadm/security'
+ * } from '@quazardous/qdadm/security'
  */
 
 export { PermissionMatcher } from './PermissionMatcher'

@@ -2,6 +2,24 @@
 
 ## 1.19.3
 
+### Renamed — `qdadm` → `@quazardous/qdadm`
+
+The package has been renamed from the unscoped `qdadm` to the scoped `@quazardous/qdadm`, joining `@quazardous/qdcore` and `@quazardous/qddebug` under a single scope. The unscoped `qdadm` on npm (versions up to 1.19.2) is being deprecated with a redirect notice. **Consumers must update**:
+
+```diff
+- "qdadm": "^1.19.2"
++ "@quazardous/qdadm": "^1.19.3"
+```
+
+```diff
+- import { EntityManager } from "qdadm"
++ import { EntityManager } from "@quazardous/qdadm"
+```
+
+The codegen output also switches: generated `import { EntityManager } from "qdadm"` lines become `from "@quazardous/qdadm"`. Re-run `qdadmGen` after upgrade to refresh the generated files. The library API is unchanged — this is strictly a name/import-path migration.
+
+The reasoning: keeping `qdadm` as an unscoped name created a permanent special case for tokens (npm Granular tokens scoped to `@quazardous` don't cover unscoped packages), Trusted Publishers (per-package config instead of scope-level), and CI tooling. Folding into the scope removes that whole class of friction.
+
 ### Patch Changes
 
 - Three fixes reported by a downstream consumer running `vue-tsc --noEmit` against `qdadm@1.19.2`:

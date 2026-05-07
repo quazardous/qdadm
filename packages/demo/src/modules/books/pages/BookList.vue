@@ -14,7 +14,7 @@
  * See: modules/loans/components/LoansZoneSetup.vue for extension code
  */
 
-import { useListPage, ListPage, Zone, SeverityTag } from 'qdadm'
+import { useListPage, ListPage, Zone, SeverityTag } from '@quazardous/qdadm'
 import Column from 'primevue/column'
 import { useFavoriteAction } from '@/composables/useFavoriteAction'
 

@@ -19,7 +19,7 @@ The Vite plugin `qdadm/vite-plugin-debug` exposes the running app's
 `DebugBridge` over HTTP. Wire it in your `vite.config.js`:
 
 ```js
-import { qdadmDebugPlugin } from 'qdadm/vite-plugin-debug'
+import { qdadmDebugPlugin } from '@quazardous/qdadm/vite-plugin-debug'
 export default defineConfig({ plugins: [vue(), qdadmDebugPlugin()] })
 ```
 
@@ -104,7 +104,7 @@ automatically and your collector becomes visible to agents through the same
 endpoints.
 
 ```ts
-import { Collector } from 'qdadm/modules/debug'
+import { Collector } from '@quazardous/qdadm/modules/debug'
 class MyCollector extends Collector {
   static collectorName = 'mything'
   override describe() {

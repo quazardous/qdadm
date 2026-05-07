@@ -6,7 +6,7 @@
  * the toasts via PrimeVue.
  *
  * @example
- * import { useSignalToast } from 'qdadm'
+ * import { useSignalToast } from '@quazardous/qdadm'
  *
  * // With explicit emitter name
  * const toast = useSignalToast('MyComponent')

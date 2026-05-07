@@ -58,10 +58,10 @@ npm install qdadm primevue @primeuix/themes
 
 ```js
 // main.js
-import { Kernel } from 'qdadm'
+import { Kernel } from '@quazardous/qdadm'
 import PrimeVue from 'primevue/config'
 import Aura from '@primeuix/themes/aura'
-import 'qdadm/styles'
+import '@quazardous/qdadm/styles'
 import 'primeicons/primeicons.css'
 
 import App from './App.vue'
@@ -86,7 +86,7 @@ kernel.createApp().mount('#app')
 Each module is self-contained: entity, storage, routes, navigation, zones.
 
 ```js
-import { Module, EntityManager, MockApiStorage } from 'qdadm'
+import { Module, EntityManager, MockApiStorage } from '@quazardous/qdadm'
 
 export class BooksModule extends Module {
   static name = 'books'
@@ -145,7 +145,7 @@ ctx.crud('loans', {
 ### Security built-in
 
 ```js
-import { createLocalStorageRolesProvider } from 'qdadm/security'
+import { createLocalStorageRolesProvider } from '@quazardous/qdadm/security'
 
 const kernel = new Kernel({
   // ...

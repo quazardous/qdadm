@@ -21,7 +21,7 @@ npm run dev
 ### 1. EntityManager setup
 
 ```javascript
-import { createQdadm, MockApiStorage, EntityManager } from 'qdadm'
+import { createQdadm, MockApiStorage, EntityManager } from '@quazardous/qdadm'
 
 // Create EntityManager instance
 const tasksManager = new EntityManager({
@@ -51,7 +51,7 @@ const qdadm = createQdadm({
 
 ```vue
 <script setup>
-import { useListPageBuilder, ListPage } from 'qdadm'
+import { useListPageBuilder, ListPage } from '@quazardous/qdadm'
 import Column from 'primevue/column'
 
 const list = useListPageBuilder({ entity: 'tasks' })

@@ -9,7 +9,7 @@
  * Demonstrates LocalStorage (persistent across browser sessions).
  */
 
-import { Module, LocalStorage } from 'qdadm'
+import { Module, LocalStorage } from '@quazardous/qdadm'
 
 // ============================================================================
 // STORAGE

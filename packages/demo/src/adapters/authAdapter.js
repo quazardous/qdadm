@@ -9,7 +9,7 @@
  *   - bob, june (role: user) - Limited access
  */
 
-import { LocalStorageSessionAuthAdapter } from 'qdadm'
+import { LocalStorageSessionAuthAdapter } from '@quazardous/qdadm'
 
 // MockApiStorage key pattern: mockapi_${entityName}_data
 const USERS_STORAGE_KEY = 'mockapi_users_data'

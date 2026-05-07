@@ -17,7 +17,7 @@
  * - Navigation: Nav item in configured section
  */
 
-import { Module, EntityManager, MockApiStorage } from 'qdadm'
+import { Module, EntityManager, MockApiStorage } from '@quazardous/qdadm'
 
 // Optionally import auth check from shared config
 // import { authCheck } from '../../config/storages'

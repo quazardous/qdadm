@@ -5,7 +5,7 @@
  * Child route of jp_user: /jp-users/:id/todos
  * Parent filter auto-applied via route.meta.parent (userId = id)
  */
-import { useListPage, ListPage, PageNav, BoolCell } from 'qdadm'
+import { useListPage, ListPage, PageNav, BoolCell } from '@quazardous/qdadm'
 import Column from 'primevue/column'
 
 const list = useListPage({ entity: 'todos' })

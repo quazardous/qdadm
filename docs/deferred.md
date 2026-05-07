@@ -79,7 +79,7 @@ Boot                              Component
 
 ```js
 // In Vue component
-import { useDeferred } from 'qdadm'
+import { useDeferred } from '@quazardous/qdadm'
 
 const deferred = useDeferred()
 ```
@@ -280,7 +280,7 @@ await deferred.await('user:permissions')
 ### useDeferred
 
 ```js
-import { useDeferred } from 'qdadm'
+import { useDeferred } from '@quazardous/qdadm'
 
 const deferred = useDeferred()  // Returns DeferredRegistry
 ```
@@ -288,7 +288,7 @@ const deferred = useDeferred()  // Returns DeferredRegistry
 ### useDeferredValue
 
 ```js
-import { useDeferredValue } from 'qdadm'
+import { useDeferredValue } from '@quazardous/qdadm'
 
 // Returns reactive { value, status, error }
 const { value, status } = useDeferredValue('entity:books:cache')

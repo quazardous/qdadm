@@ -6,7 +6,7 @@
  *
  * Usage:
  * ```ts
- * import { NotificationModule, useNotifications } from 'qdadm'
+ * import { NotificationModule, useNotifications } from '@quazardous/qdadm'
  *
  * // Enable via kernel config
  * const kernel = new Kernel({

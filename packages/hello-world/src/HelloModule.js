@@ -7,7 +7,7 @@
  * - Uses connect(ctx) for registration via KernelContext fluent API
  */
 
-import { Module } from 'qdadm'
+import { Module } from '@quazardous/qdadm'
 
 export class HelloModule extends Module {
   static moduleName = 'hello'

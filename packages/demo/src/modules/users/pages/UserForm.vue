@@ -4,7 +4,7 @@
  *
  * Uses useEntityItemFormPage with FormInput for auto-rendered fields.
  */
-import { useEntityItemFormPage, FormPage, FormField, FormInput } from 'qdadm'
+import { useEntityItemFormPage, FormPage, FormField, FormInput } from '@quazardous/qdadm'
 
 const form = useEntityItemFormPage({ entity: 'users' })
 form.generateFields()

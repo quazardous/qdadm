@@ -12,7 +12,7 @@
  * - security:users:manage (for UsersManager)
  *
  * @example
- * import { SecurityModule } from 'qdadm/security'
+ * import { SecurityModule } from '@quazardous/qdadm/security'
  *
  * const kernel = new Kernel({
  *   moduleDefs: [SecurityModule, ...],

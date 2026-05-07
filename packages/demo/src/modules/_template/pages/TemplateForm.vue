@@ -7,7 +7,7 @@
  *
  * Replace {{EntityName}} and {{entity_name}} with your entity names.
  */
-import { useEntityItemFormPage, FormPage, FormField } from 'qdadm'
+import { useEntityItemFormPage, FormPage, FormField } from '@quazardous/qdadm'
 import InputText from 'primevue/inputtext'
 
 const form = useEntityItemFormPage({ entity: '{{entity_name}}' })

@@ -52,8 +52,8 @@ export { default as JsonEditorFoldable } from './editors/JsonEditorFoldable.vue'
 export { default as JsonViewer } from './editors/JsonViewer.vue'
 
 // NOTE: VanillaJsonEditor and JsonStructuredField require vanilla-jsoneditor
-// Import from 'qdadm/editors' instead:
-// import { VanillaJsonEditor, JsonStructuredField } from 'qdadm/editors'
+// Import from '@quazardous/qdadm/editors' instead:
+// import { VanillaJsonEditor, JsonStructuredField } from '@quazardous/qdadm/editors'
 
 // Dialogs
 export { default as SimpleDialog } from './dialogs/SimpleDialog.vue'

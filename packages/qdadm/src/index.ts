@@ -406,8 +406,8 @@ export * from './notifications/index'
 
 // ════════════════════════════════════════════════════════════════════════════
 // DEBUG - NOT exported here to enable tree-shaking.
-// Import from 'qdadm/debug' separately when needed:
-//   import { debugBar, DebugModule } from 'qdadm/debug'
+// Import from '@quazardous/qdadm/debug' separately when needed:
+//   import { debugBar, DebugModule } from '@quazardous/qdadm/debug'
 // ════════════════════════════════════════════════════════════════════════════
 
 // ════════════════════════════════════════════════════════════════════════════

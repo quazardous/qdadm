@@ -4,7 +4,7 @@
  *
  * Standard form using generateFields() for auto-generated fields.
  */
-import { useEntityItemFormPage, FormPage, FormField, FormInput, PageNav } from 'qdadm'
+import { useEntityItemFormPage, FormPage, FormField, FormInput, PageNav } from '@quazardous/qdadm'
 
 const form = useEntityItemFormPage({ entity: 'genres' })
 form.generateFields()

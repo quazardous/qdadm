@@ -10,8 +10,8 @@
 
 import { ref, onMounted, onUnmounted, inject, nextTick } from 'vue'
 import Select from 'primevue/select'
-import { SidebarBox } from 'qdadm/components'
-import { useUserImpersonator } from 'qdadm/composables'
+import { SidebarBox } from '@quazardous/qdadm/components'
+import { useUserImpersonator } from '@quazardous/qdadm/composables'
 
 const USERS_STORAGE_KEY = 'mockapi_users_data'
 

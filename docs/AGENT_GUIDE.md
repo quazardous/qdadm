@@ -59,7 +59,7 @@ npm test             # Run tests (from packages/qdadm)
 Modules extend `Module` class and use `ctx` (KernelContext) for registration:
 
 ```js
-import { Module, EntityManager, MockApiStorage } from 'qdadm'
+import { Module, EntityManager, MockApiStorage } from '@quazardous/qdadm'
 
 export class BooksModule extends Module {
   static name = 'books'

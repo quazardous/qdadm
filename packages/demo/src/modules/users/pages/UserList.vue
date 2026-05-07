@@ -3,7 +3,7 @@
  * UserList - User listing page
  */
 
-import { useListPage, ListPage } from 'qdadm'
+import { useListPage, ListPage } from '@quazardous/qdadm'
 import Column from 'primevue/column'
 
 // ============ LIST BUILDER ============

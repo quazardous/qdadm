@@ -16,7 +16,7 @@ npm install qdadm primevue @primeuix/themes primeicons
 
 ```js
 // src/main.js
-import { Kernel } from 'qdadm'
+import { Kernel } from '@quazardous/qdadm'
 import PrimeVue from 'primevue/config'
 import Aura from '@primeuix/themes/aura'
 import 'qdadm/styles'
@@ -45,7 +45,7 @@ A module owns its entities, storage, routes, and navigation.
 
 ```js
 // src/modules/library/LibraryModule.js
-import { Module, EntityManager, MockApiStorage } from 'qdadm'
+import { Module, EntityManager, MockApiStorage } from '@quazardous/qdadm'
 
 // ── Storage ──────────────────────────────────────────────────────────
 
@@ -138,7 +138,7 @@ export class LibraryModule extends Module {
 ```vue
 <!-- src/modules/library/pages/BookList.vue -->
 <script setup>
-import { useEntityListPage } from 'qdadm'
+import { useEntityListPage } from '@quazardous/qdadm'
 
 const { items, total, loading, columns, pagination, onPage, onDelete } =
   useEntityListPage('books')
@@ -165,7 +165,7 @@ const { items, total, loading, columns, pagination, onPage, onDelete } =
 ```vue
 <!-- src/modules/library/pages/BookForm.vue -->
 <script setup>
-import { useEntityFormPage } from 'qdadm'
+import { useEntityFormPage } from '@quazardous/qdadm'
 
 const { record, fields, loading, saving, isNew, onSave, onCancel } =
   useEntityFormPage('books')
@@ -192,7 +192,7 @@ The form handles both **create** (`/books/create`) and **edit** (`/books/:id/edi
 ```vue
 <!-- src/modules/library/pages/BookChapters.vue -->
 <script setup>
-import { useEntityListPage } from 'qdadm'
+import { useEntityListPage } from '@quazardous/qdadm'
 
 const { items, total, loading, columns, pagination, onPage, onDelete } =
   useEntityListPage('chapters')
@@ -219,7 +219,7 @@ The child list page automatically filters by the parent's foreign key (`book_id`
 ```vue
 <!-- src/modules/library/pages/BookChapterForm.vue -->
 <script setup>
-import { useEntityFormPage } from 'qdadm'
+import { useEntityFormPage } from '@quazardous/qdadm'
 
 const { record, fields, loading, saving, isNew, onSave, onCancel } =
   useEntityFormPage('chapters')
@@ -250,7 +250,7 @@ The `book_id` field is auto-injected from the route param when creating a new ch
 </template>
 
 <script setup>
-import { QdadmApp } from 'qdadm'
+import { QdadmApp } from '@quazardous/qdadm'
 </script>
 ```
 

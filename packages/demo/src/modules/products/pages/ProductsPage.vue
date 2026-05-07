@@ -12,7 +12,7 @@
  * Note: DummyJSON is read-only.
  */
 
-import { useListPage, ListPage } from 'qdadm'
+import { useListPage, ListPage } from '@quazardous/qdadm'
 import Column from 'primevue/column'
 import { useFavoriteAction } from '@/composables/useFavoriteAction'
 

@@ -59,8 +59,9 @@ jobs:
           title: "chore(release): version packages"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          # Granular Automation token from npmjs.com, scope-limited to qdadm
-          # and @quazardous/*. Bypass-2FA on (required for CI). Provenance
+          # Granular Automation token from npmjs.com, scoped to @quazardous
+          # (covers all three packages: @quazardous/qdadm, @quazardous/qdcore,
+          # @quazardous/qddebug). Bypass-2FA on (required for CI). Provenance
           # attestation is still signed via the OIDC token in id-token=write.
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
           NPM_CONFIG_PROVENANCE: "true"

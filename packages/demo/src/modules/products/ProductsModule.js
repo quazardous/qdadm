@@ -10,7 +10,7 @@
  * Custom storage handles limit/skip pagination.
  */
 
-import { Module, ApiStorage } from 'qdadm'
+import { Module, ApiStorage } from '@quazardous/qdadm'
 import axios from 'axios'
 
 // ============================================================================

@@ -8,8 +8,8 @@
  * - 'json-structured' → JsonStructuredField (form/JSON toggle with invalid-JSON guard)
  */
 import { ref, computed } from 'vue'
-import { useEntityItemFormPage, FormPage, FormField } from 'qdadm'
-import { VanillaJsonEditor, JsonStructuredField } from 'qdadm/editors'
+import { useEntityItemFormPage, FormPage, FormField } from '@quazardous/qdadm'
+import { VanillaJsonEditor, JsonStructuredField } from '@quazardous/qdadm/editors'
 import InputText from 'primevue/inputtext'
 import InputNumber from 'primevue/inputnumber'
 import ToggleSwitch from 'primevue/toggleswitch'

@@ -11,36 +11,36 @@ Changelog: [../../CHANGELOG.md](../../CHANGELOG.md)
 ## Installation
 
 ```bash
-npm install qdadm primevue @primeuix/themes
+npm install @quazardous/qdadm primevue @primeuix/themes
 ```
 
 ## Exports
 
 ```js
 // Core
-import { Kernel, EntityManager } from 'qdadm'
+import { Kernel, EntityManager } from '@quazardous/qdadm'
 
 // Storage backends
-import { MockApiStorage, ApiStorage, SdkStorage } from 'qdadm'
+import { MockApiStorage, ApiStorage, SdkStorage } from '@quazardous/qdadm'
 
 // Auth
-import { SessionAuthAdapter, LocalStorageSessionAuthAdapter } from 'qdadm'
+import { SessionAuthAdapter, LocalStorageSessionAuthAdapter } from '@quazardous/qdadm'
 
 // Security (permissions, roles)
-import { SecurityChecker, PermissionMatcher, PermissionRegistry } from 'qdadm/security'
-import { PersistableRoleProvider, createLocalStorageRolesProvider } from 'qdadm/security'
+import { SecurityChecker, PermissionMatcher, PermissionRegistry } from '@quazardous/qdadm/security'
+import { PersistableRoleProvider, createLocalStorageRolesProvider } from '@quazardous/qdadm/security'
 
 // Composables
-import { useForm, useBareForm, useListPageBuilder } from 'qdadm/composables'
+import { useForm, useBareForm, useListPageBuilder } from '@quazardous/qdadm/composables'
 
 // Components
-import { ListPage, PageLayout, AppLayout, FormField, FormActions } from 'qdadm/components'
+import { ListPage, PageLayout, AppLayout, FormField, FormActions } from '@quazardous/qdadm/components'
 
 // Module system
-import { KernelContext } from 'qdadm/module'
+import { KernelContext } from '@quazardous/qdadm/module'
 
 // Styles
-import 'qdadm/styles'
+import '@quazardous/qdadm/styles'
 ```
 
 ## ctx.crud() - Route Helper
@@ -75,7 +75,7 @@ Auto-generates: routes, route family, nav item. Use `ctx.routes()` for custom pa
 Adapter for generated SDK clients (hey-api, openapi-generator, etc.):
 
 ```js
-import { SdkStorage } from 'qdadm'
+import { SdkStorage } from '@quazardous/qdadm'
 
 const storage = new SdkStorage({
   sdk,

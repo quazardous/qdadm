@@ -6,7 +6,7 @@
  */
 
 import { ref, onMounted } from 'vue'
-import { useListPage, ListPage, useOrchestrator, BoolCell, useSignalToast } from 'qdadm'
+import { useListPage, ListPage, useOrchestrator, BoolCell, useSignalToast } from '@quazardous/qdadm'
 import Tag from 'primevue/tag'
 import Column from 'primevue/column'
 

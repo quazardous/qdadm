@@ -14,7 +14,7 @@
  * @zone books-list-header - Registered with operation: 'replace', replaces: 'books-header'
  */
 import { ref, onMounted, computed } from 'vue'
-import { useOrchestrator } from 'qdadm'
+import { useOrchestrator } from '@quazardous/qdadm'
 import Badge from 'primevue/badge'
 
 const { getManager } = useOrchestrator()

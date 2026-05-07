@@ -16,7 +16,7 @@ const managers = buildManagers(entities)      // Inconsistent output
 
 **With gen:**
 ```js
-import { OpenAPIConnector, createManagers } from 'qdadm/gen'
+import { OpenAPIConnector, createManagers } from '@quazardous/qdadm/gen'
 
 const connector = new OpenAPIConnector()
 const schemas = connector.parse(openApiSpec)
@@ -105,7 +105,7 @@ Canonical schema format all connectors produce:
 Parse OpenAPI 3.x specs into UnifiedEntitySchema:
 
 ```js
-import { OpenAPIConnector } from 'qdadm/gen'
+import { OpenAPIConnector } from '@quazardous/qdadm/gen'
 
 // Basic usage
 const connector = new OpenAPIConnector()
@@ -148,7 +148,7 @@ const { schemas, warnings } = connector.parseWithWarnings(spec)
 Define entities inline without external schema:
 
 ```js
-import { ManualConnector } from 'qdadm/gen'
+import { ManualConnector } from '@quazardous/qdadm/gen'
 
 const connector = new ManualConnector()
 const schemas = connector.parse([
@@ -169,7 +169,7 @@ const schemas = connector.parse([
 Extend `BaseConnector` for custom schema sources:
 
 ```js
-import { BaseConnector } from 'qdadm/gen'
+import { BaseConnector } from '@quazardous/qdadm/gen'
 
 class PydanticConnector extends BaseConnector {
   parse(source) {
@@ -188,7 +188,7 @@ class PydanticConnector extends BaseConnector {
 Convert JSON Schema types to UnifiedFieldType:
 
 ```js
-import { getDefaultType, BASE_TYPE_MAPPINGS, FORMAT_MAPPINGS } from 'qdadm/gen'
+import { getDefaultType, BASE_TYPE_MAPPINGS, FORMAT_MAPPINGS } from '@quazardous/qdadm/gen'
 
 // Type detection
 getDefaultType({ type: 'string' })                    // 'text'
@@ -208,7 +208,7 @@ getDefaultType({ type: 'string', format: 'phone' }, {
 Create EntityManager instances at runtime:
 
 ```js
-import { createManagers } from 'qdadm/gen'
+import { createManagers } from '@quazardous/qdadm/gen'
 
 const managers = createManagers(schemas, {
   storage: ApiStorage,
@@ -224,7 +224,7 @@ Generate static EntityManager files:
 
 ```js
 // vite.config.js
-import { generateManagers } from 'qdadm/gen'
+import { generateManagers } from '@quazardous/qdadm/gen'
 
 export default {
   plugins: [
@@ -242,7 +242,7 @@ export default {
 Per-entity field customization:
 
 ```js
-import { applyDecorators } from 'qdadm/gen'
+import { applyDecorators } from '@quazardous/qdadm/gen'
 
 const decorated = applyDecorators(schemas, {
   users: {

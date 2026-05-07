@@ -5,7 +5,7 @@
  * Note: ToastBridgeModule is auto-injected by Kernel, don't add it here
  */
 
-import { SecurityModule } from 'qdadm/security'
+import { SecurityModule } from '@quazardous/qdadm/security'
 import { BooksModule } from '../modules/books/BooksModule'
 import { UsersModule } from '../modules/users/UsersModule'
 import { LoansModule } from '../modules/loans/LoansModule'

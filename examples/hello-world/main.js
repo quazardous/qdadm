@@ -12,7 +12,7 @@ import Aura from '@primevue/themes/aura'
 import ToastService from 'primevue/toastservice'
 import ConfirmationService from 'primevue/confirmationservice'
 
-import { createQdadm, MockApiStorage, EntityManager } from 'qdadm'
+import { createQdadm, MockApiStorage, EntityManager } from '@quazardous/qdadm'
 import 'qdadm/styles'
 import 'primeicons/primeicons.css'
 

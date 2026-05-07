@@ -5,7 +5,7 @@
  * Admin-only access: Only ROLE_ADMIN can manage users.
  */
 
-import { Module, MockApiStorage } from 'qdadm'
+import { Module, MockApiStorage } from '@quazardous/qdadm'
 
 // ============================================================================
 // STORAGE

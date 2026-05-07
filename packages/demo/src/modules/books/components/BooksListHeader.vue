@@ -9,7 +9,7 @@
  * @zone books-list-header - Main header zone for book list page
  */
 import { computed } from 'vue'
-import { useOrchestrator } from 'qdadm'
+import { useOrchestrator } from '@quazardous/qdadm'
 
 const { getManager } = useOrchestrator()
 const booksManager = getManager('books')

@@ -6,7 +6,7 @@
  * Uses the orchestrator to fetch data and compute stats.
  */
 import { ref, onMounted } from 'vue'
-import { useOrchestrator, PageLayout } from 'qdadm'
+import { useOrchestrator, PageLayout } from '@quazardous/qdadm'
 import Card from 'primevue/card'
 
 const { getManager } = useOrchestrator()

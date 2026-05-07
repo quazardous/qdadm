@@ -7,7 +7,7 @@
  * - Non-admin: user_id is auto-set to current user (locked field)
  */
 import { computed } from 'vue'
-import { useEntityItemFormPage, FormPage, FormField, FormInput, useAuth } from 'qdadm'
+import { useEntityItemFormPage, FormPage, FormField, FormInput, useAuth } from '@quazardous/qdadm'
 import InputText from 'primevue/inputtext'
 
 const { user } = useAuth()

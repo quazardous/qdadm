@@ -47,7 +47,7 @@ describe('generateManagers', () => {
         entities: {
           users: {
             endpoint: '/users',
-            storageImport: 'qdadm',
+            storageImport: '@quazardous/qdadm',
             storageClass: 'ApiStorage'
           }
         }
@@ -60,7 +60,7 @@ describe('generateManagers', () => {
         entities: {
           users: {
             schema: { name: 'users', endpoint: '/users', fields: {} },
-            storageImport: 'qdadm',
+            storageImport: '@quazardous/qdadm',
             storageClass: 'ApiStorage'
           }
         }
@@ -87,7 +87,7 @@ describe('generateManagers', () => {
           users: {
             schema: { name: 'users', endpoint: '/users', fields: {} },
             endpoint: '/users',
-            storageImport: 'qdadm'
+            storageImport: '@quazardous/qdadm'
           }
         }
       })).rejects.toThrow("entity 'users' requires 'storageClass' property")
@@ -102,7 +102,7 @@ describe('generateManagers', () => {
           users: {
             schema: { name: 'users', endpoint: '/users', fields: {} },
             endpoint: '/users',
-            storageImport: 'qdadm',
+            storageImport: '@quazardous/qdadm',
             storageClass: 'ApiStorage'
           }
         }
@@ -122,7 +122,7 @@ describe('generateManagers', () => {
           users: {
             schema: { name: 'users', endpoint: '/users', fields: {} },
             endpoint: '/api/users',
-            storageImport: 'qdadm',
+            storageImport: '@quazardous/qdadm',
             storageClass: 'ApiStorage'
           },
           blog_posts: {
@@ -146,7 +146,7 @@ describe('generateManagers', () => {
           alpha: {
             schema: { name: 'alpha', endpoint: '/alpha', fields: {} },
             endpoint: '/alpha',
-            storageImport: 'qdadm',
+            storageImport: '@quazardous/qdadm',
             storageClass: 'ApiStorage'
           }
         }
@@ -171,7 +171,7 @@ describe('generateManagers', () => {
               }
             },
             endpoint: '/api/users',
-            storageImport: 'qdadm',
+            storageImport: '@quazardous/qdadm',
             storageClass: 'ApiStorage'
           }
         }
@@ -180,9 +180,9 @@ describe('generateManagers', () => {
       const content = await readFile(join(testOutputDir, 'usersManager.ts'), 'utf-8')
 
       // Check imports
-      expect(content).toContain("import { EntityManager } from 'qdadm'")
-      expect(content).toContain("import { ApiStorage } from 'qdadm'")
-      expect(content).toContain("import type { EntityRecord } from 'qdadm'")
+      expect(content).toContain("import { EntityManager } from '@quazardous/qdadm'")
+      expect(content).toContain("import { ApiStorage } from '@quazardous/qdadm'")
+      expect(content).toContain("import type { EntityRecord } from '@quazardous/qdadm'")
 
       // Check entity interface
       expect(content).toContain('export interface UsersEntity extends EntityRecord')
@@ -214,7 +214,7 @@ describe('generateManagers', () => {
           users: {
             schema: { name: 'users', endpoint: '/users', fields: {} },
             endpoint: '/api/users',
-            storageImport: 'qdadm',
+            storageImport: '@quazardous/qdadm',
             storageClass: 'ApiStorage'
           }
         }
@@ -231,7 +231,7 @@ describe('generateManagers', () => {
           users: {
             schema: { name: 'users', endpoint: '/users', fields: {} },
             endpoint: '/api/v1/users',
-            storageImport: 'qdadm',
+            storageImport: '@quazardous/qdadm',
             storageClass: 'ApiStorage'
           }
         }
@@ -248,7 +248,7 @@ describe('generateManagers', () => {
           users: {
             schema: { name: 'users', endpoint: '/users', fields: {} },
             endpoint: '/users',
-            storageImport: 'qdadm',
+            storageImport: '@quazardous/qdadm',
             storageClass: 'ApiStorage',
             storageOptions: {
               timeout: 5000,
@@ -278,7 +278,7 @@ describe('generateManagers', () => {
               }
             },
             endpoint: '/users',
-            storageImport: 'qdadm',
+            storageImport: '@quazardous/qdadm',
             storageClass: 'ApiStorage',
             decorators: {
               fields: {
@@ -309,7 +309,7 @@ describe('generateManagers', () => {
           blog_posts: {
             schema: { name: 'blog_posts', endpoint: '/posts', fields: {} },
             endpoint: '/posts',
-            storageImport: 'qdadm',
+            storageImport: '@quazardous/qdadm',
             storageClass: 'ApiStorage'
           }
         }
@@ -337,7 +337,7 @@ describe('generateManagers', () => {
               fields: {}
             },
             endpoint: '/users',
-            storageImport: 'qdadm',
+            storageImport: '@quazardous/qdadm',
             storageClass: 'ApiStorage'
           }
         }
@@ -375,7 +375,7 @@ describe('generateManagers', () => {
               }
             },
             endpoint: '/products',
-            storageImport: 'qdadm',
+            storageImport: '@quazardous/qdadm',
             storageClass: 'ApiStorage'
           }
         }
@@ -414,7 +414,7 @@ describe('generateManagers', () => {
               }
             },
             endpoint: '/users',
-            storageImport: 'qdadm',
+            storageImport: '@quazardous/qdadm',
             storageClass: 'ApiStorage'
           }
         }
@@ -428,7 +428,7 @@ describe('generateManagers', () => {
       // assignability problem as instance mode if we drop the generic.
       expect(content).toContain('new ApiStorage<UsersEntity>(')
       // Constructor signature should accept a typed storage override, not `unknown`
-      expect(content).toContain("import type { EntityRecord, IStorage } from 'qdadm'")
+      expect(content).toContain("import type { EntityRecord, IStorage } from '@quazardous/qdadm'")
       expect(content).toContain('storage: IStorage<UsersEntity>')
     })
   })
@@ -442,7 +442,7 @@ describe('generateManagers', () => {
           test: {
             schema: { name: 'test', endpoint: '/test', fields: {} },
             endpoint: '/test',
-            storageImport: 'qdadm',
+            storageImport: '@quazardous/qdadm',
             storageClass: 'ApiStorage'
           }
         }

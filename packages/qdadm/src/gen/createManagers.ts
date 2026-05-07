@@ -154,9 +154,9 @@ function findSchemaForEntity(
  *
  * @example
  * ```ts
- * import { createManagers } from 'qdadm/gen'
- * import { ManualConnector } from 'qdadm/gen'
- * import { ApiStorage } from 'qdadm'
+ * import { createManagers } from '@quazardous/qdadm/gen'
+ * import { ManualConnector } from '@quazardous/qdadm/gen'
+ * import { ApiStorage } from '@quazardous/qdadm'
  * import axios from 'axios'
  *
  * // Define schemas using connectors

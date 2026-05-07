@@ -12,8 +12,8 @@
  *
  * @example
  * // Basic access to zones (reactive)
- * import { useZoneRegistry } from 'qdadm'
- * import { ZONES } from 'qdadm/zones'
+ * import { useZoneRegistry } from '@quazardous/qdadm'
+ * import { ZONES } from '@quazardous/qdadm/zones'
  *
  * const { getBlocks, registerBlock, unregisterBlock } = useZoneRegistry()
  *
@@ -22,8 +22,8 @@
  *
  * @example
  * // Register/unregister blocks at component lifecycle
- * import { useZoneRegistry } from 'qdadm'
- * import { ZONES } from 'qdadm/zones'
+ * import { useZoneRegistry } from '@quazardous/qdadm'
+ * import { ZONES } from '@quazardous/qdadm/zones'
  * import AdBanner from './AdBanner.vue'
  *
  * const { registerBlock, unregisterBlock } = useZoneRegistry()
@@ -43,7 +43,7 @@
  *
  * @example
  * // Conditional block registration based on feature flag
- * import { useZoneRegistry } from 'qdadm'
+ * import { useZoneRegistry } from '@quazardous/qdadm'
  * import { watch } from 'vue'
  *
  * const { registerBlock, unregisterBlock } = useZoneRegistry()

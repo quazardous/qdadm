@@ -9,7 +9,7 @@
  * Demonstrates MemoryStorage (volatile - data lost on page refresh).
  */
 
-import { Module, MemoryStorage } from 'qdadm'
+import { Module, MemoryStorage } from '@quazardous/qdadm'
 
 // ============================================================================
 // STORAGE

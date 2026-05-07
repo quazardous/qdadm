@@ -78,7 +78,7 @@ Use **decorators** when you need behavior specific to one manager.
 Apply a chain of decorators:
 
 ```js
-import { createDecoratedManager, withAuditLog, withTimestamps } from 'qdadm'
+import { createDecoratedManager, withAuditLog, withTimestamps } from '@quazardous/qdadm'
 
 const enhancedBooks = createDecoratedManager(booksManager, [
   withTimestamps(),
@@ -151,7 +151,7 @@ Bundles package multiple hooks into reusable features.
 ### Built-in Bundles
 
 ```js
-import { applyBundle, withTimestamps, withSoftDelete, withVersioning } from 'qdadm'
+import { applyBundle, withTimestamps, withSoftDelete, withVersioning } from '@quazardous/qdadm'
 
 applyBundle(kernel.hooks, withTimestamps())
 applyBundle(kernel.hooks, withSoftDelete())
@@ -161,7 +161,7 @@ applyBundle(kernel.hooks, withVersioning())
 ### Multiple Bundles
 
 ```js
-import { applyBundles } from 'qdadm'
+import { applyBundles } from '@quazardous/qdadm'
 
 const cleanup = applyBundles(kernel.hooks, [
   withTimestamps(),
@@ -175,7 +175,7 @@ const cleanup = applyBundles(kernel.hooks, [
 ### Custom Bundles
 
 ```js
-import { createHookBundle, HOOK_PRIORITY } from 'qdadm'
+import { createHookBundle, HOOK_PRIORITY } from '@quazardous/qdadm'
 
 const withSlugGeneration = createHookBundle('slugGeneration', (register, context) => {
   const { sourceField = 'title', slugField = 'slug' } = context.options

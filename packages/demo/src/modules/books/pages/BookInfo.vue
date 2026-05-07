@@ -6,7 +6,7 @@
  * alongside entity child routes (like Loans).
  * useChildPage() gives access to hydrated parent data automatically.
  */
-import { useChildPage, PageLayout, PageNav } from 'qdadm'
+import { useChildPage, PageLayout, PageNav } from '@quazardous/qdadm'
 import Card from 'primevue/card'
 
 const { parentData: book, parentLoading, parentManager } = useChildPage()

@@ -117,7 +117,7 @@ ctx.navItem({ section: 'Library', route: 'book-stats', icon: 'pi pi-chart-bar', 
 
 ```vue
 <script setup>
-import { useListPage, ListPage, SeverityTag } from 'qdadm'
+import { useListPage, ListPage, SeverityTag } from '@quazardous/qdadm'
 import Column from 'primevue/column'
 
 const list = useListPage({ entity: 'books' })
@@ -220,7 +220,7 @@ useListPage({
 
 ```vue
 <script setup>
-import { useEntityItemFormPage, FormPage, FormField, FormInput, PageNav } from 'qdadm'
+import { useEntityItemFormPage, FormPage, FormField, FormInput, PageNav } from '@quazardous/qdadm'
 
 const form = useEntityItemFormPage({ entity: 'genres' })
 form.generateFields()
@@ -249,7 +249,7 @@ form.addDeleteAction()
 
 ```vue
 <script setup>
-import { useEntityItemFormPage, FormPage, FormField, FormInput, FieldGroups, PageNav } from 'qdadm'
+import { useEntityItemFormPage, FormPage, FormField, FormInput, FieldGroups, PageNav } from '@quazardous/qdadm'
 
 const form = useEntityItemFormPage({ entity: 'books' })
 form.generateFields()
@@ -346,7 +346,7 @@ useEntityItemFormPage({
 
 ```vue
 <script setup>
-import { useEntityItemShowPage, ShowPage, ShowField, PageNav } from 'qdadm'
+import { useEntityItemShowPage, ShowPage, ShowField, PageNav } from '@quazardous/qdadm'
 
 const show = useEntityItemShowPage({ entity: 'products' })
 show.generateFields()
@@ -442,7 +442,7 @@ Parent filter is auto-applied from `route.meta.parent`. No extra config needed i
 
 ```vue
 <script setup>
-import { useListPage, ListPage, PageNav } from 'qdadm'
+import { useListPage, ListPage, PageNav } from '@quazardous/qdadm'
 import Column from 'primevue/column'
 
 const list = useListPage({ entity: 'loans' })
@@ -483,7 +483,7 @@ The foreign key field is auto-filled and auto-disabled from the parent route:
 
 ```vue
 <script setup>
-import { useEntityItemFormPage, FormPage, FormField, FormInput, PageNav } from 'qdadm'
+import { useEntityItemFormPage, FormPage, FormField, FormInput, PageNav } from '@quazardous/qdadm'
 
 const form = useEntityItemFormPage({ entity: 'loans' })
 form.generateFields()
@@ -518,7 +518,7 @@ For custom tabs on entity items that don't map to a child entity.
 
 ```vue
 <script setup>
-import { useChildPage, PageLayout } from 'qdadm'
+import { useChildPage, PageLayout } from '@quazardous/qdadm'
 
 const { parentData: book, parentLoading, parentManager } = useChildPage()
 </script>
@@ -686,7 +686,7 @@ Tabs appear automatically: Details | Loans | Info
 
 ```vue
 <script setup>
-import { useAuth } from 'qdadm'
+import { useAuth } from '@quazardous/qdadm'
 const { user } = useAuth()
 const isAdmin = computed(() => user.value?.role === 'ROLE_ADMIN')
 

@@ -8,8 +8,8 @@
  * Endpoint: /test
  */
 
-import { EntityManager } from 'qdadm'
-import { ApiStorage } from 'qdadm'
+import { EntityManager } from '@quazardous/qdadm'
+import { ApiStorage } from '@quazardous/qdadm'
 
 /**
  * Schema definition for test

@@ -7,9 +7,9 @@
  * storage, routes, and navigation.
  */
 
-import { Kernel } from 'qdadm'
-import { debugBar } from 'qdadm/modules/debug'
-import { createLocalStorageRolesProvider } from 'qdadm/security'
+import { Kernel } from '@quazardous/qdadm'
+import { debugBar } from '@quazardous/qdadm/modules/debug'
+import { createLocalStorageRolesProvider } from '@quazardous/qdadm/security'
 import PrimeVue from 'primevue/config'
 import Aura from '@primeuix/themes/aura'
 import 'qdadm/styles'

@@ -17,8 +17,8 @@
  * @zone books-list-header - Registered with operation: 'extend', after: 'books-header'
  */
 import { ref, onMounted } from 'vue'
-import { useOrchestrator } from 'qdadm'
-import { InfoBanner } from 'qdadm/components'
+import { useOrchestrator } from '@quazardous/qdadm'
+import { InfoBanner } from '@quazardous/qdadm/components'
 
 const { getManager } = useOrchestrator()
 const loansManager = getManager('loans')

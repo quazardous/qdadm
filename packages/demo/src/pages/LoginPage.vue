@@ -7,7 +7,7 @@
  *   - bob, june (role: user) - Limited access, own loans only
  */
 
-import { LoginPage, qdadmLogo } from 'qdadm'
+import { LoginPage, qdadmLogo } from '@quazardous/qdadm'
 </script>
 
 <template>

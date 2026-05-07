@@ -240,8 +240,8 @@ function generateManagerSource(
  * Endpoint: ${endpoint}
  */
 
-import { EntityManager } from 'qdadm'
-import type { EntityRecord, IStorage } from 'qdadm'
+import { EntityManager } from '@quazardous/qdadm'
+import type { EntityRecord, IStorage } from '@quazardous/qdadm'
 import { ${storageClass} } from '${storageImport}'
 
 ${entityInterface}
@@ -274,8 +274,8 @@ export class Generated${className}Manager extends EntityManager<${className}Enti
  * Endpoint: ${endpoint}
  */
 
-import { EntityManager } from 'qdadm'
-import type { EntityRecord } from 'qdadm'
+import { EntityManager } from '@quazardous/qdadm'
+import type { EntityRecord } from '@quazardous/qdadm'
 import { ${storageClass} } from '${storageImport}'
 
 ${entityInterface}
@@ -314,7 +314,7 @@ export const ${entityName}Manager = new EntityManager<${className}Entity>({
  *
  * @example
  * ```ts
- * import { generateManagers } from 'qdadm/gen'
+ * import { generateManagers } from '@quazardous/qdadm/gen'
  *
  * const generatedFiles = await generateManagers({
  *   output: 'src/generated/managers/',
@@ -322,7 +322,7 @@ export const ${entityName}Manager = new EntityManager<${className}Entity>({
  *     users: {
  *       schema: usersSchema,
  *       endpoint: '/api/users',
- *       storageImport: 'qdadm',
+ *       storageImport: '@quazardous/qdadm',
  *       storageClass: 'ApiStorage',
  *       storageOptions: { client: 'apiClient' },
  *       decorators: {

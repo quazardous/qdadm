@@ -8,9 +8,9 @@
  */
 
 // Import browser-compatible gen modules directly to avoid Node.js-specific generateManagers
-import { createManagers } from 'qdadm/src/gen/createManagers.js'
-import { ManualConnector } from 'qdadm/src/gen/connectors/ManualConnector.js'
-import { ApiStorage } from 'qdadm'
+import { createManagers } from '@quazardous/qdadm/src/gen/createManagers.js'
+import { ManualConnector } from '@quazardous/qdadm/src/gen/connectors/ManualConnector.js'
+import { ApiStorage } from '@quazardous/qdadm'
 import axios from 'axios'
 
 // ============================================================================

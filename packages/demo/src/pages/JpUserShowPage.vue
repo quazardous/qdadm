@@ -5,7 +5,7 @@
  * Demonstrates field groups with tabs layout, including icons and badges.
  */
 import { computed } from 'vue'
-import { useEntityItemShowPage, ShowPage, ShowField, FieldGroups, PageNav } from 'qdadm'
+import { useEntityItemShowPage, ShowPage, ShowField, FieldGroups, PageNav } from '@quazardous/qdadm'
 import { useRouter, useRoute } from 'vue-router'
 
 const router = useRouter()

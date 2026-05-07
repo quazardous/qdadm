@@ -4,7 +4,7 @@
  *
  * Parent page for genre → books child route.
  */
-import { useListPage, ListPage, SeverityTag } from 'qdadm'
+import { useListPage, ListPage, SeverityTag } from '@quazardous/qdadm'
 import Column from 'primevue/column'
 
 const list = useListPage({ entity: 'genres' })

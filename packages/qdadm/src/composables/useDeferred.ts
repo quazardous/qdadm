@@ -6,7 +6,7 @@
  *
  * @example
  * ```ts
- * import { useDeferred } from 'qdadm/composables'
+ * import { useDeferred } from '@quazardous/qdadm/composables'
  *
  * // In a component
  * const deferred = useDeferred()

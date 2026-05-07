@@ -6,7 +6,7 @@
  * Also shows how to handle complex nested data with custom rendering.
  */
 import { computed } from 'vue'
-import { useEntityItemShowPage, ShowPage, ShowField, PageNav } from 'qdadm'
+import { useEntityItemShowPage, ShowPage, ShowField, PageNav } from '@quazardous/qdadm'
 import Tag from 'primevue/tag'
 
 const show = useEntityItemShowPage({ entity: 'countries' })

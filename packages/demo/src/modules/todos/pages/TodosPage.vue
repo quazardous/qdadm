@@ -11,7 +11,7 @@
  */
 
 import { ref, onMounted } from 'vue'
-import { useListPage, ListPage, useOrchestrator, useSignalToast } from 'qdadm'
+import { useListPage, ListPage, useOrchestrator, useSignalToast } from '@quazardous/qdadm'
 import Column from 'primevue/column'
 import Checkbox from 'primevue/checkbox'
 

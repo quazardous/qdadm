@@ -9,7 +9,7 @@
  */
 
 import { ref, onMounted } from 'vue'
-import { useOrchestrator, useSignalToast } from 'qdadm'
+import { useOrchestrator, useSignalToast } from '@quazardous/qdadm'
 
 /**
  * Add favorite toggle action to a list builder

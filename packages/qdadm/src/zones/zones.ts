@@ -140,7 +140,7 @@ export const ZONES = {
  *
  * @example
  * ```ts
- * import { createZoneRegistry, registerStandardZones } from 'qdadm/zones'
+ * import { createZoneRegistry, registerStandardZones } from '@quazardous/qdadm/zones'
  *
  * const registry = createZoneRegistry()
  * registerStandardZones(registry)

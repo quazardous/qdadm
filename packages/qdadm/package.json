@@ -1,5 +1,5 @@
 {
-  "name": "qdadm",
+  "name": "@quazardous/qdadm",
   "version": "1.19.3",
   "description": "Vue 3 framework for admin dashboards with PrimeVue",
   "author": "quazardous",

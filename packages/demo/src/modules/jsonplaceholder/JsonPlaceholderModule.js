@@ -9,7 +9,7 @@
  * All are read-only external API entities.
  */
 
-import { Module, ApiStorage } from 'qdadm'
+import { Module, ApiStorage } from '@quazardous/qdadm'
 import axios from 'axios'
 
 // ============================================================================

@@ -9,7 +9,7 @@
  * - Redirect after save auto-detects sibling list route (book-loans)
  * - parentData available for display (book title in header)
  */
-import { useEntityItemFormPage, FormPage, FormField, FormInput, PageNav } from 'qdadm'
+import { useEntityItemFormPage, FormPage, FormField, FormInput, PageNav } from '@quazardous/qdadm'
 
 // Create form - everything is auto-detected:
 // - Fields auto-generated from manager schema

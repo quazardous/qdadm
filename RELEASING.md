@@ -2,7 +2,7 @@
 
 Versioning + npm publishing for the qdadm-monorepo runs through [Changesets](https://github.com/changesets/changesets). Three packages ship to npm:
 
-- `qdadm`
+- `@quazardous/qdadm`
 - `@quazardous/qdcore`
 - `@quazardous/qddebug`
 
@@ -87,7 +87,7 @@ git push --follow-tags
 - Calls `changeset publish` which:
   - Reads each `package.json` `version` field.
   - Compares against the npm registry.
-  - For every package with a not-yet-published version, runs `npm publish --access public` (scope-respecting; `qdadm` is public unscoped).
+  - For every package with a not-yet-published version, runs `npm publish --access public` (all three packages live under the `@quazardous` scope).
   - Skips `private: true` packages and packages listed in `.changeset/config.json#ignore`.
   - Creates git tags `<package>@<version>`.
 
@@ -108,11 +108,11 @@ npm run release:publish              # publishes with --tag next
 npx changeset pre exit               # back to normal
 ```
 
-Consumers can then `npm install qdadm@next` without polluting the `latest` tag.
+Consumers can then `npm install @quazardous/qdadm@next` without polluting the `latest` tag.
 
 ## Scope ownership
 
-`@quazardous` and unscoped `qdadm` are owned by the `quazardous` npm account. Confirm with `npm whoami` before publishing.
+The `@quazardous` scope is owned by the `quazardous` npm account. Confirm with `npm whoami` before publishing. The previously-unscoped `qdadm` package on npm has been deprecated in favor of `@quazardous/qdadm` from 1.19.3 onwards — see `npm view qdadm` for the deprecation notice that points at the new name.
 
 ## What lives outside Changesets
 

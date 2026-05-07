@@ -24,7 +24,7 @@
  * Demonstrates pure value mode: options are plain strings extracted from
  * the 'author' field of existing books. No label/value mapping needed.
  */
-import { useEntityItemFormPage, FormPage, FormField, FormInput, FieldGroups, Zone, PageNav, useOptionsLookup } from 'qdadm'
+import { useEntityItemFormPage, FormPage, FormField, FormInput, FieldGroups, Zone, PageNav, useOptionsLookup } from '@quazardous/qdadm'
 import AutoComplete from 'primevue/autocomplete'
 
 // Route param uses manager.idField ('bookId') automatically

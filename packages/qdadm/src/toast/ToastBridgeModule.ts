@@ -6,13 +6,13 @@
  * - Provides useSignalToast() composable for emitting toasts
  *
  * Usage in modules:
- *   import { useSignalToast } from 'qdadm'
+ *   import { useSignalToast } from '@quazardous/qdadm'
  *   const toast = useSignalToast()
  *   toast.success('Saved!', 'Your changes have been saved')
  *   toast.error('Error', 'Something went wrong')
  *
  * @example
- * import { createKernel, ToastBridgeModule } from 'qdadm'
+ * import { createKernel, ToastBridgeModule } from '@quazardous/qdadm'
  *
  * const kernel = createKernel()
  * kernel.use(new ToastBridgeModule())

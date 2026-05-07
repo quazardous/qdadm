@@ -11,12 +11,12 @@
  */
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { useOrchestrator, useSignalToast } from 'qdadm'
+import { useOrchestrator, useSignalToast } from '@quazardous/qdadm'
 import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
 import InputText from 'primevue/inputtext'
 import Select from 'primevue/select'
-import { InfoBanner } from 'qdadm/components'
+import { InfoBanner } from '@quazardous/qdadm/components'
 import Button from 'primevue/button'
 import Tag from 'primevue/tag'
 

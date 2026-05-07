@@ -459,7 +459,7 @@ SSE events are prefixed with `sse:` (configurable):
 ### useSSEBridge Composable
 
 ```js
-import { useSSEBridge } from 'qdadm'
+import { useSSEBridge } from '@quazardous/qdadm'
 
 const {
   connected,      // Ref<boolean> - connection status

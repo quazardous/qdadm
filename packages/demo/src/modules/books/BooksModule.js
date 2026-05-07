@@ -10,7 +10,7 @@
  * This is the canonical pattern for qdadm modules.
  */
 
-import { Module, MockApiStorage, EntityManager } from 'qdadm'
+import { Module, MockApiStorage, EntityManager } from '@quazardous/qdadm'
 import { defineAsyncComponent } from 'vue'
 
 // ============================================================================

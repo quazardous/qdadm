@@ -14,7 +14,7 @@
  */
 
 import { computed, ref } from 'vue'
-import { useEntityItemFormPage, FormPage, FormField, LookupField, useOptionsLookup } from 'qdadm'
+import { useEntityItemFormPage, FormPage, FormField, LookupField, useOptionsLookup } from '@quazardous/qdadm'
 import InputText from 'primevue/inputtext'
 import Select from 'primevue/select'
 import SelectButton from 'primevue/selectbutton'

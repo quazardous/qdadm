@@ -5,7 +5,7 @@
  * Demonstrates the useEntityItemShowPage composable for read-only detail pages.
  * Simple example with basic fields.
  */
-import { useEntityItemShowPage, ShowPage, ShowField, PageNav } from 'qdadm'
+import { useEntityItemShowPage, ShowPage, ShowField, PageNav } from '@quazardous/qdadm'
 
 const show = useEntityItemShowPage({ entity: 'posts' })
 

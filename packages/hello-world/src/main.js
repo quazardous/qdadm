@@ -7,7 +7,7 @@
  * 3. Minimal configuration without auth
  */
 
-import { Kernel } from 'qdadm'
+import { Kernel } from '@quazardous/qdadm'
 import PrimeVue from 'primevue/config'
 import Aura from '@primeuix/themes/aura'
 import 'qdadm/styles'

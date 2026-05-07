@@ -43,7 +43,7 @@ export interface StorageProfileOptions {
  * @example Basic factory using ApiStorage
  * ```ts
  * import axios from 'axios'
- * import { ApiStorage } from 'qdadm'
+ * import { ApiStorage } from '@quazardous/qdadm'
  *
  * // Define profile factory with shared configuration
  * const apiProfile: StorageProfileFactory = (endpoint, options = {}) => {
@@ -77,7 +77,7 @@ export interface StorageProfileOptions {
  *
  * @example Factory for local development
  * ```ts
- * import { MemoryStorage } from 'qdadm'
+ * import { MemoryStorage } from '@quazardous/qdadm'
  *
  * const memoryProfile: StorageProfileFactory = (endpoint, options = {}) => {
  *   const entity = options.entity || endpoint.replace(/^\//, '')

@@ -12,7 +12,7 @@
  * - usersStorageInternal: for enriching username
  */
 
-import { Module, EntityManager, MockApiStorage, useNotifications } from 'qdadm'
+import { Module, EntityManager, MockApiStorage, useNotifications } from '@quazardous/qdadm'
 import { defineAsyncComponent, defineComponent, h, onMounted } from 'vue'
 
 // ============================================================================

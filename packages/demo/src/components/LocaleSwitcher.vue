@@ -8,7 +8,7 @@
  */
 import { inject, computed } from 'vue'
 import Select from 'primevue/select'
-import { SidebarBox } from 'qdadm/components'
+import { SidebarBox } from '@quazardous/qdadm/components'
 
 const i18n = inject('qdadmI18n', null)
 const signals = inject('qdadmSignals', null)

@@ -8,7 +8,7 @@
  * - Custom field configuration for display formatting
  * - Edit and Back actions
  */
-import { useEntityItemShowPage, ShowPage, ShowField, PageNav } from 'qdadm'
+import { useEntityItemShowPage, ShowPage, ShowField, PageNav } from '@quazardous/qdadm'
 
 const show = useEntityItemShowPage({ entity: 'products' })
 

@@ -13,7 +13,7 @@
  * Note: REST Countries API is read-only.
  */
 
-import { useListPage, ListPage } from 'qdadm'
+import { useListPage, ListPage } from '@quazardous/qdadm'
 import Column from 'primevue/column'
 import Tag from 'primevue/tag'
 import { useFavoriteAction } from '@/composables/useFavoriteAction'
