@@ -1,9 +1,18 @@
 {
   "name": "@quazardous/qddebug",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Symfony-style debug panel for qdadm and qdcms — bridge, collectors, and floating debug bar",
   "author": "quazardous",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/quazardous/qdadm.git",
+    "directory": "packages/qddebug"
+  },
+  "homepage": "https://github.com/quazardous/qdadm/tree/main/packages/qddebug#readme",
+  "bugs": {
+    "url": "https://github.com/quazardous/qdadm/issues"
+  },
   "type": "module",
   "main": "src/index.ts",
   "exports": {
@@ -23,7 +32,7 @@
     "test:watch": "vitest"
   },
   "dependencies": {
-    "@quazardous/qdcore": "*",
+    "@quazardous/qdcore": "^0.2.1",
     "primeicons": "^7.0.0"
   },
   "peerDependencies": {

@@ -3,6 +3,17 @@
 All notable changes to qdadm will be documented in this file.
 This is not a commit log. Keep entries simple, user-focused.
 
+## [1.19.2] - 2026-05-07
+
+### Fixed — codegen produced invalid TypeScript for nested object fields
+
+- **`generateEntityInterface` skips dotted-name fields.** `OpenAPIConnector` flattens one level of nested object properties as dotted keys (`filter.botUuids`, `filter.tags`) so they show up in runtime form/column metadata. The interface emitter was writing those keys verbatim, yielding `filter.botUuids?: unknown[] | null` which is not valid TS at the top level of an interface body. They're now skipped — the parent `filter: Record<string, unknown>` already covers the shape. Reported from a downstream consumer (skybot/admin) where `vue-tsc --noEmit` flagged TS1131/TS1109/TS1011 across every entity with a nested object schema.
+- **`fieldTypeToTsType` falls back to `unknown` for unrecognized types.** The switch had no `default` branch, so any type widened beyond `UnifiedFieldType` at runtime (OpenAPI `oneOf`/discriminator that `FieldMapper` didn't classify, etc.) made the IIFE return `undefined`, which template-literal interpolation then wrote into the file as the literal string `undefined`. Now emits `unknown` (or `unknown | null` when optional). Vite skips type checking, so this stayed invisible until consumers ran `vue-tsc`.
+
+### Changed — `@quazardous/qdcore` and `@quazardous/qddebug` now resolved from npm
+
+- Both deps were pinned to `"*"` in qdadm's `dependencies`, which only worked inside the qdadm-monorepo workspace. External consumers (e.g. skybot/admin installing qdadm via `file:` or tarball) hit a 404 on `npm install` because the registry doesn't know about workspace-only packages. Now pinned to `^0.2.1`, both packages published to npm under the `@quazardous` scope. First-time consumers can drop the multi-`npm pack` workaround and install qdadm directly. (See `@quazardous/qdcore@0.2.1` and `@quazardous/qddebug@0.2.1` for their own changelogs.)
+
 ## [1.19.1] - 2026-05-05
 
 ### Internal — refactor + test coverage

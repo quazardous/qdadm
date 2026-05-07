@@ -1,9 +1,18 @@
 {
   "name": "@quazardous/qdcore",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Generic event bus and navigation stack primitives shared by qdadm and qdcms",
   "author": "quazardous",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/quazardous/qdadm.git",
+    "directory": "packages/qdcore"
+  },
+  "homepage": "https://github.com/quazardous/qdadm/tree/main/packages/qdcore#readme",
+  "bugs": {
+    "url": "https://github.com/quazardous/qdadm/issues"
+  },
   "type": "module",
   "main": "src/index.ts",
   "exports": {
