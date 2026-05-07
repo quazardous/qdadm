@@ -11,8 +11,12 @@ concurrency:
   cancel-in-progress: false
 
 # changesets/action needs to commit the Version PR and create release tags.
-# id-token=write enables npm provenance (signed attestation linking each
-# published tarball to this repo + commit).
+# id-token=write enables BOTH npm provenance attestation AND OIDC Trusted
+# Publishing — npm trusts this exact workflow (owner/repo/workflow file)
+# as registered in each package's "Trusted Publisher" settings on npmjs.com,
+# so we don't need a long-lived NPM_TOKEN secret. The OIDC token minted at
+# job start is exchanged by `npm publish` for a short-lived publish-scoped
+# credential.
 permissions:
   contents: write
   pull-requests: write
@@ -29,7 +33,14 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          # Node 22 ships npm 11.x which has automatic OIDC Trusted
+          # Publishing auth (introduced in npm 11.5.1). Earlier npm
+          # versions could only sign provenance — auth still needed
+          # NPM_TOKEN. With npm 11+, when .npmrc has no _authToken and
+          # `id-token: write` is granted, `npm publish` exchanges the
+          # GitHub OIDC token for a short-lived publish credential
+          # against the package's Trusted Publisher config on npmjs.com.
+          node-version: 22
           cache: npm
           registry-url: https://registry.npmjs.org
 
@@ -53,5 +64,8 @@ jobs:
           title: "chore(release): version packages"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+          # No NPM_TOKEN — auth via OIDC Trusted Publishing. Each package
+          # (qdadm, @quazardous/qdcore, @quazardous/qddebug) is configured
+          # on npmjs.com to trust this repo + workflow file. Provenance is
+          # signed with the same OIDC token (NPM_CONFIG_PROVENANCE=true).
           NPM_CONFIG_PROVENANCE: "true"
