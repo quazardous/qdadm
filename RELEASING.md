@@ -23,14 +23,50 @@ Versioning + npm publishing for the qdadm-monorepo runs through [Changesets](htt
 
 You can stack multiple changesets across multiple commits — they accumulate until you're ready to release.
 
-## Cutting a release
+## Cutting a release — automated (GitHub Actions, default path)
 
-When you want to publish:
+`.github/workflows/release.yml` runs `changesets/action@v1` on every push to `main`.
+
+```
+PR with .changeset/*.md ─ merged ─► Action runs
+                                      │
+                                      ▼
+                  ┌──── pending changesets exist? ────┐
+                  │ yes                            no │
+                  ▼                                   ▼
+       Opens / updates a            Versions ahead of the npm
+       "chore(release): version     registry → publishes each
+       packages" PR. Commits         affected package, in
+       version bumps + lockfile      topological order, with
+       refresh + CHANGELOG entries.  npm provenance. Pushes git
+       Wait for review + merge.     tags `<pkg>@<version>`.
+```
+
+So the human flow is:
+
+1. Open a PR with your code change + a `.changeset/*.md`. Merge.
+2. Action opens a "Version Packages" PR. Review the diff (versions, CHANGELOG, lockfile).
+3. Merge that PR. Action publishes everything to npm, creates tags, done.
+
+You never run `npm publish` locally.
+
+### One-time setup
+
+The Action expects an **`NPM_TOKEN`** repository secret:
+
+1. On npmjs.com → *Account settings → Access tokens → Generate New Token → Automation* (Automation tokens bypass 2FA, which is required for CI).
+2. On GitHub → *Repo settings → Secrets and variables → Actions → New repository secret* → name `NPM_TOKEN`, paste the token.
+
+`GITHUB_TOKEN` is auto-provided by Actions. The workflow's `permissions:` block grants it `contents: write` (to commit the Version PR + push tags), `pull-requests: write` (to open the PR), and `id-token: write` (for npm provenance attestation).
+
+## Cutting a release — manual (escape hatch)
+
+If GitHub is down, NPM_TOKEN is rotating, or you want to verify a release dry locally:
 
 ```sh
 npm run release:version    # consumes .changeset/*.md → bumps versions, updates per-package CHANGELOG.md, refreshes lockfile
 git diff                   # review the bumps and CHANGELOG entries
-git add -A && git commit -m "chore(release): <packages and versions>"
+git add -A && git commit -m "chore(release): version packages"
 npm run release:publish    # runs all workspace tests, then npm publish in topological order
 git push --follow-tags
 ```

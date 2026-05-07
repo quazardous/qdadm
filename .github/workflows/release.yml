@@ -1,0 +1,57 @@
+name: Release
+
+on:
+  push:
+    branches: [main]
+
+# Cancel any in-flight release run when a new commit lands. The action is
+# idempotent, so the latest commit always wins.
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+# changesets/action needs to commit the Version PR and create release tags.
+# id-token=write enables npm provenance (signed attestation linking each
+# published tarball to this repo + commit).
+permissions:
+  contents: write
+  pull-requests: write
+  id-token: write
+
+jobs:
+  release:
+    name: Version PR or publish
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          registry-url: https://registry.npmjs.org
+
+      - name: Install
+        run: npm ci
+
+      - name: Test workspaces
+        run: npm test --workspaces --if-present
+
+      - name: Create release PR or publish
+        id: changesets
+        uses: changesets/action@v1
+        with:
+          # When there are pending .changeset/*.md files: opens/updates a
+          # "Version Packages" PR that bumps versions and refreshes the
+          # lockfile. When there are none and versions are ahead of the
+          # registry: publishes everything in topological order.
+          version: npm run release:version
+          publish: npx changeset publish
+          commit: "chore(release): version packages"
+          title: "chore(release): version packages"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NPM_CONFIG_PROVENANCE: "true"
