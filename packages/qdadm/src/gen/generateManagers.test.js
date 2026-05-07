@@ -192,6 +192,11 @@ describe('generateManagers', () => {
       // Check typed manager
       expect(content).toContain('new EntityManager<UsersEntity>')
 
+      // Storage must be parameterized with the entity type — without this the
+      // generated file fails type-check at the consumer side because
+      // ApiStorage<EntityRecord> is not assignable to IStorage<UsersEntity>.
+      expect(content).toContain('new ApiStorage<UsersEntity>(storageOptions)')
+
       // Check exports
       expect(content).toContain('export const usersSchema')
       expect(content).toContain('export const usersManager')
@@ -418,6 +423,13 @@ describe('generateManagers', () => {
       const content = await readFile(join(testOutputDir, 'users.ts'), 'utf-8')
       expect(content).toContain('export interface UsersEntity extends EntityRecord')
       expect(content).toContain('extends EntityManager<UsersEntity>')
+
+      // Storage must be parameterized in class mode too — same TS2322
+      // assignability problem as instance mode if we drop the generic.
+      expect(content).toContain('new ApiStorage<UsersEntity>(')
+      // Constructor signature should accept a typed storage override, not `unknown`
+      expect(content).toContain("import type { EntityRecord, IStorage } from 'qdadm'")
+      expect(content).toContain('storage: IStorage<UsersEntity>')
     })
   })
 

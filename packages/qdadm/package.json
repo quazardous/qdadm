@@ -1,6 +1,6 @@
 {
   "name": "qdadm",
-  "version": "1.19.2",
+  "version": "1.19.3",
   "description": "Vue 3 framework for admin dashboards with PrimeVue",
   "author": "quazardous",
   "license": "MIT",
@@ -54,11 +54,15 @@
   "peerDependencies": {
     "pinia": "^2.0.0 || ^3.0.0",
     "primevue": "^4.0.0",
+    "vite": "^5.0.0 || ^6.0.0 || ^7.0.0 || ^8.0.0",
     "vue": "^3.3.0",
     "vue-router": "^4.0.0"
   },
   "peerDependenciesMeta": {
     "vanilla-jsoneditor": {
+      "optional": true
+    },
+    "vite": {
       "optional": true
     }
   },
@@ -78,7 +82,7 @@
   "devDependencies": {
     "@eslint/js": "^9.39.2",
     "@types/node": "^25.0.6",
-    "@vitejs/plugin-vue": "^5.2.1",
+    "@vitejs/plugin-vue": "^6.0.0",
     "@vue/test-utils": "^2.4.6",
     "@vue/tsconfig": "^0.8.1",
     "eslint": "^9.39.2",
