@@ -88,6 +88,12 @@ export function fieldTypeToTsType(type: UnifiedFieldType, required: boolean): st
         return 'unknown[]'
       case 'object':
         return 'Record<string, unknown>'
+      default:
+        // Fallback for types widened beyond UnifiedFieldType at runtime
+        // (e.g. OpenAPI oneOf/discriminator that FieldMapper couldn't classify).
+        // Without this, the IIFE returns undefined and we'd emit the literal
+        // string "undefined" into the generated .ts file.
+        return 'unknown'
     }
   })()
   return required ? tsType : `${tsType} | null`
@@ -107,6 +113,12 @@ export function generateEntityInterface(
 
   for (const [fieldName, field] of Object.entries(fields)) {
     if (field.hidden) continue
+    // Connectors (e.g. OpenAPIConnector) flatten one level of nested object
+    // properties as dotted keys ("filter.botUuids") for runtime form/column
+    // metadata. The parent object field is already typed as
+    // Record<string, unknown>, and dotted keys are not legal at the top level
+    // of a TS interface body — skip them here.
+    if (fieldName.includes('.')) continue
     const isRequired = field.required || fieldName === idField
     const tsType = fieldTypeToTsType(field.type, isRequired)
     const optional = isRequired ? '' : '?'

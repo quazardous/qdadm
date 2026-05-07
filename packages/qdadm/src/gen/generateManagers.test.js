@@ -474,6 +474,15 @@ describe('fieldTypeToTsType', () => {
     expect(fieldTypeToTsType('number', false)).toBe('number | null')
     expect(fieldTypeToTsType('boolean', false)).toBe('boolean | null')
   })
+
+  it('falls back to unknown for unrecognized types instead of emitting literal undefined', () => {
+    // Repro for v1.19.1 bug: connectors could yield types outside UnifiedFieldType
+    // (e.g. OpenAPI oneOf/discriminator). Without a default branch the IIFE
+    // returned `undefined` and template-literal interpolation wrote the string
+    // "undefined" into the generated .ts file.
+    expect(fieldTypeToTsType('mystery-type', true)).toBe('unknown')
+    expect(fieldTypeToTsType('mystery-type', false)).toBe('unknown | null')
+  })
 })
 
 describe('generateEntityInterface', () => {
@@ -497,5 +506,23 @@ describe('generateEntityInterface', () => {
     }, 'id')
 
     expect(result).not.toContain('password')
+  })
+
+  it('skips dotted-name children of nested object fields', () => {
+    // Repro for v1.19.1 bug: OpenAPIConnector flattens one level of nested
+    // object props as dotted keys for runtime metadata. The interface emitter
+    // must not write those keys at the top level — they're invalid TS syntax,
+    // and the parent object field already carries Record<string, unknown>.
+    const result = generateEntityInterface('commands', {
+      id: { name: 'id', type: 'uuid' },
+      filter: { name: 'filter', type: 'object' },
+      'filter.botUuids': { name: 'filter.botUuids', type: 'array' },
+      'filter.tags': { name: 'filter.tags', type: 'array' }
+    }, 'id')
+
+    expect(result).toContain('filter?: Record<string, unknown> | null')
+    expect(result).not.toContain('filter.botUuids')
+    expect(result).not.toContain('filter.tags')
+    expect(result).not.toMatch(/^\s*filter\./m)
   })
 })
