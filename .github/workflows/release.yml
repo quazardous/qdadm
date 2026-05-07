@@ -69,3 +69,7 @@ jobs:
           # on npmjs.com to trust this repo + workflow file. Provenance is
           # signed with the same OIDC token (NPM_CONFIG_PROVENANCE=true).
           NPM_CONFIG_PROVENANCE: "true"
+          # Temporary: verbose npm logs to diagnose why the registry returns
+          # E404 on PUT despite the OIDC token signing the provenance
+          # statement successfully. Remove once the publish path is healthy.
+          NPM_CONFIG_LOGLEVEL: "verbose"
