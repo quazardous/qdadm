@@ -1,6 +1,6 @@
 {
   "name": "@quazardous/qdadm",
-  "version": "1.19.3",
+  "version": "1.19.4",
   "description": "Vue 3 framework for admin dashboards with PrimeVue",
   "author": "quazardous",
   "license": "MIT",
@@ -81,6 +81,7 @@
   ],
   "devDependencies": {
     "@eslint/js": "^9.39.2",
+    "@primeuix/themes": "^1.0.0",
     "@types/node": "^25.0.6",
     "@vitejs/plugin-vue": "^6.0.0",
     "@vue/test-utils": "^2.4.6",
@@ -92,6 +93,7 @@
     "globals": "^17.0.0",
     "jsdom": "^25.0.1",
     "prettier": "^3.7.4",
+    "primevue": "^4.0.0",
     "sass": "^1.97.1",
     "typescript": "^5.9.3",
     "typescript-eslint": "^8.52.0",
