@@ -13,7 +13,7 @@ import ToastService from 'primevue/toastservice'
 import ConfirmationService from 'primevue/confirmationservice'
 
 import { createQdadm, MockApiStorage, EntityManager } from '@quazardous/qdadm'
-import 'qdadm/styles'
+import '@quazardous/qdadm/styles'
 import 'primeicons/primeicons.css'
 
 import App from './App.vue'
