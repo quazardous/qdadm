@@ -427,9 +427,12 @@ describe('generateManagers', () => {
       // Storage must be parameterized in class mode too — same TS2322
       // assignability problem as instance mode if we drop the generic.
       expect(content).toContain('new ApiStorage<UsersEntity>(')
-      // Constructor signature should accept a typed storage override, not `unknown`
-      expect(content).toContain("import type { EntityRecord, IStorage } from '@quazardous/qdadm'")
-      expect(content).toContain('storage: IStorage<UsersEntity>')
+      // Constructor signature delegates to the parent's options type so
+      // `fields: Record<string, FieldConfig>` doesn't widen on spread (TS2345).
+      expect(content).toContain("import type { EntityRecord, EntityManagerOptions } from '@quazardous/qdadm'")
+      expect(content).toContain('options: Partial<EntityManagerOptions<UsersEntity>>')
+      expect(content).not.toContain('Record<string, unknown>')
+      expect(content).not.toContain('[key: string]: unknown')
     })
   })
 

@@ -241,7 +241,7 @@ function generateManagerSource(
  */
 
 import { EntityManager } from '@quazardous/qdadm'
-import type { EntityRecord, IStorage } from '@quazardous/qdadm'
+import type { EntityRecord, EntityManagerOptions } from '@quazardous/qdadm'
 import { ${storageClass} } from '${storageImport}'
 
 ${entityInterface}
@@ -252,7 +252,7 @@ ${entityInterface}
  * @extends EntityManager
  */
 export class Generated${className}Manager extends EntityManager<${className}Entity> {
-  constructor(options: Partial<{ name: string; idField: string; fields: Record<string, unknown>; storage: IStorage<${className}Entity>; [key: string]: unknown }> = {}) {
+  constructor(options: Partial<EntityManagerOptions<${className}Entity>> = {}) {
     super({
       ...${serializeValue(managerOptions, 2)},
       storage: new ${storageClass}<${className}Entity>(${serializeValue(fullStorageOptions, 2)}),
