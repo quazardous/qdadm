@@ -163,8 +163,8 @@ export function applyCacheMethods(EntityManagerClass: { prototype: any }): void 
     // Evict oldest entries by loadedAt
     const entries = [...items.entries()].sort((a, b) => a[1].loadedAt - b[1].loadedAt)
     const toRemove = entries.length - maxSize
-    for (let i = 0; i < toRemove; i++) {
-      items.delete(entries[i][0])
+    for (const [key] of entries.slice(0, toRemove)) {
+      items.delete(key)
     }
   }
 

@@ -291,7 +291,8 @@ export function useOptionsLookup(config: UseOptionsLookupConfig): UseOptionsLook
       )
       // When query exactly matches a single option (e.g. dropdown click with
       // current value), show all options so the user can browse alternatives
-      result = (filtered.length === 1 && filtered[0].toLowerCase() === q)
+      const sole = filtered.length === 1 ? filtered[0] : undefined
+      result = (sole !== undefined && sole.toLowerCase() === q)
         ? encodedStrings
         : filtered
     }
