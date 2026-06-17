@@ -38,6 +38,11 @@ jobs:
           cache: npm
           registry-url: https://registry.npmjs.org
 
+      # Node 22 LTS ships with npm 10.x; OIDC Trusted Publishing requires
+      # npm 11.5.1+ for the registry handshake. Upgrade explicitly.
+      - name: Upgrade npm for OIDC Trusted Publishers
+        run: npm install -g npm@latest
+
       - name: Install
         run: npm ci
 
