@@ -79,6 +79,7 @@ export interface ActionConfig {
   label: string
   icon?: string
   severity?: string
+  size?: string
   onClick: () => void | Promise<void>
   visible?: (ctx: { isEdit: boolean; dirty: boolean }) => boolean
   disabled?: (ctx: { dirty: boolean; saving: boolean }) => boolean

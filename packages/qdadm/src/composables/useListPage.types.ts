@@ -146,6 +146,7 @@ export interface HeaderActionConfig {
   label: string | ((state: HeaderActionState) => string)
   icon?: string
   severity?: string
+  size?: string
   onClick: () => void | Promise<void>
   visible?: (state: HeaderActionState) => boolean
   loading?: (state: HeaderActionState) => boolean

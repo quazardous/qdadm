@@ -25,7 +25,7 @@ import Button from 'primevue/button'
 import Select from 'primevue/select'
 import AutoComplete from 'primevue/autocomplete'
 import SplitButton from 'primevue/splitbutton'
-import type { FilterConfig, CardConfig, ResolvedAction, ResolvedHeaderAction as BaseResolvedHeaderAction } from '../../composables/useListPage'
+import type { FilterConfig, CardConfig, ResolvedAction, ResolvedHeaderAction } from '../../composables/useListPage'
 
 /**
  * Header action state for label function (matches useListPage)
@@ -40,13 +40,6 @@ interface HeaderActionState {
  * Label type from HeaderActionConfig
  */
 type LabelType = string | ((state: HeaderActionState) => string)
-
-/**
- * Extended header action with optional size property used in template
- */
-interface ResolvedHeaderAction extends BaseResolvedHeaderAction {
-  size?: string
-}
 
 /**
  * Autocomplete event interface

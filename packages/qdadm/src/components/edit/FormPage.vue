@@ -160,6 +160,7 @@ function onGuardStay(): void {
           :label="action.label"
           :icon="action.icon"
           :severity="action.severity"
+          :size="action.size || 'small'"
           :loading="action.isLoading"
           :disabled="action.isDisabled"
           @click="action.onClick"
