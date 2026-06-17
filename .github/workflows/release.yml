@@ -11,14 +11,13 @@ concurrency:
   cancel-in-progress: false
 
 # changesets/action needs to commit the Version PR and create release tags.
-# id-token=write is kept on for npm provenance attestation (signed with the
-# OIDC token, published to sigstore — independent of how publish auth itself
-# works). Publish auth uses NPM_TOKEN.
-#
-# OIDC Trusted Publishing was attempted (npm 11.5.1 feature) but the
-# self-upgrade step on the GitHub-Actions runner kept hitting npm's
-# MODULE_NOT_FOUND self-upgrade bug. Revisit when a runner image ships
-# npm 11.5+ natively.
+# id-token=write powers both:
+#   - npm provenance attestation (signed with the OIDC token, published to
+#     sigstore — visible on the npm package page).
+#   - Trusted Publishers (OIDC) auth at the npm registry — short-lived token
+#     issued by npmjs.com per run, no NPM_TOKEN secret required. Configured
+#     per-package on npmjs.com (publisher = GitHub Actions, repo =
+#     quazardous/qdadm, workflow = release.yml).
 permissions:
   contents: write
   pull-requests: write
@@ -59,9 +58,7 @@ jobs:
           title: "chore(release): version packages"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          # Granular Automation token from npmjs.com, scoped to @quazardous
-          # (covers all three packages: @quazardous/qdadm, @quazardous/qdcore,
-          # @quazardous/qddebug). Bypass-2FA on (required for CI). Provenance
-          # attestation is still signed via the OIDC token in id-token=write.
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+          # No NPM_TOKEN: publish auth comes from OIDC Trusted Publishers
+          # configured on npmjs.com for each package. The runner exchanges its
+          # GitHub OIDC token for a short-lived npm token automatically.
           NPM_CONFIG_PROVENANCE: "true"
