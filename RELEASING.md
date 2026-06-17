@@ -23,45 +23,46 @@ Versioning + npm publishing for the qdadm-monorepo runs through [Changesets](htt
 
 You can stack multiple changesets across multiple commits — they accumulate until you're ready to release.
 
-## Cutting a release — automated (GitHub Actions, default path)
+## Cutting a release — default path (version locally, Action publishes)
 
-`.github/workflows/release.yml` runs `changesets/action@v1` on every push to `main`.
+`.github/workflows/release.yml` runs `changesets/action@v1` on every push to `main`. The Action has two modes, decided by whether pending `.changeset/*.md` files exist at push time:
 
-```
-PR with .changeset/*.md ─ merged ─► Action runs
-                                      │
-                                      ▼
-                  ┌──── pending changesets exist? ────┐
-                  │ yes                            no │
-                  ▼                                   ▼
-       Opens / updates a            Versions ahead of the npm
-       "chore(release): version     registry → publishes each
-       packages" PR. Commits         affected package, in
-       version bumps + lockfile      topological order, with
-       refresh + CHANGELOG entries.  npm provenance. Pushes git
-       Wait for review + merge.     tags `<pkg>@<version>`.
-```
+- **Pending changesets exist** → it tries to open a "Version Packages" PR. **This repo does not use that mode** — GitHub Actions is not permitted to create PRs here (the step fails with *"GitHub Actions is not permitted to create or approve pull requests"*). So we consume changesets locally instead (see below).
+- **No pending changesets, local version ahead of npm** → it publishes each affected package in topological order, with npm provenance, and pushes git tags `<pkg>@<version>`. **This is the mode we use.**
 
 So the human flow is:
 
-1. Open a PR with your code change + a `.changeset/*.md`. Merge.
-2. Action opens a "Version Packages" PR. Review the diff (versions, CHANGELOG, lockfile).
-3. Merge that PR. Action publishes everything to npm, creates tags, done.
+1. Land your code change + a `.changeset/*.md` on `main` (direct push or merged PR).
+2. **Version locally** — this consumes the changesets so the next push hits the publish mode, not the PR mode:
+   ```sh
+   npm run release:version          # bumps versions + CHANGELOG + lockfile, deletes the consumed .changeset/*.md
+   git add -A && git commit -m "chore(release): <pkg> <version> — <summary>"
+   git push                         # local version is now ahead of npm
+   ```
+3. The push triggers `release.yml`, which sees no pending changesets + a version ahead of the registry → publishes to npm via OIDC and pushes the git tag. You never run `npm publish` yourself.
 
-You never run `npm publish` locally.
+> Why not the auto-PR? The "Version Packages" PR mode needs Actions to open a PR, which is disabled on this repo (and we prefer working directly on `main`). Consuming changesets locally in step 2 sidesteps it entirely. To switch to the PR flow instead, enable *Settings → Actions → General → Allow GitHub Actions to create and approve pull requests* and skip step 2.
 
-### One-time setup
+### One-time setup — OIDC Trusted Publishers (no token)
 
-The Action expects an **`NPM_TOKEN`** repository secret:
+Publish auth uses **npm OIDC Trusted Publishers**, not a long-lived token. There is no `NPM_TOKEN` secret to manage or rotate.
 
-1. On npmjs.com → *Account settings → Access tokens → Generate New Token → Automation* (Automation tokens bypass 2FA, which is required for CI).
-2. On GitHub → *Repo settings → Secrets and variables → Actions → New repository secret* → name `NPM_TOKEN`, paste the token.
+1. On npmjs.com, for **each** published package (`@quazardous/qdadm`, `@quazardous/qdcore`, `@quazardous/qddebug`) → *package page → Settings → Trusted Publisher → Add*:
+   - Provider: **GitHub Actions**
+   - Organization or user: `quazardous`
+   - Repository: `qdadm`
+   - Workflow filename: `release.yml`
+   - Environment: *(leave empty)*
+   - Allowed actions: **npm publish** (+ optionally **npm stage publish**)
+2. Nothing to add on the GitHub side. The runner exchanges its GitHub OIDC token for a short-lived npm token per run.
 
-`GITHUB_TOKEN` is auto-provided by Actions. The workflow's `permissions:` block grants it `contents: write` (to commit the Version PR + push tags), `pull-requests: write` (to open the PR), and `id-token: write` (for npm provenance attestation).
+`GITHUB_TOKEN` is auto-provided. The workflow's `permissions:` block grants `contents: write` (commit + push tags) and `id-token: write` (powers both npm provenance attestation **and** the OIDC publish handshake).
+
+> **Runner npm version matters.** OIDC Trusted Publishing needs npm ≥ 11.5.1, but Node 22 LTS ships npm 10.x — so `release.yml` runs `npm install -g npm@latest` before publishing. Without it, publish requests reach the registry with no auth and fail as an opaque `E404`. If you ever see `E404 Not Found - PUT .../@quazardous%2f…` on a package that already exists, check the runner's npm version first.
 
 ## Cutting a release — manual (escape hatch)
 
-If GitHub is down, NPM_TOKEN is rotating, or you want to verify a release dry locally:
+If GitHub Actions is down, or you want to publish from your machine (requires `npm login` as a `@quazardous` maintainer — the OIDC path only works inside the Action):
 
 ```sh
 npm run release:version    # consumes .changeset/*.md → bumps versions, updates per-package CHANGELOG.md, refreshes lockfile
