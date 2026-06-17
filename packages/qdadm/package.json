@@ -17,6 +17,7 @@
   "scripts": {
     "test": "vitest run",
     "test:watch": "vitest",
+    "gen:i18n-defaults": "node scripts/gen-i18n-defaults.mjs",
     "type-check": "vue-tsc --noEmit",
     "lint": "eslint src/",
     "lint:fix": "eslint src/ --fix",

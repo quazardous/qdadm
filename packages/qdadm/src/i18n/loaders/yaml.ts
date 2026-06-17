@@ -5,11 +5,14 @@
  * `LazyLoader` that resolves the YAML text for the requested locale and
  * parses it through the `yaml` package.
  *
- * Typical usage with Vite/Vitest `?raw` imports (qdadm-internal default):
+ * The importer just needs to resolve to `{ default: <yaml text> }`. qdadm's
+ * own defaults import generated `.ts` string modules (see DefaultCoreProvider
+ * — bundler-portable, no `?raw`), but a consumer on Vite/Vitest can equally
+ * pass `?raw` imports of their own YAML:
  *
  *   const loader = createYamlLoader({
- *     en: () => import('./core.en.yml?raw'),
- *     fr: () => import('./core.fr.yml?raw'),
+ *     en: () => import('./messages.en.yml?raw'),
+ *     fr: () => import('./messages.fr.yml?raw'),
  *   })
  *
  * The dynamic-import boundary is what gives us code-splitting: the YAML for
