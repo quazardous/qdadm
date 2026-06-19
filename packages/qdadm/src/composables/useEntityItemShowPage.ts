@@ -33,24 +33,27 @@
  * <ShowPage v-bind="show.props.value" v-on="show.events" />
  * ```
  */
-import { ref, computed, watch, type Ref, type ComputedRef } from 'vue'
-import { useRouter, useRoute, type Router } from 'vue-router'
+import { ref, computed, type Ref, type ComputedRef } from 'vue'
+import { useRouter, type Router } from 'vue-router'
 import { useConfirm } from 'primevue/useconfirm'
 import {
   useEntityItemPage,
   type ParentConfig,
   type EntityManager,
-  type UseEntityItemPageReturn,
 } from './useEntityItemPage'
 import type { StackHydratorReturn } from '../chain/useStackHydrator'
 import {
   useFieldManager,
-  snakeCaseToTitle,
   type FieldGroup,
   type GroupDefinition,
   type GroupOptions,
   type AddFieldOptions,
 } from './useFieldManager'
+import {
+  createShowFieldResolver,
+  type ShowFieldDefinition,
+  type ShowResolvedFieldConfig,
+} from './createShowFieldResolver'
 
 /**
  * Orchestrator interface
@@ -66,41 +69,16 @@ interface Orchestrator {
 }
 
 /**
- * Field definition from EntityManager schema
+ * Field definition from EntityManager schema.
+ * Re-exported from the shared resolver under the historical name.
  */
-export interface FieldDefinition {
-  name: string
-  type?: string
-  schemaType?: string
-  label?: string
-  reference?: string
-  referenceRoute?: string | ((value: unknown) => { name: string; params: Record<string, unknown> })
-  referenceLabel?: string | ((value: unknown, option?: unknown) => string)
-  options?: unknown[]
-  optionLabel?: string
-  optionValue?: string
-  // Display options
-  dateFormat?: string
-  currencyCode?: string
-  locale?: string
-  booleanLabels?: { true: string; false: string }
-  severity?: string | ((value: unknown) => string | { severity: string; icon?: string; label?: string })
-  imageWidth?: string
-  imageHeight?: string
-  render?: (value: unknown) => string
-  [key: string]: unknown
-}
+export type FieldDefinition = ShowFieldDefinition
 
 /**
- * Resolved field configuration for display rendering
+ * Resolved field configuration for display rendering.
+ * Re-exported from the shared resolver under the historical name.
  */
-export interface ResolvedFieldConfig extends FieldDefinition {
-  name: string
-  type: string
-  schemaType: string
-  label: string
-  group?: string
-}
+export type ResolvedFieldConfig = ShowResolvedFieldConfig
 
 // FieldGroup, GroupDefinition, GroupOptions imported from useFieldManager
 
@@ -175,43 +153,6 @@ export interface ShowPageEvents {
   delete: () => void
   back: () => void
 }
-
-/**
- * Type mapping from schema types to display types
- */
-const TYPE_MAPPINGS: Record<string, string> = {
-  text: 'text',
-  string: 'text',
-  email: 'email',
-  password: 'password',
-  number: 'number',
-  integer: 'number',
-  float: 'number',
-  decimal: 'number',
-  currency: 'currency',
-  boolean: 'boolean',
-  bool: 'boolean',
-  date: 'date',
-  datetime: 'datetime',
-  time: 'datetime',
-  timestamp: 'datetime',
-  select: 'select',
-  enum: 'select',
-  textarea: 'textarea',
-  longtext: 'textarea',
-  reference: 'reference',
-  foreignKey: 'reference',
-  image: 'image',
-  url: 'url',
-  link: 'url',
-  json: 'json',
-  object: 'json',
-  array: 'json',
-  badge: 'badge',
-  tag: 'badge',
-}
-
-// snakeCaseToTitle imported from useFieldManager
 
 /**
  * Options for useEntityItemShowPage
@@ -327,7 +268,6 @@ export function useEntityItemShowPage<T = unknown>(
   const { entity, loadOnMount = true, transformLoad, onLoadSuccess, onLoadError } = options
 
   const router: Router = useRouter()
-  const route = useRoute()
   const confirm = useConfirm() as ConfirmService
 
   // Lazy action state (declared before base so onLoadSuccess wrapper can reference it)
@@ -376,56 +316,8 @@ export function useEntityItemShowPage<T = unknown>(
 
   // ============ FIELD & GROUP MANAGEMENT (via useFieldManager) ============
 
-  /**
-   * Show-specific field resolver with reference route auto-detection
-   */
-  function resolveFieldConfig(name: string, fieldConfig: Partial<FieldDefinition>): ResolvedFieldConfig {
-    const {
-      type = 'text',
-      schemaType = type,
-      label = '',
-      reference = '',
-      severity,
-      ...rest
-    } = fieldConfig
-
-    let resolvedDisplayType = TYPE_MAPPINGS[type] || TYPE_MAPPINGS[schemaType] || 'text'
-    const resolvedLabel = label || snakeCaseToTitle(name)
-
-    // Auto-set reference route if reference entity is specified
-    let referenceRoute = rest.referenceRoute
-    if (reference && !referenceRoute) {
-      const refManager = orchestrator.get(reference)
-      if (refManager) {
-        referenceRoute = (value: unknown) => ({
-          name: `${refManager.routePrefix || reference}-show`,
-          params: { [refManager.idField]: value },
-        })
-      }
-    }
-
-    // Auto-inject severity from manager's severity maps
-    let resolvedSeverity = severity
-    if (!resolvedSeverity && manager.hasSeverityMap?.(name)) {
-      resolvedSeverity = manager.getSeverityDescriptor
-        ? (value: unknown) => manager.getSeverityDescriptor!(name, value as string | number, 'secondary')
-        : (value: unknown) => manager.getSeverity!(name, value as string | number, 'secondary')
-      if (resolvedDisplayType === 'text') {
-        resolvedDisplayType = 'badge'
-      }
-    }
-
-    return {
-      name,
-      type: resolvedDisplayType,
-      schemaType,
-      label: resolvedLabel,
-      reference,
-      referenceRoute,
-      severity: resolvedSeverity,
-      ...rest,
-    }
-  }
+  // Show-specific field resolver (shared with <ParentCard>, see #1038)
+  const resolveFieldConfig = createShowFieldResolver(manager, orchestrator)
 
   // Create field manager with show-specific resolver
   const fieldManager = useFieldManager<ResolvedFieldConfig>({
