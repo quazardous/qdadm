@@ -36,6 +36,7 @@ export { default as LookupPickerDialog } from './edit/LookupPickerDialog.vue'
 export { default as ShowPage } from './show/ShowPage.vue'
 export { default as ShowField } from './show/ShowField.vue'
 export { default as ShowDisplay } from './show/ShowDisplay.vue'
+export { default as ParentCard } from './show/ParentCard.vue'
 
 // Lists
 export { default as ListPage } from './lists/ListPage.vue'

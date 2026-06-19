@@ -62,13 +62,14 @@ Pourquoi c'est propre : sur cette route, `useListPage` fait déjà tout le trava
 - le composable **instancie et expose déjà le parent** : `parentData`, `parentId`,
   `parentLoading`, `parentChain`, `parentPage`. **Aucun fetch supplémentaire.**
 
-Il reste juste à *rendre* `parentData`, dans le slot `#beforeTable`, avec les **mêmes
-renderers normalisés que `ShowPage`** (`ShowDisplay` / `ShowField`) — cohérence visuelle
-avec les vraies fiches, pas de markup ad hoc.
+Il reste juste à *rendre* `parentData` dans le slot `#beforeTable`. Le composant
+**`<ParentCard>`** fait ça en une ligne : il dérive automatiquement les champs depuis le
+manager du parent et les rend avec les **mêmes renderers que `ShowPage`** (cohérence
+visuelle avec les vraies fiches, zéro re-fetch).
 
 ```vue
 <script setup>
-import { useListPage, ListPage, ShowField, PageNav } from '@quazardous/qdadm'
+import { useListPage, ListPage, ParentCard, PageNav } from '@quazardous/qdadm'
 import Column from 'primevue/column'
 
 // Route enfant /books/:bookId/loans → parent (book) déjà résolu par useListPage
@@ -83,15 +84,12 @@ list.addEditAction()
 
     <!-- Cartouche parent normalisé, alimenté par parentData (zéro re-fetch) -->
     <template #beforeTable>
-      <div v-if="list.parentLoading.value" class="p-3">
-        <i class="pi pi-spin pi-spinner" />
-      </div>
-      <div v-else-if="list.parentData.value" class="parent-card">
-        <ShowField :field="{ name: 'title', label: 'Book' }"
-          :value="list.parentData.value.title" horizontal />
-        <ShowField :field="{ name: 'author', label: 'Author' }"
-          :value="list.parentData.value.author" horizontal />
-      </div>
+      <ParentCard
+        :entity="'books'"
+        :data="list.parentData.value"
+        :loading="list.parentLoading.value"
+        :fields="['title', 'author']"
+      />
     </template>
 
     <template #columns>
@@ -101,6 +99,9 @@ list.addEditAction()
   </ListPage>
 </template>
 ```
+
+`fields` est optionnel (omis → tous les champs du manager) ; le slot par défaut de
+`<ParentCard>` permet de rendre le parent soi-même à partir du set de champs résolu.
 
 > **Marche via `crud` *ou* `childPage`.** Le cartouche parent ne dépend que de
 > `route.meta.parent` étant posé — donc il fonctionne aussi bien si la route enfant vient de
@@ -113,9 +114,6 @@ list.addEditAction()
 
 - À utiliser quand : la liste enfant se lit « au fil de la fiche » et on veut le contexte
   parent visible en permanence.
-- 🚧 Une brique réutilisable (cartouche parent « plug », façon `usePage`) est suivie dans
-  **#1038** ; en attendant, la recette ci-dessus (slot + `ShowField` sur `parentData`) est
-  le pattern de référence.
 
 ### B1 — Show parent hôte + liste enfant inline · *échappatoire*
 
