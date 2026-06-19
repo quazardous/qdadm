@@ -102,6 +102,15 @@ list.addEditAction()
 </template>
 ```
 
+> **Marche via `crud` *ou* `childPage`.** Le cartouche parent ne dépend que de
+> `route.meta.parent` étant posé — donc il fonctionne aussi bien si la route enfant vient de
+> `ctx.crud(child, {list}, {parentRoute, foreignKey})` que de `ctx.childPage(parent, name)`.
+> Seul le **scoping de la liste** diffère : avec `foreignKey`, `useListPage` arme un filtre FK
+> de requête (`useListPage.ts:944`) ; sans `foreignKey` (cas `childPage`), `parentData` /
+> `parentChain` sont quand même peuplés et le scoping passe par `parentChain` + `resolveStorage`
+> (endpoint imbriqué). Dans les deux cas le cartouche est identique. *(Validé sur un cas réel
+> skybot — `childPage` sans `foreignKey`.)*
+
 - À utiliser quand : la liste enfant se lit « au fil de la fiche » et on veut le contexte
   parent visible en permanence.
 - 🚧 Une brique réutilisable (cartouche parent « plug », façon `usePage`) est suivie dans
