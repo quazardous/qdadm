@@ -9,9 +9,9 @@ qdadm is an **ultra-DRY** admin framework. 80% of admin pages are built by decla
 ```vue
 <script setup>
 import { ListPage } from '@quazardous/qdadm/components'
-import { useListPageBuilder } from '@quazardous/qdadm/composables'
+import { useListPage } from '@quazardous/qdadm/composables'
 
-const list = useListPageBuilder('books')
+const list = useListPage({ entity: 'books' })
 list.addColumn('title', 'Title')
 list.addColumn('author', 'Author')
 list.setSearch({ placeholder: 'Search...' })
@@ -50,7 +50,7 @@ const storage = new MockApiStorage({...})
 await storage.list()
 
 // RIGHT - pages only know entity names
-const list = useListPageBuilder({ entity: 'books' })
+const list = useListPage({ entity: 'books' })
 ```
 
 The value: switching from `MockApiStorage` to `SdkStorage` requires **zero changes to any page**.

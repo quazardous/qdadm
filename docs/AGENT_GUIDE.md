@@ -2,8 +2,6 @@
 
 > Navigation index for AI agents. Read code directly for details.
 > Philosophy: see [QDADM_CREDO.md](../packages/qdadm/QDADM_CREDO.md)
->
-> **Versions:** qdadm 1.0.0 | demo 0.17.3
 
 ## Dev Commands
 
@@ -42,7 +40,7 @@ npm test             # Run tests (from packages/qdadm)
 |-----------|----------|----------|
 | ListPage | `qdadm/src/components/lists/ListPage.vue` | CRUD list pages |
 | PageLayout | `qdadm/src/components/layout/PageLayout.vue` | Page wrapper |
-| FormField | `qdadm/src/components/forms/FormField.vue` | Form inputs |
+| FormField | `qdadm/src/components/edit/FormField.vue` | Form inputs |
 | Zone | `qdadm/src/components/layout/Zone.vue` | Extensible slots |
 | AppLayout | `qdadm/src/components/layout/AppLayout.vue` | Main layout |
 
@@ -50,7 +48,7 @@ npm test             # Run tests (from packages/qdadm)
 
 | Composable | Location | Use Case |
 |------------|----------|----------|
-| useListPageBuilder | `qdadm/src/composables/useListPageBuilder.ts` | Build list pages |
+| useListPage | `qdadm/src/composables/useListPage.ts` | Build list pages |
 | useForm | `qdadm/src/composables/useForm.ts` | Form state management |
 | useOrchestrator | `qdadm/src/orchestrator/useOrchestrator.ts` | Access managers |
 
@@ -158,7 +156,7 @@ EntitiesPanel shows all relations:
 | Feature | Example File | Shows |
 |---------|--------------|-------|
 | Module class | `demo/src/modules/books/BooksModule.js` | Full module pattern |
-| List page | `demo/src/modules/books/pages/BookList.vue` | useListPageBuilder |
+| List page | `demo/src/modules/books/pages/BookList.vue` | useListPage |
 | Form (create/edit) | `demo/src/modules/books/pages/BookForm.vue` | useForm, single form |
 | Custom page | `demo/src/modules/books/pages/BookStats.vue` | Non-CRUD route |
 | Auth adapter | `demo/src/adapters/authAdapter.js` | Login/logout |
@@ -268,6 +266,7 @@ AuthCollector shows: user, token, permissions, role hierarchy, impersonation eve
 | Topic | File |
 |-------|------|
 | Philosophy | `packages/qdadm/QDADM_CREDO.md` |
+| Page compositions (start here) | `docs/page-compositions.md` |
 | CRUD Pages | `docs/crud.md` |
 | Architecture (PAC) | `docs/architecture.md` |
 | Extension overview | `docs/extension.md` |
@@ -275,3 +274,6 @@ AuthCollector shows: user, token, permissions, role hierarchy, impersonation eve
 | Signals deep dive | `docs/signals.md` |
 | Zones deep dive | `docs/zones.md` |
 | Security | `docs/security.md` |
+| i18n | `docs/i18n.md` |
+| Manager codegen | `docs/gen.md` |
+| Deferred values | `docs/deferred.md` |

@@ -73,7 +73,7 @@ Pages never import:
 
 Pages only know:
 - Entity names (`'books'`, `'users'`)
-- Builders (`useListPageBuilder`, `useFormPageBuilder`)
+- Builders (`useListPage`, `useEntityItemFormPage`)
 - Standard components (`ListPage`, `FormPage`)
 
 This isolation means swapping storage backends requires zero page changes.

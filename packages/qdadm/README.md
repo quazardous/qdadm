@@ -31,7 +31,7 @@ import { SecurityChecker, PermissionMatcher, PermissionRegistry } from '@quazard
 import { PersistableRoleProvider, createLocalStorageRolesProvider } from '@quazardous/qdadm/security'
 
 // Composables
-import { useForm, useBareForm, useListPageBuilder } from '@quazardous/qdadm/composables'
+import { useForm, useBareForm, useListPage } from '@quazardous/qdadm/composables'
 
 // Components
 import { ListPage, PageLayout, AppLayout, FormField, FormActions } from '@quazardous/qdadm/components'
@@ -96,8 +96,18 @@ Options: `transformRequest`, `transformResponse`, `responseFormat`, `clientSideP
 | Doc | Purpose |
 |-----|---------|
 | [QDADM_CREDO](QDADM_CREDO.md) | Philosophy, patterns, concepts |
+| [Page compositions](../../docs/page-compositions.md) | **Start here** — which composition for which need |
+| [CRUD Pages](../../docs/crud.md) | List / form / show / child pages reference |
 | [Architecture](../../docs/architecture.md) | PAC pattern, layers |
-| [Extension](../../docs/extension.md) | Hooks, signals, zones |
+| [Extension](../../docs/extension.md) | Decorators, bundles, multi-storage |
+| [Hooks](../../docs/hooks.md) | Alter / invoke registry |
+| [Signals](../../docs/signals.md) | Event bus, SSE bridge |
+| [Zones](../../docs/zones.md) | Extensible UI blocks |
+| [Security](../../docs/security.md) | Permissions, roles |
+| [i18n](../../docs/i18n.md) | Messages, providers, strategies |
+| [Codegen](../../docs/gen.md) | Generate managers (OpenAPI / manual) |
+| [Deferred](../../docs/deferred.md) | Deferred values & warmup |
+| [AGENT_GUIDE](../../docs/AGENT_GUIDE.md) | Quick index for AI agents |
 
 ## Peer Dependencies
 
