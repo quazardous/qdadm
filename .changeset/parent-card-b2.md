@@ -1,5 +1,5 @@
 ---
-"@quazardous/qdadm": minor
+"@quazardous/qdadm": patch
 ---
 
 Add `<ParentCard>` — a normalized parent detail cartouche for embedding at the top of a child `ListPage` (the "B2" hybrid composition, qdadm #1038).
