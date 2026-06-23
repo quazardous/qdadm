@@ -6,10 +6,17 @@
  *
  * Usage:
  * <VanillaJsonEditor v-model="jsonData" mode="tree" />
+ *
+ * Inline JSON Schema validation (errors highlighted live in the editor):
+ * <VanillaJsonEditor v-model="jsonData" :schema="mySchema" />
+ *
+ * Or a raw validator for advanced cases (takes precedence over `schema`):
+ * <VanillaJsonEditor v-model="jsonData" :validator="myValidator" />
  */
 
 import { ref, watch, onMounted, onUnmounted, nextTick } from 'vue'
 import { JSONEditor, type Content, type ContentErrors, type OnChangeStatus, type Mode } from 'vanilla-jsoneditor'
+import { buildJsonValidator, type Validator, type JSONSchema, type JsonValidatorOptions } from './jsonValidator'
 
 type JsonValue = Record<string, unknown> | unknown[] | string | null
 
@@ -21,6 +28,14 @@ interface Props {
   mainMenuBar?: boolean
   navigationBar?: boolean
   statusBar?: boolean
+  /** JSON Schema for inline Ajv validation (errors highlighted in the editor). */
+  schema?: JSONSchema
+  /** Raw validator function — takes precedence over `schema`. */
+  validator?: Validator
+  /** Optional `$ref` definitions passed through to the Ajv validator. */
+  schemaDefinitions?: JsonValidatorOptions['schemaDefinitions']
+  /** Optional Ajv options passed through to the Ajv validator. */
+  ajvOptions?: JsonValidatorOptions['ajvOptions']
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -30,8 +45,22 @@ const props = withDefaults(defineProps<Props>(), {
   readOnly: false,
   mainMenuBar: true,
   navigationBar: true,
-  statusBar: true
+  statusBar: true,
+  schema: undefined,
+  validator: undefined,
+  schemaDefinitions: undefined,
+  ajvOptions: undefined
 })
+
+// Resolve the effective validator from props (raw validator > schema > none).
+function resolveValidator(): Validator | undefined {
+  return buildJsonValidator({
+    validator: props.validator,
+    schema: props.schema,
+    schemaDefinitions: props.schemaDefinitions,
+    ajvOptions: props.ajvOptions
+  })
+}
 
 const emit = defineEmits<{
   'update:modelValue': [value: JsonValue]
@@ -76,6 +105,7 @@ onMounted(() => {
       mainMenuBar: props.mainMenuBar,
       navigationBar: props.navigationBar,
       statusBar: props.statusBar,
+      validator: resolveValidator(),
       onChange: (updatedContent: Content, _previousContent: Content, { contentErrors }: OnChangeStatus) => {
         // Skip if this change came from a programmatic prop update
         if (updatingFromProp.value) return
@@ -143,6 +173,17 @@ watch(() => props.readOnly, (newReadOnly: boolean) => {
     editor.updateProps({ readOnly: newReadOnly })
   }
 })
+
+// Watch validator/schema changes — rebuild and re-apply so edits re-validate live
+watch(
+  () => [props.validator, props.schema, props.schemaDefinitions, props.ajvOptions],
+  () => {
+    if (editor) {
+      editor.updateProps({ validator: resolveValidator() })
+    }
+  },
+  { deep: true }
+)
 
 // Cleanup
 onUnmounted(() => {
