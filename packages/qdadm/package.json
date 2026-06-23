@@ -1,6 +1,6 @@
 {
   "name": "@quazardous/qdadm",
-  "version": "1.21.0",
+  "version": "1.22.0",
   "description": "Vue 3 framework for admin dashboards with PrimeVue",
   "author": "quazardous",
   "license": "MIT",
