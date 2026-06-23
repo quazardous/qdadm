@@ -59,6 +59,7 @@ export class I18n {
   private _appAliases: AliasPattern[]
   private _entityToModule: Map<string, string> = new Map()
   private _signals: I18nDeps['signals']
+  private _emitMissing: boolean
   private _defaultLocale: string
   private _fallbackLocale: string
   private _loadedLocales: Set<string> = new Set()
@@ -76,6 +77,7 @@ export class I18n {
     this._strategyName = options.keyStrategy ?? 'global'
     this._appAliases = options.aliases ? [...options.aliases] : []
     this._signals = deps.signals ?? null
+    this._emitMissing = options.emitMissing ?? true
 
     this._registry = new MessagesRegistry()
     this.inline = new InlineTranslationProvider()
@@ -99,7 +101,7 @@ export class I18n {
       fallbackLocale: this._fallbackLocale,
       globalAliases: this._currentStrategyAliases(),
       onMissing: (key, locale) => {
-        this._signals?.emit('i18n:missing', { key, locale })
+        if (this._emitMissing) this._signals?.emit('i18n:missing', { key, locale })
       },
     })
 

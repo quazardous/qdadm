@@ -105,6 +105,37 @@ describe('I18n — locale change', () => {
   })
 })
 
+describe('I18n — emitMissing flag', () => {
+  function makeSignals() {
+    const events: Array<{ signal: string; data: unknown }> = []
+    return {
+      events,
+      signals: {
+        emit: (signal: string, data: unknown) => {
+          events.push({ signal, data })
+        },
+        on: () => () => {},
+      },
+    }
+  }
+
+  it('emits i18n:missing on an unresolved key by default', async () => {
+    const { events, signals } = makeSignals()
+    const i18n = new I18n({ disableDefaultCoreBundle: true }, { signals })
+    await i18n.bootstrap()
+    i18n.t('totally.unknown.key')
+    expect(events.some((e) => e.signal === 'i18n:missing')).toBe(true)
+  })
+
+  it('does not emit i18n:missing when emitMissing is false', async () => {
+    const { events, signals } = makeSignals()
+    const i18n = new I18n({ disableDefaultCoreBundle: true, emitMissing: false }, { signals })
+    await i18n.bootstrap()
+    i18n.t('totally.unknown.key')
+    expect(events.some((e) => e.signal === 'i18n:missing')).toBe(false)
+  })
+})
+
 describe('I18n — providers', () => {
   it('loads from a custom TranslationProvider during bootstrap', async () => {
     const provider: TranslationProvider = {
