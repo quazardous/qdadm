@@ -31,4 +31,12 @@ export type {
 export interface I18nOptions extends BaseI18nOptions {
   /** Disable shipping qdadm's default core.* bundles (EN + FR). Default: false. */
   disableDefaultCoreBundle?: boolean
+  /**
+   * Emit the `i18n:missing` debug signal when a key cannot be resolved.
+   * Default: `true`. Set to `false` to silence the missing-key stream (e.g. an
+   * untranslated app where every key would otherwise fire it) — the debug
+   * panel's "Missing" section then stays empty. No functional impact: nothing
+   * but the debug collector consumes this signal.
+   */
+  emitMissing?: boolean
 }
