@@ -51,10 +51,10 @@ const qdadm = createQdadm({
 
 ```vue
 <script setup>
-import { useListPageBuilder, ListPage } from '@quazardous/qdadm'
+import { useListPage, ListPage } from '@quazardous/qdadm'
 import Column from 'primevue/column'
 
-const list = useListPageBuilder({ entity: 'tasks' })
+const list = useListPage({ entity: 'tasks' })
 </script>
 
 <template>
@@ -68,7 +68,7 @@ const list = useListPageBuilder({ entity: 'tasks' })
 ```
 
 This shows the canonical pattern:
-- `useListPageBuilder({ entity })` handles all data fetching
+- `useListPage({ entity })` handles all data fetching
 - `ListPage` provides table, pagination, loading states
 - Just define your columns in the `#columns` slot
 
