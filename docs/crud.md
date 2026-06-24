@@ -212,6 +212,11 @@ useListPage({
 
 ## Form Page
 
+> For the **field-rendering surface** — the `FormInput` façade, rich widgets
+> (`LookupField`, `KeyValueEditor`, `Scope`/`PermissionEditor`, JSON editors,
+> the structured/raw JSON dual) and non-entity forms (`useBareForm`) — see
+> [forms.md](./forms.md).
+
 **Important:** `FormPage` does NOT auto-render fields. The `#fields` slot is required.
 
 `generateFields()` populates field definitions and default values, but you render them in the template.

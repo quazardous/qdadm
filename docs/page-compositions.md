@@ -1,78 +1,80 @@
-# Page Compositions — quoi utiliser selon le besoin
+# Page Compositions — what to use for which need
 
-> **Par où commencer.** Ce guide mappe un besoin UI → la composition qdadm à utiliser.
-> Pour le détail de chaque brique (méthodes, slots, options), voir [crud.md](./crud.md).
+> **Where to start.** This guide maps a UI need → the qdadm composition to use.
+> For the details of each building block (methods, slots, options), see [crud.md](./crud.md).
+> For *how fields are rendered and edited* (the `FormInput` façade and the rich
+> widget catalog), see [forms.md](./forms.md).
 
-qdadm fournit quelques **compositions canoniques**. Connaître la bonne dès le départ
-évite de partir sur un `DataTable` hand-rolled là où une `ListPage` conforme suffit
-(cf. [QDADM_CREDO](../packages/qdadm/QDADM_CREDO.md) — storage invisible + ListPage par défaut).
+qdadm provides a few **canonical compositions**. Knowing the right one up front
+avoids reaching for a hand-rolled `DataTable` where a compliant `ListPage` would do
+(see [QDADM_CREDO](../packages/qdadm/QDADM_CREDO.md) — invisible storage + ListPage by default).
 
-## Tableau de décision
+## Decision table
 
-| Je veux… | Quand | Composition | Briques | Détail |
+| I want to… | When | Composition | Building blocks | Detail |
 |---|---|---|---|---|
-| Lister une entité (CRUD) | Une page de liste classique avec filtres/actions | **List page** | `useListPage` + `ListPage` (+ `addCreateAction`/`addEditAction`/`addDeleteAction`) | [crud.md#list-page](./crud.md#list-page) |
-| Créer / éditer une entité | Un formulaire unique create+edit | **Form page** | `useEntityItemFormPage` + `FormPage` (`#fields` requis, `FieldGroups`, `addSaveAction`) | [crud.md#form-page](./crud.md#form-page) |
-| Afficher une entité en lecture | Une fiche read-only | **Show page** | `useEntityItemShowPage` + `ShowPage` + `ShowField` | [crud.md#show-page](./crud.md#show-page) |
-| Lister une entité **enfant** sous un parent | Liste enfant autonome (onglet de la fiche parent) | **Child list (tab)** | `useListPage` + `ListPage` + `PageNav`, déclarée via `ctx.crud(child, {list}, {parentRoute, foreignKey})` | [crud.md#child-entity-list](./crud.md#child-entity-list) |
-| **Détail parent + sa liste enfant ensemble** | Voir [Compositions hybrides](#compositions-hybrides) | **Hybride A / B2 / B1** | selon le cas | ci-dessous |
-| Onglet custom (non-entité) sur une fiche | Bloc libre attaché à un parent | **Child page** | `useChildPage` + `PageLayout`, via `ctx.childPage(parent, name, opts)` | [crud.md#child-page-non-entity](./crud.md#child-page-non-entity) |
-| Form avec onglets / blocs custom | Layout riche dans un formulaire | **Form + groupes** | `FormPage` slot `#fields` + `FieldGroups` (`layout: 'tabs'`/`'accordion'`) | [crud.md#fieldgroups-layouts](./crud.md#fieldgroups-layouts) |
-| Dashboard / report / viewer | Pas une entité CRUD | **Custom (hors credo)** | `PageLayout` + `DataTable`/`Card` à la main, via `ctx.routes()` | [crud.md#ctxroutes](./crud.md#ctxroutes) |
-| Action custom (ligne ou header) | Ouvrir un dialog, déclencher une commande… | — | `addAction` / `addHeaderAction` (onClick libre, pas forcément du routing) | [crud.md#builder-methods](./crud.md#builder-methods) |
+| List an entity (CRUD) | A classic list page with filters/actions | **List page** | `useListPage` + `ListPage` (+ `addCreateAction`/`addEditAction`/`addDeleteAction`) | [crud.md#list-page](./crud.md#list-page) |
+| Create / edit an entity | A single create+edit form | **Form page** | `useEntityItemFormPage` + `FormPage` (`#fields` required, `FieldGroups`, `addSaveAction`) | [crud.md#form-page](./crud.md#form-page) |
+| Display an entity read-only | A read-only detail view | **Show page** | `useEntityItemShowPage` + `ShowPage` + `ShowField` | [crud.md#show-page](./crud.md#show-page) |
+| List a **child** entity under a parent | Standalone child list (tab of the parent detail) | **Child list (tab)** | `useListPage` + `ListPage` + `PageNav`, declared via `ctx.crud(child, {list}, {parentRoute, foreignKey})` | [crud.md#child-entity-list](./crud.md#child-entity-list) |
+| **Parent detail + its child list together** | See [Hybrid compositions](#hybrid-compositions) | **Hybrid A / B2 / B1** | depends on the case | below |
+| Custom (non-entity) tab on a detail view | A free block attached to a parent | **Child page** | `useChildPage` + `PageLayout`, via `ctx.childPage(parent, name, opts)` | [crud.md#child-page-non-entity](./crud.md#child-page-non-entity) |
+| Form with tabs / custom blocks | A rich layout inside a form | **Form + groups** | `FormPage` `#fields` slot + `FieldGroups` (`layout: 'tabs'`/`'accordion'`) | [crud.md#fieldgroups-layouts](./crud.md#fieldgroups-layouts) |
+| Dashboard / report / viewer | Not a CRUD entity | **Custom (off-credo)** | `PageLayout` + hand-rolled `DataTable`/`Card`, via `ctx.routes()` | [crud.md#ctxroutes](./crud.md#ctxroutes) |
+| Custom action (row or header) | Open a dialog, trigger a command… | — | `addAction` / `addHeaderAction` (free `onClick`, not necessarily routing) | [crud.md#builder-methods](./crud.md#builder-methods) |
 
 ---
 
-## Compositions de base
+## Base compositions
 
-Les quatre pages canoniques suivent toutes le même montage :
-**builder → configure → bind** (`v-bind="x.props.value" v-on="x.events"`). Exemples complets dans [crud.md](./crud.md).
+The four canonical pages all follow the same wiring:
+**builder → configure → bind** (`v-bind="x.props.value" v-on="x.events"`). Full examples in [crud.md](./crud.md).
 
-- **List page** — `useListPage({ entity })`, colonnes via slot `#columns`, filtres via `addFilter`, actions via `add*Action`.
-- **Form page** — `useEntityItemFormPage({ entity })`. ⚠️ `FormPage` ne rend pas les champs tout seul : le slot `#fields` est **obligatoire**. Le mode create/edit est auto-détecté depuis la route.
-- **Show page** — `useEntityItemShowPage({ entity })`, champs via slot `#fields` + `ShowField`.
-- **Child list (tab)** — une `ListPage` montée sous un parent : le filtre FK est **auto-appliqué** depuis `route.meta.parent`, aucune config dans le composable.
+- **List page** — `useListPage({ entity })`, columns via the `#columns` slot, filters via `addFilter`, actions via `add*Action`.
+- **Form page** — `useEntityItemFormPage({ entity })`. ⚠️ `FormPage` does not render the fields on its own: the `#fields` slot is **required**. Create/edit mode is auto-detected from the route.
+- **Show page** — `useEntityItemShowPage({ entity })`, fields via the `#fields` slot + `ShowField`.
+- **Child list (tab)** — a `ListPage` mounted under a parent: the FK filter is **auto-applied** from `route.meta.parent`, no config in the composable.
 
 ---
 
-## Compositions hybrides
+## Hybrid compositions
 
-« Détail parent + sa liste d'enfants sur la même vue » se décline en **trois** formes.
-Le critère, c'est *qui héberge qui*.
+"Parent detail + its child list on the same view" comes in **three** forms.
+The deciding factor is *who hosts whom*.
 
-### A — Onglets (`PageNav`) · *grosse liste enfant autonome*
+### A — Tabs (`PageNav`) · *large standalone child list*
 
-Fiche parent (`ShowPage`) + liste enfant sur sa **propre route enfant**, présentées comme
-onglets côte à côte via `PageNav`. Le filtre parent est **automatique** (la route enfant
-porte le `parentId` → `route.meta.parent`).
+Parent detail (`ShowPage`) + child list on its **own child route**, presented as
+side-by-side tabs via `PageNav`. The parent filter is **automatic** (the child route
+carries the `parentId` → `route.meta.parent`).
 
-- Déclaration : `ctx.crud(child, { list }, { parentRoute, foreignKey, label })`.
-- À utiliser quand : la liste enfant est volumineuse / a besoin de ses propres filtres,
-  pagination, URL. C'est le défaut, zéro glue.
-- Détail : [crud.md#child-entity-list](./crud.md#child-entity-list).
+- Declaration: `ctx.crud(child, { list }, { parentRoute, foreignKey, label })`.
+- Use when: the child list is large / needs its own filters, pagination, URL.
+  This is the default, zero glue.
+- Detail: [crud.md#child-entity-list](./crud.md#child-entity-list).
 
-### B2 — Liste enfant hôte + cartouche parent embarqué · *recommandé*
+### B2 — Child list as host + embedded parent card · *recommended*
 
-C'est **la** réponse à « une liste embarquée dans une page de détail ». La page **est** la
-liste enfant (route `/parent/:id/children`) ; on affiche le **détail du parent en tête**.
+This is **the** answer to "a list embedded in a detail page". The page **is** the
+child list (route `/parent/:id/children`); the **parent detail is shown at the top**.
 
-Pourquoi c'est propre : sur cette route, `useListPage` fait déjà tout le travail —
+Why it's clean: on this route, `useListPage` already does all the work —
 
-- le **filtre FK est auto-injecté** depuis `route.params` (la liste est déjà scopée au parent) ;
-- le composable **instancie et expose déjà le parent** : `parentData`, `parentId`,
-  `parentLoading`, `parentChain`, `parentPage`. **Aucun fetch supplémentaire.**
+- the **FK filter is auto-injected** from `route.params` (the list is already scoped to the parent);
+- the composable **already instantiates and exposes the parent**: `parentData`, `parentId`,
+  `parentLoading`, `parentChain`, `parentPage`. **No extra fetch.**
 
-Il reste juste à *rendre* `parentData` dans le slot `#beforeTable`. Le composant
-**`<ParentCard>`** fait ça en une ligne : il dérive automatiquement les champs depuis le
-manager du parent et les rend avec les **mêmes renderers que `ShowPage`** (cohérence
-visuelle avec les vraies fiches, zéro re-fetch).
+All that's left is to *render* `parentData` in the `#beforeTable` slot. The
+**`<ParentCard>`** component does this in one line: it automatically derives the fields from
+the parent's manager and renders them with the **same renderers as `ShowPage`** (visual
+consistency with real detail views, zero re-fetch).
 
 ```vue
 <script setup>
 import { useListPage, ListPage, ParentCard, PageNav } from '@quazardous/qdadm'
 import Column from 'primevue/column'
 
-// Route enfant /books/:bookId/loans → parent (book) déjà résolu par useListPage
+// Child route /books/:bookId/loans → parent (book) already resolved by useListPage
 const list = useListPage({ entity: 'loans' })
 list.addCreateAction('New Loan')
 list.addEditAction()
@@ -82,7 +84,7 @@ list.addEditAction()
   <ListPage v-bind="list.props.value" v-on="list.events">
     <template #nav><PageNav /></template>
 
-    <!-- Cartouche parent normalisé, alimenté par parentData (zéro re-fetch) -->
+    <!-- Normalized parent card, fed by parentData (zero re-fetch) -->
     <template #beforeTable>
       <ParentCard
         :entity="'books'"
@@ -100,54 +102,54 @@ list.addEditAction()
 </template>
 ```
 
-`fields` est optionnel (omis → tous les champs du manager) ; le slot par défaut de
-`<ParentCard>` permet de rendre le parent soi-même à partir du set de champs résolu.
+`fields` is optional (omitted → all of the manager's fields); `<ParentCard>`'s default slot
+lets you render the parent yourself from the resolved field set.
 
-> **Marche via `crud` *ou* `childPage`.** Le cartouche parent ne dépend que de
-> `route.meta.parent` étant posé — donc il fonctionne aussi bien si la route enfant vient de
-> `ctx.crud(child, {list}, {parentRoute, foreignKey})` que de `ctx.childPage(parent, name)`.
-> Seul le **scoping de la liste** diffère : avec `foreignKey`, `useListPage` arme un filtre FK
-> de requête (`useListPage.ts:944`) ; sans `foreignKey` (cas `childPage`), `parentData` /
-> `parentChain` sont quand même peuplés et le scoping passe par `parentChain` + `resolveStorage`
-> (endpoint imbriqué). Dans les deux cas le cartouche est identique. *(Validé sur un cas réel
-> skybot — `childPage` sans `foreignKey`.)*
+> **Works via `crud` *or* `childPage`.** The parent card only depends on
+> `route.meta.parent` being set — so it works whether the child route comes from
+> `ctx.crud(child, {list}, {parentRoute, foreignKey})` or from `ctx.childPage(parent, name)`.
+> Only the **list scoping** differs: with `foreignKey`, `useListPage` arms a query FK filter
+> (`useListPage.ts:944`); without `foreignKey` (the `childPage` case), `parentData` /
+> `parentChain` are still populated and scoping goes through `parentChain` + `resolveStorage`
+> (nested endpoint). In both cases the card is identical. *(Validated on a real skybot case —
+> `childPage` without `foreignKey`.)*
 
-- À utiliser quand : la liste enfant se lit « au fil de la fiche » et on veut le contexte
-  parent visible en permanence.
+- Use when: the child list reads "along with the detail" and you want the parent context
+  visible at all times.
 
-### B1 — Show parent hôte + liste enfant inline · *échappatoire*
+### B1 — Parent show as host + inline child list · *escape hatch*
 
-L'inverse : la page **est** la fiche parent (`ShowPage`) et on embarque une `ListPage`
-enfant dans un slot (`#footer` ou une section custom), **sans** onglet ni route enfant.
+The reverse: the page **is** the parent detail (`ShowPage`) and you embed a child
+`ListPage` in a slot (`#footer` or a custom section), **without** a tab or a child route.
 
-⚠️ Piège honnête : sur la route *show du parent*, `route.meta.parent` ne pointe pas vers
-une relation enfant → **le filtre FK n'est pas auto-câblé**. Il faut l'injecter à la main :
+⚠️ Honest gotcha: on the *parent show* route, `route.meta.parent` does not point to a
+child relation → **the FK filter is not auto-wired**. You must inject it by hand:
 
 ```js
 const children = useListPage({
   entity: 'loans',
-  syncUrlParams: false,    // pas de bagarre sur l'URL avec la page hôte
+  syncUrlParams: false,    // avoid fighting the host page over the URL
   persistFilters: false,
   onBeforeLoad: (params) => ({ ...params, book_id: route.params.bookId }),
 })
 ```
 
-- À utiliser quand : petite liste contextuelle (ex. « 5 derniers prêts ») dans une fiche,
-  où passer par une route enfant serait disproportionné.
-- Sinon, préférer **A** (liste autonome) ou **B2** (liste hôte + parent embarqué).
+- Use when: a small contextual list (e.g. "last 5 loans") inside a detail view, where going
+  through a child route would be overkill.
+- Otherwise, prefer **A** (standalone list) or **B2** (host list + embedded parent).
 
-### Choisir entre A / B2 / B1
+### Choosing between A / B2 / B1
 
 | Situation | Composition |
 |---|---|
-| Liste enfant volumineuse, filtres/pagination/URL propres | **A (tabs)** |
-| « Liste dans une fiche », on veut le parent visible en tête | **B2** (recommandé) |
-| Petite liste contextuelle au fil d'une fiche parent | **B1** (échappatoire) |
+| Large child list, own filters/pagination/URL | **A (tabs)** |
+| "List inside a detail view", parent visible at the top | **B2** (recommended) |
+| Small contextual list along a parent detail | **B1** (escape hatch) |
 
 ---
 
-## Custom / hors credo
+## Custom / off-credo
 
-Pour un dashboard, un report, un viewer — tout ce qui n'est pas une entité CRUD — un
-`DataTable`/`Card` monté à la main dans une route `ctx.routes()` est légitime. Le credo
-« ListPage par défaut » vise les listes d'entités, pas les vues d'agrégation.
+For a dashboard, a report, a viewer — anything that is not a CRUD entity — a hand-rolled
+`DataTable`/`Card` mounted in a `ctx.routes()` route is legitimate. The "ListPage by
+default" credo targets entity lists, not aggregation views.

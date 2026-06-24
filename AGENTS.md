@@ -13,6 +13,16 @@ remote actions. An agent can introspect the app without touching the source.
 3. **Architecture & conventions**: [`packages/qdadm/QDADM_CREDO.md`](packages/qdadm/QDADM_CREDO.md), [`docs/architecture.md`](docs/architecture.md).
 4. **i18n surface**: [`docs/i18n.md`](docs/i18n.md) — keys, fallbacks, providers.
 
+## "I want to build a page" — quick routing
+
+| Need | Go to |
+|---|---|
+| Pick the right page composition (list / form / show / parent+child hybrids) | [`docs/page-compositions.md`](docs/page-compositions.md) |
+| Build a CRUD page (list / form / show / child) | [`docs/crud.md`](docs/crud.md) |
+| Render & edit fields — the form façade (`FormInput`), field widgets (`LookupField`, `KeyValueEditor`, `Scope`/`PermissionEditor`, JSON editors, structured/raw JSON dual), non-entity forms (`useBareForm`) | [`docs/forms.md`](docs/forms.md) |
+| Extensibility (hooks / signals / zones / decorators) | [`docs/extension.md`](docs/extension.md) |
+| Full source-code index | [`docs/AGENT_GUIDE.md`](docs/AGENT_GUIDE.md) |
+
 ## Live debug bridge — `/__qdadm/*` (dev only)
 
 The Vite plugin `qdadm/vite-plugin-debug` exposes the running app's

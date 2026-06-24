@@ -40,16 +40,35 @@ npm test             # Run tests (from packages/qdadm)
 |-----------|----------|----------|
 | ListPage | `qdadm/src/components/lists/ListPage.vue` | CRUD list pages |
 | PageLayout | `qdadm/src/components/layout/PageLayout.vue` | Page wrapper |
-| FormField | `qdadm/src/components/edit/FormField.vue` | Form inputs |
+| FormField | `qdadm/src/components/edit/FormField.vue` | Field row (label + error + dirty) |
+| FormInput | `qdadm/src/components/edit/FormInput.vue` | Façade: `field.type` → PrimeVue input |
 | Zone | `qdadm/src/components/layout/Zone.vue` | Extensible slots |
 | AppLayout | `qdadm/src/components/layout/AppLayout.vue` | Main layout |
+
+### Field Widgets (rich inputs for the `#fields` slot)
+
+> Drop any of these inside a `FormField` instead of `FormInput`. See [forms.md](./forms.md).
+
+| Widget | Location | Edits |
+|--------|----------|-------|
+| LookupField | `qdadm/src/components/edit/LookupField.vue` | Entity reference (inline / modal picker, single / multi) |
+| KeyValueEditor | `qdadm/src/components/editors/KeyValueEditor.vue` | `{key, value}` pairs (number / text) |
+| LanguageEditor | `qdadm/src/components/editors/LanguageEditor.vue` | `{code, fluency, primary}` rows |
+| ScopeEditor | `qdadm/src/components/editors/ScopeEditor.vue` | `resource:action` scope strings |
+| PermissionEditor | `qdadm/src/components/editors/PermissionEditor.vue` | `namespace:action` permission |
+| JsonViewer / JsonEditorFoldable | `qdadm/src/components/editors/` | Read-only / foldable JSON (main bundle) |
+| VanillaJsonEditor | `qdadm/src/components/editors/VanillaJsonEditor.vue` | Tree/text/table JSON + `:schema` validation (`/editors` subpath) |
+| JsonStructuredField | `qdadm/src/components/editors/JsonStructuredField.vue` | Structured ↔ raw JSON dual (`/editors` subpath) |
 
 ### Composables (Vue)
 
 | Composable | Location | Use Case |
 |------------|----------|----------|
 | useListPage | `qdadm/src/composables/useListPage.ts` | Build list pages |
-| useForm | `qdadm/src/composables/useForm.ts` | Form state management |
+| useEntityItemFormPage | `qdadm/src/composables/useEntityItemFormPage.ts` | Entity create/edit form |
+| useEntityItemShowPage | `qdadm/src/composables/useEntityItemShowPage.ts` | Read-only detail page |
+| useBareForm | `qdadm/src/composables/useBareForm.ts` | Non-entity form (dirty + guard + title) |
+| useOptionsLookup | `qdadm/src/composables/useOptionsLookup.ts` | Backs `LookupField` |
 | useOrchestrator | `qdadm/src/orchestrator/useOrchestrator.ts` | Access managers |
 
 ## Module Pattern (Current)
@@ -268,6 +287,7 @@ AuthCollector shows: user, token, permissions, role hierarchy, impersonation eve
 | Philosophy | `packages/qdadm/QDADM_CREDO.md` |
 | Page compositions (start here) | `docs/page-compositions.md` |
 | CRUD Pages | `docs/crud.md` |
+| Forms & field widgets | `docs/forms.md` |
 | Architecture (PAC) | `docs/architecture.md` |
 | Extension overview | `docs/extension.md` |
 | Hooks deep dive | `docs/hooks.md` |
