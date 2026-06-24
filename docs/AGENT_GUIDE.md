@@ -69,6 +69,7 @@ npm test             # Run tests (from packages/qdadm)
 | useEntityItemShowPage | `qdadm/src/composables/useEntityItemShowPage.ts` | Read-only detail page |
 | useBareForm | `qdadm/src/composables/useBareForm.ts` | Non-entity form (dirty + guard + title) |
 | useOptionsLookup | `qdadm/src/composables/useOptionsLookup.ts` | Backs `LookupField` |
+| useNotifications | `qdadm/src/notifications/NotificationStore.ts` | App notifications + module status indicators (`registerStatus({ id, label, severity, count?, icon?, to? })`) |
 | useOrchestrator | `qdadm/src/orchestrator/useOrchestrator.ts` | Access managers |
 
 ## Module Pattern (Current)

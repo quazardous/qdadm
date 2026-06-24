@@ -183,6 +183,36 @@ list.addFilter('availability', {
 })
 ```
 
+### Custom row actions (dynamic callbacks)
+
+`addAction(name, config)` adds a per-row action. Beyond a static config, `icon`,
+`tooltip`, and `severity` may be **functions of the row**, and `visible` /
+`disabled` are row predicates — so the button can reflect per-row state (resolved
+in `useListPage.ts` via `resolveValue`):
+
+```js
+list.addAction('favorite', {
+  icon: (row) => isFavorite(row) ? 'pi pi-star-fill' : 'pi pi-star',
+  tooltip: (row) => isFavorite(row) ? 'Remove from favorites' : 'Add to favorites',
+  severity: (row) => isFavorite(row) ? 'warn' : 'secondary',
+  visible: (row) => row.status !== 'archived',   // hide for some rows
+  disabled: (row) => row.locked,                 // render but disable
+  onClick: (row) => toggleFavorite(row),
+})
+```
+
+| Action field | Static or `(row) => …` | Purpose |
+|---|---|---|
+| `icon` | both | PrimeVue icon class |
+| `tooltip` | both | Hover text |
+| `severity` | both | Button severity/color |
+| `visible` | `(row) => boolean` | Omit the action for this row |
+| `disabled` | `(row) => boolean` | Render but disable |
+| `onClick` | `(row) => void` | Handler |
+
+This row-aware signature is what makes actions packageable into reusable
+composables — see [Reusable list behaviors](#reusable-list-behaviors-augmenting-composables).
+
 ### ListPage slots
 
 | Slot | Purpose |
@@ -686,6 +716,57 @@ ctx.childPage('book', 'info', { component: () => import('./pages/BookInfo.vue'),
 ```
 
 Tabs appear automatically: Details | Loans | Info
+
+### Reusable list behaviors (augmenting composables)
+
+A cross-cutting list behavior — a favorite toggle, a status badge action, a
+shared filter — is best packaged as a composable that **takes the list builder
+and augments it**. The builder is a plain object (`addAction`, `addFilter`,
+`manager`, …), so a composable can layer state + actions onto any list without
+the page knowing the details. Combined with the row-aware action callbacks
+above, this is the canonical way to share UI behavior across entities.
+
+```js
+// composables/useFavoriteAction.js — works on ANY list
+import { ref, onMounted } from 'vue'
+import { useOrchestrator, useSignalToast } from '@quazardous/qdadm'
+
+export function useFavoriteAction(list, entityType) {
+  const toast = useSignalToast('FavoriteAction')
+  const { getManager, hasManager } = useOrchestrator()
+  const favorites = hasManager('favorites') ? getManager('favorites') : null
+  const favoriteIds = ref(new Set())
+
+  const isFavorite = (row) => favoriteIds.value.has(String(row[list.manager.idField]))
+  async function toggle(row) { /* create/delete in favorites, update favoriteIds, toast */ }
+
+  onMounted(async () => { /* load favoriteIds for entityType */ })
+
+  // Inject the row-aware action onto the builder
+  list.addAction('favorite', {
+    icon: (row) => isFavorite(row) ? 'pi pi-star-fill' : 'pi pi-star',
+    severity: (row) => isFavorite(row) ? 'warn' : 'secondary',
+    tooltip: (row) => isFavorite(row) ? 'Remove from favorites' : 'Add to favorites',
+    onClick: toggle,
+  })
+
+  return { isFavorite, toggle }   // expose for the page if it needs them
+}
+```
+
+Drop it on any list page in one line — the same composable serves every entity:
+
+```js
+const list = useListPage({ entity: 'books' })
+useFavoriteAction(list, 'book')        // ⭐ adds the star toggle
+
+const products = useListPage({ entity: 'products' })
+useFavoriteAction(products, 'product') // same behavior, different entity
+```
+
+The same shape works for `useEntityItemFormPage` / `useEntityItemShowPage`
+builders (call `addField` / `addAction` on them). Full working example:
+`packages/demo/src/composables/useFavoriteAction.js`.
 
 ### Permission-aware form fields
 
