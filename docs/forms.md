@@ -190,6 +190,50 @@ by default.
 | `jsonMode` | Underlying editor mode (default `text`) |
 | `guardInvalidJson` | Block leaving the raw view while JSON is invalid (default `true`) |
 
+#### Most common structured face — `LookupField multiple` over a catalog
+
+In practice the structured slot is rarely a bespoke editor — it's usually a
+**"pick + add from a catalog of allowed values"**, i.e. `LookupField multiple`
+fed by [`useOptionsLookup`](#useoptionslookup--options-for-lookupfield). This is
+the idiomatic way to edit a `string[]` whitelist as either a form **or** raw
+JSON. Both faces bind the **same** `v-model` (the `string[]`); an empty list is a
+meaningful value. Wrapping it in `FormField` keeps dirty-tracking and validation.
+
+```vue
+<script setup>
+import { useOptionsLookup } from '@quazardous/qdadm'
+import { LookupField } from '@quazardous/qdadm/components'
+import { JsonStructuredField } from '@quazardous/qdadm/editors'
+
+// catalog endpoint returns objects → map name/id to label/value
+const taskTypeLookup = useOptionsLookup({ endpoint: '/api/admin/task-types', label: 'name', value: 'id' })
+</script>
+
+<template>
+  <FormField name="taskTypes" label="Task Types" full-width hint="Empty = accept all.">
+    <JsonStructuredField v-model="model" json-mode="text" json-height="200px">
+      <LookupField v-model="model" :lookup="taskTypeLookup" multiple placeholder="Add a value…" />
+    </JsonStructuredField>
+  </FormField>
+</template>
+```
+
+### `useOptionsLookup` — options for `LookupField`
+
+`LookupField` is fed by `useOptionsLookup`, which sources its options from one of
+**three** places (and optionally maps each item to `{ label, value }`):
+
+| Source | Call | Yields |
+|---|---|---|
+| **Entity** | `useOptionsLookup({ entity: 'botPools', label: 'name', value: 'id' })` | Options from a registered `EntityManager` |
+| **Endpoint** | `useOptionsLookup({ endpoint: '/api/admin/task-types', label: 'name', value: 'id' })` | Options fetched from a raw API URL |
+| **Static** | `useOptionsLookup({ static: ['a', 'b', 'c'] })` | A fixed in-memory list |
+
+Omit `label`/`value` for a **pure** `string[]`/`number[]` source (suggestions are
+the raw values); provide them for **mapped** mode when items are objects and the
+label differs from the stored value. See the composable's docstring for
+`displayMode` (`bracket` vs `hidden`) and custom `encode`/`decode`.
+
 ---
 
 ## 5. Non-entity / standalone forms — `useBareForm`
