@@ -137,7 +137,7 @@ export function applyCrudMethods(EntityManagerClass: { prototype: any }): void {
       const apiResponse = (await storage.request('GET', endpoint, {
         params: requestParams,
         context,
-      })) as { data?: unknown }
+      })) as { data?: unknown; total?: number; pagination?: { total?: number } }
       // Normalize response
       const data = apiResponse.data ?? apiResponse
       const dataObj = data as {
@@ -150,9 +150,14 @@ export function applyCrudMethods(EntityManagerClass: { prototype: any }): void {
         items: Array.isArray(data)
           ? (data as any[])
           : dataObj.items || dataObj.data || [],
+        // Wrapper shapes like { data: [...], pagination: { total } } or
+        // { data: [...], total } carry the total on apiResponse, not on the
+        // unwrapped array — read both levels before falling back to page length.
         total:
           dataObj.total ??
           dataObj.pagination?.total ??
+          apiResponse.total ??
+          apiResponse.pagination?.total ??
           (Array.isArray(data) ? (data as any[]).length : 0),
       }
     } else {
