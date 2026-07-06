@@ -20,6 +20,7 @@
  */
 import { computed, inject, type Ref } from 'vue'
 import Tag from 'primevue/tag'
+import type { ButtonSeverity } from '../../types'
 
 interface TitleParts {
   simple?: string
@@ -30,7 +31,7 @@ interface TitleParts {
 
 interface BadgeConfig {
   label: string
-  severity?: string
+  severity?: ButtonSeverity
 }
 
 interface Props {
@@ -80,7 +81,7 @@ const hasDecoratedTitle = computed((): boolean => {
                 v-for="badge in badges"
                 :key="badge.label"
                 :value="badge.label"
-                :severity="(badge.severity as any) || 'secondary'"
+                :severity="badge.severity || 'secondary'"
                 class="entity-badge"
               />
               <template v-if="!effectiveTitleParts && !simpleTitle">{{ title }}</template>

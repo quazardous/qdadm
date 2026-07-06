@@ -15,6 +15,10 @@
  * that flows through to method signatures for typed entity data.
  */
 
+import type { EntityBadge } from './EntityManager.types'
+import type { SignalBus } from '../kernel/SignalBus'
+import type { EntityAuthAdapter } from './auth/EntityAuthAdapter'
+
 // ─── Base ────────────────────────────────────────────────────────────────────
 
 /**
@@ -75,4 +79,72 @@ export interface EntityManagerCrud<T = unknown> extends EntityManagerRead<T> {
   hasSeverityMap?: (field: string) => boolean
   getSeverity?: (field: string, value: string | number, defaultSeverity?: string) => string
   getSeverityDescriptor?: (field: string, value: string | number, defaultSeverity?: string) => { severity: string; icon?: string; label?: string }
+}
+// ============================================================================
+// ASSIGNMENT-SAFE STRUCTURAL VIEWS (#1191)
+// ============================================================================
+//
+// Composables and components used to redeclare tiny local `EntityManager` /
+// `Orchestrator` interfaces (24 sites) because the canonical generics don't
+// assign across erased type parameters. These shared, non-generic views are
+// the single replacement: the canonical classes satisfy them structurally
+// (compile-time asserted in orchestrator/Orchestrator.ts), and consumers
+// declare exactly the surface they touch by intersecting when they need more.
+//
+// NOTE: members use METHOD syntax on purpose — TS keeps method parameters
+// bivariant (even under strictFunctionTypes), which is what lets
+// `EntityManager<T>` assign to the erased signatures below.
+
+/** Toast surface exposed by the orchestrator (structural ToastHelper). */
+export interface ToastLike {
+  success(summary: string, detail?: string, emitter?: unknown): void
+  error(summary: string, detail?: string, emitter?: unknown): void
+  warn(summary: string, detail?: string, emitter?: unknown): void
+  info(summary: string, detail?: string, emitter?: unknown): void
+}
+
+/**
+ * Minimal structural view of an EntityManager for composables/components.
+ * Every member exists on the canonical `EntityManager`; optionals reflect
+ * genuinely optional configuration.
+ */
+export interface EntityManagerLike {
+  idField: string
+  label?: string
+  labelPlural?: string
+  // Function-typed PROPERTY → strictly contravariant param; `never` is the
+  // contravariant top, so the canonical `(entity: T) => string` assigns.
+  // Cast at the call site when invoking.
+  labelField?: string | ((data: never) => string)
+  routePrefix?: string
+  readOnly?: boolean
+  getEntityLabel(data: unknown): string | null
+  getEntityBadges?(data: unknown): EntityBadge[]
+  canRead(entity?: unknown): boolean
+  canCreate(): boolean
+  canUpdate(entity?: unknown): boolean
+  canDelete(entity?: unknown): boolean
+  list(params?: Record<string, unknown>, context?: unknown): Promise<{
+    items: unknown[]
+    total?: number
+    fromCache?: boolean
+  }>
+  get(id: string | number, context?: unknown): Promise<unknown>
+  create(data: Record<string, unknown>, context?: unknown): Promise<unknown>
+  update(id: string | number, data: Record<string, unknown>, context?: unknown): Promise<unknown>
+  delete(id: string | number, context?: unknown): Promise<unknown>
+}
+
+/**
+ * Minimal structural view of the Orchestrator for composables/components.
+ * `get()` is typed nullable so consumers guard — the canonical class throws
+ * on unknown names, injected test doubles commonly return null.
+ */
+export interface OrchestratorLike<M = EntityManagerLike | null | undefined> {
+  get(name: string): M
+  has?(name: string): boolean
+  isRegistered?(name: string): boolean
+  toast: ToastLike
+  signals?: SignalBus | null
+  entityAuthAdapter?: EntityAuthAdapter | null
 }

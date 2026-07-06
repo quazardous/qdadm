@@ -16,6 +16,7 @@ import { ref, computed, onMounted, inject, provide, type Ref, type ComputedRef }
 import { useRoute } from 'vue-router'
 import { useStackHydrator, type StackHydratorReturn } from '../chain/useStackHydrator'
 import type { EntityManagerCrud } from '../entity/EntityManager.interface'
+import type { OrchestratorLike } from '../entity/EntityManager.interface'
 
 /**
  * Parent configuration from route.meta.parent
@@ -61,12 +62,8 @@ export interface CreateContext {
  */
 export type EntityManager = EntityManagerCrud
 
-/**
- * Orchestrator interface
- */
-interface Orchestrator {
-  get: (entityName: string) => EntityManager
-}
+// #1191 — shared structural view, parameterized on the CRUD tier
+type Orchestrator = OrchestratorLike<EntityManager>
 
 /**
  * Options for useEntityItemPage

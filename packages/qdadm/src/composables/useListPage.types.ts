@@ -7,7 +7,7 @@ import type { Ref, ComputedRef } from 'vue'
 import type { Router } from 'vue-router'
 import type { FilterQuery } from '../query/FilterQuery'
 import type { ParentConfig, UseEntityItemPageReturn } from './useEntityItemPage.js'
-import type { EntityManagerRead } from '../entity/EntityManager.interface'
+import type { EntityManagerRead, OrchestratorLike } from '../entity/EntityManager.interface'
 
 /**
  * Entity manager interface for list pages (re-export for convenience)
@@ -27,16 +27,8 @@ export interface ListResponse<T = unknown> {
 /**
  * Orchestrator interface
  */
-export interface Orchestrator {
-  get: (entityName: string) => EntityManager
-  toast: {
-    success: (summary: string, detail?: string, emitter?: unknown) => void
-    error: (summary: string, detail?: string, emitter?: unknown) => void
-    warn: (summary: string, detail?: string, emitter?: unknown) => void
-    info: (summary: string, detail?: string, emitter?: unknown) => void
-    [key: string]: ((summary: string, detail?: string, emitter?: unknown) => void) | undefined
-  }
-}
+// #1191 — shared structural view, parameterized on the Read tier
+export type Orchestrator = OrchestratorLike<EntityManager>
 
 /**
  * Toast helper interface

@@ -10,20 +10,13 @@ import type { BreadcrumbDisplayItem } from './useBreadcrumb'
 import type { ParentConfig, EntityManager } from './useEntityItemPage'
 import type { FieldGroup, GroupDefinition, GroupOptions, MoveFieldPosition } from './useFieldManager'
 import type { StackHydratorReturn } from '../chain/useStackHydrator'
+import type { OrchestratorLike } from '../entity/EntityManager.interface'
 
 /**
  * Orchestrator interface
  */
-export interface Orchestrator {
-  get: (entityName: string) => EntityManager
-  toast?: {
-    success: (summary: string, detail?: string, emitter?: unknown) => void
-    error: (summary: string, detail?: string, emitter?: unknown) => void
-    warn: (summary: string, detail?: string, emitter?: unknown) => void
-    info: (summary: string, detail?: string, emitter?: unknown) => void
-    [key: string]: ((summary: string, detail?: string, emitter?: unknown) => void) | undefined
-  }
-}
+// #1191 — shared structural view, parameterized on the CRUD tier
+export type Orchestrator = OrchestratorLike<EntityManager>
 
 /**
  * Field definition from EntityManager schema

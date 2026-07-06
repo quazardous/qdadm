@@ -35,28 +35,14 @@ import { useDirtyState } from './useDirtyState'
 import { useUnsavedChangesGuard, type GuardDialogState } from './useUnsavedChangesGuard'
 import { useBreadcrumb, type BreadcrumbDisplayItem } from './useBreadcrumb'
 import { registerGuardDialog, unregisterGuardDialog } from './useGuardStore'
+import type { EntityManagerLike, OrchestratorLike } from '../entity/EntityManager.interface'
 
-/**
- * Entity manager interface (minimal for this composable)
- */
-interface EntityManager {
-  label?: string
-  labelField?: string
-  getEntityLabel: (data: unknown) => string
-}
+// #1191 — shared minimal structural views (was: local redeclarations)
+type EntityManager = EntityManagerLike
+type Orchestrator = OrchestratorLike
 
-/**
- * Orchestrator interface
- */
-interface Orchestrator {
-  get: (entityName: string) => EntityManager
-  toast: {
-    success: (summary: string, detail?: string, emitter?: unknown) => void
-    error: (summary: string, detail?: string, emitter?: unknown) => void
-    warn: (summary: string, detail?: string, emitter?: unknown) => void
-    info: (summary: string, detail?: string, emitter?: unknown) => void
-  }
-}
+
+
 
 /**
  * Toast helper interface
@@ -171,7 +157,7 @@ export function useBareForm(options: UseBareFormOptions): UseBareFormReturn {
     const orchestrator = inject<Orchestrator | null>('qdadmOrchestrator', null)
     if (orchestrator) {
       try {
-        manager = orchestrator.get(entity)
+        manager = orchestrator.get(entity) ?? null
       } catch {
         // Manager not found, continue without it
       }
@@ -237,7 +223,8 @@ export function useBareForm(options: UseBareFormOptions): UseBareFormReturn {
       return manager.getEntityLabel(formData)
     }
     if (typeof effectiveLabelField === 'function') {
-      return effectiveLabelField(formData)
+      // labelField's param is contravariant-`never` in the Like — safe to call
+      return (effectiveLabelField as (data: unknown) => string)(formData)
     }
     return (formData[effectiveLabelField as string] as string) || null
   }

@@ -34,6 +34,7 @@ import type { EntityRecord } from '../types'
 import type { SignalBus } from '../kernel/SignalBus'
 import type { HookRegistry } from '../hooks/HookRegistry'
 import type { EntityAuthAdapter } from '../entity/auth/EntityAuthAdapter'
+import type { EntityManagerLike, OrchestratorLike } from '../entity/EntityManager.interface'
 
 /**
  * DeferredRegistry interface (minimal for Orchestrator needs)
@@ -425,3 +426,16 @@ Example fix in your module:
 export function createOrchestrator(options?: OrchestratorOptions): Orchestrator {
   return new Orchestrator(options)
 }
+
+// ============================================================================
+// #1191 — compile-time guarantee that the canonical classes satisfy the
+// minimal structural views consumed across composables/components. If a
+// rename breaks the structural match, this is where the compiler complains.
+// ============================================================================
+type _AssertManagerLike<T extends EntityManagerLike> = T
+type _AssertOrchestratorLike<T extends OrchestratorLike> = T
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+type _LikeChecks = [
+  _AssertManagerLike<EntityManager>,
+  _AssertOrchestratorLike<Orchestrator>,
+]
