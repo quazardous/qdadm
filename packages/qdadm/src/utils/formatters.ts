@@ -16,22 +16,27 @@
  * Format a date string to localized date+time
  * Default format: toLocaleString() (e.g., "20/12/2025, 14:30:00")
  *
+ * The locale defaults to the browser locale everywhere in qdadm — pass
+ * `locale` only for an explicit per-field override.
+ *
  * @param dateStr - ISO date string or Date object
  * @param options - Intl.DateTimeFormat options
+ * @param locale - Explicit locale override (default: browser locale)
  * @returns Formatted date string or '-' if empty
  */
 export function formatDate(
   dateStr: string | Date | null | undefined,
-  options: Intl.DateTimeFormatOptions = {}
+  options: Intl.DateTimeFormatOptions = {},
+  locale?: string
 ): string {
   if (!dateStr) return '-'
   const date = new Date(dateStr)
   if (isNaN(date.getTime())) return '-'
 
   if (Object.keys(options).length === 0) {
-    return date.toLocaleString()
+    return date.toLocaleString(locale)
   }
-  return date.toLocaleString(undefined, options)
+  return date.toLocaleString(locale, options)
 }
 
 /**
@@ -61,15 +66,23 @@ export function formatDateTimeShort(dateStr: string | Date | null | undefined): 
 
 /**
  * Format to date only (20/12/2025)
+ *
+ * @param options - Intl.DateTimeFormat overrides merged over the defaults
+ * @param locale - Explicit locale override (default: browser locale)
  */
-export function formatDateOnly(dateStr: string | Date | null | undefined): string {
+export function formatDateOnly(
+  dateStr: string | Date | null | undefined,
+  options: Intl.DateTimeFormatOptions = {},
+  locale?: string
+): string {
   if (!dateStr) return '-'
   const date = new Date(dateStr)
   if (isNaN(date.getTime())) return '-'
-  return date.toLocaleDateString(undefined, {
+  return date.toLocaleDateString(locale, {
     year: 'numeric',
     month: '2-digit',
     day: '2-digit',
+    ...options,
   })
 }
 
@@ -142,13 +155,31 @@ export function formatDurationBetween(
 
 /**
  * Format a number with locale-specific separators
+ *
+ * @param locale - Explicit locale override (default: browser locale)
  */
 export function formatNumber(
   value: number | null | undefined,
-  options: Intl.NumberFormatOptions = {}
+  options: Intl.NumberFormatOptions = {},
+  locale?: string
 ): string {
   if (value === null || value === undefined) return '-'
-  return value.toLocaleString(undefined, options)
+  return value.toLocaleString(locale, options)
+}
+
+/**
+ * Format a currency amount (e.g., "$1,234.56")
+ *
+ * @param currencyCode - ISO 4217 code (default 'USD')
+ * @param locale - Explicit locale override (default: browser locale)
+ */
+export function formatCurrency(
+  value: number | null | undefined,
+  currencyCode = 'USD',
+  locale?: string
+): string {
+  if (value === null || value === undefined) return '-'
+  return new Intl.NumberFormat(locale, { style: 'currency', currency: currencyCode }).format(value)
 }
 
 /**

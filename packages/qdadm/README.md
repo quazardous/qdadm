@@ -31,7 +31,7 @@ import { SecurityChecker, PermissionMatcher, PermissionRegistry } from '@quazard
 import { PersistableRoleProvider, createLocalStorageRolesProvider } from '@quazardous/qdadm/security'
 
 // Composables
-import { useForm, useBareForm, useListPage } from '@quazardous/qdadm/composables'
+import { useBareForm, useListPage } from '@quazardous/qdadm/composables'
 
 // Components
 import { ListPage, PageLayout, AppLayout, FormField, FormActions } from '@quazardous/qdadm/components'

@@ -45,18 +45,6 @@ describe('MemoryStorage', () => {
     })
   })
 
-  describe('instance supportsCaching getter (backward-compat)', () => {
-    it('returns false (delegates to static capabilities)', () => {
-      const storage = new MemoryStorage()
-      expect(storage.supportsCaching).toBe(false)
-    })
-
-    it('reflects the static capability value', () => {
-      const storage = new MemoryStorage()
-      expect(storage.supportsCaching).toBe(MemoryStorage.capabilities.supportsCaching)
-    })
-  })
-
   describe('getStorageCapabilities helper', () => {
     it('returns merged capabilities with defaults', () => {
       const storage = new MemoryStorage()

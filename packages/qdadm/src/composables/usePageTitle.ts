@@ -2,7 +2,7 @@
  * usePageTitle - Provide custom page title for PageHeader
  *
  * Use this composable in custom pages to set the title displayed in PageHeader.
- * For standard CRUD pages, useForm handles this automatically.
+ * For standard CRUD pages, useEntityItemFormPage handles this automatically.
  *
  * Usage:
  * ```ts
@@ -77,7 +77,7 @@ export function usePageTitle(
     }
   }
 
-  // Provide to PageHeader via same key as useForm
+  // Provide to PageHeader via same key as the form composables
   provide('qdadmPageTitleParts', titleParts)
 
   return { titleParts, setTitle }

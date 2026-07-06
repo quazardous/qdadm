@@ -2,7 +2,7 @@
  * useNavContext - Route-aware navigation context for breadcrumb and navlinks
  *
  * Uses semantic breadcrumb as the source of truth for navigation structure.
- * Entity data comes from activeStack (set by useEntityItemPage/useForm).
+ * Entity data comes from activeStack (set by useEntityItemPage/useEntityItemFormPage).
  *
  * Semantic breadcrumb kinds:
  *   - entity-list: Entity collection (e.g., /books)

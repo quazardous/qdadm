@@ -35,11 +35,6 @@ export class MockApiStorage<T extends EntityRecord = EntityRecord> extends IStor
     supportsCaching: false,
   }
 
-  /** @deprecated Use static MockApiStorage.capabilities.supportsCaching instead */
-  get supportsCaching(): boolean {
-    return MockApiStorage.capabilities.supportsCaching
-  }
-
   /**
    * Instance capabilities getter.
    * Merges static capabilities with instance-specific ones like requiresAuth.

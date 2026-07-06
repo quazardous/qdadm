@@ -35,6 +35,7 @@ import { useEntityItemPage, type ParentConfig, type UseEntityItemPageReturn } fr
 import { useActiveStack } from '../chain/useActiveStack.js'
 import { FilterQuery } from '../query/FilterQuery'
 import { useI18n } from '../i18n/useI18n'
+import { formatDateOnly } from '../utils/formatters'
 
 // Import types from dedicated types file
 import type {
@@ -1307,18 +1308,12 @@ export function useListPage<T = unknown>(config: UseListPageOptions<T>): UseList
   })
 
   // ============ UTILITIES ============
+  // Browser-locale by default (unified policy — see utils/formatters).
   function formatDate(
     dateStr: string | null | undefined,
     options: Intl.DateTimeFormatOptions = {}
   ): string {
-    if (!dateStr) return '-'
-    const defaultOptions: Intl.DateTimeFormatOptions = {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-      ...options,
-    }
-    return new Date(dateStr).toLocaleDateString('fr-FR', defaultOptions)
+    return formatDateOnly(dateStr, options)
   }
 
   // ============ STANDARD ACTIONS ============

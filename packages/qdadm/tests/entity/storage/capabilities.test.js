@@ -29,7 +29,7 @@ describe('EntityManager + Storage Capabilities Integration', () => {
         localFilterThreshold: 100
       })
 
-      expect(storage.supportsCaching).toBe(true)
+      expect(storage.constructor.capabilities.supportsCaching).toBe(true)
       expect(manager.isCacheEnabled).toBe(true)
     })
 
@@ -58,7 +58,7 @@ describe('EntityManager + Storage Capabilities Integration', () => {
         localFilterThreshold: 50
       })
 
-      expect(storage.supportsCaching).toBe(true)
+      expect(storage.constructor.capabilities.supportsCaching).toBe(true)
       expect(manager.isCacheEnabled).toBe(true)
     })
   })
@@ -72,7 +72,7 @@ describe('EntityManager + Storage Capabilities Integration', () => {
         localFilterThreshold: 100
       })
 
-      expect(storage.supportsCaching).toBe(false)
+      expect(storage.constructor.capabilities.supportsCaching).toBe(false)
       expect(manager.isCacheEnabled).toBe(false)
     })
 
@@ -97,7 +97,7 @@ describe('EntityManager + Storage Capabilities Integration', () => {
         localFilterThreshold: 100
       })
 
-      expect(storage.supportsCaching).toBe(false)
+      expect(storage.constructor.capabilities.supportsCaching).toBe(false)
       expect(manager.isCacheEnabled).toBe(false)
     })
   })
@@ -111,7 +111,7 @@ describe('EntityManager + Storage Capabilities Integration', () => {
         localFilterThreshold: 100
       })
 
-      expect(storage.supportsCaching).toBe(false)
+      expect(storage.constructor.capabilities.supportsCaching).toBe(false)
       expect(manager.isCacheEnabled).toBe(false)
     })
   })
@@ -195,33 +195,37 @@ describe('EntityManager + Storage Capabilities Integration', () => {
     })
   })
 
-  describe('backward compatibility: instance vs static access', () => {
-    it('instance getter and static property return same value (ApiStorage)', () => {
+  describe('capabilities surface (2.0: deprecated instance getter removed)', () => {
+    it('static capabilities is the canonical source (ApiStorage)', () => {
       const storage = new ApiStorage({ endpoint: '/test' })
 
-      expect(storage.supportsCaching).toBe(ApiStorage.capabilities.supportsCaching)
-      expect(storage.constructor.capabilities.supportsCaching).toBe(storage.supportsCaching)
+      // The deprecated `get supportsCaching()` instance getter was removed in 2.0
+      expect(storage.supportsCaching).toBeUndefined()
+      expect(ApiStorage.capabilities.supportsCaching).toBe(true)
+      expect(storage.constructor.capabilities.supportsCaching).toBe(true)
     })
 
-    it('instance getter and static property return same value (MemoryStorage)', () => {
+    it('static capabilities is the canonical source (MemoryStorage)', () => {
       const storage = new MemoryStorage()
 
-      expect(storage.supportsCaching).toBe(MemoryStorage.capabilities.supportsCaching)
-      expect(storage.constructor.capabilities.supportsCaching).toBe(storage.supportsCaching)
+      expect(storage.supportsCaching).toBeUndefined()
+      expect(MemoryStorage.capabilities.supportsCaching).toBe(false)
+      expect(storage.constructor.capabilities.supportsCaching).toBe(false)
     })
 
-    it('EntityManager check works via instance property access', () => {
+    it('EntityManager check works via constructor capabilities', () => {
       // This mirrors the actual check in EntityManager.isCacheEnabled:
-      // if (this.storage?.supportsCaching === false) return false
+      // caps = storage.capabilities || storage.constructor.capabilities
+      // if (caps?.supportsCaching === false) return false
 
       const apiStorage = new ApiStorage({ endpoint: '/test' })
       const memoryStorage = new MemoryStorage()
 
       // ApiStorage: supportsCaching = true, so check passes
-      expect(apiStorage?.supportsCaching === false).toBe(false)
+      expect(apiStorage.constructor.capabilities?.supportsCaching === false).toBe(false)
 
       // MemoryStorage: supportsCaching = false, so check fails (returns false)
-      expect(memoryStorage?.supportsCaching === false).toBe(true)
+      expect(memoryStorage.constructor.capabilities?.supportsCaching === false).toBe(true)
     })
   })
 })

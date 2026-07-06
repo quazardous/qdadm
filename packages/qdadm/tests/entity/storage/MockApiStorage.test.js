@@ -44,18 +44,6 @@ describe('MockApiStorage', () => {
     })
   })
 
-  describe('instance supportsCaching getter (backward-compat)', () => {
-    it('returns false (delegates to static capabilities)', () => {
-      const storage = new MockApiStorage({ entityName: 'test' })
-      expect(storage.supportsCaching).toBe(false)
-    })
-
-    it('reflects the static capability value', () => {
-      const storage = new MockApiStorage({ entityName: 'test' })
-      expect(storage.supportsCaching).toBe(MockApiStorage.capabilities.supportsCaching)
-    })
-  })
-
   describe('getStorageCapabilities helper', () => {
     it('returns merged capabilities with defaults', () => {
       const storage = new MockApiStorage({ entityName: 'test' })

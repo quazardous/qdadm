@@ -38,11 +38,6 @@ export class MemoryStorage<T extends EntityRecord = EntityRecord> extends IStora
     supportsCaching: false,
   }
 
-  /** @deprecated Use static MemoryStorage.capabilities.supportsCaching instead */
-  get supportsCaching(): boolean {
-    return MemoryStorage.capabilities.supportsCaching
-  }
-
   readonly idField: string
   readonly generateId: () => string
   protected _data: Map<string, T>

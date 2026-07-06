@@ -45,18 +45,6 @@ describe('ApiStorage', () => {
     })
   })
 
-  describe('instance supportsCaching getter (backward-compat)', () => {
-    it('returns true (delegates to static capabilities)', () => {
-      const storage = new ApiStorage({ endpoint: '/test' })
-      expect(storage.supportsCaching).toBe(true)
-    })
-
-    it('reflects the static capability value', () => {
-      const storage = new ApiStorage({ endpoint: '/users' })
-      expect(storage.supportsCaching).toBe(ApiStorage.capabilities.supportsCaching)
-    })
-  })
-
   describe('getStorageCapabilities helper', () => {
     it('returns merged capabilities with defaults', () => {
       const storage = new ApiStorage({ endpoint: '/test' })

@@ -47,7 +47,7 @@ const props = withDefaults(defineProps<Props>(), {
   badges: () => []
 })
 
-// Auto-injected title from useForm (if available)
+// Auto-injected title from the form composables (if available)
 const injectedTitleParts = inject<Ref<TitleParts | null> | null>('qdadmPageTitleParts', null)
 
 // Use props first, then injected, then fallback
