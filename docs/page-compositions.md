@@ -153,3 +153,10 @@ const children = useListPage({
 For a dashboard, a report, a viewer — anything that is not a CRUD entity — a hand-rolled
 `DataTable`/`Card` mounted in a `ctx.routes()` route is legitimate. The "ListPage by
 default" credo targets entity lists, not aggregation views.
+
+⚠️ **Not for entity pages.** `ctx.crud` doesn't just generate routes — it binds
+`entity` into the route meta, which drives the **item-name breadcrumb**, the
+active stack and permission binding. An entity form declared via raw
+`ctx.routes()` works but **silently loses the item-name crumb** (static label
+only). Use `ctx.crud` for any entity list/form/show; see
+[crud.md#ctxcrud](./crud.md#ctxcrud).

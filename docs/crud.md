@@ -40,6 +40,14 @@ ctx.crud(entity, pages, options?)
 
 Use `form` for the single-form pattern (recommended). Use `create`/`edit` only when create and edit are truly different pages.
 
+> **Why `ctx.crud` and not hand-rolled routes:** beyond generating the routes,
+> `ctx.crud` binds `entity` (+ `parent`, `label`) into the route **meta** and
+> registers the route family. That meta is what `useSemanticBreadcrumb` /
+> `useNavContext` read to resolve the **item-name breadcrumb** ("My Pool" instead
+> of the static label), the active stack, and permission binding. Declaring an
+> entity's form via raw `ctx.routes()` **silently** loses all of that — nothing
+> errors, the breadcrumb just degrades.
+
 **Options:**
 
 | Option | Type | Description |
@@ -94,7 +102,11 @@ Registers route `/books/:bookId/info`, name `book-info`. Appears as tab alongsid
 
 ### ctx.routes()
 
-Custom non-CRUD pages:
+Custom non-CRUD pages. **For entities, prefer `ctx.crud`** — raw routes skip the
+breadcrumb/active-stack wiring (see the note above). If you genuinely need a
+custom entity route, pass the meta yourself via the third argument:
+`ctx.routes(path, routes, { entity: 'botPools' })` (`RouteOptions` also accepts
+`parent`, `label`, `layout`).
 
 ```js
 ctx.routes('books/stats', [
