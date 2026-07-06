@@ -205,8 +205,9 @@ import { useOptionsLookup } from '@quazardous/qdadm'
 import { LookupField } from '@quazardous/qdadm/components'
 import { JsonStructuredField } from '@quazardous/qdadm/editors'
 
-// catalog endpoint returns objects → map name/id to label/value
-const taskTypeLookup = useOptionsLookup({ endpoint: '/api/admin/task-types', label: 'name', value: 'id' })
+// entity-backed: goes through the registered EntityManager/storage,
+// so base URL + auth are applied for you
+const taskTypeLookup = useOptionsLookup({ entity: 'taskTypes', label: 'name', value: 'id' })
 </script>
 
 <template>
@@ -218,6 +219,11 @@ const taskTypeLookup = useOptionsLookup({ endpoint: '/api/admin/task-types', lab
 </template>
 ```
 
+The structured face doesn't have to be a `LookupField` — any component works in
+the slot (e.g. cascading `Select`s + add-button + chips fed by a manager method,
+for composite values like `module:type`). The contract is only "binds the same
+`v-model`".
+
 ### `useOptionsLookup` — options for `LookupField`
 
 `LookupField` is fed by `useOptionsLookup`, which sources its options from one of
@@ -226,8 +232,15 @@ const taskTypeLookup = useOptionsLookup({ endpoint: '/api/admin/task-types', lab
 | Source | Call | Yields |
 |---|---|---|
 | **Entity** | `useOptionsLookup({ entity: 'botPools', label: 'name', value: 'id' })` | Options from a registered `EntityManager` |
-| **Endpoint** | `useOptionsLookup({ endpoint: '/api/admin/task-types', label: 'name', value: 'id' })` | Options fetched from a raw API URL |
+| **Endpoint** | `useOptionsLookup({ endpoint: 'https://api…/task-types', headers, label, value })` | Options fetched from a raw URL |
 | **Static** | `useOptionsLookup({ static: ['a', 'b', 'c'] })` | A fixed in-memory list |
+
+> ⚠️ **`endpoint` mode is a raw `fetch`** — it does NOT go through your storage
+> adapter, so **no API base URL and no auth header** are applied. In a typical
+> admin SPA (API on another origin, bearer auth) a relative endpoint hits the
+> admin origin unauthenticated and the autocomplete comes back empty. Prefer
+> **`entity`** (or `static`); if you must use `endpoint`, pass an **absolute URL**
+> and the auth via the `headers` option (a `Record` or a `() => Record` callback).
 
 Omit `label`/`value` for a **pure** `string[]`/`number[]` source (suggestions are
 the raw values); provide them for **mapped** mode when items are objects and the
