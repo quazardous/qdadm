@@ -6,37 +6,27 @@
  * - Routes (list + detail)
  * - Navigation
  *
- * Demonstrates external API integration (REST Countries API).
+ * Data is a vendored ISO-country dataset (250 entries, mledoze/countries) —
+ * the free REST Countries v3.1 API was shut down (legacy deprecation, the
+ * v5 API requires a paid bearer token), so the demo ships its own fixture.
  * Custom storage handles pagination and search.
  */
 
-import { Module, ApiStorage, EntityManager } from '@quazardous/qdadm'
-import axios from 'axios'
+import { Module, MemoryStorage, EntityManager } from '@quazardous/qdadm'
+import countriesFixture from '../../fixtures/countries.json'
 
 // ============================================================================
 // STORAGE
 // ============================================================================
 
-const restCountriesClient = axios.create({
-  baseURL: 'https://restcountries.com'
-})
-
 /**
- * REST Countries API storage
- *
- * Returns all 250 countries, client-side pagination.
+ * Countries storage over the vendored fixture (250 countries).
+ * Same list/search contract as the old REST Countries storage.
  */
-class RestCountriesStorage extends ApiStorage {
-  constructor(options = {}) {
-    super({ ...options, idField: 'cca3' })
-  }
-
+class CountriesStorage extends MemoryStorage {
   async list(params = {}) {
     const { page = 1, page_size = 20, search } = params
-    const fields = 'name,cca3,capital,region,population,flag,flags'
-
-    const response = await this.client.get(this.endpoint, { params: { fields } })
-    let items = response.data
+    let items = countriesFixture
 
     if (search) {
       const term = search.toLowerCase()
@@ -54,17 +44,11 @@ class RestCountriesStorage extends ApiStorage {
   }
 
   async get(id) {
-    // Fetch all fields for detail view
-    const fields = 'name,cca3,capital,region,subregion,population,flag,flags,languages,currencies,timezones,borders'
-    const response = await this.client.get(`/v3.1/alpha/${id}`, { params: { fields } })
-    return Array.isArray(response.data) ? response.data[0] : response.data
+    return countriesFixture.find(c => c.cca3 === id) || null
   }
 }
 
-const countriesStorage = new RestCountriesStorage({
-  endpoint: '/v3.1/all',
-  client: restCountriesClient
-})
+const countriesStorage = new CountriesStorage()
 
 // ============================================================================
 // MODULE
@@ -90,7 +74,7 @@ export class CountriesModule extends Module {
             capital: 'Capital',
             region: 'Region',
             subregion: 'Subregion',
-            population: 'Population',
+            area: 'Area (km²)',
             flag: 'Flag',
           },
         },
@@ -111,7 +95,7 @@ export class CountriesModule extends Module {
             capital: 'Capitale',
             region: 'Région',
             subregion: 'Sous-région',
-            population: 'Population',
+            area: 'Superficie (km²)',
             flag: 'Drapeau',
           },
         },
@@ -151,7 +135,7 @@ export class CountriesModule extends Module {
         capital: { type: 'array', label: 'Capital', readOnly: true },
         region: { type: 'text', label: 'Region', readOnly: true },
         subregion: { type: 'text', label: 'Subregion', readOnly: true },
-        population: { type: 'number', label: 'Population', readOnly: true },
+        area: { type: 'number', label: 'Area (km²)', readOnly: true },
         flag: { type: 'text', label: 'Flag', readOnly: true }
       },
       storage: countriesStorage

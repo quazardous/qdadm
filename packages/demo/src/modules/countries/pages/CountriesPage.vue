@@ -34,9 +34,9 @@ list.setSearch({
 list.addViewAction()
 
 // ============ FORMATTERS ============
-function formatPopulation(pop) {
-  if (typeof pop !== 'number') return '-'
-  return new Intl.NumberFormat('en-US').format(pop)
+function formatArea(area) {
+  if (typeof area !== 'number') return '-'
+  return new Intl.NumberFormat('en-US').format(area)
 }
 
 function formatCapital(capitals) {
@@ -82,9 +82,9 @@ function getRegionSeverity(region) {
           <span v-else>-</span>
         </template>
       </Column>
-      <Column field="population" header="Population" sortable style="width: 130px">
+      <Column field="area" header="Area (km²)" sortable style="width: 130px">
         <template #body="{ data }">
-          {{ formatPopulation(data.population) }}
+          {{ formatArea(data.area) }}
         </template>
       </Column>
     </template>

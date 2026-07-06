@@ -25,7 +25,7 @@ show.updateField('region', {
   type: 'badge',
 })
 
-show.updateField('population', {
+show.updateField('area', {
   type: 'number',
   locale: 'en-US',
 })
@@ -76,7 +76,7 @@ const timezones = computed(() => show.data.value?.timezones || [])
     </template>
 
     <template #fields>
-      <!-- Auto-generated fields (cca3, region, subregion, population) -->
+      <!-- Auto-generated fields (cca3, region, subregion, area) -->
       <ShowField
         v-for="f in show.fields.value"
         :key="f.name"
