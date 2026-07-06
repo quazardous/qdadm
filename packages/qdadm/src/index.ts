@@ -293,6 +293,12 @@ export {
   type OptionsLookupItem,
   type OptionsDisplayMode,
 } from './composables/useOptionsLookup'
+export {
+  useApiClient,
+  resolveApiClient,
+  API_CLIENT_INJECTION_KEY,
+  type ApiClientSource,
+} from './api/apiClient'
 export { useChildPage, type UseChildPageReturn } from './composables/useChildPage'
 export { useSidebarState, SIDEBAR_COLLAPSED_KEY } from './composables/useSidebarState'
 

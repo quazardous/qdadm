@@ -232,15 +232,26 @@ for composite values like `module:type`). The contract is only "binds the same
 | Source | Call | Yields |
 |---|---|---|
 | **Entity** | `useOptionsLookup({ entity: 'botPools', label: 'name', value: 'id' })` | Options from a registered `EntityManager` |
-| **Endpoint** | `useOptionsLookup({ endpoint: 'https://api…/task-types', headers, label, value })` | Options fetched from a raw URL |
+| **Endpoint** | `useOptionsLookup({ endpoint: '/api/task-types', label, value })` | Options fetched from an API endpoint |
 | **Static** | `useOptionsLookup({ static: ['a', 'b', 'c'] })` | A fixed in-memory list |
 
-> ⚠️ **`endpoint` mode is a raw `fetch`** — it does NOT go through your storage
-> adapter, so **no API base URL and no auth header** are applied. In a typical
-> admin SPA (API on another origin, bearer auth) a relative endpoint hits the
-> admin origin unauthenticated and the autocomplete comes back empty. Prefer
-> **`entity`** (or `static`); if you must use `endpoint`, pass an **absolute URL**
-> and the auth via the `headers` option (a `Record` or a `() => Record` callback).
+**Endpoint routing** *(since 2.1)* — register your API client once on the kernel
+and relative endpoints Just Work (base URL + auth applied):
+
+```js
+new Kernel({ apiClient: myAxios })   // the same client your ApiStorages use
+```
+
+| Endpoint shape | Routed through |
+|---|---|
+| `via: 'entityName'` set | That entity's `storage.request()` (explicit, multi-API apps) |
+| Relative (`/api/…`) | The kernel `apiClient` → base URL + auth, zero per-call wiring |
+| Absolute (`https://…`) | Raw `fetch` + optional `headers` — the escape hatch for third-party APIs |
+| Relative, **no** `apiClient` registered | Legacy raw fetch + a console warning |
+
+Failed lookups are always diagnosable: a non-JSON response (HTML page), 401/403,
+or a parse failure logs a `console.warn` naming the endpoint and the likely
+cause — an empty autocomplete is never silent.
 
 Omit `label`/`value` for a **pure** `string[]`/`number[]` source (suggestions are
 the raw values); provide them for **mapped** mode when items are objects and the
