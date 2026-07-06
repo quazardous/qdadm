@@ -114,6 +114,7 @@ export class EntityManager<T extends EntityRecord = EntityRecord> {
     total: 0,
     loadedAt: null,
     valid: false,
+    overflowed: false,
   }
   protected _cacheLoading: Promise<boolean> | null = null
 

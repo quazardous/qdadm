@@ -26,6 +26,8 @@ export interface CacheState<T> {
   total: number
   loadedAt: number | null
   valid: boolean
+  /** Entity total exceeded effectiveThreshold — cache can't hold it (#1204). */
+  overflowed?: boolean
 }
 
 /**

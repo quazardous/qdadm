@@ -182,6 +182,7 @@ export function applyCrudMethods(EntityManagerClass: { prototype: any }): void {
         cache.items = items
         cache.total = total
         cache.valid = true
+        cache.overflowed = false
         cache.loadedAt = Date.now()
         // Resolve parent fields for search (book.title, user.username, etc.)
         await this._resolveSearchFields(items)
@@ -191,6 +192,11 @@ export function applyCrudMethods(EntityManagerClass: { prototype: any }): void {
         // Fire-and-forget: load full cache in background
         this._loadCacheInBackground()
       }
+    } else if (canUseCache && this.isCacheEnabled && total > this.effectiveThreshold) {
+      // Entity outgrew the threshold: the cache can never hold it. Mark it
+      // so query() stops filtering an empty cache and goes to the API
+      // instead of returning an empty list (#1204).
+      cache.overflowed = true
     }
 
     return { items, total, fromCache: false }

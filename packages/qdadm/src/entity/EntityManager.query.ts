@@ -31,7 +31,7 @@ export function applyQueryMethods(EntityManagerClass: { prototype: any }): void 
     // Ensure cache is filled (via list) — skip for dynamic endpoints
     // since list() disables caching when resolveStorage provides an endpoint
     const cache = this._cache
-    if (!isDynamicEndpoint && !cache.valid && this.isCacheEnabled) {
+    if (!isDynamicEndpoint && !cache.valid && !cache.overflowed && this.isCacheEnabled) {
       await this.list(
         { page_size: this.effectiveThreshold },
         routingContext ?? undefined
@@ -40,8 +40,11 @@ export function applyQueryMethods(EntityManagerClass: { prototype: any }): void 
 
     let result: ListResult<any>
 
-    // Dynamic endpoint, overflow, or cache disabled → use API directly
-    if (isDynamicEndpoint || this.overflow || !this.isCacheEnabled) {
+    // Dynamic endpoint, overflow, cache disabled, or cache still not
+    // valid (fill failed / threshold exceeded) → use API directly. The
+    // cache is an optional layer: it must never turn into an empty
+    // result when it can't hold the data (#1204).
+    if (isDynamicEndpoint || this.overflow || !this.isCacheEnabled || !cache.valid) {
       result = await this.list(params, routingContext ?? undefined)
     } else {
       // Full cache available - filter locally

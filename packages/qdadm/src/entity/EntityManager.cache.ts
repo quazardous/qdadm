@@ -90,7 +90,9 @@ export function applyCacheMethods(EntityManagerClass: { prototype: any }): void 
   Object.defineProperty(proto, 'overflow', {
     get(this: Self): boolean {
       const cache = this._cache
-      return cache.valid && cache.total > cache.items.length
+      // overflowed: total exceeded effectiveThreshold, cache was never
+      // filled (#1204) — the cache is unusable either way.
+      return cache.overflowed === true || (cache.valid && cache.total > cache.items.length)
     },
     configurable: true,
   })
@@ -398,6 +400,7 @@ export function applyCacheMethods(EntityManagerClass: { prototype: any }): void 
     cache.valid = false
     cache.items = []
     cache.total = 0
+    cache.overflowed = false
     cache.loadedAt = null
     this._cacheLoading = null
     // Also clear detail cache
