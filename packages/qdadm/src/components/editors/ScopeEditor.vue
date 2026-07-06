@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch, inject } from 'vue'
+import type { HttpClient } from '../../entity/storage/ApiStorage'
 import AutoComplete from 'primevue/autocomplete'
 import Select from 'primevue/select'
 import Button from 'primevue/button'
@@ -43,8 +44,10 @@ const props = withDefaults(defineProps<Props>(), {
   defaultActions: null
 })
 
-// Get API adapter (optional)
+// Get API adapter (optional); the kernel default client (Kernel({ apiClient }))
+// serves as fallback so scope endpoints get base URL + auth without app wiring.
 const api = inject<ApiAdapter | null>('apiAdapter', null)
+const kernelApiClient = inject<HttpClient | (() => HttpClient) | null>('qdadmApiClient', null)
 
 // Get global scope config (optional) - allows app-level configuration
 const globalScopeConfig = inject<ScopeConfig>('scopeConfig', {})
@@ -178,8 +181,17 @@ function isRowComplete(row: ScopeRow): boolean {
 async function loadScopeDefinition(): Promise<void> {
   loading.value = true
   try {
-    if (!api) {
-      // No API adapter, use defaults
+    let data: ScopeDefinition | null = null
+    if (api) {
+      data = await api.request('GET', config.value.endpoint)
+    } else if (kernelApiClient) {
+      // Fallback: kernel default API client (base URL + auth applied)
+      const client = typeof kernelApiClient === 'function' ? kernelApiClient() : kernelApiClient
+      data = (await client.get<ScopeDefinition>(config.value.endpoint)).data
+    }
+
+    if (!data) {
+      // No API layer available, use defaults
       scopeDefinition.value = {
         resources: [...config.value.resources],
         actions: [...config.value.actions],
@@ -187,7 +199,6 @@ async function loadScopeDefinition(): Promise<void> {
       return
     }
 
-    const data = await api.request('GET', config.value.endpoint)
     scopeDefinition.value = {
       resources: data.resources || [...config.value.resources],
       actions: data.actions || [...config.value.actions],

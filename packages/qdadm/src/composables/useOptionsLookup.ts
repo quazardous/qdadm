@@ -42,6 +42,7 @@
  */
 import { ref, onMounted, type Ref } from 'vue'
 import { useOrchestrator } from '../orchestrator/useOrchestrator.js'
+import { useApiClient } from '../api/apiClient'
 
 export interface OptionsLookupItem {
   label: string
@@ -66,11 +67,27 @@ export interface UseOptionsLookupConfig {
   entity?: string
   /** Extract distinct values from a specific field (entity mode only) */
   field?: string
-  /** Fetch options from a raw API endpoint */
+  /**
+   * Fetch options from an API endpoint.
+   *
+   * Routing (#1198): a **relative** endpoint goes through the kernel's
+   * default API client when one is registered (`Kernel({ apiClient })`) —
+   * base URL + auth applied, no per-call wiring. An **absolute** URL is
+   * fetched raw (escape hatch for third-party APIs, combine with `headers`).
+   * A relative endpoint with no registered client falls back to a raw fetch
+   * (legacy) with a console warning.
+   */
   endpoint?: string
+  /**
+   * Route the endpoint request through the named entity's storage
+   * (`storage.request('GET', endpoint)`) instead of the kernel client —
+   * explicit refinement for multi-API apps. Takes precedence over the
+   * kernel client.
+   */
+  via?: string
   /** When using endpoint: pick a sub-key from the response data */
   pick?: string
-  /** Extra headers for endpoint fetch (e.g. Authorization) */
+  /** Extra headers for the raw-fetch paths (e.g. Authorization) */
   headers?: Record<string, string> | (() => Record<string, string>)
   /** Static options (no fetch needed) */
   static?: unknown[]
@@ -164,10 +181,16 @@ export function useOptionsLookup(config: UseOptionsLookupConfig): UseOptionsLook
       : defaultDecode
   )
 
-  // Resolve orchestrator lazily (only if entity mode)
-  let getManager: ((name: string) => { list: (params?: Record<string, unknown>) => Promise<{ items: unknown[] }> }) | null = null
+  // Resolve orchestrator lazily (entity mode, or via:'entityName' routing)
+  type LookupManager = {
+    list: (params?: Record<string, unknown>) => Promise<{ items: unknown[] }>
+    storage?: {
+      request?: (method: string, path: string, options?: Record<string, unknown>) => Promise<unknown>
+    }
+  }
+  let getManager: ((name: string) => LookupManager) | null = null
 
-  if (config.entity) {
+  if (config.entity || config.via) {
     try {
       const orc = useOrchestrator()
       // Generic-vs-non-generic: getManager is parameterised by an
@@ -178,6 +201,105 @@ export function useOptionsLookup(config: UseOptionsLookupConfig): UseOptionsLook
     } catch {
       // Orchestrator not available
     }
+  }
+
+  // Kernel default API client (Kernel({ apiClient })) — used for relative
+  // endpoints so base URL + auth apply without per-call wiring (#1198).
+  let apiClient: ReturnType<typeof useApiClient> = null
+  if (config.endpoint) {
+    try {
+      apiClient = useApiClient()
+    } catch {
+      // Outside a setup/injection context
+    }
+  }
+
+  // Bare-relative warning: once per composable instance, not per load
+  let warnedBareRelative = false
+
+  function warnLookup(msg: string): void {
+    console.warn(`[qdadm] useOptionsLookup(endpoint: '${config.endpoint}'): ${msg}`)
+  }
+
+  /** Shared normalization for every endpoint path: unwrap data, pick, array-check. */
+  function normalizeEndpointPayload(json: unknown): unknown[] {
+    let data: unknown = (json as { data?: unknown })?.data ?? json
+    if (config.pick && typeof data === 'object' && data !== null && !Array.isArray(data)) {
+      data = (data as Record<string, unknown>)[config.pick]
+    }
+    if (!Array.isArray(data)) {
+      warnLookup('response contained no usable array (after data/pick unwrap) — check the endpoint payload shape')
+      return []
+    }
+    return data
+  }
+
+  /** Endpoint routing (#1198): via storage > relative→kernel client > raw fetch. */
+  async function loadFromEndpoint(): Promise<unknown[]> {
+    const endpoint = config.endpoint!
+    const isAbsolute = /^https?:\/\//i.test(endpoint)
+
+    // 1. via:'entityName' → that entity's storage (explicit refinement)
+    if (config.via && getManager) {
+      const storage = getManager(config.via)?.storage
+      if (storage?.request) {
+        try {
+          const json = await storage.request('GET', endpoint)
+          return normalizeEndpointPayload(json)
+        } catch (err) {
+          warnLookup(`request via '${config.via}' storage failed: ${err instanceof Error ? err.message : err}`)
+          throw err
+        }
+      }
+      warnLookup(`via: '${config.via}' has no storage.request() — falling back to the default routing`)
+    }
+
+    // 2. relative endpoint → kernel default API client (base URL + auth)
+    if (!isAbsolute && apiClient) {
+      try {
+        const { data } = await apiClient.get(endpoint)
+        return normalizeEndpointPayload(data)
+      } catch (err) {
+        warnLookup(`request through the kernel apiClient failed: ${err instanceof Error ? err.message : err}`)
+        throw err
+      }
+    }
+
+    // 3. raw fetch — absolute URL (escape hatch) or legacy relative call
+    if (!isAbsolute && !warnedBareRelative) {
+      warnedBareRelative = true
+      warnLookup(
+        'relative endpoint fetched bare — no API base URL or auth header applied. ' +
+        'Register Kernel({ apiClient }) (recommended), use via: \'entityName\', or pass an absolute URL + headers.'
+      )
+    }
+    const extraHeaders = typeof config.headers === 'function' ? config.headers() : config.headers
+    const response = await fetch(endpoint, {
+      credentials: 'include',
+      headers: { 'Accept': 'application/json', ...extraHeaders },
+    })
+    if (!response.ok) {
+      const authHint = response.status === 401 || response.status === 403
+        ? ' — missing auth? register Kernel({ apiClient }) or pass headers'
+        : ''
+      warnLookup(`HTTP ${response.status}${authHint}`)
+      throw new Error(`HTTP ${response.status}`)
+    }
+    const contentType = response.headers.get('content-type') || ''
+    if (!contentType.includes('json')) {
+      warnLookup(
+        `response is not JSON (content-type: '${contentType || 'unknown'}') — the relative URL likely resolved ` +
+        'to the app origin (HTML page). Register Kernel({ apiClient }) or use an absolute URL.'
+      )
+    }
+    let json: unknown
+    try {
+      json = await response.json()
+    } catch (err) {
+      warnLookup(`response body is not parseable JSON: ${err instanceof Error ? err.message : err}`)
+      throw err
+    }
+    return normalizeEndpointPayload(json)
   }
 
   // Encoded strings cache for mapped mode (rebuilt on processItems)
@@ -255,21 +377,7 @@ export function useOptionsLookup(config: UseOptionsLookupConfig): UseOptionsLook
           items = rawItems
         }
       } else if (config.endpoint) {
-        const extraHeaders = typeof config.headers === 'function' ? config.headers() : config.headers
-        const response = await fetch(config.endpoint, {
-          credentials: 'include',
-          headers: { 'Accept': 'application/json', ...extraHeaders },
-        })
-        if (!response.ok) throw new Error(`HTTP ${response.status}`)
-        const json = await response.json()
-
-        let data = json.data ?? json
-
-        if (config.pick && typeof data === 'object' && !Array.isArray(data)) {
-          data = (data as Record<string, unknown>)[config.pick]
-        }
-
-        items = Array.isArray(data) ? data : []
+        items = await loadFromEndpoint()
       }
 
       processItems(items)

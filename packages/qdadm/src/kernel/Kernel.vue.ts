@@ -205,6 +205,12 @@ export function applyVueMethods(KernelClass: { prototype: any }): void {
     app.provide('qdadmActiveStack', this.activeStack)
     app.provide('qdadmStackHydrator', this.stackHydrator)
 
+    if (this.options.apiClient) {
+      // Default API client for composables/widgets (useOptionsLookup,
+      // ScopeEditor) — relative endpoints get base URL + auth (#1198).
+      app.provide('qdadmApiClient', this.options.apiClient)
+    }
+
     if (this.options.debug && typeof window !== 'undefined') {
       const self = this
       // Single namespaced surface for browser-console & agent introspection.

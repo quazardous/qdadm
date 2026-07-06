@@ -11,6 +11,7 @@ import type { EntityManager } from '../entity/EntityManager'
 import type { EntityAuthAdapter } from '../entity/auth/EntityAuthAdapter'
 import type { RoleProvider } from '../security/RolesProvider'
 import type { I18nOptions } from '../i18n/types'
+import type { ApiClientSource } from '../api/apiClient'
 
 /**
  * Auth adapter interface (app-level authentication)
@@ -183,6 +184,14 @@ export interface KernelOptions {
   debug?: boolean
   onAuthExpired?: (payload: unknown) => void
   i18n?: I18nOptions
+  /**
+   * Default API HTTP client (axios-compatible `HttpClient`, or a factory),
+   * provided to composables/widgets as `qdadmApiClient`. Relative-endpoint
+   * lookups (`useOptionsLookup` endpoint mode, `ScopeEditor` fallback) route
+   * through it so the app's base URL + auth headers apply without per-call
+   * wiring. Typically the same client your ApiStorages use.
+   */
+  apiClient?: ApiClientSource
   /**
    * Existing Vue app to install qdadm onto. When provided, the Kernel
    * skips its own `createApp(WrappedRoot)` and reuses the supplied
