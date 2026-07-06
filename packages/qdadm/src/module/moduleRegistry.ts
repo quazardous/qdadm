@@ -442,6 +442,21 @@ export function getEntityConfig(name: string): EntityConfig | undefined {
  * @param parentParam - Parent route param
  * @returns Routes with matching parent config
  */
+/**
+ * Check that every REQUIRED `:param` in a route path is present (non-empty)
+ * in the given params. Used by PageNav to avoid building navlinks that
+ * vue-router's useLink would reject with "Missing required param" (#1205).
+ */
+export function routeParamsSatisfied(path: string, params: Record<string, unknown>): boolean {
+  const tokens = path.match(/:([A-Za-z0-9_]+)\??/g) || []
+  return tokens.every((token) => {
+    if (token.endsWith('?')) return true // optional param
+    const name = token.slice(1)
+    const value = params[name]
+    return value !== undefined && value !== null && value !== ''
+  })
+}
+
 export function getSiblingRoutes(parentEntity: string, parentParam: string): ModuleRoute[] {
   return routes.filter((route) => {
     const parent = route.meta?.parent

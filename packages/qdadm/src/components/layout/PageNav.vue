@@ -17,7 +17,7 @@
  */
 import { computed, watch, inject, type Ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { getSiblingRoutes, getChildRoutes, type ModuleRoute, type ParentConfig } from '../../module/moduleRegistry'
+import { getSiblingRoutes, getChildRoutes, routeParamsSatisfied, type ModuleRoute, type ParentConfig } from '../../module/moduleRegistry'
 import { useOrchestrator } from '../../orchestrator/useOrchestrator.js'
 import type { EntityManager } from '../../entity/EntityManager'
 import type { EntityRecord } from '../../types'
@@ -70,12 +70,15 @@ const siblingNavlinks = computed<NavLink[]>(() => {
   const { entity: parentEntityName, param } = parentConfig.value
   const siblings = getSiblingRoutes(parentEntityName, param)
 
-  // Filter out action routes (create, edit) - they're not navigation tabs
+  // Filter out item-level routes (create, edit, show) — they're not
+  // navigation tabs — and any route whose required params aren't all
+  // available here (#1205: a child show route needs its own :id, which
+  // doesn't exist at list level; useLink would throw).
   const navRoutes = siblings.filter((r: ModuleRoute) => {
     const name = r.name || ''
     const path = r.path || ''
-    // Exclude routes ending with -create, -edit, -new or paths with /create, /edit, /new
-    return !name.match(/-(create|edit|new)$/) && !path.match(/\/(create|edit|new)$/)
+    if (name.match(/-(create|edit|new|show)$/) || path.match(/\/(create|edit|new)$/)) return false
+    return routeParamsSatisfied(path, route.params as Record<string, unknown>)
   })
 
   // Build navlinks with current route params
@@ -109,11 +112,14 @@ const childNavlinks = computed<NavLink[]>(() => {
   const children = getChildRoutes(entityName)
   if (children.length === 0) return []
 
-  // Filter out action routes (create, edit) - they're not navigation tabs
+  // Filter out item-level routes (create, edit, show) and any route whose
+  // required params aren't satisfiable from the parent id alone (#1205).
   const navRoutes = children.filter((r: ModuleRoute) => {
     const name = r.name || ''
     const path = r.path || ''
-    return !name.match(/-(create|edit|new)$/) && !path.match(/\/(create|edit|new)$/)
+    if (name.match(/-(create|edit|new|show)$/) || path.match(/\/(create|edit|new)$/)) return false
+    const parentParam = (r.meta?.parent as ParentConfig)?.param || currentManager?.idField || 'id'
+    return routeParamsSatisfied(path, { [parentParam]: entityId })
   })
 
   if (navRoutes.length === 0) return []
