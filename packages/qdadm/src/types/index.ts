@@ -283,3 +283,19 @@ export interface RequestOptions {
   headers?: Record<string, string>
   context?: unknown
 }
+
+// ============ UI TYPES ============
+
+/**
+ * PrimeVue Button/Tag severity values (#1191) — one shared union instead of
+ * `string` + `as any` casts at every :severity binding.
+ */
+export type ButtonSeverity =
+  | 'primary'
+  | 'secondary'
+  | 'success'
+  | 'info'
+  | 'warn'
+  | 'danger'
+  | 'help'
+  | 'contrast'

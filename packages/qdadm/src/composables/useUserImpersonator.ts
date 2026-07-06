@@ -37,7 +37,7 @@ import {
   type Ref,
   type ComputedRef,
 } from 'vue'
-import type { SignalBus } from '../kernel/SignalBus'
+import type { EntityManagerLike, OrchestratorLike } from '../entity/EntityManager.interface'
 
 /**
  * User record type
@@ -56,27 +56,17 @@ interface AuthAdapterWithImpersonation {
 }
 
 /**
- * Entity auth adapter interface
- */
-interface EntityAuthAdapter {
-  isGranted?: (permission: string) => boolean
-}
-
-/**
  * Orchestrator interface
  */
-interface Orchestrator {
-  signals?: SignalBus
-  entityAuthAdapter?: EntityAuthAdapter
-  get: (entityName: string) => EntityManager | null
+// #1191 — shared structural view + the impersonator's extra surface
+type ImpersonatorManager = EntityManagerLike & {
+  findAll?: () => Promise<{ data?: UserRecord[] } | UserRecord[]>
 }
+type Orchestrator = OrchestratorLike<ImpersonatorManager | null | undefined>
 
 /**
  * Entity manager interface
  */
-interface EntityManager {
-  findAll: () => Promise<{ data?: UserRecord[] } | UserRecord[]>
-}
 
 /**
  * Options for useUserImpersonator
@@ -214,7 +204,7 @@ export function useUserImpersonator(
         error.value = null
         const manager = orchestrator.get(entity)
         if (manager) {
-          const result = await manager.findAll()
+          const result = await manager.findAll?.()
           users.value =
             (result as { data?: UserRecord[] })?.data ||
             (result as UserRecord[]) ||

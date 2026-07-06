@@ -288,3 +288,4 @@ export type EntityManagerInternal<T extends EntityRecord = EntityRecord> = Entit
 // Re-export types used by helpers
 export type { EntityRecord, ListResult, IStorage, StorageCapabilities }
 export type { SignalBus, HookRegistry }
+

@@ -15,6 +15,12 @@
 import { computed, inject, type ComputedRef } from 'vue'
 import { useRoute } from 'vue-router'
 import { useStackHydrator, type StackHydratorReturn } from '../chain/useStackHydrator'
+import type { EntityManagerLike, OrchestratorLike } from '../entity/EntityManager.interface'
+
+// #1191 — shared minimal structural views (was: local redeclarations)
+type EntityManager = EntityManagerLike
+type Orchestrator = OrchestratorLike
+
 
 /**
  * Parent config from route meta
@@ -28,21 +34,10 @@ interface ParentConfig {
 /**
  * Entity manager interface (subset used by child pages)
  */
-interface EntityManager {
-  idField: string
-  label?: string
-  labelPlural?: string
-  routePrefix?: string
-  getEntityLabel: (data: unknown) => string
-  getEntityBadges?: (data: unknown) => Array<{ label: string; severity?: string }>
-}
 
 /**
  * Orchestrator interface
  */
-interface Orchestrator {
-  get: (entityName: string) => EntityManager | null
-}
 
 /**
  * Return type for useChildPage

@@ -44,6 +44,7 @@ import Button from 'primevue/button'
 import Message from 'primevue/message'
 import FieldGroups from '../item/FieldGroups.vue'
 import ShowField from './ShowField.vue'
+import type { ButtonSeverity } from '../../types'
 
 /**
  * Page title parts for PageHeader
@@ -61,7 +62,7 @@ interface ResolvedAction {
   name: string
   label: string
   icon?: string
-  severity?: string
+  severity?: ButtonSeverity
   isLoading: boolean
   isDisabled: boolean
   onClick: () => void | Promise<void>
@@ -110,7 +111,7 @@ const props = defineProps({
   titleParts: { type: Object as PropType<PageTitleParts | null>, default: null },
 
   // Custom badges from entity manager
-  badges: { type: Array as PropType<Array<{ label: string; severity?: string }>>, default: () => [] },
+  badges: { type: Array as PropType<Array<{ label: string; severity?: ButtonSeverity }>>, default: () => [] },
 
   // Fields (for auto-rendering - optional, can use #fields slot instead)
   fields: { type: Array as PropType<ResolvedFieldConfig[]>, default: () => [] },
@@ -200,7 +201,7 @@ const fetchErrorMessage = computed<string | null>(() => {
           :key="action.name"
           :label="action.label"
           :icon="action.icon"
-          :severity="(action.severity as any)"
+          :severity="action.severity"
           :loading="action.isLoading"
           :disabled="action.isDisabled"
           @click="action.onClick"
@@ -283,7 +284,7 @@ const fetchErrorMessage = computed<string | null>(() => {
                   :key="action.name"
                   :label="action.label"
                   :icon="action.icon"
-                  :severity="(action.severity as any)"
+                  :severity="action.severity"
                   :loading="action.isLoading"
                   :disabled="action.isDisabled"
                   @click="action.onClick"
@@ -344,7 +345,7 @@ const fetchErrorMessage = computed<string | null>(() => {
                 :key="action.name"
                 :label="action.label"
                 :icon="action.icon"
-                :severity="(action.severity as any)"
+                :severity="action.severity"
                 :loading="action.isLoading"
                 :disabled="action.isDisabled"
                 @click="action.onClick"

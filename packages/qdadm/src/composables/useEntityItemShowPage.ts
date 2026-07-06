@@ -54,19 +54,10 @@ import {
   type ShowFieldDefinition,
   type ShowResolvedFieldConfig,
 } from './createShowFieldResolver'
+import type { OrchestratorLike } from '../entity/EntityManager.interface'
 
-/**
- * Orchestrator interface
- */
-interface Orchestrator {
-  get: (entityName: string) => EntityManager
-  toast?: {
-    success: (summary: string, detail?: string, emitter?: unknown) => void
-    error: (summary: string, detail?: string, emitter?: unknown) => void
-    warn: (summary: string, detail?: string, emitter?: unknown) => void
-    info: (summary: string, detail?: string, emitter?: unknown) => void
-  }
-}
+// #1191 — shared structural view (manager tier from useEntityItemPage)
+type Orchestrator = OrchestratorLike<EntityManager>
 
 /**
  * Field definition from EntityManager schema.

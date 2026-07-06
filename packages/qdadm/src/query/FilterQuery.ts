@@ -52,7 +52,7 @@ export interface FilterQueryOptions<T = unknown> {
   source: FilterQuerySource
   entity?: string | null
   field?: string | null
-  parentManager?: EntityManagerLike | null
+  parentManager?: QueryManagerLike | null
   label?: ValueResolver<T>
   value?: ValueResolver<T>
   transform?: ((options: FilterOption[]) => FilterOption[]) | null
@@ -62,7 +62,10 @@ export interface FilterQueryOptions<T = unknown> {
 /**
  * Minimal interface for EntityManager (to avoid circular deps)
  */
-interface EntityManagerLike {
+// #1191 note: FilterQuery deliberately keeps a self-contained duck type —
+// callers pass minimal mocks ({ _cache, list }) that the full
+// QueryManagerLike would reject. Not a drift case.
+interface QueryManagerLike {
   _cache?: unknown[]
   list(params?: { page_size?: number }): Promise<{ items: unknown[] }>
 }
@@ -70,8 +73,8 @@ interface EntityManagerLike {
 /**
  * Minimal interface for Orchestrator (to avoid circular deps)
  */
-interface OrchestratorLike {
-  get(name: string): EntityManagerLike | undefined
+interface QueryOrchestratorLike {
+  get(name: string): QueryManagerLike | null | undefined
 }
 
 /**
@@ -97,7 +100,7 @@ export class FilterQuery<T = unknown> {
   source: FilterQuerySource
   entity: string | null
   field: string | null
-  parentManager: EntityManagerLike | null
+  parentManager: QueryManagerLike | null
   label: ValueResolver<T>
   value: ValueResolver<T>
   transform: ((options: FilterOption[]) => FilterOption[]) | null
@@ -146,7 +149,7 @@ export class FilterQuery<T = unknown> {
   /**
    * Set the parent manager (called by useListPage for field source)
    */
-  setParentManager(manager: EntityManagerLike): this {
+  setParentManager(manager: QueryManagerLike): this {
     this.parentManager = manager
     return this
   }
@@ -211,7 +214,7 @@ export class FilterQuery<T = unknown> {
   /**
    * Get options for dropdown
    */
-  async getOptions(orchestrator: OrchestratorLike | null = null): Promise<FilterOption[]> {
+  async getOptions(orchestrator: QueryOrchestratorLike | null = null): Promise<FilterOption[]> {
     // Return cached options if available
     if (this._options !== null) {
       return this._options
@@ -248,7 +251,7 @@ export class FilterQuery<T = unknown> {
   /**
    * Fetch items from entity manager
    */
-  private async _fetchFromEntity(orchestrator: OrchestratorLike | null): Promise<unknown[]> {
+  private async _fetchFromEntity(orchestrator: QueryOrchestratorLike | null): Promise<unknown[]> {
     if (!orchestrator) {
       throw new Error('FilterQuery: orchestrator is required for entity source')
     }

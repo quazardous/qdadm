@@ -5,6 +5,7 @@ import type {
   RoleHierarchyMap,
   RoleProviderContext,
 } from './RolesProvider'
+import type { EntityManagerLike, OrchestratorLike } from '../entity/EntityManager.interface'
 
 /**
  * Options for EntityRoleProvider
@@ -28,19 +29,13 @@ interface RoleEntity {
 /**
  * Entity manager interface (minimal for adapter needs)
  */
-interface EntityManager {
-  list(params?: Record<string, unknown>): Promise<{ items: RoleEntity[]; data?: RoleEntity[] }>
-  create(data: Record<string, unknown>): Promise<RoleEntity>
-  update(id: string | number, data: Record<string, unknown>): Promise<RoleEntity>
-  delete(id: string | number): Promise<void>
-}
+// #1191 — shared structural view; role-typed results are cast at call sites
+type EntityManager = EntityManagerLike
 
 /**
  * Orchestrator interface (minimal for adapter needs)
  */
-interface Orchestrator {
-  get(name: string): EntityManager | undefined
-}
+type Orchestrator = OrchestratorLike
 
 /**
  * Cache structure for roles
@@ -162,7 +157,7 @@ export class EntityRoleProvider extends RoleProvider {
     }
 
     try {
-      const { items: roles } = await manager.list({ page_size: 1000 })
+      const { items: roles } = (await manager.list({ page_size: 1000 })) as { items: RoleEntity[] }
 
       // Build cache
       const permissions: Record<string, string[]> = {}
@@ -317,7 +312,7 @@ export class EntityRoleProvider extends RoleProvider {
       [this._permissionsField]: permissions,
       [this._inheritsField]: inherits,
     }
-    const result = await manager.create(data)
+    const result = (await manager.create(data)) as RoleEntity
     this.invalidate()
     return result
   }
@@ -334,10 +329,10 @@ export class EntityRoleProvider extends RoleProvider {
     const manager = this._getManager()
 
     // Find the role entity by name
-    const response = await manager.list({
+    const response = (await manager.list({
       filter: { [this._nameField]: name },
       limit: 1,
-    })
+    })) as { items: RoleEntity[]; data?: RoleEntity[] }
     const roles = response.data || response.items
     if (roles.length === 0) {
       throw new Error(`Role '${name}' does not exist`)
@@ -352,7 +347,7 @@ export class EntityRoleProvider extends RoleProvider {
     if (permissions !== undefined) updates[this._permissionsField] = permissions
     if (inherits !== undefined) updates[this._inheritsField] = inherits
 
-    const result = await manager.update(roleEntity.id as string | number, updates)
+    const result = (await manager.update(roleEntity.id as string | number, updates)) as RoleEntity
     this.invalidate()
     return result
   }
@@ -366,10 +361,10 @@ export class EntityRoleProvider extends RoleProvider {
     const manager = this._getManager()
 
     // Find the role entity by name
-    const response = await manager.list({
+    const response = (await manager.list({
       filter: { [this._nameField]: name },
       limit: 1,
-    })
+    })) as { items: RoleEntity[]; data?: RoleEntity[] }
     const roles = response.data || response.items
     if (roles.length === 0) {
       throw new Error(`Role '${name}' does not exist`)

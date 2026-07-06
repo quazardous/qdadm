@@ -23,6 +23,7 @@ import Card from 'primevue/card'
 import InputText from 'primevue/inputtext'
 import Password from 'primevue/password'
 import Button from 'primevue/button'
+import type { OrchestratorLike } from '../../entity/EntityManager.interface'
 
 /**
  * Auth adapter interface
@@ -46,15 +47,8 @@ interface LoginResult {
 /**
  * Orchestrator interface
  */
-interface Orchestrator {
-  toast: {
-    success: (summary: string, detail?: string, emitter?: string) => void
-    error: (summary: string, detail?: string, emitter?: string) => void
-  }
-  signals: {
-    emit: (signal: string, payload: unknown) => void
-  }
-}
+// #1191 — shared structural view (was: local redeclaration)
+type Orchestrator = OrchestratorLike
 
 /**
  * App config interface
@@ -184,7 +178,7 @@ async function handleLogin(): Promise<void> {
     })
 
     // Emit auth:login signal for debug bar and other listeners
-    orchestrator?.signals.emit('auth:login', { user: result.user })
+    orchestrator?.signals?.emit('auth:login', { user: result.user })
     orchestrator?.toast.success(
       'Welcome',
       `Logged in as ${result.user?.username || result.user?.email || username.value}`,
@@ -202,7 +196,7 @@ async function handleLogin(): Promise<void> {
       || axiosError.message
       || 'Invalid credentials'
 
-    orchestrator?.signals.emit('auth:login:error', {
+    orchestrator?.signals?.emit('auth:login:error', {
       username: username.value,
       error: message,
       status: axiosError.response?.status

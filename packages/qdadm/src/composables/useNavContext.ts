@@ -21,6 +21,12 @@ import { useRoute, useRouter, type RouteParamsRawGeneric } from 'vue-router'
 import { getSiblingRoutes } from '../module/moduleRegistry'
 import { useSemanticBreadcrumb, type SemanticBreadcrumbItem } from './useSemanticBreadcrumb'
 import { useStackHydrator, type HydratedLevel } from '../chain/useStackHydrator'
+import type { EntityManagerLike, OrchestratorLike } from '../entity/EntityManager.interface'
+
+// #1191 — shared minimal structural views (was: local redeclarations)
+type EntityManager = EntityManagerLike
+type Orchestrator = OrchestratorLike
+
 
 /**
  * Navigation chain segment types
@@ -44,20 +50,10 @@ export interface NavChainSegment {
 /**
  * Entity manager interface
  */
-interface EntityManager {
-  routePrefix?: string
-  labelPlural?: string
-  idField?: string
-  readOnly?: boolean
-  getEntityLabel: (data: unknown) => string
-}
 
 /**
  * Orchestrator interface
  */
-interface Orchestrator {
-  get: (entityName: string) => EntityManager | null
-}
 
 /**
  * Breadcrumb item
@@ -307,7 +303,7 @@ export function useNavContext(_options: UseNavContextOptions = {}): UseNavContex
         })
       } else if (segment.type === 'item') {
         const data = chainData.value.get(i)
-        const label = data && segment.manager ? segment.manager.getEntityLabel(data) : '...'
+        const label = (data && segment.manager ? segment.manager.getEntityLabel(data) : null) ?? '...'
         const idField = segment.manager?.idField || 'id'
 
         // Only create link if we have a valid id

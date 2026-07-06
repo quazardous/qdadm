@@ -15,6 +15,11 @@ import { getNavSections, alterMenuSections, isMenuAltered } from '../module/modu
 import { useSemanticBreadcrumb } from './useSemanticBreadcrumb'
 import { useI18n } from '../i18n/useI18n'
 import type { HookRegistry } from '../hooks/HookRegistry'
+import type { OrchestratorLike } from '../entity/EntityManager.interface'
+
+// #1191 — shared minimal structural view (was: local redeclaration)
+type Orchestrator = OrchestratorLike
+
 
 /**
  * Navigation item interface
@@ -39,17 +44,10 @@ export interface NavSection {
 /**
  * Entity manager interface
  */
-interface EntityManager {
-  canRead: () => boolean
-}
 
 /**
  * Orchestrator interface
  */
-interface Orchestrator {
-  signals?: unknown
-  get: (entityName: string) => EntityManager | null
-}
 
 /**
  * Return type for useNavigation
