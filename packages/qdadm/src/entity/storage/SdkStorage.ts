@@ -91,11 +91,6 @@ export class SdkStorage<T extends EntityRecord = EntityRecord> extends IStorage<
     supportsCaching: true,
   }
 
-  /** @deprecated Use SdkStorage.capabilities.supportsCaching instead */
-  get supportsCaching(): boolean {
-    return SdkStorage.capabilities.supportsCaching
-  }
-
   readonly clientSidePagination: boolean
 
   protected _sdk: SdkInstance | null

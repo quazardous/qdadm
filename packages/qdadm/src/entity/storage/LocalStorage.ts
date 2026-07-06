@@ -27,11 +27,6 @@ export class LocalStorage<T extends EntityRecord = EntityRecord> extends IStorag
     supportsCaching: false,
   }
 
-  /** @deprecated Use static LocalStorage.capabilities.supportsCaching instead */
-  get supportsCaching(): boolean {
-    return LocalStorage.capabilities.supportsCaching
-  }
-
   readonly key: string
   readonly idField: string
   readonly generateId: () => string

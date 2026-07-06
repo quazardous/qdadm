@@ -13,6 +13,7 @@ export {
   formatDuration,
   formatDurationBetween,
   formatNumber,
+  formatCurrency,
   formatBytes,
   formatPercent,
 } from './formatters'

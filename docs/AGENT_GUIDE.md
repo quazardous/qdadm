@@ -177,7 +177,7 @@ EntitiesPanel shows all relations:
 |---------|--------------|-------|
 | Module class | `demo/src/modules/books/BooksModule.js` | Full module pattern |
 | List page | `demo/src/modules/books/pages/BookList.vue` | useListPage |
-| Form (create/edit) | `demo/src/modules/books/pages/BookForm.vue` | useForm, single form |
+| Form (create/edit) | `demo/src/modules/books/pages/BookForm.vue` | useEntityItemFormPage, single form |
 | Custom page | `demo/src/modules/books/pages/BookStats.vue` | Non-CRUD route |
 | Auth adapter | `demo/src/adapters/authAdapter.js` | Login/logout |
 | Entity auth | `demo/src/adapters/entityAuthAdapter.js` | Permissions |

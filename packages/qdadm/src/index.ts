@@ -167,12 +167,6 @@ export {
 } from './composables/useSemanticBreadcrumb'
 export { useDirtyState, type UseDirtyStateReturn } from './composables/useDirtyState'
 export {
-  useForm,
-  type UseFormOptions,
-  type UseFormReturn,
-  type FormAlterConfig,
-} from './composables/useForm'
-export {
   useEntityItemFormPage,
   useEntityItemFormPage as useFormPageBuilder,
   type UseEntityItemFormPageOptions,
@@ -292,7 +286,6 @@ export {
   type UseUserImpersonatorReturn,
   type UserRecord,
 } from './composables/useUserImpersonator'
-export { useCurrentEntity, type UseCurrentEntityReturn } from './composables/useCurrentEntity'
 export {
   useOptionsLookup,
   type UseOptionsLookupConfig,

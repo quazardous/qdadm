@@ -50,7 +50,7 @@ interface UserData {
 const features = inject<FeaturesConfig>('qdadmFeatures', { poweredBy: true, breadcrumb: true })
 const homeRoute = inject<string>('qdadmHomeRoute', 'home')
 
-// Guard dialog from shared store (registered by useBareForm/useForm when a form is active)
+// Guard dialog from shared store (registered by useBareForm/useEntityItemFormPage when a form is active)
 const guardDialog = useGuardDialog()
 
 const router = useRouter()
@@ -238,7 +238,7 @@ watch(() => route.fullPath, () => {
 })
 
 // Navigation context (breadcrumb + navlinks from route config)
-// Entity data comes from activeStack (populated by useEntityItemPage/useForm)
+// Entity data comes from activeStack (populated by useEntityItemPage/useEntityItemFormPage)
 const { breadcrumb: defaultBreadcrumb, navlinks: defaultNavlinks } = useNavContext()
 
 // Allow child pages to override breadcrumb/navlinks via provide/inject

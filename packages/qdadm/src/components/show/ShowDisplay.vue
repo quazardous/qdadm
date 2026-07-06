@@ -28,6 +28,7 @@
 import { computed, type PropType } from 'vue'
 import { RouterLink, type RouteLocationRaw } from 'vue-router'
 import Tag from 'primevue/tag'
+import { formatDate, formatNumber, formatCurrency } from '../../utils/formatters'
 
 type DisplayType =
   | 'text'
@@ -101,13 +102,12 @@ const textValue = computed(() => {
   return String(props.value)
 })
 
-// Format number value
+// Format number value (browser locale by default — utils/formatters policy)
 const numberValue = computed(() => {
   if (isEmpty.value) return '-'
   const num = Number(props.value)
   if (isNaN(num)) return String(props.value)
-  const locale = props.field.locale || 'en-US'
-  return new Intl.NumberFormat(locale).format(num)
+  return formatNumber(num, {}, props.field.locale)
 })
 
 // Format currency value
@@ -115,9 +115,7 @@ const currencyValue = computed(() => {
   if (isEmpty.value) return '-'
   const num = Number(props.value)
   if (isNaN(num)) return String(props.value)
-  const locale = props.field.locale || 'en-US'
-  const currency = props.field.currencyCode || 'USD'
-  return new Intl.NumberFormat(locale, { style: 'currency', currency }).format(num)
+  return formatCurrency(num, props.field.currencyCode || 'USD', props.field.locale)
 })
 
 // Format boolean value
@@ -143,9 +141,8 @@ const dateValue = computed(() => {
   const v = props.value as unknown
   const date = (typeof v === 'object' && v instanceof Date) ? v : new Date(String(v))
   if (isNaN(date.getTime())) return String(props.value)
-  const locale = props.field.locale || 'en-US'
   const format = props.field.dateFormat || 'short'
-  return new Intl.DateTimeFormat(locale, { dateStyle: format as 'short' | 'medium' | 'long' | 'full' }).format(date)
+  return formatDate(date, { dateStyle: format as 'short' | 'medium' | 'long' | 'full' }, props.field.locale)
 })
 
 // Format datetime value
@@ -154,8 +151,7 @@ const datetimeValue = computed(() => {
   const v = props.value as unknown
   const date = (typeof v === 'object' && v instanceof Date) ? v : new Date(String(v))
   if (isNaN(date.getTime())) return String(props.value)
-  const locale = props.field.locale || 'en-US'
-  return new Intl.DateTimeFormat(locale, { dateStyle: 'short', timeStyle: 'short' }).format(date)
+  return formatDate(date, { dateStyle: 'short', timeStyle: 'short' }, props.field.locale)
 })
 
 // Format select value (lookup label from options)

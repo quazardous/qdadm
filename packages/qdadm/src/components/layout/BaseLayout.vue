@@ -50,7 +50,7 @@ import DefaultBreadcrumb from './defaults/DefaultBreadcrumb.vue'
 const slots = useSlots()
 const hasMainSlot: boolean = !!slots.main
 
-// Guard dialog from shared store (registered by useBareForm/useForm when a form is active)
+// Guard dialog from shared store (registered by useBareForm/useEntityItemFormPage when a form is active)
 const guardDialog = useGuardDialog()
 
 // Provide breadcrumb/navlinks override mechanism for child pages

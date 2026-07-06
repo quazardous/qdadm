@@ -66,18 +66,6 @@ describe('SdkStorage', () => {
     })
   })
 
-  describe('backward-compat instance getter', () => {
-    it('supportsCaching instance getter returns true', () => {
-      const storage = new SdkStorage({ sdk: {}, methods: {} })
-      expect(storage.supportsCaching).toBe(true)
-    })
-
-    it('supportsCaching getter delegates to static capabilities', () => {
-      const storage = new SdkStorage({ sdk: {}, methods: {} })
-      expect(storage.supportsCaching).toBe(SdkStorage.capabilities.supportsCaching)
-    })
-  })
-
   describe('createSdkStorage factory', () => {
     it('returns instance with accessible capabilities', () => {
       const storage = createSdkStorage({ sdk: {}, methods: {} })

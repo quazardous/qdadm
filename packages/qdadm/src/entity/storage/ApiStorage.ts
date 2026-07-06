@@ -57,11 +57,6 @@ export class ApiStorage<T extends EntityRecord = EntityRecord> extends IStorage<
     supportsCaching: true,
   }
 
-  /** @deprecated Use static ApiStorage.capabilities.supportsCaching instead */
-  get supportsCaching(): boolean {
-    return ApiStorage.capabilities.supportsCaching
-  }
-
   readonly endpoint: string
   readonly responseItemsKey: string
   readonly responseTotalKey: string
