@@ -212,7 +212,11 @@ export function applyRoutingMethods(KernelClass: { prototype: any }): void {
       }
 
       const entity = to.meta?.entity as string | undefined
-      if (entity && this.orchestrator) {
+      // Entity not registered → nothing to check yet (e.g. child route
+      // declared before its manager loads) — allow. This is the ONLY
+      // allowed pass-through; a failing access check must fail CLOSED,
+      // not silently allow (#1190).
+      if (entity && this.orchestrator && this.orchestrator.isRegistered(entity)) {
         try {
           const manager = this.orchestrator.get(entity)
           if (manager && !manager.canRead()) {
@@ -232,8 +236,13 @@ export function applyRoutingMethods(KernelClass: { prototype: any }): void {
             next({ path: '/' })
             return
           }
-        } catch {
-          // Entity not registered - allow navigation
+        } catch (err) {
+          console.error(
+            `[qdadm] Access check failed for ${to.path} (entity: ${entity}) — denying navigation:`,
+            err
+          )
+          next({ path: '/' })
+          return
         }
       }
 
