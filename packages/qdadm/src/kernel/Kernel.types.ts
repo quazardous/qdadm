@@ -193,6 +193,26 @@ export interface KernelOptions {
    */
   apiClient?: ApiClientSource
   /**
+   * Naming policy for the URL param carrying the parent id in child route
+   * families (#1201). `auto` (default): list-only families keep the bare
+   * `idField` param; families with show/edit routes namespace the parent
+   * (`jobs/:jobId/tasks/:id`) so the principal (child) id stays `:id`.
+   * `always`: namespaced everywhere. `bare`: legacy `idField` param, with
+   * an explicit registration error on collision.
+   */
+  parentParamMode?: 'auto' | 'always' | 'bare'
+  /**
+   * Global mapping service for parent URL param names (#1201). Consulted
+   * before `parentParamMode`; a per-call `parentParam` still wins. Return
+   * undefined to fall through to the mode-based default.
+   */
+  routeParamResolver?: (ctx: {
+    parentEntity: string
+    parentRouteName: string
+    childEntity: string | null
+    parentIdField: string
+  }) => string | undefined
+  /**
    * Existing Vue app to install qdadm onto. When provided, the Kernel
    * skips its own `createApp(WrappedRoot)` and reuses the supplied
    * instance — useful when a host shell (e.g. a CMS) already owns the

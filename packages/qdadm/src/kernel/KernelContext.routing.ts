@@ -45,6 +45,89 @@ function capitalize(str: string): string {
   return str.charAt(0).toUpperCase() + str.slice(1)
 }
 
+/** Context handed to a kernel-level routeParamResolver (#1201). */
+export interface RouteParamResolverContext {
+  parentEntity: string
+  parentRouteName: string
+  /** Child entity name, or null for a non-entity childPage. */
+  childEntity: string | null
+  parentIdField: string
+}
+
+/**
+ * Resolve the URL param name carrying the parent id in a child route
+ * family (#1201). Precedence: per-call `parentParam` > kernel
+ * `routeParamResolver` > `parentParamMode`:
+ *
+ * - `auto` (default): families whose routes never carry the child's own
+ *   id (list-only, childPage) keep the bare parent `idField` param —
+ *   unchanged URLs. Families with show/edit routes namespace the parent
+ *   (`:jobId`) so the principal (child) id stays `:id`.
+ * - `always`: namespaced parent param everywhere.
+ * - `bare`: legacy `idField` param everywhere; a would-be collision
+ *   throws at registration instead of silently shadowing the parent.
+ */
+function resolveParentParam(opts: {
+  kernelOptions?: {
+    parentParamMode?: 'auto' | 'always' | 'bare'
+    routeParamResolver?: (ctx: RouteParamResolverContext) => string | undefined
+  }
+  explicit?: string
+  parentEntity: string
+  parentRouteName: string
+  childEntity: string | null
+  parentIdField: string
+  childIdParam: string
+  hasOwnIdParam: boolean
+}): string {
+  const {
+    kernelOptions,
+    explicit,
+    parentEntity,
+    parentRouteName,
+    childEntity,
+    parentIdField,
+    childIdParam,
+    hasOwnIdParam,
+  } = opts
+
+  if (explicit) return explicit
+
+  const resolved = kernelOptions?.routeParamResolver?.({
+    parentEntity,
+    parentRouteName,
+    childEntity,
+    parentIdField,
+  })
+  if (resolved) return resolved
+
+  const mode = kernelOptions?.parentParamMode || 'auto'
+  const namespaced = `${singularize(parentEntity)}Id`
+
+  if (mode === 'always') return namespaced
+
+  if (mode === 'bare') {
+    if (hasOwnIdParam && parentIdField === childIdParam) {
+      throw new Error(
+        `[qdadm] crud('${childEntity}', { parentRoute: '${parentRouteName}' }): parent and child ` +
+        `both use the URL param ':${childIdParam}' — the child id would shadow the parent id. ` +
+        `Switch parentParamMode to 'auto', or set an explicit parentParam.`
+      )
+    }
+    return parentIdField
+  }
+
+  // mode === 'auto'
+  if (!hasOwnIdParam) return parentIdField
+  if (namespaced === childIdParam) {
+    throw new Error(
+      `[qdadm] crud('${childEntity}', { parentRoute: '${parentRouteName}' }): the namespaced ` +
+      `parent param ':${namespaced}' collides with the child idField — set an explicit parentParam.`
+    )
+  }
+  return namespaced
+}
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function applyRoutingMethods(KernelContextClass: { prototype: any }): void {
   const proto = KernelContextClass.prototype as Self
@@ -103,7 +186,20 @@ export function applyRoutingMethods(KernelContextClass: { prototype: any }): voi
         const parentManager = parentEntityName
           ? this._kernel.orchestrator?.get(parentEntityName)
           : null
-        const parentIdParam = parentManager?.idField || 'id'
+        const parentIdField = parentManager?.idField || 'id'
+        // Families with show/edit routes carry the child's own :id — the
+        // parent param must not collide with it (#1201).
+        const hasOwnIdParam = !!(pages.show || pages.form || pages.edit)
+        const parentIdParam = resolveParentParam({
+          kernelOptions: this._kernel.options,
+          explicit: options.parentParam,
+          parentEntity: parentEntityName || parentRouteName,
+          parentRouteName,
+          childEntity: entity,
+          parentIdField,
+          childIdParam: idParam,
+          hasOwnIdParam,
+        })
 
         // Build base path: parentPath/:parentId/entity (e.g., books/:bookId/loans)
         const parentBasePath =
@@ -238,7 +334,19 @@ export function applyRoutingMethods(KernelContextClass: { prototype: any }): voi
     const parentManager = parentEntityName
       ? this._kernel.orchestrator?.get(parentEntityName)
       : null
-    const parentIdParam = parentManager?.idField || 'id'
+    const parentIdField = parentManager?.idField || 'id'
+    // childPage has no own :id (single-id family) — auto mode keeps the
+    // bare param; explicit parentParam / resolver / 'always' still apply.
+    const parentIdParam = resolveParentParam({
+      kernelOptions: this._kernel.options,
+      explicit: options.parentParam,
+      parentEntity: parentEntityName || parentRouteName,
+      parentRouteName,
+      childEntity: null,
+      parentIdField,
+      childIdParam: 'id',
+      hasOwnIdParam: false,
+    })
 
     const parentBasePath =
       parentRoute.path.replace(/\/(create|:.*)?$/, '') || parentEntityName

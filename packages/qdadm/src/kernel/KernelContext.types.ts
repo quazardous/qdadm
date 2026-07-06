@@ -148,6 +148,12 @@ export interface CrudOptions {
   parentRoute?: string
   foreignKey?: string
   label?: string
+  /**
+   * Explicit URL param name carrying the parent id in child routes
+   * (e.g. 'jobUuid' → `jobs/:jobUuid/tasks/:id`). Overrides the kernel
+   * `routeParamResolver` and `parentParamMode` (#1201).
+   */
+  parentParam?: string
 }
 
 /** Child page options for non-entity child routes */
@@ -156,6 +162,8 @@ export interface ChildPageOptions {
   label?: string
   icon?: string
   meta?: Record<string, unknown>
+  /** Explicit URL param name for the parent id (see CrudOptions.parentParam). */
+  parentParam?: string
 }
 
 /** User entity options */
