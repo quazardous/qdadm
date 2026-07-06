@@ -56,6 +56,7 @@ Use `form` for the single-form pattern (recommended). Use `create`/`edit` only w
 | `parentRoute` | `string` | Mount as child of this route (e.g. `'book'`) |
 | `foreignKey` | `string` | FK field linking child to parent (e.g. `'book_id'`) |
 | `label` | `string` | Tab label for child route (e.g. `'Loans'`) |
+| `parentParam` | `string` | Explicit URL param name for the parent id (overrides the naming policy below) |
 | `routePrefix` | `string` | Override route name prefix |
 | `pathSegment` | `string` | Override URL path (e.g. `'tasks'` instead of `'job-tasks'`) |
 
@@ -523,6 +524,17 @@ list.addDeleteAction()
 - Parent filter injected: `loans.list({ book_id: bookId })`
 - Breadcrumb: Books > Book Title > Loans
 - Tab navigation via `<PageNav />`
+
+**Parent param naming** *(since 2.2)*: the URL param carrying the parent id must
+not collide with the child's own `:id`. The default policy (`auto`) keeps the
+bare `idField` param for **list-only** families (`/jobs/:id/tasks`, unchanged
+URLs) and namespaces the parent as soon as the family has a **show/edit** route
+(`/jobs/:jobId/tasks/:id` — the principal, child id stays `:id`). Overrides,
+by precedence: per-call `parentParam` > kernel `routeParamResolver` (global
+mapping service) > kernel `parentParamMode` (`auto` | `always` | `bare`; `bare`
+throws an explicit error on collision instead of silently shadowing the parent).
+Framework consumers (breadcrumb, parent chain, FK filter) read the resolved name
+from `route.meta.parent.param` — no page code change needed.
 
 ### Child form
 
