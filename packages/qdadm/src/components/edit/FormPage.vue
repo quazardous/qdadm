@@ -36,7 +36,8 @@ import { computed, type PropType } from 'vue'
 import PageHeader from '../layout/PageHeader.vue'
 import FormActions from './FormActions.vue'
 import UnsavedChangesDialog from '../dialogs/UnsavedChangesDialog.vue'
-import Card from 'primevue/card'
+import CardShell from '../layout/CardShell.vue'
+import { formatFetchError } from '../../utils/errors'
 import Button from 'primevue/button'
 import Message from 'primevue/message'
 import type { ResolvedAction, ResolvedFieldConfig } from '../../composables/useEntityItemFormPage'
@@ -119,11 +120,7 @@ const headerActions = computed<ResolvedAction[]>(() =>
 )
 
 // Get error message from fetchError
-const fetchErrorMessage = computed<string | null>(() => {
-  if (!props.fetchError) return null
-  if (typeof props.fetchError === 'string') return props.fetchError
-  return props.fetchError.message || props.fetchError.detail || 'Failed to load entity'
-})
+const fetchErrorMessage = computed<string | null>(() => formatFetchError(props.fetchError))
 
 // Guard dialog handlers
 function onGuardSaveAndLeave(): void {
@@ -205,29 +202,8 @@ function onGuardStay(): void {
         </ul>
       </Message>
 
-      <!-- Card wrapper or direct content -->
-      <Card v-if="cardWrapper">
-        <template #content>
-          <slot name="fields" />
-
-          <!-- Form Actions (in footer) -->
-          <template v-if="showFormActions">
-            <slot name="footer">
-              <FormActions
-                :isEdit="isEdit"
-                :saving="saving"
-                :dirty="dirty"
-                :showSaveAndClose="showSaveAndClose"
-                @save="emit('save')"
-                @saveAndClose="emit('saveAndClose')"
-                @cancel="emit('cancel')"
-              />
-            </slot>
-          </template>
-        </template>
-      </Card>
-
-      <template v-else>
+      <!-- Single content body; Card wrapper is conditional (#1193) -->
+      <CardShell :card="cardWrapper">
         <slot name="fields" />
 
         <!-- Form Actions (in footer) -->
@@ -244,7 +220,7 @@ function onGuardStay(): void {
             />
           </slot>
         </template>
-      </template>
+      </CardShell>
     </template>
 
     <!-- Unsaved Changes Dialog -->

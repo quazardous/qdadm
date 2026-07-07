@@ -39,7 +39,8 @@
  */
 import { computed, type PropType } from 'vue'
 import PageHeader from '../layout/PageHeader.vue'
-import Card from 'primevue/card'
+import CardShell from '../layout/CardShell.vue'
+import { formatFetchError } from '../../utils/errors'
 import Button from 'primevue/button'
 import Message from 'primevue/message'
 import FieldGroups from '../item/FieldGroups.vue'
@@ -163,7 +164,7 @@ const useGroupLayout = computed(() => {
   return hasRealGroups && props.layout !== 'flat'
 })
 
-const emit = defineEmits<{
+defineEmits<{
   (e: 'edit'): void
   (e: 'delete'): void
   (e: 'back'): void
@@ -180,11 +181,11 @@ const footerActions = computed<ResolvedAction[]>(() =>
 )
 
 // Get error message from fetchError
-const fetchErrorMessage = computed<string | null>(() => {
-  if (!props.fetchError) return null
-  if (typeof props.fetchError === 'string') return props.fetchError
-  return props.fetchError.message || props.fetchError.detail || 'Failed to load entity'
-})
+const fetchErrorMessage = computed<string | null>(() => formatFetchError(props.fetchError))
+
+/** Value union accepted by ShowField — aliased so the template cast has no
+ * `|` (the eslint vue/no-deprecated-filter rule misreads it as a filter). */
+type ShowFieldValue = string | number | boolean | Date | Record<string, unknown> | unknown[]
 </script>
 
 <template>
@@ -232,70 +233,8 @@ const fetchErrorMessage = computed<string | null>(() => {
 
     <!-- Content -->
     <template v-else>
-      <!-- Card wrapper or direct content -->
-      <Card v-if="cardWrapper">
-        <template #content>
-          <!-- Grid layout with optional media zone -->
-          <div
-            class="show-content"
-            :class="{ 'show-content--with-media': slots.media }"
-            :style="slots.media ? { '--media-width': mediaWidth } : {}"
-          >
-            <!-- Media zone (optional) -->
-            <div v-if="slots.media" class="show-media">
-              <slot name="media" />
-            </div>
-
-            <!-- Fields/Groups zone -->
-            <div class="show-fields" :class="{ 'show-fields--horizontal': horizontalFields && !useGroupLayout }">
-              <!-- Group layout mode -->
-              <template v-if="useGroupLayout">
-                <slot name="groups">
-                  <FieldGroups
-                    :groups="groups"
-                    :data="data"
-                    :layout="layout"
-                    :child-layout="childLayout"
-                  >
-                    <template #field="{ field, value }">
-                      <ShowField
-                        :field="field"
-                        :value="value as string | number | boolean | Date | Record<string, unknown> | unknown[]"
-                        :horizontal="horizontalFields"
-                        :label-width="labelWidth"
-                      />
-                    </template>
-                  </FieldGroups>
-                </slot>
-              </template>
-              <!-- Flat fields mode (default) -->
-              <template v-else>
-                <slot name="fields" />
-              </template>
-            </div>
-          </div>
-
-          <!-- Footer Actions -->
-          <template v-if="showActions && footerActions.length > 0">
-            <slot name="footer">
-              <div class="show-actions">
-                <Button
-                  v-for="action in footerActions"
-                  :key="action.name"
-                  :label="action.label"
-                  :icon="action.icon"
-                  :severity="action.severity"
-                  :loading="action.isLoading"
-                  :disabled="action.isDisabled"
-                  @click="action.onClick"
-                />
-              </div>
-            </slot>
-          </template>
-        </template>
-      </Card>
-
-      <template v-else>
+      <!-- Single content body; Card wrapper is conditional (#1193) -->
+      <CardShell :card="cardWrapper">
         <!-- Grid layout with optional media zone -->
         <div
           class="show-content"
@@ -321,7 +260,7 @@ const fetchErrorMessage = computed<string | null>(() => {
                   <template #field="{ field, value }">
                     <ShowField
                       :field="field"
-                      :value="value as string | number | boolean | Date | Record<string, unknown> | unknown[]"
+                      :value="value as ShowFieldValue"
                       :horizontal="horizontalFields"
                       :label-width="labelWidth"
                     />
@@ -353,7 +292,7 @@ const fetchErrorMessage = computed<string | null>(() => {
             </div>
           </slot>
         </template>
-      </template>
+      </CardShell>
     </template>
   </div>
 </template>
