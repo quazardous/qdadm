@@ -1,6 +1,7 @@
 import { IStorage } from './IStorage'
 import type { EntityRecord, ListParams, ListResult, StorageCapabilities } from '../../types'
-import { StorageError } from './MemoryStorage'
+import { StorageError } from './errors'
+import { sortItems, filterItems, searchItems, paginate, defaultGenerateId } from '../../query/clientFilter'
 
 /**
  * LocalStorage options
@@ -36,7 +37,7 @@ export class LocalStorage<T extends EntityRecord = EntityRecord> extends IStorag
     const {
       key,
       idField = 'id',
-      generateId = () => Date.now().toString(36) + Math.random().toString(36).substr(2),
+      generateId = defaultGenerateId,
     } = options
 
     this.key = key
@@ -62,49 +63,17 @@ export class LocalStorage<T extends EntityRecord = EntityRecord> extends IStorag
 
     let items = this._getAll()
 
-    // Apply filters (exact match for dropdown filters)
-    for (const [key, value] of Object.entries(filters)) {
-      if (value === null || value === undefined || value === '') continue
-      items = items.filter((item) => {
-        const itemValue = item[key as keyof T]
-        if (typeof value === 'string' && typeof itemValue === 'string') {
-          return itemValue.toLowerCase() === value.toLowerCase()
-        }
-        return itemValue === value
-      })
-    }
+    // Apply filters (shared pipeline, #1192 — legacy exact-match semantics)
+    items = filterItems(items, filters, { stringMatch: 'exact' })
 
-    // Apply search (substring match on all string fields)
-    if (search && typeof search === 'string' && search.trim()) {
-      const query = search.toLowerCase().trim()
-      items = items.filter((item) => {
-        for (const value of Object.values(item)) {
-          if (typeof value === 'string' && value.toLowerCase().includes(query)) {
-            return true
-          }
-        }
-        return false
-      })
-    }
+    // Apply search (shared pipeline, #1192)
+    items = searchItems(items, search as string | undefined)
 
     const total = items.length
 
-    // Apply sorting
-    if (sort_by) {
-      items.sort((a, b) => {
-        const aVal = a[sort_by as keyof T]
-        const bVal = b[sort_by as keyof T]
-        if (aVal === undefined || aVal === null) return 1
-        if (bVal === undefined || bVal === null) return -1
-        if (aVal < bVal) return sort_order === 'asc' ? -1 : 1
-        if (aVal > bVal) return sort_order === 'asc' ? 1 : -1
-        return 0
-      })
-    }
-
-    // Apply pagination
-    const start = (page - 1) * page_size
-    items = items.slice(start, start + page_size)
+    // Apply sorting + pagination (shared pipeline, #1192)
+    sortItems(items, sort_by, sort_order)
+    items = paginate(items, page, page_size)
 
     return { items, total }
   }
