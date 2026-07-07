@@ -54,8 +54,27 @@ export function useDirtyState<T extends FormState = FormState>(
   const dirty = ref(false)
   const dirtyFields = ref<string[]>([])
   const initialSnapshot = ref<string | null>(null)
-  const initialState = ref<T | null>(null)
+  // Per-key snapshot strings, precomputed once at takeSnapshot() (#1194):
+  // checkDirty runs on every keystroke (deep watch) — re-stringifying the
+  // initial side each time doubled the per-key work, and the old
+  // JSON.parse(JSON.stringify(state)) deep clone tripled the snapshot cost.
+  let initialFieldSnapshots: Map<string, string> | null = null
   const ready = ref(false)
+
+  /** Resolve the form object inside the state (common 'form'/'formData' patterns). */
+  function resolveForm(state: T): Record<string, unknown> {
+    return (
+      (state.form as Record<string, unknown>) ||
+      (state.formData as Record<string, unknown>) ||
+      (state as Record<string, unknown>)
+    )
+  }
+
+  /** Stable stringify — JSON.stringify(undefined) is undefined, normalize it. */
+  function stringifyField(value: unknown): string {
+    const s = JSON.stringify(value)
+    return s === undefined ? 'undefined' : s
+  }
 
   function getFormSnapshot(): string {
     return JSON.stringify(getState())
@@ -71,8 +90,12 @@ export function useDirtyState<T extends FormState = FormState>(
     nextTick(() => {
       const state = getState()
       initialSnapshot.value = JSON.stringify(state)
-      // Store raw state for field-level comparison
-      initialState.value = JSON.parse(JSON.stringify(state)) as T
+      const form = resolveForm(state)
+      const fieldSnapshots = new Map<string, string>()
+      for (const key in form) {
+        fieldSnapshots.set(key, stringifyField(form[key]))
+      }
+      initialFieldSnapshots = fieldSnapshots
       ready.value = true
     })
   }
@@ -84,25 +107,15 @@ export function useDirtyState<T extends FormState = FormState>(
     const currentSnapshot = getFormSnapshot()
     dirty.value = currentSnapshot !== initialSnapshot.value
 
-    // Calculate dirty fields
-    if (dirty.value && initialState.value) {
-      const current = getState()
+    // Calculate dirty fields — current side only is stringified; the
+    // initial side comes from the cached per-key snapshots (#1194).
+    if (dirty.value && initialFieldSnapshots) {
+      const currentForm = resolveForm(getState())
       const changed: string[] = []
 
-      // Compare form fields if state has a 'form' or 'formData' key (common patterns)
-      const initial =
-        (initialState.value.form as Record<string, unknown>) ||
-        (initialState.value.formData as Record<string, unknown>) ||
-        (initialState.value as Record<string, unknown>)
-      const currentForm =
-        (current.form as Record<string, unknown>) ||
-        (current.formData as Record<string, unknown>) ||
-        (current as Record<string, unknown>)
-
       for (const key in currentForm) {
-        const initialVal = JSON.stringify(initial[key])
-        const currentVal = JSON.stringify(currentForm[key])
-        if (initialVal !== currentVal) {
+        const currentVal = stringifyField(currentForm[key])
+        if (initialFieldSnapshots.get(key) !== currentVal) {
           changed.push(key)
         }
       }
@@ -120,7 +133,7 @@ export function useDirtyState<T extends FormState = FormState>(
     dirty.value = false
     dirtyFields.value = []
     initialSnapshot.value = null
-    initialState.value = null
+    initialFieldSnapshots = null
     ready.value = false
   }
 
