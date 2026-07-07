@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.4.4
+
+### Patch Changes
+
+- ef158ec: Dirty-tracking perf (#1194, KPI-7). `checkDirty` runs on every keystroke (deep watch on the form): the initial-side per-key `JSON.stringify` is now precomputed once at `takeSnapshot()` (cached map) instead of re-stringified on each check, and the snapshot's `JSON.parse(JSON.stringify(state))` deep clone is gone. Measured on a 100-field form with nested values: **checkDirty ×1.6 faster per keystroke, takeSnapshot ×1.85 faster**. Behavior identical (locked by a new dedicated test suite — `useDirtyState` previously had no direct tests); `isFieldDirty` reactivity untouched.
+- 9ff8267: Split `useListPage.ts` (#1195, KPI-8): the two self-contained subsystems are extracted into composables it composes back in — `useListFilters` (filter state, the three option-source modes optionsEntity/optionsEndpoint/optionsFromCache, session persistence, URL sync, registry auto-load) and `useListAlterHooks` (`list:alter`/`filter:alter` wiring). Pure mechanical extraction: the public surface is unchanged and the existing useListPage tests pass untouched; the file drops from 1557 to ~1200 lines and both subsystems now have focused unit tests. `QueryOrchestratorLike` is now exported from FilterQuery.
+
 ## 2.4.3
 
 ### Patch Changes
