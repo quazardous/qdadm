@@ -13,15 +13,15 @@ import { ActiveStack } from '../chain/ActiveStack.js'
 import { StackHydrator } from '../chain/StackHydrator.js'
 import { Orchestrator } from '../orchestrator/Orchestrator'
 import type { EntityAuthAdapter } from '../entity/auth/EntityAuthAdapter'
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type Self = any
+import type { Kernel } from './Kernel'
+// #1196 Phase B — this-typing against the real Kernel shape (was Self = any)
+type Self = Kernel
 
 /**
  * Patch Kernel prototype with registry-related methods.
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function applyRegistryMethods(KernelClass: { prototype: any }): void {
-  const proto = KernelClass.prototype as Self
+export function applyRegistryMethods(KernelClass: { prototype: Kernel }): void {
+  const proto = KernelClass.prototype
 
   /**
    * Create signal bus for event-driven communication.

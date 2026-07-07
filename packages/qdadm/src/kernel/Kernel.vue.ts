@@ -16,8 +16,9 @@ import ToastListener from '../toast/ToastListener.vue'
 import { createQdadm } from '../plugin.js'
 import { createNotificationStore, NOTIFICATION_KEY } from '../notifications/NotificationStore'
 import { I18N_INJECTION_KEY } from '../i18n/useI18n'
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type Self = any
+import type { Kernel } from './Kernel'
+// #1196 Phase B — this-typing against the real Kernel shape (was Self = any)
+type Self = Kernel
 
 /**
  * Reactive reference to the debug bar component, set by the Kernel
@@ -57,9 +58,8 @@ export function setQdadmDebugBar(component: Component | null): void {
 /**
  * Patch Kernel prototype with Vue app creation methods.
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function applyVueMethods(KernelClass: { prototype: any }): void {
-  const proto = KernelClass.prototype as Self
+export function applyVueMethods(KernelClass: { prototype: Kernel }): void {
+  const proto = KernelClass.prototype
 
   /**
    * Create layout components map for useLayoutResolver

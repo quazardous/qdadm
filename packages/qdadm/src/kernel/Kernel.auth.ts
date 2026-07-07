@@ -1,14 +1,14 @@
 import { authFactory, CompositeAuthAdapter } from '../entity/auth'
+import type { Kernel } from './Kernel'
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type Self = any
+// #1196 Phase B — this-typing against the real Kernel shape (was Self = any)
+type Self = Kernel
 
 /**
  * Patch Kernel prototype with auth-related methods.
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function applyAuthMethods(KernelClass: { prototype: any }): void {
-  const proto = KernelClass.prototype as Self
+export function applyAuthMethods(KernelClass: { prototype: Kernel }): void {
+  const proto = KernelClass.prototype
 
   /**
    * Resolve entityAuthAdapter through authFactory

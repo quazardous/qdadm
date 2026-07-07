@@ -1,14 +1,14 @@
 import type { AxiosLikeClient, AxiosError } from './Kernel.types'
+import type { Kernel } from './Kernel'
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type Self = any
+// #1196 Phase B — this-typing against the real Kernel shape (was Self = any)
+type Self = Kernel
 
 /**
  * Patch Kernel prototype with API client methods.
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function applyApiMethods(KernelClass: { prototype: any }): void {
-  const proto = KernelClass.prototype as Self
+export function applyApiMethods(KernelClass: { prototype: Kernel }): void {
+  const proto = KernelClass.prototype
 
   /**
    * Setup an axios client with automatic auth and error handling

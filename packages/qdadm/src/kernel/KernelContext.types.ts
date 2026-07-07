@@ -20,6 +20,7 @@ import type { DeferredRegistry } from '../deferred/DeferredRegistry.js'
 import type { SecurityChecker } from '../entity/auth/SecurityChecker'
 import type { PermissionRegistry } from '../security/PermissionRegistry'
 import type { I18n } from '../i18n/I18n'
+import type { RouteParamResolverContext } from './KernelContext.routing'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Internal types — shared across patch modules, not exposed by index.ts
@@ -41,6 +42,10 @@ export interface AuthAdapter {
 export interface KernelOptions {
   debug?: boolean
   authAdapter?: AuthAdapter | null
+  /** Parent route param naming policy for child CRUD families (#1201). */
+  parentParamMode?: 'auto' | 'always' | 'bare'
+  /** Custom parent route param name resolver (#1201) — wins over parentParamMode. */
+  routeParamResolver?: (ctx: RouteParamResolverContext) => string | undefined
   storageResolver?: unknown
   managerResolver?: unknown
   managerRegistry?: Record<string, unknown>

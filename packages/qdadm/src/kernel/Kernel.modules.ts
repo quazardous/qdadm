@@ -1,15 +1,15 @@
 import { initModules, setSectionOrder } from '../module/moduleRegistry'
 import { createModuleLoader, type ModuleLike } from './ModuleLoader'
 import { createKernelContext, type KernelContext } from './KernelContext'
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type Self = any
+import type { Kernel } from './Kernel'
+// #1196 Phase B — this-typing against the real Kernel shape (was Self = any)
+type Self = Kernel
 
 /**
  * Patch Kernel prototype with module-related methods.
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function applyModuleMethods(KernelClass: { prototype: any }): void {
-  const proto = KernelClass.prototype as Self
+export function applyModuleMethods(KernelClass: { prototype: Kernel }): void {
+  const proto = KernelClass.prototype
 
   /**
    * Fire entity cache warmups

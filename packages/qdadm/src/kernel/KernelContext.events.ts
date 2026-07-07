@@ -12,13 +12,13 @@ import type {
   HookHandler,
   SignalHandler,
 } from './KernelContext.types'
+import type { KernelContext } from './KernelContext'
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type Self = any
+// #1196 Phase B — this-typing against the real KernelContext shape (was Self = any)
+type Self = KernelContext
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function applyEventMethods(KernelContextClass: { prototype: any }): void {
-  const proto = KernelContextClass.prototype as Self
+export function applyEventMethods(KernelContextClass: { prototype: KernelContext }): void {
+  const proto = KernelContextClass.prototype
 
   proto.on = function (
     this: Self,
