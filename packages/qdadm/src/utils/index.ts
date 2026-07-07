@@ -18,6 +18,9 @@ export {
   formatPercent,
 } from './formatters'
 
+// Error formatting
+export { formatFetchError, type FetchErrorLike } from './errors'
+
 // Transformers
 export {
   toKeyValueArray,
