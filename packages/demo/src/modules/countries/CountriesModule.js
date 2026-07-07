@@ -12,7 +12,7 @@
  * Custom storage handles pagination and search.
  */
 
-import { Module, MemoryStorage, EntityManager } from '@quazardous/qdadm'
+import { Module, MemoryStorage, EntityManager, sortItems, paginate } from '@quazardous/qdadm'
 import countriesFixture from '../../fixtures/countries.json'
 
 // ============================================================================
@@ -25,7 +25,7 @@ import countriesFixture from '../../fixtures/countries.json'
  */
 class CountriesStorage extends MemoryStorage {
   async list(params = {}) {
-    const { page = 1, page_size = 20, search } = params
+    const { page = 1, page_size = 20, search, sort_by, sort_order = 'asc' } = params
     let items = countriesFixture
 
     if (search) {
@@ -39,8 +39,10 @@ class CountriesStorage extends MemoryStorage {
     }
 
     const total = items.length
-    const start = (page - 1) * page_size
-    return { items: items.slice(start, start + page_size), total }
+    // Server-side sort (#1222 — was silently ignored, like the dead REST
+    // Countries storage it replaced); nulls last via the shared comparator.
+    items = sortItems([...items], sort_by, sort_order)
+    return { items: paginate(items, page, page_size), total }
   }
 
   async get(id) {

@@ -37,3 +37,15 @@ describe('sort session helpers (#1218)', () => {
     expect(getSessionSort('bots')).toBeNull()
   })
 })
+
+describe('sort session — removed-state artifacts (#1222)', () => {
+  it('rejects an empty-field entry (removableSort artifact)', () => {
+    sessionStorage.setItem('qdadm_sort_bots', JSON.stringify({ field: '', order: 1 }))
+    expect(getSessionSort('bots')).toBeNull()
+  })
+
+  it('accepts an explicit null field (no sort)', () => {
+    setSessionSort('bots', { field: null, order: 1 })
+    expect(getSessionSort('bots')).toEqual({ field: null, order: 1 })
+  })
+})

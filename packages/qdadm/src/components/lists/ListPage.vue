@@ -180,7 +180,7 @@ const emit = defineEmits<{
   (e: 'update:searchQuery', value: string): void
   (e: 'update:filterValues', values: Record<string, unknown>): void
   (e: 'page', event: { page: number; rows: number }): void
-  (e: 'sort', event: { sortField: string; sortOrder: number }): void
+  (e: 'sort', event: { sortField: string | null; sortOrder: number | null }): void
   (e: 'row-click', data: unknown, originalEvent: MouseEvent): void
 }>()
 
@@ -293,7 +293,9 @@ function onPage(event: { page: number; rows: number }): void {
 
 function onSort(event: unknown): void {
   const e = event as { sortField?: string | null; sortOrder?: number | null }
-  emit('sort', { sortField: String(e.sortField ?? ''), sortOrder: e.sortOrder ?? 1 })
+  // Pass removableSort's "sort removed" state through honestly (#1222):
+  // null stays null — the composable decides the fallback (defaultSort).
+  emit('sort', { sortField: e.sortField ?? null, sortOrder: e.sortOrder ?? null })
 }
 
 function onRowClick(event: { data: unknown; originalEvent: Event }): void {

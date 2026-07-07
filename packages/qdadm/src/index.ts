@@ -299,6 +299,15 @@ export {
   API_CLIENT_INJECTION_KEY,
   type ApiClientSource,
 } from './api/apiClient'
+export {
+  sortItems,
+  filterItems,
+  searchItems,
+  paginate,
+  defaultGenerateId,
+  type SortOrder,
+  type FilterItemsOptions,
+} from './query/clientFilter'
 export { useChildPage, type UseChildPageReturn } from './composables/useChildPage'
 export { useSidebarState, SIDEBAR_COLLAPSED_KEY } from './composables/useSidebarState'
 

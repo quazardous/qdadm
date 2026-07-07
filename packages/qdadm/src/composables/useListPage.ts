@@ -912,7 +912,15 @@ export function useListPage<T = unknown>(config: UseListPageOptions<T>): UseList
       manager.invalidateCache()
     }
 
-    loading.value = true
+    // Delayed loading indicator (#1222): near-synchronous loads (cache/local
+    // storage, fast APIs) used to flip loading true->false within one frame,
+    // interrupting PrimeVue's overlay-mask enter transition — the leave
+    // transitionend never fired and the invisible mask stayed in the DOM,
+    // swallowing every subsequent click (sort toggles became no-ops). The
+    // spinner only appears when a load actually takes time.
+    const loadingTimer = setTimeout(() => {
+      loading.value = true
+    }, 150)
     try {
       let params: Record<string, unknown> = { ...extraParams }
 
@@ -992,6 +1000,7 @@ export function useListPage<T = unknown>(config: UseListPageOptions<T>): UseList
       })
       console.error('Load error:', error)
     } finally {
+      clearTimeout(loadingTimer)
       loading.value = false
     }
   }
@@ -1004,9 +1013,18 @@ export function useListPage<T = unknown>(config: UseListPageOptions<T>): UseList
     loadItems()
   }
 
-  function onSort(event: { sortField: string; sortOrder: number }): void {
-    sortField.value = event.sortField
-    sortOrder.value = event.sortOrder as 1 | -1
+  function onSort(event: { sortField: string | null; sortOrder: number | null }): void {
+    // removableSort's third state ("sort removed") reaches us as nulls —
+    // fall back to the list's default sort instead of loading unsorted
+    // (#1222: on the cache path an unsorted load re-served the cache in
+    // whatever order the previous sort left it, a visual no-op).
+    if (!event.sortField || !event.sortOrder) {
+      sortField.value = defaultSort
+      sortOrder.value = defaultSortOrder
+    } else {
+      sortField.value = event.sortField
+      sortOrder.value = event.sortOrder as 1 | -1
+    }
     if (persistSort) {
       setSessionSort(filterSessionKey, {
         field: sortField.value,

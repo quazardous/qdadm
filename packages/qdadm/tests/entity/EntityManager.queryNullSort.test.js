@@ -57,3 +57,22 @@ describe('query() local sort — null placement (#1221)', () => {
     ])
   })
 })
+
+describe('query() local sort — cache immutability (#1222)', () => {
+  it('a sorted query does not mutate the cached order', async () => {
+    const manager = makeManager()
+    // Fill cache (insertion order)
+    await manager.query({ page: 1, page_size: 10 })
+    const before = manager._cache.items.map((i) => i.id)
+
+    // Sorted read must not reorder the cache in place
+    await manager.query({ page: 1, page_size: 10, sort_by: 'lastSeen', sort_order: 'desc' })
+    const after = manager._cache.items.map((i) => i.id)
+
+    expect(after).toEqual(before)
+
+    // And an unsorted read returns the natural order, not the last sort
+    const { items } = await manager.query({ page: 1, page_size: 10 })
+    expect(items.map((i) => i.id)).toEqual(before)
+  })
+})

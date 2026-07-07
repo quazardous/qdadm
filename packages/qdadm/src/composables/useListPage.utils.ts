@@ -106,7 +106,7 @@ export function getSessionSort(key: string): SessionSort | null {
     const stored = sessionStorage.getItem(SORT_SESSION_PREFIX + key)
     if (!stored) return null
     const parsed = JSON.parse(stored) as SessionSort
-    if (parsed && (parsed.order === 1 || parsed.order === -1)) return parsed
+    if (parsed && (parsed.order === 1 || parsed.order === -1) && parsed.field !== '') return parsed
     return null
   } catch {
     return null

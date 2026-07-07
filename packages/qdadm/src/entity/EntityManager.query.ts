@@ -168,8 +168,11 @@ export function applyQueryMethods(EntityManagerClass: { prototype: any }): void 
     // Total after filtering (before pagination)
     const total = result.length
 
-    // Apply sort (QueryExecutor does not sort)
+    // Apply sort (QueryExecutor does not sort). Copy first (#1222): result
+    // may still BE cache.items — an in-place sort would mutate the cache,
+    // making later unsorted reads return whatever order the last sort left.
     if (sort_by) {
+      result = [...result]
       result.sort((a: any, b: any) => {
         const aVal = a[sort_by]
         const bVal = b[sort_by]
