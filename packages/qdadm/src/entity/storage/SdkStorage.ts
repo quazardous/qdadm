@@ -1,5 +1,6 @@
 import { IStorage } from './IStorage'
 import type { EntityRecord, ListParams, ListResult, StorageCapabilities } from '../../types'
+import { sortItems, filterItems, paginate } from '../../query/clientFilter'
 
 /**
  * SDK method result with data property
@@ -289,33 +290,12 @@ export class SdkStorage<T extends EntityRecord = EntityRecord> extends IStorage<
     if (this.clientSidePagination && items.length > 0) {
       total = items.length
 
-      if (sort_by) {
-        items = [...items].sort((a, b) => {
-          const aVal = a[sort_by as keyof T]
-          const bVal = b[sort_by as keyof T]
-          if (aVal === undefined || aVal === null) return 1
-          if (bVal === undefined || bVal === null) return -1
-          if (aVal < bVal) return sort_order === 'asc' ? -1 : 1
-          if (aVal > bVal) return sort_order === 'asc' ? 1 : -1
-          return 0
-        })
-      }
-
-      for (const [key, value] of Object.entries(filters)) {
-        if (value === null || value === undefined || value === '') continue
-        items = items.filter((item) => {
-          const itemValue = item[key as keyof T]
-          if (typeof value === 'string' && typeof itemValue === 'string') {
-            return itemValue.toLowerCase().includes(value.toLowerCase())
-          }
-          return itemValue === value
-        })
-      }
-
+      // Shared pipeline (#1192) — original order preserved: sort, then
+      // filter (substring semantics), then paginate.
+      items = sortItems([...items], sort_by, sort_order)
+      items = filterItems(items, filters, { stringMatch: 'includes' })
       total = items.length
-
-      const start = (page - 1) * page_size
-      items = items.slice(start, start + page_size)
+      items = paginate(items, page, page_size)
     }
 
     return { items, total }
