@@ -95,6 +95,7 @@ import {
   setSessionFilters,
   snakeToTitle,
 } from './useListPage.utils'
+import { useActionRegistry } from './useActionRegistry'
 import { useOrchestrator } from '../orchestrator/useOrchestrator.js'
 import { createOrchestratorToast } from './useOrchestratorToast'
 
@@ -832,38 +833,37 @@ export function useListPage<T = unknown>(config: UseListPageOptions<T>): UseList
   }
 
   // ============ ACTIONS ============
-  const actionsMap = ref<Map<string, ActionConfig>>(new Map())
-
-  function addAction(name: string, actionConfig: Omit<ActionConfig, 'name'>): void {
-    actionsMap.value.set(name, {
-      name,
-      severity: 'secondary',
-      ...actionConfig,
-    } as ActionConfig)
-  }
-
-  function removeAction(name: string): void {
-    actionsMap.value.delete(name)
-  }
-
   function resolveValue<T>(value: T | ((row: unknown) => T), row: unknown): T {
     return typeof value === 'function' ? (value as (row: unknown) => T)(row) : value
   }
 
-  function getActions(row: unknown): ResolvedAction[] {
-    const actions: ResolvedAction[] = []
-    for (const [, action] of actionsMap.value) {
-      if (action.visible && !action.visible(row)) continue
-      actions.push({
+  // #1193 — shared registry skeleton; row-aware resolution stays here
+  const actionRegistry = useActionRegistry<ActionConfig, unknown, ResolvedAction>({
+    defaults: { severity: 'secondary' },
+    resolve: (action, row) => {
+      if (action.visible && !action.visible(row)) return null
+      return {
         name: action.name,
         icon: action.icon ? resolveValue(action.icon, row) : undefined,
         tooltip: action.tooltip ? resolveValue(action.tooltip, row) : undefined,
         severity: resolveValue(action.severity || 'secondary', row),
         isDisabled: action.disabled ? action.disabled(row) : false,
         handler: () => action.onClick(row),
-      })
-    }
-    return actions
+      }
+    },
+  })
+  const actionsMap = actionRegistry.actionsMap
+
+  function addAction(name: string, actionConfig: Omit<ActionConfig, 'name'>): void {
+    actionRegistry.add({ name, ...actionConfig } as ActionConfig)
+  }
+
+  function removeAction(name: string): void {
+    actionRegistry.remove(name)
+  }
+
+  function getActions(row: unknown): ResolvedAction[] {
+    return actionRegistry.resolveAll(row)
   }
 
   // ============ SEARCH ============
@@ -1291,9 +1291,10 @@ export function useListPage<T = unknown>(config: UseListPageOptions<T>): UseList
     }
 
     if (alteredConfig.actions) {
-      actionsMap.value.clear()
+      // Route through the registry so the order list stays in sync (#1193)
+      actionRegistry.clear()
       for (const action of alteredConfig.actions) {
-        actionsMap.value.set(action.name, action)
+        actionRegistry.add(action)
       }
     }
 
