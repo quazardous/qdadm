@@ -12,11 +12,12 @@
  * - Show pages (read-only detail pages)
  * - useEntityItemFormPage (create/edit forms)
  */
-import { ref, computed, onMounted, inject, provide, type Ref, type ComputedRef } from 'vue'
+import { ref, computed, onMounted, provide, type Ref, type ComputedRef } from 'vue'
 import { useRoute } from 'vue-router'
 import { useStackHydrator, type StackHydratorReturn } from '../chain/useStackHydrator'
 import type { EntityManagerCrud } from '../entity/EntityManager.interface'
 import type { OrchestratorLike } from '../entity/EntityManager.interface'
+import { useOrchestrator } from '../orchestrator/useOrchestrator.js'
 
 /**
  * Parent configuration from route.meta.parent
@@ -142,7 +143,8 @@ export function useEntityItemPage<T = unknown>(config: UseEntityItemPageOptions<
   const route = useRoute()
 
   // Get EntityManager via orchestrator
-  const orchestrator = inject<Orchestrator | null>('qdadmOrchestrator')
+  // #1193 — canonical injection (single error-message source), erased to the CRUD-tier view
+  const orchestrator = useOrchestrator().orchestrator as unknown as Orchestrator
   if (!orchestrator) {
     throw new Error(
       '[qdadm] Orchestrator not provided.\n' +
@@ -232,7 +234,6 @@ export function useEntityItemPage<T = unknown>(config: UseEntityItemPageOptions<
       // Calculate total depth to set correct breadcrumb levels
       // If chain is: grandparent -> parent -> current
       // grandparent = level 1, parent = level 2, current = level 3
-      // const totalDepth = getChainDepth()
 
       // Load chain from immediate parent up to root
       let currentConfig: ParentConfig | undefined = parentConfig.value

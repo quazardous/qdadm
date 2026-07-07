@@ -50,6 +50,7 @@ import type {
   ErrorSummaryItem,
   PageTitleParts,
 } from './useEntityItemFormPage.types'
+import { createOrchestratorToast } from './useOrchestratorToast'
 import { TYPE_MAPPINGS, TYPE_VALIDATORS, snakeCaseToTitle, isEmpty } from './useEntityItemFormPage.types'
 
 // Re-export public types
@@ -100,7 +101,7 @@ export function useEntityItemFormPage<T extends Record<string, unknown> = Record
     // Mode detection
     getId = null,
     createRouteSuffix = 'create',
-    editRouteSuffix: _editRouteSuffix = 'edit', // eslint-disable-line @typescript-eslint/no-unused-vars
+    editRouteSuffix = 'edit',
     // Form options
     loadOnMount = true,
     enableGuard = true,
@@ -143,12 +144,8 @@ export function useEntityItemFormPage<T extends Record<string, unknown> = Record
     hydrator,
   } = itemPage
 
-  // Toast helper - wraps orchestrator.toast for legacy compatibility
-  const toast: ToastHelper = {
-    add({ severity, summary, detail, emitter }) {
-      ;(orchestrator as Orchestrator)?.toast?.[severity]?.(summary, detail, emitter)
-    },
-  }
+  // Toast helper (#1193 — shared facade)
+  const toast: ToastHelper = createOrchestratorToast(orchestrator as Orchestrator | null)
 
   // Read config from manager with option overrides
   const entityName = config.entityName ?? manager.label
@@ -331,7 +328,7 @@ export function useEntityItemFormPage<T extends Record<string, unknown> = Record
         const createdId = (responseData as Record<string, unknown>)?.[manager.idField]
         if (createdId) {
           const currentRouteName = (route.name as string) || ''
-          const editRouteName = currentRouteName.replace(/(-create|-new)$/, '-edit')
+          const editRouteName = currentRouteName.replace(/(-create|-new)$/, `-${editRouteSuffix}`)
           router.push({
             name: editRouteName,
             params: { ...route.params, [manager.idField]: String(createdId) },
@@ -505,7 +502,7 @@ export function useEntityItemFormPage<T extends Record<string, unknown> = Record
   })
 
   // Expose refs for validation (which needs direct access)
-  const { fieldsMap, fieldOrder, excludedFields, fields, groups } = fieldManager
+  const { fieldsMap, fieldOrder, fields, groups } = fieldManager
 
   /**
    * Generate fields from manager schema
