@@ -55,6 +55,7 @@ import {
   type ShowResolvedFieldConfig,
 } from './createShowFieldResolver'
 import type { OrchestratorLike } from '../entity/EntityManager.interface'
+import { useActionRegistry } from './useActionRegistry'
 
 // #1191 — shared structural view (manager tier from useEntityItemPage)
 type Orchestrator = OrchestratorLike<EntityManager>
@@ -344,17 +345,27 @@ export function useEntityItemShowPage<T = unknown>(
 
   // ============ ACTION MANAGEMENT ============
 
-  const actionsMap = ref<Map<string, ActionConfig>>(new Map())
-  const actionOrder = ref<string[]>([])
-
   const canEdit = computed(() => manager.canUpdate?.(data.value) ?? true)
   const canDelete = computed(() => manager.canDelete?.(data.value) ?? true)
 
+  // #1193 — shared registry skeleton; the order list is shared with lazy
+  // actions so declaration order survives the regular/lazy interleave.
+  type ShowActionCtx = { canEdit: boolean; canDelete: boolean; loading: boolean }
+  const actionRegistry = useActionRegistry<ActionConfig, ShowActionCtx, ResolvedAction>({
+    resolve: (action, ctx) => {
+      if (action.visible && !action.visible(ctx)) return null
+      return {
+        ...action,
+        isLoading: action.loading ? action.loading() : false,
+        isDisabled: action.disabled ? action.disabled(ctx) : false,
+      }
+    },
+  })
+  const actionsMap = actionRegistry.actionsMap
+  const actionOrder = actionRegistry.order
+
   function addAction(action: ActionConfig): UseEntityItemShowPageReturn<T> {
-    actionsMap.value.set(action.name, action)
-    if (!actionOrder.value.includes(action.name)) {
-      actionOrder.value.push(action.name)
-    }
+    actionRegistry.add(action)
     return returnValue
   }
 
@@ -445,20 +456,16 @@ export function useEntityItemShowPage<T = unknown>(
         return null
       })
       .filter((entry): entry is NonNullable<typeof entry> => entry !== null)
-      .filter((entry) => {
-        if (entry.type === 'regular') return !entry.action.visible || entry.action.visible(ctx)
-        const state = resolved.get(entry.action.name)
-        return state?.visible === true
-      })
       .map((entry) => {
-        const a = entry.action
-        if (entry.type === 'lazy') {
-          const state = resolved.get(a.name)
-          return { ...a, isLoading: a.loading ? a.loading() : false, isDisabled: state?.disabled ?? false }
+        if (entry.type === 'regular') {
+          return actionRegistry.resolveOne(entry.action.name, ctx)
         }
-        const regular = a as ActionConfig
-        return { ...regular, isLoading: regular.loading ? regular.loading() : false, isDisabled: regular.disabled ? regular.disabled(ctx) : false }
+        const state = resolved.get(entry.action.name)
+        if (state?.visible !== true) return null
+        const a = entry.action
+        return { ...a, isLoading: a.loading ? a.loading() : false, isDisabled: state?.disabled ?? false }
       })
+      .filter((a): a is ResolvedAction => a !== null)
   })
 
   // ============ PAGE TITLE ============

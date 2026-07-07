@@ -51,6 +51,7 @@ import type {
   PageTitleParts,
 } from './useEntityItemFormPage.types'
 import { createOrchestratorToast } from './useOrchestratorToast'
+import { useActionRegistry } from './useActionRegistry'
 import { TYPE_MAPPINGS, TYPE_VALIDATORS, snakeCaseToTitle, isEmpty } from './useEntityItemFormPage.types'
 
 // Re-export public types
@@ -667,29 +668,30 @@ export function useEntityItemFormPage<T extends Record<string, unknown> = Record
 
   // ============ ACTIONS ============
 
-  const actionsMap = ref<Map<string, ActionConfig>>(new Map())
-
-  function addAction(name: string, actionConfig: Omit<ActionConfig, 'name'>): void {
-    actionsMap.value.set(name, { name, ...actionConfig })
-  }
-
-  function removeAction(name: string): void {
-    actionsMap.value.delete(name)
-  }
-
-  function getActions(): ResolvedAction[] {
-    const actions: ResolvedAction[] = []
-    for (const [, action] of actionsMap.value) {
-      if (action.visible && !action.visible({ isEdit: isEdit.value, dirty: dirty.value })) continue
-      actions.push({
+  // #1193 — shared registry skeleton; form-state resolution stays here
+  const actionRegistry = useActionRegistry<ActionConfig, void, ResolvedAction>({
+    resolve: (action) => {
+      if (action.visible && !action.visible({ isEdit: isEdit.value, dirty: dirty.value })) return null
+      return {
         ...action,
         isLoading: action.loading ? action.loading() : false,
         isDisabled: action.disabled
           ? action.disabled({ dirty: dirty.value, saving: saving.value })
           : false,
-      })
-    }
-    return actions
+      }
+    },
+  })
+
+  function addAction(name: string, actionConfig: Omit<ActionConfig, 'name'>): void {
+    actionRegistry.add({ name, ...actionConfig } as ActionConfig)
+  }
+
+  function removeAction(name: string): void {
+    actionRegistry.remove(name)
+  }
+
+  function getActions(): ResolvedAction[] {
+    return actionRegistry.resolveAll(undefined)
   }
 
   const actions = computed(() => getActions())
