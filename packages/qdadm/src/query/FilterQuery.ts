@@ -73,7 +73,7 @@ interface QueryManagerLike {
 /**
  * Minimal interface for Orchestrator (to avoid circular deps)
  */
-interface QueryOrchestratorLike {
+export interface QueryOrchestratorLike {
   get(name: string): QueryManagerLike | null | undefined
 }
 
