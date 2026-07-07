@@ -36,6 +36,7 @@ import { useUnsavedChangesGuard, type GuardDialogState } from './useUnsavedChang
 import { useBreadcrumb, type BreadcrumbDisplayItem } from './useBreadcrumb'
 import { registerGuardDialog, unregisterGuardDialog } from './useGuardStore'
 import type { EntityManagerLike, OrchestratorLike } from '../entity/EntityManager.interface'
+import { createOrchestratorToast } from './useOrchestratorToast'
 
 // #1191 — shared minimal structural views (was: local redeclarations)
 type EntityManager = EntityManagerLike
@@ -169,12 +170,8 @@ export function useBareForm(options: UseBareFormOptions): UseBareFormReturn {
   const route = useRoute()
   const orchestrator = inject<Orchestrator | null>('qdadmOrchestrator', null)
 
-  // Toast helper - wraps orchestrator.toast for legacy compatibility
-  const toast: ToastHelper = {
-    add({ severity, summary, detail, emitter }) {
-      orchestrator?.toast[severity]?.(summary, detail, emitter)
-    },
-  }
+  // Toast helper (#1193 — shared facade)
+  const toast: ToastHelper = createOrchestratorToast(orchestrator)
 
   // Common state
   const loading = ref(false)

@@ -95,6 +95,8 @@ import {
   setSessionFilters,
   snakeToTitle,
 } from './useListPage.utils'
+import { useOrchestrator } from '../orchestrator/useOrchestrator.js'
+import { createOrchestratorToast } from './useOrchestratorToast'
 
 // Re-export PAGE_SIZE_OPTIONS so existing consumers (qdadm/index.ts,
 // composables/index.ts) keep their import path.
@@ -134,15 +136,10 @@ export function useListPage<T = unknown>(config: UseListPageOptions<T>): UseList
   // i18n integration — column headers resolve via entities.{entity}.fields.{field}
   const { i18n: kernelI18n, locale: i18nLocale } = useI18n()
 
-  // Get EntityManager via orchestrator
-  const orchestrator = inject<Orchestrator | null>('qdadmOrchestrator')
-
-  // Toast helper - wraps orchestrator.toast for legacy compatibility
-  const toast: ToastHelper = {
-    add({ severity, summary, detail, emitter }) {
-      orchestrator?.toast[severity]?.(summary, detail, emitter)
-    },
-  }
+  // Get EntityManager via orchestrator (#1193 — canonical injection: one
+  // error-message source; erased to this file's Read-tier view)
+  const orchestrator = useOrchestrator().orchestrator as unknown as Orchestrator
+  const toast: ToastHelper = createOrchestratorToast(orchestrator)
 
   if (!orchestrator) {
     throw new Error(
