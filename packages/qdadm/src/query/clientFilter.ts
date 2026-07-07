@@ -15,14 +15,55 @@
 
 export type SortOrder = 'asc' | 'desc'
 
-/** Sort by a field, nulls/undefined last — the canonical adapter comparator. */
-export function sortItems<T>(items: T[], sortBy?: string | null, sortOrder: SortOrder = 'asc'): T[] {
+/**
+ * Null placement when sorting (#1222 — configurable, it depends on the
+ * API and the field semantics):
+ * - 'last'  (default): nulls at the end, both directions — the historical
+ *   adapter behavior, keeps empty rows out of the way.
+ * - 'first': nulls at the top, both directions.
+ * - 'low':   null behaves as the lowest value — first in asc, last in
+ *   desc. Right for "last seen" dates ("Never" sorts beyond the oldest
+ *   period); equals PrimeVue nullSortOrder: -1.
+ * - 'high':  null behaves as the highest value — last in asc, first in desc.
+ */
+export type NullSortMode = 'first' | 'last' | 'low' | 'high'
+
+export interface SortItemsOptions {
+  nulls?: NullSortMode
+}
+
+export function nullSortRank(mode: NullSortMode, sortOrder: SortOrder): number {
+  // Return the comparator result for "a is null, b is not"
+  switch (mode) {
+    case 'first':
+      return -1
+    case 'low':
+      return sortOrder === 'asc' ? -1 : 1
+    case 'high':
+      return sortOrder === 'asc' ? 1 : -1
+    case 'last':
+    default:
+      return 1
+  }
+}
+
+/** Sort by a field — the canonical comparator (null placement configurable). */
+export function sortItems<T>(
+  items: T[],
+  sortBy?: string | null,
+  sortOrder: SortOrder = 'asc',
+  options: SortItemsOptions = {}
+): T[] {
   if (!sortBy) return items
+  const { nulls = 'last' } = options
   return items.sort((a, b) => {
     const aVal = a[sortBy as keyof T]
     const bVal = b[sortBy as keyof T]
-    if (aVal === undefined || aVal === null) return 1
-    if (bVal === undefined || bVal === null) return -1
+    const aNull = aVal === undefined || aVal === null
+    const bNull = bVal === undefined || bVal === null
+    if (aNull && bNull) return 0
+    if (aNull) return nullSortRank(nulls, sortOrder)
+    if (bNull) return -nullSortRank(nulls, sortOrder)
     if (aVal < bVal) return sortOrder === 'asc' ? -1 : 1
     if (aVal > bVal) return sortOrder === 'asc' ? 1 : -1
     return 0

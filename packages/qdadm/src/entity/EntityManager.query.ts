@@ -1,6 +1,7 @@
 import { QueryExecutor, type QueryObject } from '../query/QueryExecutor'
 import type { ListParams, ListResult } from '../types'
 import type { EntityManagerInternal, OperationStats, QueryOptions } from './EntityManager.types'
+import { nullSortRank, type NullSortMode } from '../query/clientFilter'
 
 type Self = EntityManagerInternal<any>
 
@@ -172,17 +173,22 @@ export function applyQueryMethods(EntityManagerClass: { prototype: any }): void 
     // may still BE cache.items — an in-place sort would mutate the cache,
     // making later unsorted reads return whatever order the last sort left.
     if (sort_by) {
+      // Resolve null placement: field config > manager option > 'last'
+      const fieldCfg = this.getFieldConfig?.(sort_by) as { nullSort?: NullSortMode } | null
+      const nullMode: NullSortMode = fieldCfg?.nullSort ?? this.nullSort ?? 'last'
+      const nullCmp = nullSortRank(nullMode, sort_order === 'asc' ? 'asc' : 'desc')
       result = [...result]
       result.sort((a: any, b: any) => {
         const aVal = a[sort_by]
         const bVal = b[sort_by]
 
-        // Nulls always sort LAST, both directions (#1221) — matches the
-        // storage adapters' shared comparator; direction-aware placement
-        // put "never seen" rows on top of every desc date sort.
+        // Null placement is configurable per field/manager (#1222 —
+        // depends on the API and the field semantics). Default 'last'
+        // keeps the #1221 behavior; e.g. nullSort: 'low' makes "Never"
+        // sort beyond the oldest period on a last-seen date column.
         if (aVal == null && bVal == null) return 0
-        if (aVal == null) return 1
-        if (bVal == null) return -1
+        if (aVal == null) return nullCmp
+        if (bVal == null) return -nullCmp
 
         // Compare
         if (typeof aVal === 'string' && typeof bVal === 'string') {

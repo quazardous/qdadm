@@ -79,6 +79,8 @@ export type FieldType =
  * Field configuration
  */
 export interface FieldConfig {
+  /** Null placement when this field is locally sorted: 'first' | 'last' | 'low' | 'high' (#1222). */
+  nullSort?: 'first' | 'last' | 'low' | 'high'
   type: FieldType
   label?: string
   required?: boolean

@@ -30,6 +30,7 @@ import type {
   StorageResolution,
   Orchestrator,
 } from './EntityManager.types'
+import type { NullSortMode } from '../query/clientFilter'
 
 // Re-export public types from types file
 export type {
@@ -83,6 +84,8 @@ export class EntityManager<T extends EntityRecord = EntityRecord> {
   protected _fields: Record<string, FieldConfig>
 
   localFilterThreshold: number | null
+  /** Default null placement for local sorts (#1222); field-level nullSort wins. */
+  nullSort?: NullSortMode
   protected _cacheTtlMs: number | null
   protected _asymmetric: boolean
   protected _detailCache: DetailCacheState<T> = { items: new Map() }
@@ -153,6 +156,7 @@ export class EntityManager<T extends EntityRecord = EntityRecord> {
       badges = null,
       fields = {},
       localFilterThreshold = null,
+      nullSort,
       cacheTtlMs = null,
       asymmetric = false,
       detailCacheTtlMs = 0,
@@ -183,6 +187,7 @@ export class EntityManager<T extends EntityRecord = EntityRecord> {
     this._fields = fields
 
     this.localFilterThreshold = localFilterThreshold
+    this.nullSort = nullSort
     this._cacheTtlMs = cacheTtlMs
     this._asymmetric = asymmetric
     this._detailCacheTtlMs = detailCacheTtlMs

@@ -305,8 +305,11 @@ export {
   searchItems,
   paginate,
   defaultGenerateId,
+  nullSortRank,
   type SortOrder,
   type FilterItemsOptions,
+  type NullSortMode,
+  type SortItemsOptions,
 } from './query/clientFilter'
 export { useChildPage, type UseChildPageReturn } from './composables/useChildPage'
 export { useSidebarState, SIDEBAR_COLLAPSED_KEY } from './composables/useSidebarState'

@@ -23,10 +23,22 @@ const ITEMS = [
 ]
 
 describe('clientFilter (#1192)', () => {
-  it('sortItems sorts asc/desc with nulls last', () => {
+  it('sortItems defaults to nulls-last in both directions', () => {
     expect(sortItems([...ITEMS], 'rank', 'asc').map((i) => i.id)).toEqual(['2', '1', '3'])
     expect(sortItems([...ITEMS], 'rank', 'desc').map((i) => i.id)).toEqual(['1', '2', '3'])
     expect(sortItems([...ITEMS]).map((i) => i.id)).toEqual(['1', '2', '3']) // no sort_by = untouched
+  })
+
+  it('sortItems null placement is configurable (#1222)', () => {
+    // 'low': null = smallest — first in asc, last in desc (the "Never" date case)
+    expect(sortItems([...ITEMS], 'rank', 'asc', { nulls: 'low' }).map((i) => i.id)).toEqual(['3', '2', '1'])
+    expect(sortItems([...ITEMS], 'rank', 'desc', { nulls: 'low' }).map((i) => i.id)).toEqual(['1', '2', '3'])
+    // 'high': null = biggest — last in asc, first in desc
+    expect(sortItems([...ITEMS], 'rank', 'asc', { nulls: 'high' }).map((i) => i.id)).toEqual(['2', '1', '3'])
+    expect(sortItems([...ITEMS], 'rank', 'desc', { nulls: 'high' }).map((i) => i.id)).toEqual(['3', '1', '2'])
+    // 'first': always on top
+    expect(sortItems([...ITEMS], 'rank', 'asc', { nulls: 'first' }).map((i) => i.id)).toEqual(['3', '2', '1'])
+    expect(sortItems([...ITEMS], 'rank', 'desc', { nulls: 'first' }).map((i) => i.id)).toEqual(['3', '1', '2'])
   })
 
   it('filterItems includes-mode matches substrings case-insensitively', () => {

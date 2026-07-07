@@ -45,7 +45,7 @@ describe('query() local sort — null placement (#1221)', () => {
     ])
   })
 
-  it('asc: nulls still sort last', async () => {
+  it('asc: nulls still sort last by default', async () => {
     const manager = makeManager()
     const { items } = await manager.query({ sort_by: 'lastSeen', sort_order: 'asc' })
     expect(items.map((i) => i.lastSeen)).toEqual([
@@ -55,6 +55,41 @@ describe('query() local sort — null placement (#1221)', () => {
       null,
       null,
     ])
+  })
+
+  it("field-level nullSort: 'low' puts \"Never\" beyond the oldest period (#1222)", async () => {
+    const items = Array.from({ length: 5 }, (_, i) => ({
+      id: String(i + 1),
+      lastSeen: [null, '2026-07-01', null, '2026-07-03', '2026-07-02'][i],
+    }))
+    const manager = new EntityManager({
+      name: 'bots',
+      storage: new CachingStorage({ initialData: items }),
+      localFilterThreshold: 100,
+      fields: {
+        lastSeen: { type: 'date', label: 'Last Seen', nullSort: 'low' },
+      },
+    })
+    // asc: nulls first ("never" is older than the oldest)
+    const asc = await manager.query({ sort_by: 'lastSeen', sort_order: 'asc' })
+    expect(asc.items.map((i) => i.lastSeen)).toEqual([null, null, '2026-07-01', '2026-07-02', '2026-07-03'])
+    // desc: nulls last (recent-first list, "Never" at the end)
+    const desc = await manager.query({ sort_by: 'lastSeen', sort_order: 'desc' })
+    expect(desc.items.map((i) => i.lastSeen)).toEqual(['2026-07-03', '2026-07-02', '2026-07-01', null, null])
+  })
+
+  it("manager-level nullSort default applies when the field has none (#1222)", async () => {
+    const manager = new EntityManager({
+      name: 'bots',
+      storage: new CachingStorage({ initialData: [
+        { id: '1', lastSeen: '2026-07-01' },
+        { id: '2', lastSeen: null },
+      ] }),
+      localFilterThreshold: 100,
+      nullSort: 'low',
+    })
+    const asc = await manager.query({ sort_by: 'lastSeen', sort_order: 'asc' })
+    expect(asc.items.map((i) => i.lastSeen)).toEqual([null, '2026-07-01'])
   })
 })
 

@@ -674,6 +674,7 @@ ctx.entity('books', new EntityManager({
 | `disabled` | `boolean` | Disable input |
 | `readonly` | `boolean` | Read-only input |
 | `validate` | `(value, formData) => string \| null` | Custom validator |
+| `nullSort` | `'first' \| 'last' \| 'low' \| 'high'` | Null placement when locally sorted (default `'last'`; `'low'` = null behaves as the smallest value — right for "last seen" dates). Manager-level `nullSort` option sets the default for all fields |
 
 ---
 

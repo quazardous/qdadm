@@ -11,6 +11,7 @@ import type {
 } from '../types'
 import type { AuthUser, EntityAuthAdapter as IEntityAuthAdapter } from './auth/EntityAuthAdapter'
 import type { SignalBus } from '../kernel/SignalBus'
+import type { NullSortMode } from '../query/clientFilter'
 import type { HookRegistry } from '../hooks/HookRegistry'
 
 // Circular type import — safe because `import type` is erased at runtime
@@ -214,6 +215,8 @@ export interface EntityManagerOptions<T extends EntityRecord = EntityRecord> {
   badges?: (entity: T) => EntityBadge[]
   fields?: Record<string, FieldConfig>
   localFilterThreshold?: number | null
+  /** Default null placement for local sorts: 'first' | 'last' | 'low' | 'high' (default 'last', #1222). Field-level nullSort wins. */
+  nullSort?: NullSortMode
   /** Cache TTL in milliseconds (0=disabled, -1=infinite, >0=TTL). Overrides global, overridden by storage. */
   cacheTtlMs?: number | null
   /** Asymmetric mode: list() and get() return different structures. get() skips list cache. */
