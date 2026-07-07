@@ -569,34 +569,41 @@ export function useEntityItemFormPage<T extends Record<string, unknown> = Record
 
   // ============ VALIDATION ============
 
-  function validateField(name: string): string | null {
-    const fieldConfig = fieldsMap.value.get(name)
-    if (!fieldConfig) return null
-
-    const value = data.value[name]
-
+  /**
+   * Shared validator pipeline (#1193): required → type validator → custom
+   * validate. Pure — returns the error message or null; callers own the
+   * errors ref bookkeeping.
+   */
+  function runFieldValidators(fieldConfig: ResolvedFieldConfig, value: unknown): string | null {
     if (fieldConfig.required && isEmpty(value)) {
-      const error = `${fieldConfig.label} is required`
-      errors.value = { ...errors.value, [name]: error }
-      return error
+      return `${fieldConfig.label} is required`
     }
 
     const typeValidator = TYPE_VALIDATORS[fieldConfig.schemaType]
     if (typeValidator) {
       const result = typeValidator(value)
-      if (result !== true) {
-        errors.value = { ...errors.value, [name]: result as string }
-        return result as string
-      }
+      if (result !== true) return result as string
     }
 
     if (fieldConfig.validate && typeof fieldConfig.validate === 'function') {
       const result = fieldConfig.validate(value, data.value)
       if (result !== true && result !== undefined && result !== null) {
-        const error = typeof result === 'string' ? result : `${fieldConfig.label} is invalid`
-        errors.value = { ...errors.value, [name]: error }
-        return error
+        return typeof result === 'string' ? result : `${fieldConfig.label} is invalid`
       }
+    }
+
+    return null
+  }
+
+  function validateField(name: string): string | null {
+    const fieldConfig = fieldsMap.value.get(name)
+    if (!fieldConfig) return null
+
+    const error = runFieldValidators(fieldConfig, data.value[name])
+
+    if (error) {
+      errors.value = { ...errors.value, [name]: error }
+      return error
     }
 
     if (errors.value[name]) {
@@ -615,29 +622,8 @@ export function useEntityItemFormPage<T extends Record<string, unknown> = Record
       const fieldConfig = fieldsMap.value.get(fieldName)
       if (!fieldConfig) continue
 
-      const value = data.value[fieldName]
-
-      if (fieldConfig.required && isEmpty(value)) {
-        newErrors[fieldName] = `${fieldConfig.label} is required`
-        continue
-      }
-
-      const typeValidator = TYPE_VALIDATORS[fieldConfig.schemaType]
-      if (typeValidator) {
-        const result = typeValidator(value)
-        if (result !== true) {
-          newErrors[fieldName] = result as string
-          continue
-        }
-      }
-
-      if (fieldConfig.validate && typeof fieldConfig.validate === 'function') {
-        const result = fieldConfig.validate(value, data.value)
-        if (result !== true && result !== undefined && result !== null) {
-          newErrors[fieldName] =
-            typeof result === 'string' ? result : `${fieldConfig.label} is invalid`
-        }
-      }
+      const error = runFieldValidators(fieldConfig, data.value[fieldName])
+      if (error) newErrors[fieldName] = error
     }
 
     errors.value = newErrors
