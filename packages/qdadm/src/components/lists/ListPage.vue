@@ -86,6 +86,12 @@ const props = defineProps({
 
   // Table data
   items: { type: Array as PropType<unknown[]>, required: true },
+  /**
+   * Extra props forwarded verbatim to the underlying PrimeVue DataTable
+   * (#1217) — e.g. { nullSortOrder: -1 } to sort null values last. Bound
+   * last, so they can override the defaults ListPage sets.
+   */
+  tableProps: { type: Object as PropType<Record<string, unknown>>, default: () => ({}) },
   loading: { type: Boolean, default: false },
   dataKey: { type: String, default: 'id' },
 
@@ -441,6 +447,7 @@ function getFilterClass(filter: FilterConfig): Record<string, boolean> {
         :class="{ 'datatable-row-clickable': hasRowTapAction }"
         stripedRows
         removableSort
+        v-bind="tableProps"
       >
         <!-- Columns from slot -->
         <slot name="columns" ></slot>

@@ -80,6 +80,14 @@ defineProps({
   sortOrder: {
     type: Number as PropType<1 | -1>,
     default: 1
+  },
+  /**
+   * Extra props forwarded verbatim to the PrimeVue DataTable (#1217) —
+   * e.g. { nullSortOrder: -1 } to sort null values last.
+   */
+  tableProps: {
+    type: Object as PropType<Record<string, unknown>>,
+    default: () => ({})
   }
 })
 
@@ -110,6 +118,7 @@ function onSort(event: DataTableSortEvent): void {
     :sortOrder="sortOrder"
     :stripedRows="stripedRows"
     :removableSort="removableSort"
+    v-bind="tableProps"
     @update:selection="onSelectionChange"
     @sort="onSort"
     class="default-table"

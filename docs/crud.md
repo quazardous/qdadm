@@ -228,6 +228,14 @@ composables — see [Reusable list behaviors](#reusable-list-behaviors-augmentin
 
 ### ListPage slots
 
+**Escape hatch — any DataTable prop** *(since 2.3)*: the `tableProps` prop is
+forwarded verbatim to the underlying PrimeVue `DataTable`, bound last (it can
+override ListPage defaults). E.g. sort `null` values last:
+
+```vue
+<ListPage v-bind="list.props.value" v-on="list.events" :table-props="{ nullSortOrder: -1 }">
+```
+
 | Slot | Purpose |
 |------|---------|
 | `#columns` | PrimeVue `<Column>` definitions |
