@@ -89,6 +89,8 @@ import {
   clearSessionFilters,
   getSavedPageSize,
   getSessionFilters,
+  getSessionSort,
+  setSessionSort,
   persistPageSize,
   setSessionFilters,
   snakeToTitle,
@@ -114,6 +116,7 @@ export function useListPage<T = unknown>(config: UseListPageOptions<T>): UseList
     pageSize: defaultPageSize = 10,
     loadOnMount = true,
     persistFilters = true,
+    persistSort = true,
     syncUrlParams = true,
     autoLoadFilters = true,
     onBeforeLoad = null,
@@ -242,9 +245,11 @@ export function useListPage<T = unknown>(config: UseListPageOptions<T>): UseList
   const totalRecords = ref(0)
   const rowsPerPageOptions = PAGE_SIZE_OPTIONS
 
-  // Sorting
-  const sortField = ref<string | null>(defaultSort)
-  const sortOrder = ref(defaultSortOrder)
+  // Sorting — restored from the per-entity session (#1218), defaultSort as
+  // fallback; same persistence discipline as filters/pageSize.
+  const savedSort = persistSort ? getSessionSort(filterSessionKey) : null
+  const sortField = ref<string | null>(savedSort ? savedSort.field : defaultSort)
+  const sortOrder = ref(savedSort ? savedSort.order : defaultSortOrder)
 
   // Search
   const searchQuery = ref(savedSearch)
@@ -1002,6 +1007,12 @@ export function useListPage<T = unknown>(config: UseListPageOptions<T>): UseList
   function onSort(event: { sortField: string; sortOrder: number }): void {
     sortField.value = event.sortField
     sortOrder.value = event.sortOrder as 1 | -1
+    if (persistSort) {
+      setSessionSort(filterSessionKey, {
+        field: sortField.value,
+        order: sortOrder.value as 1 | -1,
+      })
+    }
     loadItems()
   }
 

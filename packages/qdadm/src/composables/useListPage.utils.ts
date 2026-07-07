@@ -91,6 +91,45 @@ export function clearSessionFilters(key: string): void {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Sort session storage (#1218) — same mechanism as filters, keyed by entity
+// ─────────────────────────────────────────────────────────────────────────────
+
+const SORT_SESSION_PREFIX = 'qdadm_sort_'
+
+export interface SessionSort {
+  field: string | null
+  order: 1 | -1
+}
+
+export function getSessionSort(key: string): SessionSort | null {
+  try {
+    const stored = sessionStorage.getItem(SORT_SESSION_PREFIX + key)
+    if (!stored) return null
+    const parsed = JSON.parse(stored) as SessionSort
+    if (parsed && (parsed.order === 1 || parsed.order === -1)) return parsed
+    return null
+  } catch {
+    return null
+  }
+}
+
+export function setSessionSort(key: string, sort: SessionSort): void {
+  try {
+    sessionStorage.setItem(SORT_SESSION_PREFIX + key, JSON.stringify(sort))
+  } catch {
+    // Ignore storage errors (quota exceeded, disabled by user, …).
+  }
+}
+
+export function clearSessionSort(key: string): void {
+  try {
+    sessionStorage.removeItem(SORT_SESSION_PREFIX + key)
+  } catch {
+    // Ignore storage errors.
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Smart filter discovery
 // ─────────────────────────────────────────────────────────────────────────────
 

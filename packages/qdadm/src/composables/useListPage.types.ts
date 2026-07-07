@@ -222,6 +222,8 @@ export interface UseListPageOptions<T = unknown> {
   loadOnMount?: boolean
   /** Persist filters to sessionStorage (default: true) */
   persistFilters?: boolean
+  /** Persist the active sort per entity (session storage), restored on init (#1218). Default true. */
+  persistSort?: boolean
   /** Sync filters to URL query params (default: true) */
   syncUrlParams?: boolean
   /** Filter mode: 'auto' | 'manager' | 'local' */

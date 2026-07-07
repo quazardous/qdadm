@@ -255,6 +255,7 @@ useListPage({
   serverSide: false,           // Server-side pagination
   loadOnMount: true,           // Auto-load on mount
   persistFilters: true,        // Remember filters across navigation
+  persistSort: true,           // Remember active sort across navigation (per entity)
   syncUrlParams: true,         // Sync filters/sort with URL
 })
 ```
