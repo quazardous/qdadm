@@ -174,10 +174,12 @@ export function applyQueryMethods(EntityManagerClass: { prototype: any }): void 
         const aVal = a[sort_by]
         const bVal = b[sort_by]
 
-        // Handle nulls
+        // Nulls always sort LAST, both directions (#1221) — matches the
+        // storage adapters' shared comparator; direction-aware placement
+        // put "never seen" rows on top of every desc date sort.
         if (aVal == null && bVal == null) return 0
-        if (aVal == null) return sort_order === 'asc' ? 1 : -1
-        if (bVal == null) return sort_order === 'asc' ? -1 : 1
+        if (aVal == null) return 1
+        if (bVal == null) return -1
 
         // Compare
         if (typeof aVal === 'string' && typeof bVal === 'string') {
