@@ -42,6 +42,16 @@ export class EntityAuthAdapter {
   }
 
   /**
+   * Whether a SecurityChecker is configured (#1196).
+   *
+   * Public capability probe — EntityManager used to reach into the
+   * private _securityChecker field through a cast.
+   */
+  hasSecurityChecker(): boolean {
+    return this._securityChecker != null
+  }
+
+  /**
    * Check if current user is granted an attribute (Symfony-like contract)
    *
    * This is the unified permission check method. It delegates to SecurityChecker

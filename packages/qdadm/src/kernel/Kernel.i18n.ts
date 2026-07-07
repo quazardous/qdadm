@@ -9,13 +9,13 @@
 
 import { I18n } from '../i18n/I18n'
 import type { I18nOptions } from '../i18n/types'
+import type { Kernel } from './Kernel'
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type Self = any
+// #1196 Phase B — this-typing against the real Kernel shape (was Self = any)
+type Self = Kernel
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function applyI18nMethods(KernelClass: { prototype: any }): void {
-  const proto = KernelClass.prototype as Self
+export function applyI18nMethods(KernelClass: { prototype: Kernel }): void {
+  const proto = KernelClass.prototype
 
   proto._createI18n = function (this: Self): void {
     const opts = (this.options.i18n as I18nOptions | undefined) ?? {}

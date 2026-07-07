@@ -52,28 +52,24 @@ export interface SecurityCheckerConfig {
  */
 export class SecurityChecker {
   protected _rolesProvider: RoleProvider
-  protected _legacyRoleHierarchy: RoleHierarchy | null
   readonly getCurrentUser: () => AuthUser | null
 
   constructor({ rolesProvider, roleHierarchy, rolePermissions, getCurrentUser }: SecurityCheckerOptions) {
-    // Support both new rolesProvider and legacy rolePermissions
     if (rolesProvider) {
       this._rolesProvider = rolesProvider
-      this._legacyRoleHierarchy = null
     } else {
-      // Legacy: create static provider from rolePermissions
+      // Legacy options (roleHierarchy/rolePermissions) are normalized ONCE
+      // into a static provider (#1196) — the parallel _legacyRoleHierarchy
+      // branch is gone; only the provider path remains.
       const hierarchyConfig =
-        roleHierarchy instanceof RoleHierarchy ? {} : (roleHierarchy as RoleHierarchyConfig) || {}
+        roleHierarchy instanceof RoleHierarchy
+          ? roleHierarchy.map
+          : (roleHierarchy as RoleHierarchyConfig) || {}
 
       this._rolesProvider = new StaticRoleProvider({
         role_hierarchy: hierarchyConfig,
         role_permissions: rolePermissions || {},
       })
-
-      this._legacyRoleHierarchy =
-        roleHierarchy instanceof RoleHierarchy
-          ? roleHierarchy
-          : new RoleHierarchy(hierarchyConfig)
     }
 
     this.getCurrentUser = getCurrentUser
@@ -83,9 +79,6 @@ export class SecurityChecker {
    * Get role hierarchy (dynamically resolved from rolesProvider)
    */
   get roleHierarchy(): RoleHierarchy {
-    if (this._legacyRoleHierarchy) {
-      return this._legacyRoleHierarchy
-    }
     return new RoleHierarchy(this._rolesProvider.getHierarchy())
   }
 

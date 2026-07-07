@@ -6,13 +6,13 @@
  */
 
 import type { AliasPattern, MessagesBundle, TranslationProvider } from '../i18n/types'
+import type { KernelContext } from './KernelContext'
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type Self = any
+// #1196 Phase B — this-typing against the real KernelContext shape (was Self = any)
+type Self = KernelContext
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function applyI18nMethods(KernelContextClass: { prototype: any }): void {
-  const proto = KernelContextClass.prototype as Self
+export function applyI18nMethods(KernelContextClass: { prototype: KernelContext }): void {
+  const proto = KernelContextClass.prototype
 
   proto.messages = function (this: Self, locale: string, bundle: MessagesBundle): Self {
     if (this._kernel.i18nInstance) {

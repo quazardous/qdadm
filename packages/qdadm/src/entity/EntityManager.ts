@@ -501,10 +501,7 @@ export class EntityManager<T extends EntityRecord = EntityRecord> {
    * Check if SecurityChecker is configured via authAdapter
    */
   protected _hasSecurityChecker(): boolean {
-    return (
-      (this.authAdapter as unknown as { _securityChecker?: unknown })
-        ?._securityChecker != null
-    )
+    return this.authAdapter?.hasSecurityChecker?.() ?? false
   }
 
   /**

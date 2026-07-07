@@ -5,13 +5,13 @@
  */
 
 import type { PermissionMeta, PermissionOptions } from './KernelContext.types'
+import type { KernelContext } from './KernelContext'
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type Self = any
+// #1196 Phase B — this-typing against the real KernelContext shape (was Self = any)
+type Self = KernelContext
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function applyPermissionMethods(KernelContextClass: { prototype: any }): void {
-  const proto = KernelContextClass.prototype as Self
+export function applyPermissionMethods(KernelContextClass: { prototype: KernelContext }): void {
+  const proto = KernelContextClass.prototype
 
   proto.permissions = function (
     this: Self,

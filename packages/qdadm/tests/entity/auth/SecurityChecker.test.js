@@ -190,3 +190,32 @@ describe('createSecurityChecker', () => {
     expect(checker).toBeInstanceOf(SecurityChecker)
   })
 })
+
+describe('legacy options through the provider path (#1196)', () => {
+  const getCurrentUser = () => ({ id: 1, roles: ['ROLE_ADMIN'] })
+
+  it('rolePermissions + plain hierarchy config still work (branch retired)', () => {
+    const checker = new SecurityChecker({
+      roleHierarchy: { ROLE_ADMIN: ['ROLE_USER'] },
+      rolePermissions: { ROLE_USER: ['entity:books:read'], ROLE_ADMIN: ['entity:books:*'] },
+      getCurrentUser,
+    })
+    // hierarchy resolves through the normalized static provider
+    expect(checker.isGranted('ROLE_USER')).toBe(true)
+    // permissions inherited via hierarchy
+    expect(checker.isGranted('entity:books:read')).toBe(true)
+    expect(checker.rolePermissions.ROLE_USER).toEqual(['entity:books:read'])
+  })
+
+  it('a RoleHierarchy INSTANCE is normalized into the provider (config extracted)', () => {
+    const checker = new SecurityChecker({
+      roleHierarchy: new RoleHierarchy({ ROLE_ADMIN: ['ROLE_USER'] }),
+      rolePermissions: { ROLE_USER: ['entity:books:read'] },
+      getCurrentUser,
+    })
+    expect(checker.isGranted('ROLE_USER')).toBe(true)
+    expect(checker.isGranted('entity:books:read')).toBe(true)
+    // the provider now carries the hierarchy (was {} before the retirement)
+    expect(checker.rolesProvider.getHierarchy()).toEqual({ ROLE_ADMIN: ['ROLE_USER'] })
+  })
+})
