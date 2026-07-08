@@ -137,6 +137,8 @@ This is the canonical Vite/Webpack pattern for Vue plugin singletons. The `file:
 
 Installing qdadm from npm (`@quazardous/qdadm@^1.19.3`) doesn't have this issue: the published tarball ships no `node_modules/`, so peers always resolve from the host. The trap is specific to `file:` / `workspace:` links onto a package that lives inside another monorepo.
 
+One more caveat: qdadm ships TypeScript sources, so with a `file:` link your `vue-tsc` / lint / test counters measure qdadm's **working tree**, not a released version. Any local qdadm edit moves your numbers with zero change on your side — don't calibrate quality ratchets or CI thresholds against a linked checkout; pin them to the published package your CI actually installs.
+
 ## License
 
 MIT
