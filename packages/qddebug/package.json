@@ -1,6 +1,6 @@
 {
   "name": "@quazardous/qddebug",
-  "version": "0.2.1",
+  "version": "1.0.0",
   "description": "Symfony-style debug panel for qdadm and qdcms — bridge, collectors, and floating debug bar",
   "author": "quazardous",
   "license": "MIT",
@@ -32,7 +32,7 @@
     "test:watch": "vitest"
   },
   "dependencies": {
-    "@quazardous/qdcore": "^0.2.1",
+    "@quazardous/qdcore": "^1.0.0",
     "primeicons": "^7.0.0"
   },
   "peerDependencies": {

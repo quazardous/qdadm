@@ -1,5 +1,20 @@
 # Changelog
 
+## 1.0.0
+
+### Major Changes
+
+- Promote to 1.0.0 — stability contract (#1026). No API change: the 0.2.x
+  label was versioning debt on a de-facto frozen API (the qdadm debug bridge
+  and its agents exercise it in production). From 1.0, strict semver: breaking
+  changes only in a major. Versioning stays independent from qdadm — qddebug
+  is shared with qdcms and follows its own cadence.
+
+### Patch Changes
+
+- Updated dependencies
+  - @quazardous/qdcore@1.0.0
+
 All notable changes to `@quazardous/qddebug` will be documented in this file.
 
 ## [0.2.1] - 2026-05-07

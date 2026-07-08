@@ -1,5 +1,14 @@
 # Changelog
 
+## 2.6.1
+
+### Patch Changes
+
+- Updated dependencies
+- Updated dependencies
+  - @quazardous/qdcore@1.0.0
+  - @quazardous/qddebug@1.0.0
+
 ## 2.6.0
 
 ### Minor Changes

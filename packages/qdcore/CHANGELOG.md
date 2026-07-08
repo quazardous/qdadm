@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.0.0
+
+### Major Changes
+
+- Promote to 1.0.0 — stability contract (#1026). No API change: the 0.2.x
+  label was versioning debt on a de-facto frozen API (qdadm 2.x has depended
+  on it in production through its whole line). From 1.0, strict semver:
+  breaking changes only in a major. Versioning stays independent from qdadm —
+  qdcore is shared with qdcms and follows its own cadence.
+
 All notable changes to `@quazardous/qdcore` will be documented in this file.
 
 ## [0.2.1] - 2026-05-07
