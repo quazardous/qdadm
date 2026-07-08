@@ -1,5 +1,52 @@
 # Changelog
 
+## 2.5.0
+
+### Minor Changes
+
+- 6083daf: OpenAPIConnector now warns on contract-less object schemas (#1240). A consumed
+  `type: 'object'` node with no `properties`, no `additionalProperties` and no
+  `$ref`/`oneOf`/`anyOf`/`allOf` emits an `EMPTY_OBJECT_SCHEMA` `ParseWarning` —
+  under Fastify (fast-json-stringify) such a field serializes to `{}` at runtime,
+  stripping every key. `parse()` now logs collected warnings via `console.warn`
+  so CLI/vite-plugin users see them without switching to `parseWithWarnings()`;
+  the structured API is unchanged. Generated output is untouched (object fields
+  already emit `Record<string, unknown>`).
+- 5593ef2: List column binding + OpenAPI field enrichment (#1255):
+  - **`column(name, overrides?)`** on `useListPage` — spread onto a PrimeVue
+    `<Column v-bind="list.column('botUuid')">` to derive `field` + `header`
+    from one source while keeping the `#body` template. Header resolution:
+    i18n key > override > inline `addColumn` header > `manager.fields[].label`
+    > humanized field name. Pure read, additive — explicit `#columns` slots
+    > and `addColumn` are untouched.
+  - **`OpenAPIConnector` opt-in `inferLabels: 'humanize'`** — emit a humanized
+    label (`botUuid` → "Bot Uuid") when a field has no `description`.
+  - **`OpenAPIConnector` opt-in `inferReadOnly: true`** — fields present in
+    responses but in no request-body schema become `readOnly: true` (entities
+    without write operations get all fields readOnly); schema-declared
+    `readOnly` always wins.
+  - New `humanizeFieldName` util exported from `@quazardous/qdadm/utils`.
+
+  Both connector options are off by default: enabling them changes generated
+  manager output (by design — regen and commit under your drift gate).
+
+- a78429b: Four TypeScript consumer-experience fixes (#1253):
+  - **`QdadmManagerRegistry`** — consumer-augmentable interface (vue-router
+    `RouteNamedMap` pattern). Declare your entity-name → manager-subclass map
+    once via `declare module '@quazardous/qdadm'` and `getManager('bots')` /
+    `useEntity('bots')` return the concrete subclass; unregistered names keep
+    the historical `EntityManager<T>` fallback.
+  - **`StorageResolution` / `ResolvedStorage` exported** from the main barrel —
+    typing a `resolveStorage()` override no longer needs `ReturnType<...>`
+    archaeology. (`undefined` was already legal in the union.)
+  - **`baseClass` option in `generateManagers`** — global or per-entity
+    `{ import, name }`; generated managers extend (classMode) or instantiate
+    (instance mode) your own EntityManager subclass instead of the hardwired
+    `EntityManager`.
+  - **`VanillaJsonEditor.mode`** accepts `'tree' | 'text' | 'table'` string
+    literals (the JSDoc example finally typechecks); the `Mode` enum is also
+    re-exported from `@quazardous/qdadm/editors`.
+
 ## 2.4.5
 
 ### Patch Changes
