@@ -9,6 +9,7 @@
 
 import { BaseConnector, type ConnectorOptions, type ParseResult, type ParseWarning } from './BaseConnector'
 import { getDefaultType, type CustomMappings } from '../FieldMapper'
+import { humanizeFieldName } from '../../utils/humanize'
 import type { UnifiedEntitySchema, UnifiedFieldSchema, UnifiedFieldType } from '../schema'
 
 /**
@@ -48,6 +49,19 @@ export interface OpenAPIConnectorOptions extends ConnectorOptions {
   operationFilter?: OperationFilter | null
   /** Custom type mappings for FieldMapper */
   customMappings?: CustomMappings
+  /**
+   * Infer a label from the field name when the schema has no `description`
+   * (#1255): 'humanize' turns `botUuid` into "Bot Uuid". Opt-in — it changes
+   * generated output. Default: off (label only from `description`).
+   */
+  inferLabels?: 'humanize' | false
+  /**
+   * Infer `readOnly` from operation shape (#1255): a field that appears in
+   * responses but in no request-body schema is marked `readOnly: true`
+   * (an entity with no write operations gets all fields readOnly). Opt-in —
+   * it changes generated output. Schema-declared `readOnly` always wins.
+   */
+  inferReadOnly?: boolean
 }
 
 /**
@@ -64,6 +78,8 @@ interface EntityWorkingData {
   rawSchema: OpenAPISchema | null
   /** Extracted fields */
   fields: Map<string, UnifiedFieldSchema>
+  /** Field names seen in request-body schemas (for readOnly inference, #1255) */
+  requestFields: Set<string>
 }
 
 /**
@@ -173,6 +189,12 @@ export class OpenAPIConnector extends BaseConnector {
   /** Custom type mappings */
   customMappings: CustomMappings
 
+  /** Label inference mode (#1255) */
+  inferLabels: 'humanize' | false
+
+  /** Whether to infer readOnly from operation shape (#1255) */
+  inferReadOnly: boolean
+
   /**
    * Create a new OpenAPI connector
    *
@@ -185,6 +207,8 @@ export class OpenAPIConnector extends BaseConnector {
     this.dataWrapper = options.dataWrapper ?? 'data'
     this.operationFilter = options.operationFilter || null
     this.customMappings = options.customMappings || {}
+    this.inferLabels = options.inferLabels ?? false
+    this.inferReadOnly = options.inferReadOnly ?? false
   }
 
   /**
@@ -268,6 +292,7 @@ export class OpenAPIConnector extends BaseConnector {
           idField: null,
           rawSchema: null,
           fields: new Map(),
+          requestFields: new Set(),
         })
       }
 
@@ -372,6 +397,8 @@ export class OpenAPIConnector extends BaseConnector {
         const requestSchema = this._extractRequestSchema(op, spec)
         if (requestSchema) {
           this._extractFields(requestSchema, entity.fields, spec, warnings, path)
+          // Track writable field names for readOnly inference (#1255)
+          this._collectFieldNames(requestSchema, spec, entity.requestFields)
         }
       }
     }
@@ -593,6 +620,8 @@ export class OpenAPIConnector extends BaseConnector {
       // Add optional properties
       if (resolvedSchema.description) {
         field.label = resolvedSchema.description
+      } else if (this.inferLabels === 'humanize') {
+        field.label = humanizeFieldName(fieldName)
       }
       if (resolvedSchema.format) {
         field.format = resolvedSchema.format
@@ -615,6 +644,36 @@ export class OpenAPIConnector extends BaseConnector {
       // Handle nested objects (one level only to avoid complexity)
       if (resolvedSchema.type === 'object' && resolvedSchema.properties && !prefix) {
         this._extractFields(resolvedSchema, fields, spec, warnings, sourcePath, fieldName)
+      }
+    }
+  }
+
+  /**
+   * Collect field names from a schema the same way _extractFields names them
+   * (top-level + one-level-nested dotted keys). Used to track which fields
+   * appear in request bodies, for readOnly inference (#1255).
+   *
+   * @private
+   * @param schema - JSON Schema object
+   * @param spec - Full spec for ref resolution
+   * @param into - Set collecting the names
+   * @param prefix - Prefix for nested field names
+   */
+  private _collectFieldNames(
+    schema: OpenAPISchema,
+    spec: OpenAPISpec,
+    into: Set<string>,
+    prefix: string = ''
+  ): void {
+    if (!schema || !schema.properties) return
+
+    for (const [name, propSchema] of Object.entries(schema.properties)) {
+      const fieldName = prefix ? `${prefix}.${name}` : name
+      into.add(fieldName)
+
+      const resolvedSchema = propSchema.$ref ? this._resolveRef(propSchema.$ref, spec) : propSchema
+      if (resolvedSchema?.type === 'object' && resolvedSchema.properties && !prefix) {
+        this._collectFieldNames(resolvedSchema, spec, into, fieldName)
       }
     }
   }
@@ -703,6 +762,17 @@ export class OpenAPIConnector extends BaseConnector {
     const schemas: Map<string, UnifiedEntitySchema> = new Map()
 
     for (const [name, data] of entityData) {
+      // readOnly inference (#1255): a field never seen in a request body is
+      // not writable through this API. Entities without write operations end
+      // up with every field readOnly. Schema-declared readOnly is preserved.
+      if (this.inferReadOnly) {
+        for (const field of data.fields.values()) {
+          if (!field.readOnly && !data.requestFields.has(field.name)) {
+            field.readOnly = true
+          }
+        }
+      }
+
       const schema: UnifiedEntitySchema = {
         name: data.name,
         endpoint: data.endpoint,

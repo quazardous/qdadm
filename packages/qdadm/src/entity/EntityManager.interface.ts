@@ -60,6 +60,8 @@ export interface EntityManagerRead<T = unknown> extends EntityManagerBase<T>, En
   request: (method: string, path: string, options?: { data?: unknown }) => Promise<unknown>
   invalidateCache?: () => void
   localFilterThreshold?: number
+  /** Field config lookup — read-side too since list column binding (#1255) */
+  getFieldConfig?: (name: string) => unknown | null
 }
 
 // ─── CRUD ────────────────────────────────────────────────────────────────────

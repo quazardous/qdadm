@@ -21,6 +21,9 @@ export {
 // Error formatting
 export { formatFetchError, type FetchErrorLike } from './errors'
 
+// Field-name humanization
+export { humanizeFieldName } from './humanize'
+
 // Transformers
 export {
   toKeyValueArray,
