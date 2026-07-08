@@ -67,6 +67,8 @@ function createMockManager(options = {}) {
     }),
     delete: vi.fn().mockResolvedValue(undefined),
     invalidateCache: vi.fn(),
+    // Part of the implementer's minimum since #1253 (EntityManagerRead)
+    getFieldConfig: () => null,
     canCreate: vi.fn().mockReturnValue(options.canCreate ?? true),
     canUpdate: vi.fn().mockImplementation((row) => {
       if (typeof options.canUpdate === 'function') return options.canUpdate(row)

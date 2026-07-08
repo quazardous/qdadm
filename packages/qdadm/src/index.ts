@@ -106,6 +106,17 @@ export {
   type CacheInfo,
 } from './entity/EntityManager'
 
+// Structural manager/orchestrator views (#1253) — the implementer's minimum
+// that composables consume; import these to type manager-likes and test doubles.
+export type {
+  EntityManagerBase,
+  EntityManagerPermissions,
+  EntityManagerRead,
+  EntityManagerCrud,
+  EntityManagerLike,
+  OrchestratorLike,
+} from './entity/EntityManager.interface'
+
 // Re-export core entity types
 export type {
   EntityRecord,

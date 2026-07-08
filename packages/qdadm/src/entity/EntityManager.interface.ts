@@ -13,6 +13,15 @@
  *
  * All interfaces accept an optional generic parameter `T` (default: `unknown`)
  * that flows through to method signatures for typed entity data.
+ *
+ * ## Optionality contract (#1253)
+ *
+ * These views describe the IMPLEMENTER'S MINIMUM, not a mirror of the
+ * EntityManager class. A member is REQUIRED iff qdadm's own composables
+ * call it unguarded (or capability coherence demands it — e.g. the four
+ * can* permission checks travel together). A member stays OPTIONAL only
+ * when it is a genuine capability a minimal manager-like need not carry;
+ * the reason is documented inline. `?` means "conditional", never "lazy".
  */
 
 import type { EntityBadge } from './EntityManager.types'
@@ -32,6 +41,9 @@ export interface EntityManagerBase<T = unknown> {
   labelField?: string | ((entity: T) => string)
   readOnly?: boolean
   getEntityLabel: (data: T) => string
+  // Optional BY DESIGN (#1253): part of the badge/severity presentation
+  // capability; call sites guard (e.g. useEntityItemShowPage checks
+  // `if (!manager.getEntityBadges)`).
   getEntityBadges?: (data: T) => Array<{ label: string; severity?: string }>
 }
 
@@ -41,7 +53,10 @@ export interface EntityManagerBase<T = unknown> {
  * Permission checks — used by guards, list pages, forms.
  */
 export interface EntityManagerPermissions<T = unknown> {
-  canRead?: (entity?: T) => boolean
+  // The four checks are ONE capability — a manager-like answering canUpdate
+  // but not canRead is not a smaller contract, it's an incoherent one. The
+  // `?` on canRead was a #1191 leftover (#1253).
+  canRead: (entity?: T) => boolean
   canCreate: () => boolean
   canUpdate: (entity?: T) => boolean
   canDelete: (entity?: T) => boolean
@@ -55,13 +70,18 @@ export interface EntityManagerPermissions<T = unknown> {
 export interface EntityManagerRead<T = unknown> extends EntityManagerBase<T>, EntityManagerPermissions<T> {
   get: (id: string | number, context?: unknown) => Promise<T>
   list: (params?: unknown, context?: unknown) => Promise<{ items: T[]; total?: number; fromCache?: boolean; [key: string]: unknown }>
-  query?: (params?: unknown, options?: { routingContext?: unknown }) => Promise<{ items: T[]; total?: number; fromCache?: boolean; [key: string]: unknown }>
+  // query/invalidateCache/getFieldConfig are required since #1253: they are
+  // unconditionally implemented on the class (prototype-applied) and called
+  // unguarded by list pages — the `?` was a #1191 leftover that forced
+  // consumer-side casts on base methods.
+  query: (params?: unknown, options?: { routingContext?: unknown }) => Promise<{ items: T[]; total?: number; fromCache?: boolean; [key: string]: unknown }>
   delete: (id: string | number, context?: unknown) => Promise<void>
   request: (method: string, path: string, options?: { data?: unknown }) => Promise<unknown>
-  invalidateCache?: () => void
-  localFilterThreshold?: number
+  invalidateCache: () => void
   /** Field config lookup — read-side too since list column binding (#1255) */
-  getFieldConfig?: (name: string) => unknown | null
+  getFieldConfig: (name: string) => unknown | null
+  /** Config-carrying property: always present on the class, VALUE nullable */
+  localFilterThreshold?: number | null
 }
 
 // ─── CRUD ────────────────────────────────────────────────────────────────────
@@ -73,11 +93,14 @@ export interface EntityManagerCrud<T = unknown> extends EntityManagerRead<T> {
   fields?: Record<string, unknown> | unknown[]
   getInitialData: () => Record<string, unknown>
   getFormFields: () => Array<{ name: string; [key: string]: unknown }>
-  getFieldConfig: (name: string) => unknown | null
+  // getFieldConfig inherited (required) from EntityManagerRead since #1253
   resolveReferenceOptions: (fieldName: string) => Promise<unknown[]>
   create: (data: unknown, context?: unknown) => Promise<T>
   update: (id: string | number, data: unknown, context?: unknown) => Promise<T>
   patch: (id: string | number, data: unknown, context?: unknown) => Promise<T>
+  // Optional BY DESIGN (#1253): the severity/badge presentation capability —
+  // a minimal manager-like need not carry it; every qdadm call site guards
+  // (`?.` or truthiness). The canonical class always provides it.
   hasSeverityMap?: (field: string) => boolean
   getSeverity?: (field: string, value: string | number, defaultSeverity?: string) => string
   getSeverityDescriptor?: (field: string, value: string | number, defaultSeverity?: string) => { severity: string; icon?: string; label?: string }
