@@ -61,6 +61,11 @@ export interface ConfirmService {
  */
 export interface ColumnConfig {
   field: string
+  /**
+   * Column header. When an i18n key `entities.{entity}.fields.{field}`
+   * exists, the catalog WINS — an inline header is the no-key fallback,
+   * not an absolute override (#1255). To pin a header, don't create the key.
+   */
   header?: string
   sortable?: boolean
   style?: string

@@ -261,26 +261,47 @@ export function useListPage<T = unknown>(config: UseListPageOptions<T>): UseList
   // when the i18n bundle has no translation for the field.
   const columnInlineHeaders = new Map<string, string | undefined>()
 
+  // One-shot per entity+field (#1255): the catalog winning over an explicit
+  // header is by design, but it must never happen silently — the day a key
+  // appears, the page author learns which inline header it shadows.
+  const warnedHeaderShadows = new Set<string>()
+  function warnHeaderShadow(field: string, i18nValue: string, explicit: string | undefined): void {
+    if (explicit === undefined || explicit === i18nValue) return
+    const key = `${entity}.${field}`
+    if (warnedHeaderShadows.has(key)) return
+    warnedHeaderShadows.add(key)
+    console.warn(
+      `[qdadm] column '${field}' (${entity}): i18n key entities.${entity}.fields.${field} ` +
+        `("${i18nValue}") shadows explicit header ("${explicit}") — the catalog wins by design; ` +
+        `drop the inline header or remove the key.`
+    )
+  }
+
   /**
-   * Resolve a column header: i18n hit on entities.{entity}.fields.{field} wins,
+   * Resolve a column header: i18n hit on entities.{entity}.fields.{field} wins
+   * (the inline `header` is the no-key fallback, not an absolute override),
    * otherwise the inline `header` option, otherwise a capitalized field name.
    */
   function resolveColumnHeader(field: string, inline?: string): string {
     if (entity && kernelI18n) {
       const trace = kernelI18n.resolve(`entities.${entity}.fields.${field}`)
-      if (trace.hit) return trace.result
+      if (trace.hit) {
+        warnHeaderShadow(field, trace.result, inline)
+        return trace.result
+      }
     }
     return inline || field.charAt(0).toUpperCase() + field.slice(1)
   }
 
   function addColumn(field: string, columnConfig: Partial<ColumnConfig> = {}): void {
     columnInlineHeaders.set(field, columnConfig.header)
+    // Resolved header LAST so the catalog wins at registration too (#1255) —
+    // previously the inline header survived until the first locale change
+    // flipped it to the i18n value, silently and inconsistently.
     columnsMap.value.set(field, {
       field,
-      header: resolveColumnHeader(field, columnConfig.header),
       ...columnConfig,
-      // Re-apply resolved header after spread so it wins over a stale inline.
-      ...(columnConfig.header ? {} : { header: resolveColumnHeader(field) }),
+      header: resolveColumnHeader(field, columnConfig.header),
     })
   }
 
@@ -308,8 +329,17 @@ export function useListPage<T = unknown>(config: UseListPageOptions<T>): UseList
    *
    * Header resolution: i18n key (`entities.{entity}.fields.{field}`) >
    * `overrides.header` > inline header given to `addColumn` >
-   * `manager.fields[name].label` > humanized field name. Pure read — it
-   * never registers into columnsMap, so calling it during render is safe.
+   * `manager.fields[name].label` > humanized field name.
+   *
+   * NOTE the precedence truth (#1255): an inline `header` is the fallback
+   * used when no i18n key exists — NOT an absolute override. The catalog
+   * wins by design (or a hardcoded header would pin the column to one
+   * language); to pin a header, don't create the key. When a key shadows
+   * an explicit header with a different value, a one-shot dev warning
+   * announces it instead of letting the header change silently.
+   *
+   * Pure read — it never registers into columnsMap, so calling it during
+   * render is safe.
    */
   function column(name: string, overrides: Partial<ColumnConfig> = {}): ColumnConfig {
     // Depend on the locale so headers re-render on locale change.
@@ -318,7 +348,13 @@ export function useListPage<T = unknown>(config: UseListPageOptions<T>): UseList
     let header: string | undefined
     if (entity && kernelI18n) {
       const trace = kernelI18n.resolve(`entities.${entity}.fields.${name}`)
-      if (trace.hit) header = trace.result
+      if (trace.hit) {
+        header = trace.result
+        // Both explicit sources are checked: per-call override AND the
+        // inline header registered via addColumn (values compared — a key
+        // that merely copies the header stays silent).
+        warnHeaderShadow(name, trace.result, overrides.header ?? columnInlineHeaders.get(name))
+      }
     }
     const fieldConfig = manager.getFieldConfig(name) as { label?: string } | null | undefined
     header ??=

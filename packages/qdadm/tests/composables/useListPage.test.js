@@ -9,6 +9,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { ref, nextTick } from 'vue'
 import { mount, flushPromises } from '@vue/test-utils'
 import { useListPage } from '../../src/composables/useListPage'
+import { I18N_INJECTION_KEY } from '../../src/i18n/useI18n'
 import { createHookRegistry } from '../../src/hooks'
 
 // Mock route state that can be changed per test
@@ -481,6 +482,80 @@ describe('useListPage - Permission features', () => {
 
       result.column('botUuid')
       expect(result.columns.value).toHaveLength(0)
+    })
+  })
+
+  describe('header shadowing warning (#1255)', () => {
+    // Wrapper with a kernel i18n mock: `keys` maps full i18n keys to values.
+    function createI18nWrapper(keys) {
+      let result
+      const TestComponent = {
+        template: '<div></div>',
+        setup() {
+          result = useListPage({ entity: 'books' })
+          return result
+        }
+      }
+      const i18nMock = {
+        locale: ref('en'),
+        t: (key) => key,
+        resolve: (key) => (key in keys ? { hit: true, result: keys[key] } : { hit: false })
+      }
+      mount(TestComponent, {
+        global: {
+          provide: {
+            qdadmOrchestrator: mockOrchestrator,
+            qdadmEntityFilters: {},
+            [I18N_INJECTION_KEY]: i18nMock
+          }
+        }
+      })
+      return { result }
+    }
+
+    let warnSpy
+    beforeEach(() => {
+      warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    })
+    afterEach(() => {
+      warnSpy.mockRestore()
+    })
+
+    it('i18n hit wins over the explicit header and warns once per field', () => {
+      const { result } = createI18nWrapper({ 'entities.books.fields.botType': 'Type FR' })
+
+      const bound = result.column('botType', { header: 'Type' })
+      expect(bound.header).toBe('Type FR')
+      result.column('botType', { header: 'Type' }) // re-render: no second warn
+      const shadowWarns = warnSpy.mock.calls.filter(args => String(args[0]).includes('shadows'))
+      expect(shadowWarns).toHaveLength(1)
+      expect(String(shadowWarns[0][0])).toContain('entities.books.fields.botType')
+      expect(String(shadowWarns[0][0])).toContain('"Type"')
+    })
+
+    it('stays silent when the key value matches the explicit header (copy-migration)', () => {
+      const { result } = createI18nWrapper({ 'entities.books.fields.status': 'Status' })
+
+      expect(result.column('status', { header: 'Status' }).header).toBe('Status')
+      expect(warnSpy.mock.calls.filter(args => String(args[0]).includes('shadows'))).toHaveLength(0)
+    })
+
+    it('stays silent when only defaults are shadowed (no explicit header)', () => {
+      const { result } = createI18nWrapper({ 'entities.books.fields.botType': 'Type FR' })
+
+      expect(result.column('botType').header).toBe('Type FR')
+      expect(warnSpy.mock.calls.filter(args => String(args[0]).includes('shadows'))).toHaveLength(0)
+    })
+
+    it('covers the addColumn inline-header path too', () => {
+      const { result } = createI18nWrapper({ 'entities.books.fields.title': 'Titre' })
+
+      result.addColumn('title', { header: 'The Title' })
+      const shadowWarns = warnSpy.mock.calls.filter(args => String(args[0]).includes('shadows'))
+      expect(shadowWarns).toHaveLength(1)
+      expect(String(shadowWarns[0][0])).toContain('"The Title"')
+      // the catalog still wins in the registered column
+      expect(result.columns.value[0].header).toBe('Titre')
     })
   })
 })
