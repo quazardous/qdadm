@@ -320,7 +320,7 @@ export function useListPage<T = unknown>(config: UseListPageOptions<T>): UseList
       const trace = kernelI18n.resolve(`entities.${entity}.fields.${name}`)
       if (trace.hit) header = trace.result
     }
-    const fieldConfig = manager.getFieldConfig?.(name) as { label?: string } | null | undefined
+    const fieldConfig = manager.getFieldConfig(name) as { label?: string } | null | undefined
     header ??=
       overrides.header ??
       columnInlineHeaders.get(name) ??
