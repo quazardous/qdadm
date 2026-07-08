@@ -63,4 +63,5 @@ export {
   generateEntityInterface,
   type GenerateManagersConfig,
   type GenerateManagersEntityConfig,
+  type GenerateManagersBaseClass,
 } from './generateManagers'

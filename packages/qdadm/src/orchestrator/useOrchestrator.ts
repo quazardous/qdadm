@@ -16,13 +16,24 @@ import { inject } from 'vue'
 import type { Orchestrator } from './Orchestrator'
 import type { EntityManager } from '../entity/EntityManager'
 import type { EntityRecord } from '../types'
+// Type-only circular import: QdadmManagerRegistry must live in the package
+// entry (module augmentation does not merge through re-export aliases).
+import type { QdadmManagerRegistry } from '../index'
 
 /**
  * Return type for useOrchestrator
+ *
+ * `getManager` resolves through the consumer-augmentable
+ * QdadmManagerRegistry first (#1253): a declared entity name returns its
+ * concrete manager subclass; anything else falls back to the historical
+ * `EntityManager<T>` signature.
  */
 export interface UseOrchestratorReturn {
   orchestrator: Orchestrator
-  getManager: <T extends EntityRecord = EntityRecord>(name: string) => EntityManager<T>
+  getManager: {
+    <K extends keyof QdadmManagerRegistry>(name: K): QdadmManagerRegistry[K]
+    <T extends EntityRecord = EntityRecord>(name: string): EntityManager<T>
+  }
   hasManager: (name: string) => boolean
 }
 
@@ -46,8 +57,10 @@ export function useOrchestrator(): UseOrchestratorReturn {
    * Get an EntityManager by name
    * @param name - Entity name
    */
-  function getManager<T extends EntityRecord = EntityRecord>(name: string): EntityManager<T> {
-    return orchestrator.get(name) as EntityManager<T>
+  function getManager<K extends keyof QdadmManagerRegistry>(name: K): QdadmManagerRegistry[K]
+  function getManager<T extends EntityRecord = EntityRecord>(name: string): EntityManager<T>
+  function getManager(name: string): unknown {
+    return orchestrator.get(name)
   }
 
   /**
@@ -74,7 +87,9 @@ export function useOrchestrator(): UseOrchestratorReturn {
  * const { items } = await users.list()
  * ```
  */
-export function useEntity<T extends EntityRecord = EntityRecord>(name: string): EntityManager<T> {
+export function useEntity<K extends keyof QdadmManagerRegistry>(name: K): QdadmManagerRegistry[K]
+export function useEntity<T extends EntityRecord = EntityRecord>(name: string): EntityManager<T>
+export function useEntity(name: string): unknown {
   const { getManager } = useOrchestrator()
-  return getManager<T>(name)
+  return getManager(name)
 }

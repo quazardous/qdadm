@@ -23,6 +23,21 @@ import type { EntityDecorator } from './decorators'
 const DEFAULT_OUTPUT_DIR = 'src/generated/managers/'
 
 /**
+ * Custom base class for generated managers (#1253).
+ *
+ * The class MUST extend EntityManager, stay generic over the entity type
+ * and pass constructor options through — the generated code does
+ * `class Generated<X>Manager extends <name><XEntity>` and calls
+ * `super({ ...schema options, storage, ...options })`.
+ */
+export interface GenerateManagersBaseClass {
+  /** Import specifier (e.g. '@/managers/SkyEntityManager') */
+  import: string
+  /** Exported class name (e.g. 'SkyEntityManager') */
+  name: string
+}
+
+/**
  * Entity configuration for generation
  */
 export interface GenerateManagersEntityConfig {
@@ -40,6 +55,8 @@ export interface GenerateManagersEntityConfig {
   decorators?: EntityDecorator
   /** Generate class instead of instance (for extension) */
   classMode?: boolean
+  /** Base class for this entity's generated manager (overrides global) */
+  baseClass?: GenerateManagersBaseClass
 }
 
 /**
@@ -50,6 +67,8 @@ export interface GenerateManagersConfig {
   output?: string
   /** Generate classes instead of instances (for extension pattern) */
   classMode?: boolean
+  /** Base class for all generated managers (default: EntityManager) */
+  baseClass?: GenerateManagersBaseClass
   /** Entity configurations keyed by entity name */
   entities: Record<string, GenerateManagersEntityConfig>
 }
@@ -175,11 +194,18 @@ function serializeValue(value: unknown, indent: number = 0): string {
 function generateManagerSource(
   entityName: string,
   entityConfig: GenerateManagersEntityConfig,
-  globalOptions: { classMode?: boolean } = {}
+  globalOptions: { classMode?: boolean; baseClass?: GenerateManagersBaseClass } = {}
 ): string {
   const { schema, endpoint, storageImport, storageClass, storageOptions = {}, decorators } = entityConfig
   const classMode = entityConfig.classMode ?? globalOptions.classMode ?? false
   const className = toPascalCase(entityName)
+
+  // Custom base class (#1253): per-entity wins over global, default EntityManager.
+  const baseClass = entityConfig.baseClass ?? globalOptions.baseClass
+  const baseName = baseClass?.name ?? 'EntityManager'
+  const baseImport = baseClass
+    ? `import { ${baseClass.name} } from '${baseClass.import}'`
+    : `import { EntityManager } from '@quazardous/qdadm'`
 
   // Build storage options object
   const fullStorageOptions: Record<string, unknown> = {
@@ -240,7 +266,7 @@ function generateManagerSource(
  * Endpoint: ${endpoint}
  */
 
-import { EntityManager } from '@quazardous/qdadm'
+${baseImport}
 import type { EntityRecord, EntityManagerOptions } from '@quazardous/qdadm'
 import { ${storageClass} } from '${storageImport}'
 
@@ -249,9 +275,9 @@ ${entityInterface}
 /**
  * Generated base manager for ${entityName}
  *
- * @extends EntityManager
+ * @extends ${baseName}
  */
-export class Generated${className}Manager extends EntityManager<${className}Entity> {
+export class Generated${className}Manager extends ${baseName}<${className}Entity> {
   constructor(options: Partial<EntityManagerOptions<${className}Entity>> = {}) {
     super({
       ...${serializeValue(managerOptions, 2)},
@@ -274,7 +300,7 @@ export class Generated${className}Manager extends EntityManager<${className}Enti
  * Endpoint: ${endpoint}
  */
 
-import { EntityManager } from '@quazardous/qdadm'
+${baseImport}
 import type { EntityRecord } from '@quazardous/qdadm'
 import { ${storageClass} } from '${storageImport}'
 
@@ -295,7 +321,7 @@ const storageOptions = ${serializeValue(fullStorageOptions, 0)}
  *
  * Provides CRUD operations for ${entityName} entity.
  */
-export const ${entityName}Manager = new EntityManager<${className}Entity>({
+export const ${entityName}Manager = new ${baseName}<${className}Entity>({
   ...${serializeValue(managerOptions, 0)},
   storage: new ${storageClass}<${className}Entity>(storageOptions)
 })
@@ -349,7 +375,7 @@ export async function generateManagers(config: GenerateManagersConfig): Promise<
   }
 
   const outputDir = config.output || DEFAULT_OUTPUT_DIR
-  const globalOptions = { classMode: config.classMode ?? false }
+  const globalOptions = { classMode: config.classMode ?? false, baseClass: config.baseClass }
   const generatedFiles: string[] = []
 
   // Validate each entity config

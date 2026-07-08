@@ -96,6 +96,8 @@ export {
   type SeverityMapValue,
   type SeverityMap,
   type RoutingContext,
+  type StorageResolution,
+  type ResolvedStorage,
   type PresaveContext,
   type PostsaveContext,
   type PredeleteContext,
@@ -149,6 +151,30 @@ export type {
 // ORCHESTRATOR
 // ════════════════════════════════════════════════════════════════════════════
 export * from './orchestrator/index'
+
+/**
+ * Typed manager registry (#1253) — augment it from your app to make
+ * `getManager()` / `useEntity()` return your concrete EntityManager
+ * subclasses instead of `EntityManager<EntityRecord>`:
+ *
+ * ```ts
+ * declare module '@quazardous/qdadm' {
+ *   interface QdadmManagerRegistry {
+ *     bots: BotsManager
+ *     botPools: BotPoolsManager
+ *   }
+ * }
+ * ```
+ *
+ * Entity names not declared here keep the current fallback behavior.
+ *
+ * NOTE: deliberately declared in this file (not re-exported from a
+ * sub-module) — TypeScript module augmentation does not merge through
+ * re-export aliases, and consumers augment '@quazardous/qdadm', which
+ * resolves here.
+ */
+// eslint-disable-next-line @typescript-eslint/no-empty-object-type
+export interface QdadmManagerRegistry {}
 
 // ════════════════════════════════════════════════════════════════════════════
 // COMPOSABLES (excluding types that conflict with other modules)
