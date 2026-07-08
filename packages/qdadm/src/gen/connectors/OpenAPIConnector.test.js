@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import { OpenAPIConnector } from './OpenAPIConnector'
 import sampleSpec from './__fixtures__/sample-openapi.json'
 
@@ -583,6 +583,109 @@ describe('OpenAPIConnector', () => {
       const result = connector.parseWithWarnings(spec)
 
       expect(result.warnings.some(w => w.code === 'UNRESOLVED_REF')).toBe(true)
+    })
+
+    describe('EMPTY_OBJECT_SCHEMA detection (#1240)', () => {
+      // Build a spec with a single tasks entity whose `payload` field uses
+      // the given schema node.
+      function specWithPayload(payloadSchema) {
+        return {
+          openapi: '3.0.0',
+          paths: {
+            '/api/tasks/{id}': {
+              get: {
+                responses: {
+                  '200': {
+                    content: {
+                      'application/json': {
+                        schema: {
+                          type: 'object',
+                          properties: {
+                            data: {
+                              type: 'object',
+                              properties: {
+                                id: { type: 'string' },
+                                payload: payloadSchema
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+
+      function warningsFor(payloadSchema) {
+        const connector = new OpenAPIConnector()
+        const result = connector.parseWithWarnings(specWithPayload(payloadSchema))
+        return result.warnings.filter(w => w.code === 'EMPTY_OBJECT_SCHEMA')
+      }
+
+      it('warns on a bare object schema (no properties, no additionalProperties)', () => {
+        const warnings = warningsFor({ type: 'object' })
+        expect(warnings).toHaveLength(1)
+        expect(warnings[0].path).toBe('/api/tasks/{id}#payload')
+        expect(warnings[0].message).toContain('additionalProperties: true')
+      })
+
+      it('warns when properties is present but empty', () => {
+        expect(warningsFor({ type: 'object', properties: {} })).toHaveLength(1)
+      })
+
+      it('does not warn when additionalProperties is true', () => {
+        expect(warningsFor({ type: 'object', additionalProperties: true })).toHaveLength(0)
+      })
+
+      it('does not warn when additionalProperties is a sub-schema', () => {
+        expect(
+          warningsFor({ type: 'object', additionalProperties: { type: 'string' } })
+        ).toHaveLength(0)
+      })
+
+      it('does not warn when the object declares properties', () => {
+        expect(
+          warningsFor({ type: 'object', properties: { targets: { type: 'array' } } })
+        ).toHaveLength(0)
+      })
+
+      it('does not warn on composition schemas (oneOf/anyOf/allOf)', () => {
+        expect(
+          warningsFor({ type: 'object', oneOf: [{ type: 'object', properties: { a: { type: 'string' } } }] })
+        ).toHaveLength(0)
+        expect(
+          warningsFor({ type: 'object', allOf: [{ type: 'object', properties: { a: { type: 'string' } } }] })
+        ).toHaveLength(0)
+      })
+
+      it('does not warn on non-object types', () => {
+        expect(warningsFor({ type: 'string' })).toHaveLength(0)
+      })
+
+      it('still generates the field as a usable object type', () => {
+        const connector = new OpenAPIConnector()
+        const { schemas } = connector.parseWithWarnings(specWithPayload({ type: 'object' }))
+        const tasks = schemas.find(e => e.name === 'tasks')
+        expect(tasks.fields.payload).toBeDefined()
+        expect(tasks.fields.payload.type).toBe('object')
+      })
+
+      it('parse() logs collected warnings to console.warn', () => {
+        const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+        try {
+          const connector = new OpenAPIConnector()
+          connector.parse(specWithPayload({ type: 'object' }))
+          const calls = warnSpy.mock.calls.map(args => args.join(' '))
+          expect(calls.some(line => line.includes('EMPTY') || line.includes('additionalProperties'))).toBe(true)
+          expect(calls.some(line => line.includes('/api/tasks/{id}#payload'))).toBe(true)
+        } finally {
+          warnSpy.mockRestore()
+        }
+      })
     })
   })
 

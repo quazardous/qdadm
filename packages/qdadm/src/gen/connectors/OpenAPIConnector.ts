@@ -201,10 +201,11 @@ export class OpenAPIConnector extends BaseConnector {
    * })
    */
   parse(source: unknown): UnifiedEntitySchema[] {
-    const spec = source as OpenAPISpec
-    this._validateSource(spec)
-    const entities = this._extractEntities(spec)
-    return Array.from(entities.values())
+    const { schemas, warnings } = this.parseWithWarnings(source)
+    for (const warning of warnings) {
+      console.warn(`⚠ [${this.name}] ${warning.path}: ${warning.message}`)
+    }
+    return schemas
   }
 
   /**
@@ -565,6 +566,20 @@ export class OpenAPIConnector extends BaseConnector {
         continue
       }
 
+      // Bare object schema: no contract at all. fast-json-stringify (Fastify)
+      // serializes such a field to `{}` at runtime, stripping every key (#1240).
+      if (this._isBareObjectSchema(resolvedSchema)) {
+        warnings.push({
+          path: `${sourcePath}#${fieldName}`,
+          message:
+            `object schema has no \`properties\` and \`additionalProperties\` is not set. ` +
+            `Under Fastify (fast-json-stringify) this serializes to \`{}\` at runtime ` +
+            `and the generated field type is unusable. ` +
+            `For a free-form JSON blob, declare \`additionalProperties: true\`.`,
+          code: 'EMPTY_OBJECT_SCHEMA',
+        })
+      }
+
       // Use FieldMapper for type conversion
       const type = getDefaultType(resolvedSchema, this.customMappings)
 
@@ -602,6 +617,27 @@ export class OpenAPIConnector extends BaseConnector {
         this._extractFields(resolvedSchema, fields, spec, warnings, sourcePath, fieldName)
       }
     }
+  }
+
+  /**
+   * Detect a "bare" object schema: type object with no properties, no
+   * additionalProperties contract, and no composition/reference that could
+   * supply one. Such a schema is the quasi-always-footgun case (#1240) —
+   * objects with `properties`, a sub-schema `additionalProperties`, `$ref`
+   * or oneOf/anyOf/allOf are deliberately excluded.
+   *
+   * @private
+   * @param schema - Resolved property schema
+   * @returns True if the schema is a contract-less object
+   */
+  private _isBareObjectSchema(schema: OpenAPISchema): boolean {
+    if (schema.type !== 'object') return false
+    if (schema.properties && Object.keys(schema.properties).length > 0) return false
+    const additionalProperties = schema.additionalProperties
+    if (additionalProperties === true) return false
+    if (additionalProperties && typeof additionalProperties === 'object') return false
+    if (schema.$ref || schema.oneOf || schema.anyOf || schema.allOf) return false
+    return true
   }
 
   /**
