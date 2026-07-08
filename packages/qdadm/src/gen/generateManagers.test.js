@@ -436,6 +436,84 @@ describe('generateManagers', () => {
     })
   })
 
+  describe('baseClass option (#1253)', () => {
+    function entityConfig(extra = {}) {
+      return {
+        schema: {
+          name: 'users',
+          endpoint: '/users',
+          fields: {
+            id: { name: 'id', type: 'number' },
+            name: { name: 'name', type: 'text', required: true }
+          }
+        },
+        endpoint: '/users',
+        storageImport: '@quazardous/qdadm',
+        storageClass: 'ApiStorage',
+        ...extra
+      }
+    }
+
+    it('class mode extends the global baseClass and imports it', async () => {
+      await generateManagers({
+        output: testOutputDir,
+        classMode: true,
+        baseClass: { import: '@/managers/SkyEntityManager', name: 'SkyEntityManager' },
+        entities: { users: entityConfig() }
+      })
+
+      const content = await readFile(join(testOutputDir, 'users.ts'), 'utf-8')
+      expect(content).toContain("import { SkyEntityManager } from '@/managers/SkyEntityManager'")
+      expect(content).toContain('extends SkyEntityManager<UsersEntity>')
+      expect(content).not.toContain("import { EntityManager } from '@quazardous/qdadm'")
+      // Options/record types still come from qdadm
+      expect(content).toContain("import type { EntityRecord, EntityManagerOptions } from '@quazardous/qdadm'")
+    })
+
+    it('instance mode instantiates the baseClass', async () => {
+      await generateManagers({
+        output: testOutputDir,
+        baseClass: { import: './base', name: 'MyBase' },
+        entities: { users: entityConfig() }
+      })
+
+      const content = await readFile(join(testOutputDir, 'usersManager.ts'), 'utf-8')
+      expect(content).toContain("import { MyBase } from './base'")
+      expect(content).toContain('new MyBase<UsersEntity>(')
+      expect(content).not.toContain('new EntityManager<UsersEntity>(')
+    })
+
+    it('per-entity baseClass overrides the global one', async () => {
+      await generateManagers({
+        output: testOutputDir,
+        classMode: true,
+        baseClass: { import: './globalBase', name: 'GlobalBase' },
+        entities: {
+          users: entityConfig({
+            baseClass: { import: './localBase', name: 'LocalBase' }
+          })
+        }
+      })
+
+      const content = await readFile(join(testOutputDir, 'users.ts'), 'utf-8')
+      expect(content).toContain("import { LocalBase } from './localBase'")
+      expect(content).toContain('extends LocalBase<UsersEntity>')
+      expect(content).not.toContain('GlobalBase')
+    })
+
+    it('defaults to EntityManager when no baseClass is given', async () => {
+      await generateManagers({
+        output: testOutputDir,
+        classMode: true,
+        entities: { users: entityConfig() }
+      })
+
+      const content = await readFile(join(testOutputDir, 'users.ts'), 'utf-8')
+      expect(content).toContain("import { EntityManager } from '@quazardous/qdadm'")
+      expect(content).toContain('extends EntityManager<UsersEntity>')
+    })
+  })
+
   describe('default output directory', () => {
     it('uses default output when not specified', async () => {
       // This test would write to actual src/generated/managers/

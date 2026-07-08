@@ -34,6 +34,8 @@ import type { NullSortMode } from '../query/clientFilter'
 
 // Re-export public types from types file
 export type {
+  StorageResolution,
+  ResolvedStorage,
   RoutingContext,
   PresaveContext,
   PostsaveContext,

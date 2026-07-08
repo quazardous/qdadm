@@ -22,7 +22,13 @@ type JsonValue = Record<string, unknown> | unknown[] | string | null
 
 interface Props {
   modelValue?: JsonValue
-  mode?: Mode
+  /**
+   * Editor mode. String literals are accepted (#1253) so consumers never
+   * need to import the `Mode` enum from vanilla-jsoneditor (which is not
+   * a direct dependency of theirs); `Mode` itself is re-exported from
+   * '@quazardous/qdadm/editors' for those who want it.
+   */
+  mode?: Mode | 'tree' | 'text' | 'table'
   height?: string
   readOnly?: boolean
   mainMenuBar?: boolean
@@ -40,7 +46,7 @@ interface Props {
 
 const props = withDefaults(defineProps<Props>(), {
   modelValue: () => ({}),
-  mode: 'tree' as Mode,
+  mode: 'tree',
   height: '400px',
   readOnly: false,
   mainMenuBar: true,
@@ -100,7 +106,7 @@ onMounted(() => {
     target: containerRef.value,
     props: {
       content,
-      mode: props.mode,
+      mode: props.mode as Mode,
       readOnly: props.readOnly,
       mainMenuBar: props.mainMenuBar,
       navigationBar: props.navigationBar,
@@ -161,9 +167,9 @@ watch(() => props.modelValue, (newVal: JsonValue | undefined) => {
 }, { deep: true })
 
 // Watch mode changes
-watch(() => props.mode, (newMode: Mode | undefined) => {
+watch(() => props.mode, (newMode) => {
   if (editor && newMode) {
-    editor.updateProps({ mode: newMode })
+    editor.updateProps({ mode: newMode as Mode })
   }
 })
 

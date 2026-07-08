@@ -10,3 +10,8 @@
 
 export { default as VanillaJsonEditor } from '../components/editors/VanillaJsonEditor.vue'
 export { default as JsonStructuredField } from '../components/editors/JsonStructuredField.vue'
+
+// Re-export the mode enum so consumers who want it don't need to depend on
+// vanilla-jsoneditor directly (#1253). String literals ('tree' | 'text' |
+// 'table') are accepted by VanillaJsonEditor's `mode` prop anyway.
+export { Mode } from 'vanilla-jsoneditor'
