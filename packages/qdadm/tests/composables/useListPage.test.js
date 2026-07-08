@@ -426,6 +426,61 @@ describe('useListPage - Permission features', () => {
       expect(result.props.value.columns[0].field).toBe('title')
     })
   })
+
+  describe('column() binding helper (#1255)', () => {
+    it('derives field + humanized header for an unknown field', () => {
+      const { result } = createWrapper(() => useListPage({ entity: 'books' }))
+
+      expect(result.column('botUuid')).toEqual({ field: 'botUuid', header: 'Bot Uuid' })
+      expect(result.column('created_at').header).toBe('Created At')
+    })
+
+    it('uses manager.fields label when available', () => {
+      mockManager = createMockManager({
+        getFieldConfig: (name) => (name === 'botUuid' ? { label: 'Bot' } : undefined)
+      })
+      const { result } = createWrapper(() => useListPage({ entity: 'books' }))
+
+      expect(result.column('botUuid').header).toBe('Bot')
+      // Fields without a manager label still humanize
+      expect(result.column('lastSeen').header).toBe('Last Seen')
+    })
+
+    it('overrides.header wins over the manager label', () => {
+      mockManager = createMockManager({
+        getFieldConfig: () => ({ label: 'Bot' })
+      })
+      const { result } = createWrapper(() => useListPage({ entity: 'books' }))
+
+      expect(result.column('botUuid', { header: 'Robot' }).header).toBe('Robot')
+    })
+
+    it('merges registered column extras and keeps the inline header', () => {
+      const { result } = createWrapper(() => useListPage({ entity: 'books' }))
+
+      result.addColumn('title', { header: 'The Title', style: 'min-width: 120px' })
+      const bound = result.column('title')
+
+      expect(bound.field).toBe('title')
+      expect(bound.header).toBe('The Title')
+      expect(bound.style).toBe('min-width: 120px')
+    })
+
+    it('passes overrides through to the binding', () => {
+      const { result } = createWrapper(() => useListPage({ entity: 'books' }))
+
+      const bound = result.column('title', { sortable: true, style: 'width: 1rem' })
+      expect(bound.sortable).toBe(true)
+      expect(bound.style).toBe('width: 1rem')
+    })
+
+    it('does not register the column (pure read)', () => {
+      const { result } = createWrapper(() => useListPage({ entity: 'books' }))
+
+      result.column('botUuid')
+      expect(result.columns.value).toHaveLength(0)
+    })
+  })
 })
 
 describe('useListPage - list:alter hook', () => {

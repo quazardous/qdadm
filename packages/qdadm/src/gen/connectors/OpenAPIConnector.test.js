@@ -689,6 +689,155 @@ describe('OpenAPIConnector', () => {
     })
   })
 
+  describe('inference options (#1255)', () => {
+    // /api/bots: GET item + POST with a partial body; lastSeen/uuid are
+    // response-only, name is writable, status declares readOnly in-schema.
+    const botsSpec = {
+      openapi: '3.0.0',
+      paths: {
+        '/api/bots/{id}': {
+          get: {
+            responses: {
+              '200': {
+                content: {
+                  'application/json': {
+                    schema: {
+                      type: 'object',
+                      properties: {
+                        data: {
+                          type: 'object',
+                          properties: {
+                            uuid: { type: 'string', format: 'uuid' },
+                            name: { type: 'string' },
+                            lastSeen: { type: 'string', format: 'date-time' },
+                            status: { type: 'string', readOnly: true },
+                            notes: { type: 'string', description: 'Operator notes' }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        '/api/bots': {
+          post: {
+            requestBody: {
+              content: {
+                'application/json': {
+                  schema: {
+                    type: 'object',
+                    properties: {
+                      name: { type: 'string' },
+                      notes: { type: 'string', description: 'Operator notes' }
+                    }
+                  }
+                }
+              }
+            },
+            responses: {
+              '200': {
+                content: {
+                  'application/json': {
+                    schema: { type: 'object', properties: { data: { type: 'object', properties: { uuid: { type: 'string' } } } } }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+
+    // Read-only entity: no write operation at all
+    const logsSpec = {
+      openapi: '3.0.0',
+      paths: {
+        '/api/logs': {
+          get: {
+            responses: {
+              '200': {
+                content: {
+                  'application/json': {
+                    schema: {
+                      type: 'object',
+                      properties: {
+                        data: {
+                          type: 'array',
+                          items: {
+                            type: 'object',
+                            properties: {
+                              id: { type: 'string' },
+                              message: { type: 'string' }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+
+    describe('inferLabels', () => {
+      it('is off by default (label only from description)', () => {
+        const connector = new OpenAPIConnector()
+        const bots = connector.parse(botsSpec).find(e => e.name === 'bots')
+
+        expect(bots.fields.lastSeen.label).toBeUndefined()
+        expect(bots.fields.notes.label).toBe('Operator notes')
+      })
+
+      it('humanizes field names when enabled and description is absent', () => {
+        const connector = new OpenAPIConnector({ inferLabels: 'humanize' })
+        const bots = connector.parse(botsSpec).find(e => e.name === 'bots')
+
+        expect(bots.fields.lastSeen.label).toBe('Last Seen')
+        expect(bots.fields.uuid.label).toBe('Uuid')
+        // description still wins
+        expect(bots.fields.notes.label).toBe('Operator notes')
+      })
+    })
+
+    describe('inferReadOnly', () => {
+      it('is off by default (readOnly only from schema)', () => {
+        const connector = new OpenAPIConnector()
+        const bots = connector.parse(botsSpec).find(e => e.name === 'bots')
+
+        expect(bots.fields.lastSeen.readOnly).toBe(false)
+        expect(bots.fields.status.readOnly).toBe(true)
+      })
+
+      it('marks response-only fields readOnly when enabled', () => {
+        const connector = new OpenAPIConnector({ inferReadOnly: true })
+        const bots = connector.parse(botsSpec).find(e => e.name === 'bots')
+
+        // never in a request body → inferred readOnly
+        expect(bots.fields.uuid.readOnly).toBe(true)
+        expect(bots.fields.lastSeen.readOnly).toBe(true)
+        // present in the POST body → stays writable
+        expect(bots.fields.name.readOnly).toBe(false)
+        expect(bots.fields.notes.readOnly).toBe(false)
+        // schema-declared readOnly preserved
+        expect(bots.fields.status.readOnly).toBe(true)
+      })
+
+      it('marks every field readOnly for entities without write operations', () => {
+        const connector = new OpenAPIConnector({ inferReadOnly: true })
+        const logs = connector.parse(logsSpec).find(e => e.name === 'logs')
+
+        expect(logs.fields.id.readOnly).toBe(true)
+        expect(logs.fields.message.readOnly).toBe(true)
+      })
+    })
+  })
+
   describe('extensions option', () => {
     it('adds extensions to all parsed entities', () => {
       const connector = new OpenAPIConnector({

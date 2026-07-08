@@ -347,6 +347,8 @@ export interface UseListPageReturn<T = unknown> {
 
   // Columns
   columns: ComputedRef<ColumnConfig[]>
+  /** v-bind column binding helper (#1255): field + header from one source */
+  column: (name: string, overrides?: Partial<ColumnConfig>) => ColumnConfig
   addColumn: (field: string, config?: Partial<ColumnConfig>) => void
   removeColumn: (field: string) => void
   updateColumn: (field: string, updates: Partial<ColumnConfig>) => void

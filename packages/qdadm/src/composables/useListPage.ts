@@ -35,6 +35,7 @@ import { useEntityItemPage, type ParentConfig, type UseEntityItemPageReturn } fr
 import { useActiveStack } from '../chain/useActiveStack.js'
 import { useI18n } from '../i18n/useI18n'
 import { formatDateOnly } from '../utils/formatters'
+import { humanizeFieldName } from '../utils/humanize'
 
 // Import types from dedicated types file
 import type {
@@ -293,6 +294,42 @@ export function useListPage<T = unknown>(config: UseListPageOptions<T>): UseList
       }
     }
   })
+
+  /**
+   * Template-side column binding helper (#1255): spread onto a PrimeVue
+   * `<Column>` so `field` + `header` come from one source instead of being
+   * retyped in every list template:
+   *
+   * ```html
+   * <Column v-bind="list.column('botUuid')" sortable>
+   *   <template #body="{ data }">...</template>
+   * </Column>
+   * ```
+   *
+   * Header resolution: i18n key (`entities.{entity}.fields.{field}`) >
+   * `overrides.header` > inline header given to `addColumn` >
+   * `manager.fields[name].label` > humanized field name. Pure read — it
+   * never registers into columnsMap, so calling it during render is safe.
+   */
+  function column(name: string, overrides: Partial<ColumnConfig> = {}): ColumnConfig {
+    // Depend on the locale so headers re-render on locale change.
+    void i18nLocale.value
+
+    let header: string | undefined
+    if (entity && kernelI18n) {
+      const trace = kernelI18n.resolve(`entities.${entity}.fields.${name}`)
+      if (trace.hit) header = trace.result
+    }
+    const fieldConfig = manager.getFieldConfig?.(name) as { label?: string } | null | undefined
+    header ??=
+      overrides.header ??
+      columnInlineHeaders.get(name) ??
+      fieldConfig?.label ??
+      humanizeFieldName(name)
+
+    const registered = columnsMap.value.get(name)
+    return { ...registered, ...overrides, field: name, header }
+  }
 
   function removeColumn(field: string): void {
     columnsMap.value.delete(field)
@@ -1111,6 +1148,7 @@ export function useListPage<T = unknown>(config: UseListPageOptions<T>): UseList
 
     // Columns
     columns,
+    column,
     addColumn,
     removeColumn,
     updateColumn,
