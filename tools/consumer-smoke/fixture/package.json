@@ -1,0 +1,20 @@
+{
+  "name": "qdadm-consumer-smoke",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "description": "Consumer smoke fixture (#1024): typechecks the PACKED qdadm tarball the way a real strict-TS consumer does. @quazardous/qdadm is installed by tools/consumer-smoke/run.sh from `npm pack`, never from a link.",
+  "scripts": {
+    "smoke": "vue-tsc --noEmit -p tsconfig.json"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "pinia": "^2.3.0",
+    "primevue": "^4.2.5",
+    "typescript": "^5.9.3",
+    "vite": "^6.0.0",
+    "vue": "^3.5.13",
+    "vue-router": "^4.5.0",
+    "vue-tsc": "^3.2.2"
+  }
+}

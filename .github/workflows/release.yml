@@ -49,6 +49,19 @@ jobs:
       - name: Test workspaces
         run: npm test --workspaces --if-present
 
+      # Type-safety gate (#1024): the package ships raw TS, so anything that
+      # doesn't compile reaches consumers' vue-tsc directly. Three layers:
+      # compile the sources, emit the declarations, then typecheck the PACKED
+      # tarball from a strict consumer fixture (validates exports/files too).
+      - name: Type-check workspaces
+        run: npm run type-check --workspaces --if-present
+
+      - name: Declaration-emit check
+        run: npm run build:types --workspace=@quazardous/qdadm
+
+      - name: Consumer smoke test (packed tarball)
+        run: bash tools/consumer-smoke/run.sh
+
       - name: Create release PR or publish
         id: changesets
         uses: changesets/action@v1

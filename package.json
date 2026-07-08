@@ -10,6 +10,8 @@
     "build": "npm run build -w packages/demo",
     "preview": "npm run preview -w packages/demo",
     "test": "npm test --workspaces --if-present",
+    "type-check": "npm run type-check --workspaces --if-present",
+    "smoke:consumer": "bash tools/consumer-smoke/run.sh",
     "changeset": "changeset",
     "release:status": "changeset status",
     "release:version": "changeset version && npm install --package-lock-only",
