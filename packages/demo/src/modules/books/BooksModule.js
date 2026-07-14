@@ -198,8 +198,11 @@ export class BooksModule extends Module {
     // ════════════════════════════════════════════════════════════════════════
     // Single form pattern: same component for create & edit
     // Route param uses manager.idField ('bookId') automatically
+    // The show page pairs with edit to demo the breadcrumb View↔Edit
+    // toggle (#1332, qdadmFeatures.breadcrumbModeToggle in main.js)
     ctx.crud('books', {
       list: () => import('./pages/BookList.vue'),
+      show: () => import('./pages/BookShow.vue'),
       form: () => import('./pages/BookForm.vue')  // Handles both create & edit
     }, {
       nav: { section: 'Library', icon: 'pi pi-book' }
