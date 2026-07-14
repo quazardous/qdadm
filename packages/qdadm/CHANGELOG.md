@@ -1,5 +1,16 @@
 # Changelog
 
+## 2.7.0
+
+### Minor Changes
+
+- 8386de8: Declarative View↔Edit navigation on entity pages (#1332): `useNavContext` exposes a `modeToggle` computed (twin-mode route resolved from the semantic breadcrumb terminal, `router.hasRoute`-checked, `canUpdate`-gated on the Edit side, locale-reactive labels via `breadcrumb.view` / `breadcrumb.edit` keys), and `DefaultBreadcrumb` renders it as a toggle next to the terminal crumb — opt-in via `qdadmFeatures.breadcrumbModeToggle: true`. Edit→show navigation stays covered by the form page's own unsaved-changes guard.
+
+### Patch Changes
+
+- 550d23a: Two types consumers could not satisfy without casts (#1281): `ctx.entity()` is now generic (`entity<T extends EntityRecord>`) so narrowed `EntityManager<T>` subclasses pass (the invariant `EntityManager<EntityRecord>` parameter rejected them); `ResolvedAction` has a single declaration — `ShowPage` imports the composable's type instead of redeclaring it, and `severity` is typed `ButtonSeverity` (now exported from the main barrel) across `ActionConfig`, `LazyActionConfig` and show badges, so `v-bind="show.props.value"` typechecks.
+- eacb435: JsonStructuredField.jsonMode now accepts string literals ('tree' | 'text' | 'table') like its VanillaJsonEditor sibling — consumers no longer need to import the vanilla-jsoneditor Mode enum (#1280, mirror of #1253).
+
 ## 2.6.1
 
 ### Patch Changes
