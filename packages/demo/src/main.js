@@ -83,6 +83,10 @@ const kernel = new Kernel({
   // Branding
   app: { name: 'Book Manager', shortName: 'BM', version },
 
+  // Features: View↔Edit toggle on the breadcrumb terminal (#1332) —
+  // see it on Books (show ↔ edit pair); permission-gated by canUpdate
+  features: { breadcrumbModeToggle: true },
+
   // PrimeVue
   primevue: { plugin: PrimeVue, theme: Aura },
 

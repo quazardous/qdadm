@@ -63,6 +63,8 @@ export interface FeaturesConfig {
   auth?: boolean
   poweredBy?: boolean
   breadcrumb?: boolean
+  /** Opt-in (#1332): View↔Edit toggle on the breadcrumb terminal crumb */
+  breadcrumbModeToggle?: boolean
   [key: string]: boolean | undefined
 }
 
