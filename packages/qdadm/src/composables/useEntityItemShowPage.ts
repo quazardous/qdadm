@@ -55,6 +55,7 @@ import {
   type ShowResolvedFieldConfig,
 } from './createShowFieldResolver'
 import type { OrchestratorLike } from '../entity/EntityManager.interface'
+import type { ButtonSeverity } from '../types'
 import { useActionRegistry } from './useActionRegistry'
 
 // #1191 — shared structural view (manager tier from useEntityItemPage)
@@ -81,7 +82,8 @@ export interface ActionConfig {
   name: string
   label: string
   icon?: string
-  severity?: string
+  /** PrimeVue Button severity — the shared union, not bare string (#1281) */
+  severity?: ButtonSeverity
   onClick: () => void | Promise<void>
   visible?: (ctx: { canEdit: boolean; canDelete: boolean }) => boolean
   disabled?: (ctx: { loading: boolean }) => boolean
@@ -99,7 +101,8 @@ export interface LazyActionConfig {
   name: string
   label: string
   icon?: string
-  severity?: string
+  /** PrimeVue Button severity — the shared union, not bare string (#1281) */
+  severity?: ButtonSeverity
   onClick: () => void | Promise<void>
   resolve: (data: unknown) => Promise<{ visible?: boolean; disabled?: boolean }>
   loading?: () => boolean
@@ -129,7 +132,7 @@ export interface ShowPageProps {
   loading: boolean
   title: string
   titleParts: PageTitleParts
-  badges: Array<{ label: string; severity?: string }>
+  badges: Array<{ label: string; severity?: ButtonSeverity }>
   fields: ResolvedFieldConfig[]
   groups: FieldGroup<ResolvedFieldConfig>[]
   data: Record<string, unknown> | null

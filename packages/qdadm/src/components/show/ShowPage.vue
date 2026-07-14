@@ -46,6 +46,9 @@ import Message from 'primevue/message'
 import FieldGroups from '../item/FieldGroups.vue'
 import ShowField from './ShowField.vue'
 import type { ButtonSeverity } from '../../types'
+// Single source of truth (#1281): the props must accept exactly what the
+// composable emits — a local redeclaration is where the two drifted apart.
+import type { ResolvedAction } from '../../composables/useEntityItemShowPage'
 
 /**
  * Page title parts for PageHeader
@@ -54,19 +57,6 @@ interface PageTitleParts {
   action: string
   entityName: string | undefined
   entityLabel: string | undefined
-}
-
-/**
- * Action configuration
- */
-interface ResolvedAction {
-  name: string
-  label: string
-  icon?: string
-  severity?: ButtonSeverity
-  isLoading: boolean
-  isDisabled: boolean
-  onClick: () => void | Promise<void>
 }
 
 /**

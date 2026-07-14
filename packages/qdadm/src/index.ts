@@ -128,6 +128,9 @@ export type {
   RelationConfig,
   NavConfig,
   StorageCapabilities,
+  // PrimeVue severity union (#1281) — type ActionConfig/badge literals against
+  // this instead of bare strings.
+  ButtonSeverity,
 } from './types'
 
 // Manager Factory

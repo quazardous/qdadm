@@ -10,10 +10,13 @@ import {
   useEntity,
   useOrchestrator,
   useListPage,
+  type KernelContext,
   type EntityRecord,
   type StorageResolution,
   type RoutingContext,
   type EntityManagerRead,
+  type ButtonSeverity,
+  type ShowActionConfig,
   type QdadmManagerRegistry as _QdadmManagerRegistry,
 } from '@quazardous/qdadm'
 import { generateManagers, OpenAPIConnector } from '@quazardous/qdadm/gen'
@@ -55,6 +58,20 @@ export function checkFallback(): Promise<unknown> {
   // @ts-expect-error validate() must not exist on the base EntityManager
   void other.validate
   return other.get(1)
+}
+
+// ── ctx.entity() must accept a NARROWED manager (#1281 point 1) ──────────────
+export function registerTyped(ctx: KernelContext): void {
+  ctx.entity('bots', new BotsManager({ name: 'bots' }))
+}
+
+// ── severity literals type against the exported union (#1281 point 2) ───────
+export const severity: ButtonSeverity = 'danger'
+export const action: ShowActionConfig = {
+  name: 'ping',
+  label: 'Ping',
+  severity: 'warn',
+  onClick: () => {},
 }
 
 // ── Structural view: the implementer's minimum (#1253 phase 2) ──────────────

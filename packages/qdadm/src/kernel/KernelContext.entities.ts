@@ -6,6 +6,7 @@
 
 import { managerFactory, type ManagerFactoryContext } from '../entity/factory.js'
 import type { EntityManager } from '../entity/EntityManager'
+import type { EntityRecord } from '../types'
 import { UsersManager } from '../security/UsersManager'
 import type { UserEntityOptions } from './KernelContext.types'
 import type { KernelContext } from './KernelContext'
@@ -22,10 +23,10 @@ export function applyEntityMethods(KernelContextClass: { prototype: KernelContex
    * Uses managerFactory to resolve config into a manager instance.
    * Registers with Orchestrator for CRUD operations.
    */
-  proto.entity = function (
+  proto.entity = function <T extends EntityRecord>(
     this: Self,
     name: string,
-    config: string | Record<string, unknown> | EntityManager
+    config: string | Record<string, unknown> | EntityManager<T>
   ): Self {
     const factoryContext = {
       storageResolver: this._kernel.options.storageResolver,

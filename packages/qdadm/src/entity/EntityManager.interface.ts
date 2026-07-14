@@ -44,7 +44,7 @@ export interface EntityManagerBase<T = unknown> {
   // Optional BY DESIGN (#1253): part of the badge/severity presentation
   // capability; call sites guard (e.g. useEntityItemShowPage checks
   // `if (!manager.getEntityBadges)`).
-  getEntityBadges?: (data: T) => Array<{ label: string; severity?: string }>
+  getEntityBadges?: (data: T) => EntityBadge[]
 }
 
 // ─── Permissions ─────────────────────────────────────────────────────────────

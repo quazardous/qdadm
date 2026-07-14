@@ -46,6 +46,7 @@ import type { DeferredRegistry } from '../deferred/DeferredRegistry.js'
 import type { SecurityChecker } from '../entity/auth/SecurityChecker'
 import type { PermissionRegistry } from '../security/PermissionRegistry'
 import type { EntityManager } from '../entity/EntityManager'
+import type { EntityRecord } from '../types'
 import type { I18n } from '../i18n/I18n'
 import type { AliasPattern, MessagesBundle, TranslationProvider } from '../i18n/types'
 
@@ -195,7 +196,9 @@ export class KernelContext {
 // eslint-disable-next-line @typescript-eslint/no-empty-object-type
 export interface KernelContext {
   // Entities (KernelContext.entities.ts)
-  entity(name: string, config: string | Record<string, unknown> | EntityManager): this
+  // Generic so narrowed managers pass: EntityManager<T> is invariant in T,
+  // so EntityManager<EntityRecord> would reject every typed subclass (#1281).
+  entity<T extends EntityRecord>(name: string, config: string | Record<string, unknown> | EntityManager<T>): this
   userEntity(options: UserEntityOptions): this
 
   // Routing (KernelContext.routing.ts)
