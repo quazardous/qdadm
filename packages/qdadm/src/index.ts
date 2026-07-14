@@ -269,6 +269,7 @@ export {
   type NavChainType,
   type BreadcrumbItem,
   type NavLinkItem,
+  type BreadcrumbModeToggle,
 } from './composables/useNavContext'
 export {
   useNavigation,

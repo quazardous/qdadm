@@ -73,6 +73,7 @@ export {
   type NavChainType,
   type BreadcrumbItem,
   type NavLinkItem,
+  type BreadcrumbModeToggle,
 } from './useNavContext'
 export { useNavigation, type UseNavigationReturn, type NavItem, type NavSection } from './useNavigation'
 export {
