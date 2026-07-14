@@ -21,6 +21,7 @@ import { useRoute, useRouter, type RouteParamsRawGeneric } from 'vue-router'
 import { getSiblingRoutes } from '../module/moduleRegistry'
 import { useSemanticBreadcrumb, type SemanticBreadcrumbItem } from './useSemanticBreadcrumb'
 import { useStackHydrator, type HydratedLevel } from '../chain/useStackHydrator'
+import { useI18n } from '../i18n/useI18n'
 import type { EntityManagerLike, OrchestratorLike } from '../entity/EntityManager.interface'
 
 // #1191 — shared minimal structural views (was: local redeclarations)
@@ -65,6 +66,29 @@ export interface BreadcrumbItem {
 }
 
 /**
+ * View↔Edit toggle for the breadcrumb terminal (#1332)
+ *
+ * Non-null only when the current route is an entity item mode
+ * (`entity-show` / `entity-edit`), the twin-mode route exists
+ * (`${routePrefix}-edit` / `-show` + `router.hasRoute`), and — for the
+ * Edit affordance — `manager.canUpdate()` allows it. The permission check
+ * passes the hydrated entity when available, so ownership-conditional
+ * permissions are honored once the item is loaded.
+ */
+export interface BreadcrumbModeToggle {
+  /** Mode of the current route */
+  current: 'show' | 'edit'
+  /** Mode the toggle navigates to */
+  target: 'show' | 'edit'
+  /** Twin-route location — a plain router.push; any dirty-form protection
+   *  comes from the form page's own onBeforeRouteLeave guard */
+  to: { name: string; params: RouteParamsRawGeneric }
+  /** Locale-reactive label: i18n `breadcrumb.view` / `breadcrumb.edit`,
+   *  falling back to "View" / "Edit" */
+  label: string
+}
+
+/**
  * Nav link item
  */
 export interface NavLinkItem {
@@ -105,6 +129,7 @@ export interface UseNavContextReturn {
   // Navigation
   breadcrumb: ComputedRef<BreadcrumbItem[]>
   navlinks: ComputedRef<NavLinkItem[]>
+  modeToggle: ComputedRef<BreadcrumbModeToggle | null>
 
   // Helpers
   parentConfig: ComputedRef<ParentConfig | undefined>
@@ -124,6 +149,9 @@ export function useNavContext(_options: UseNavContextOptions = {}): UseNavContex
 
   // Stack hydrator for entity data (has async-loaded data and labels)
   const hydrator = useStackHydrator()
+
+  // i18n for the mode-toggle labels (no-op shim outside a kernel)
+  const { i18n: kernelI18n, locale: i18nLocale } = useI18n()
 
   function getManager(entityName: string): EntityManager | null {
     return orchestrator?.get(entityName) ?? null
@@ -414,6 +442,44 @@ export function useNavContext(_options: UseNavContextOptions = {}): UseNavContex
     return null
   })
 
+  // ============================================================================
+  // MODE TOGGLE (#1332)
+  // ============================================================================
+
+  function toggleLabel(target: 'show' | 'edit'): string {
+    const trace = kernelI18n?.resolve(target === 'edit' ? 'breadcrumb.edit' : 'breadcrumb.view')
+    if (trace?.hit) return trace.result
+    return target === 'edit' ? 'Edit' : 'View'
+  }
+
+  const modeToggle = computed<BreadcrumbModeToggle | null>(() => {
+    void i18nLocale.value // label re-resolves on locale change
+
+    const semantic = semanticBreadcrumb.value
+    const terminal = semantic[semantic.length - 1]
+    if (!terminal?.entity || !terminal.id) return null
+    if (terminal.kind !== 'entity-show' && terminal.kind !== 'entity-edit') return null
+
+    const manager = getManager(terminal.entity)
+    if (!manager?.routePrefix) return null
+
+    const current = terminal.kind === 'entity-edit' ? 'edit' : 'show'
+    // Target is the OPPOSITE of the current mode — getDefaultItemRoute's
+    // edit-preference is a landing default, not a toggle.
+    const target = current === 'edit' ? 'show' : 'edit'
+    const twinRoute = `${manager.routePrefix}-${target}`
+    if (!router.hasRoute(twinRoute)) return null
+
+    if (target === 'edit' && !manager.canUpdate(entityData.value ?? undefined)) return null
+
+    return {
+      current,
+      target,
+      to: { name: twinRoute, params: { [manager.idField || 'id']: terminal.id } },
+      label: toggleLabel(target),
+    }
+  })
+
   return {
     // Analysis
     navChain,
@@ -427,6 +493,7 @@ export function useNavContext(_options: UseNavContextOptions = {}): UseNavContex
     // Navigation
     breadcrumb,
     navlinks,
+    modeToggle,
 
     // Helpers
     parentConfig,

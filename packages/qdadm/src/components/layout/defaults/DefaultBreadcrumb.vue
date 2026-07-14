@@ -15,6 +15,8 @@ import Breadcrumb from 'primevue/breadcrumb'
 
 interface FeaturesConfig {
   breadcrumb?: boolean
+  /** Opt-in (#1332): render a View↔Edit toggle next to the terminal crumb */
+  breadcrumbModeToggle?: boolean
   [key: string]: unknown
 }
 
@@ -22,7 +24,7 @@ const route = useRoute()
 const features = inject<FeaturesConfig>('qdadmFeatures', { breadcrumb: true })
 
 // Navigation context (breadcrumb + navlinks from route config)
-const { breadcrumb: defaultBreadcrumb, navlinks: defaultNavlinks } = useNavContext()
+const { breadcrumb: defaultBreadcrumb, navlinks: defaultNavlinks, modeToggle } = useNavContext()
 
 // Allow child pages to override breadcrumb/navlinks via provide/inject
 const breadcrumbOverride = inject<Ref<BreadcrumbItem[] | null>>('qdadmBreadcrumbOverride', ref(null))
@@ -39,6 +41,12 @@ const showBreadcrumb = computed<boolean>(() => {
   if (route.name === 'dashboard') return false
   return true
 })
+
+// View↔Edit toggle on the terminal crumb (#1332) — opt-in, and only when
+// useNavContext resolved a reachable, permitted twin-mode route
+const shownModeToggle = computed(() =>
+  features.breadcrumbModeToggle === true ? modeToggle.value : null
+)
 </script>
 
 <template>
@@ -55,6 +63,17 @@ const showBreadcrumb = computed<boolean>(() => {
         </span>
       </template>
     </Breadcrumb>
+
+    <!-- View↔Edit mode toggle (#1332) — plain navigation; the form page's
+         own route-leave guard covers unsaved changes on edit→show -->
+    <RouterLink
+      v-if="shownModeToggle"
+      :to="shownModeToggle.to"
+      class="breadcrumb-mode-toggle"
+    >
+      <i :class="shownModeToggle.target === 'edit' ? 'pi pi-pencil' : 'pi pi-eye'"></i>
+      <span>{{ shownModeToggle.label }}</span>
+    </RouterLink>
 
     <!-- Navlinks (provided by PageNav for child routes) -->
     <div v-if="navlinks.length > 0" class="breadcrumb-navlinks">
@@ -90,6 +109,24 @@ const showBreadcrumb = computed<boolean>(() => {
   align-items: center;
   gap: 0.5rem;
   font-size: 0.875rem;
+}
+
+/* Mode toggle sits right after the crumbs; auto margin keeps navlinks pinned right */
+.breadcrumb-mode-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin-left: 0.75rem;
+  margin-right: auto;
+  font-size: 0.875rem;
+  color: var(--p-primary-500, #3b82f6);
+  text-decoration: none;
+  transition: color 0.15s;
+}
+
+.breadcrumb-mode-toggle:hover {
+  color: var(--p-primary-700, #1d4ed8);
+  text-decoration: underline;
 }
 
 .navlinks-separator {
