@@ -28,7 +28,8 @@
  * - mode: Optional v-model for view mode ('structured' or 'json')
  * - label: Optional label for the field
  * - jsonHeight: Height of JSON editor (default: 400px)
- * - jsonMode: Mode for JSON editor - 'tree' or 'text' (default: 'text')
+ * - jsonMode: Mode for JSON editor - 'tree', 'text' or 'table' (default: 'text');
+ *   string literals accepted so consumers don't need the vanilla-jsoneditor Mode enum (#1280)
  * - defaultMode: Initial mode if not using v-model:mode (default: 'structured')
  * - showToggle: Whether to show the toggle (default: true, useful to hide in nested usage)
  * - guardInvalidJson: Block switching to structured view while JSON is invalid (default: true)
@@ -60,7 +61,7 @@ interface Props {
   mode?: ViewMode | null
   label?: string | null
   jsonHeight?: string
-  jsonMode?: Mode
+  jsonMode?: Mode | 'tree' | 'text' | 'table'
   defaultMode?: ViewMode
   showToggle?: boolean
   guardInvalidJson?: boolean
@@ -73,7 +74,7 @@ const props = withDefaults(defineProps<Props>(), {
   mode: null,
   label: null,
   jsonHeight: '400px',
-  jsonMode: 'text' as Mode,
+  jsonMode: 'text',
   defaultMode: 'structured',
   showToggle: true,
   guardInvalidJson: true,
