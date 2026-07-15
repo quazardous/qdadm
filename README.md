@@ -4,6 +4,7 @@
 
 TypeScript-first. Module-driven. Zero boilerplate.
 
+[![npm](https://img.shields.io/npm/v/%40quazardous%2Fqdadm?logo=npm&label=npm)](https://www.npmjs.com/package/@quazardous/qdadm)
 [![Live Demo](https://img.shields.io/badge/demo-live-brightgreen)](https://quazardous.github.io/qdadm/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.0+-blue)](https://www.typescriptlang.org/)
 [![Vue 3](https://img.shields.io/badge/Vue-3.4+-42b883)](https://vuejs.org/)
