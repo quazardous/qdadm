@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.7.1
+
+### Patch Changes
+
+- 5733042: AppLayout's inline breadcrumb now renders the View↔Edit mode toggle (#1341): the `breadcrumbModeToggle` flag shipped in 2.7.0 was wired only in DefaultBreadcrumb, leaving it inert for AppLayout consumers — the default layout now honors the same opt-in contract.
+- 5733042: Show field resolver crashed on canonical object-form references: `generateFields()` passed `reference: { entity }` straight to `orchestrator.get()`, throwing `No manager for entity "[object Object]"` and blanking the show page. The resolver now normalizes both forms (object and bare string) and probes `orchestrator.has()` before resolving.
+
 ## 2.7.0
 
 ### Minor Changes
