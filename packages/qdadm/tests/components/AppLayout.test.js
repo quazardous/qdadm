@@ -33,10 +33,12 @@ vi.mock('../../src/composables/useNavigation', () => ({
   }),
 }))
 
+const navlinksRef = ref([])
+
 vi.mock('../../src/composables/useNavContext', () => ({
   useNavContext: () => ({
     breadcrumb: ref([{ label: 'Bots', to: { name: 'bots' } }, { label: 'Bot 1' }]),
-    navlinks: ref([]),
+    navlinks: navlinksRef,
     modeLinks: modeLinksRef,
   }),
 }))
@@ -100,6 +102,7 @@ describe('AppLayout inline breadcrumb mode links (#1341/#1353)', () => {
   })
 
   it('renders the parent View|Edit pair on child pages (#1353)', () => {
+    navlinksRef.value = []
     modeLinksRef.value = [
       { target: 'show', to: { name: 'book-show', params: { bookId: '1' } }, label: 'View' },
       { target: 'edit', to: { name: 'book-edit', params: { bookId: '1' } }, label: 'Edit' },
@@ -112,6 +115,26 @@ describe('AppLayout inline breadcrumb mode links (#1341/#1353)', () => {
     expect(links.map((l) => l.text())).toEqual(['View', 'Edit'])
     // pipe separator between the two entries
     expect(wrapper.findAll('.layout-navlinks .layout-navlinks-separator')).toHaveLength(1)
+  })
+
+  it('mode links LEAD the group, sibling tabs follow (#j7udkh)', () => {
+    navlinksRef.value = [
+      { label: 'Info', to: { name: 'book-info' }, active: false },
+      { label: 'Loans', to: { name: 'book-loans' }, active: true },
+    ]
+    modeLinksRef.value = [
+      { target: 'show', to: { name: 'book-show', params: { bookId: '1' } }, label: 'View' },
+      { target: 'edit', to: { name: 'book-edit', params: { bookId: '1' } }, label: 'Edit' },
+    ]
+    const wrapper = mountLayout({
+      features: { breadcrumb: true, breadcrumbModeToggle: true },
+    })
+
+    const all = wrapper.findAll('.layout-navlinks a')
+    expect(all.map((l) => l.text())).toEqual(['View', 'Edit', 'Info', 'Loans'])
+    // separators between every pair of entries
+    expect(wrapper.findAll('.layout-navlinks .layout-navlinks-separator')).toHaveLength(3)
+    navlinksRef.value = []
   })
 
   it('renders nothing without the opt-in flag (default features)', () => {
