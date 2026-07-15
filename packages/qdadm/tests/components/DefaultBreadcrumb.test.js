@@ -47,7 +47,7 @@ function mountBreadcrumb({ features } = {}) {
 }
 
 describe('DefaultBreadcrumb mode toggle (#1332)', () => {
-  it('renders the toggle when the feature is on and a toggle resolves', () => {
+  it('renders the toggle in the right-side navlinks block, no icon (#ctgnc4)', () => {
     modeToggleRef.value = {
       current: 'show',
       target: 'edit',
@@ -58,10 +58,11 @@ describe('DefaultBreadcrumb mode toggle (#1332)', () => {
       features: { breadcrumb: true, breadcrumbModeToggle: true },
     })
 
-    const toggle = wrapper.find('.breadcrumb-mode-toggle')
+    const toggle = wrapper.find('.breadcrumb-navlinks .breadcrumb-mode-toggle')
     expect(toggle.exists()).toBe(true)
-    expect(toggle.text()).toContain('Edit')
-    expect(toggle.find('i').classes()).toContain('pi-pencil')
+    expect(toggle.text()).toBe('Edit')
+    expect(toggle.classes()).toContain('navlink')
+    expect(toggle.find('i').exists()).toBe(false)
   })
 
   it('renders nothing without the opt-in flag (default features)', () => {
@@ -87,7 +88,7 @@ describe('DefaultBreadcrumb mode toggle (#1332)', () => {
     expect(wrapper.find('.breadcrumb-mode-toggle').exists()).toBe(false)
   })
 
-  it('uses the eye icon for the View direction', () => {
+  it('renders the View direction as a plain text link', () => {
     modeToggleRef.value = {
       current: 'edit',
       target: 'show',
@@ -98,6 +99,8 @@ describe('DefaultBreadcrumb mode toggle (#1332)', () => {
       features: { breadcrumb: true, breadcrumbModeToggle: true },
     })
 
-    expect(wrapper.find('.breadcrumb-mode-toggle i').classes()).toContain('pi-eye')
+    const toggle = wrapper.find('.breadcrumb-mode-toggle')
+    expect(toggle.text()).toBe('View')
+    expect(toggle.find('i').exists()).toBe(false)
   })
 })

@@ -64,19 +64,10 @@ const shownModeToggle = computed(() =>
       </template>
     </Breadcrumb>
 
-    <!-- View↔Edit mode toggle (#1332) — plain navigation; the form page's
-         own route-leave guard covers unsaved changes on edit→show -->
-    <RouterLink
-      v-if="shownModeToggle"
-      :to="shownModeToggle.to"
-      class="breadcrumb-mode-toggle"
-    >
-      <i :class="shownModeToggle.target === 'edit' ? 'pi pi-pencil' : 'pi pi-eye'"></i>
-      <span>{{ shownModeToggle.label }}</span>
-    </RouterLink>
-
-    <!-- Navlinks (provided by PageNav for child routes) -->
-    <div v-if="navlinks.length > 0" class="breadcrumb-navlinks">
+    <!-- Navlinks (provided by PageNav for child routes) + View↔Edit mode
+         toggle (#1332/#1341) — plain navigation; the form page's own
+         route-leave guard covers unsaved changes on edit→show -->
+    <div v-if="navlinks.length > 0 || shownModeToggle" class="breadcrumb-navlinks">
       <template v-for="(link, index) in navlinks" :key="link.to?.name || index">
         <span v-if="index > 0" class="navlinks-separator">|</span>
         <RouterLink
@@ -85,6 +76,15 @@ const shownModeToggle = computed(() =>
           :class="{ 'navlink--active': link.active }"
         >
           {{ link.label }}
+        </RouterLink>
+      </template>
+      <template v-if="shownModeToggle">
+        <span v-if="navlinks.length > 0" class="navlinks-separator">|</span>
+        <RouterLink
+          :to="shownModeToggle.to"
+          class="navlink breadcrumb-mode-toggle"
+        >
+          {{ shownModeToggle.label }}
         </RouterLink>
       </template>
     </div>
@@ -109,24 +109,6 @@ const shownModeToggle = computed(() =>
   align-items: center;
   gap: 0.5rem;
   font-size: 0.875rem;
-}
-
-/* Mode toggle sits right after the crumbs; auto margin keeps navlinks pinned right */
-.breadcrumb-mode-toggle {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.35rem;
-  margin-left: 0.75rem;
-  margin-right: auto;
-  font-size: 0.875rem;
-  color: var(--p-primary-500, #3b82f6);
-  text-decoration: none;
-  transition: color 0.15s;
-}
-
-.breadcrumb-mode-toggle:hover {
-  color: var(--p-primary-700, #1d4ed8);
-  text-decoration: underline;
 }
 
 .navlinks-separator {

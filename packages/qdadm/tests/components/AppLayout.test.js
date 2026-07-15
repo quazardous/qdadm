@@ -84,7 +84,7 @@ function mountLayout({ features } = {}) {
 }
 
 describe('AppLayout inline breadcrumb mode toggle (#1341)', () => {
-  it('renders the toggle when the feature is on and a toggle resolves', () => {
+  it('renders the toggle in the right-side navlinks block, no icon (#ctgnc4)', () => {
     modeToggleRef.value = {
       current: 'show',
       target: 'edit',
@@ -95,10 +95,11 @@ describe('AppLayout inline breadcrumb mode toggle (#1341)', () => {
       features: { breadcrumb: true, breadcrumbModeToggle: true },
     })
 
-    const toggle = wrapper.find('.breadcrumb-mode-toggle')
+    const toggle = wrapper.find('.layout-navlinks .breadcrumb-mode-toggle')
     expect(toggle.exists()).toBe(true)
-    expect(toggle.text()).toContain('Edit')
-    expect(toggle.find('i').classes()).toContain('pi-pencil')
+    expect(toggle.text()).toBe('Edit')
+    expect(toggle.classes()).toContain('layout-navlink')
+    expect(toggle.find('i').exists()).toBe(false)
   })
 
   it('renders nothing without the opt-in flag (default features)', () => {
