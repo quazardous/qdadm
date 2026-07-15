@@ -98,6 +98,7 @@ Options: `transformRequest`, `transformResponse`, `responseFormat`, `clientSideP
 | [QDADM_CREDO](QDADM_CREDO.md) | Philosophy, patterns, concepts |
 | [Page compositions](../../docs/page-compositions.md) | **Start here** — which composition for which need |
 | [CRUD Pages](../../docs/crud.md) | List / form / show / child pages reference |
+| [Navigation](../../docs/navigation.md) | Breadcrumb, sibling navlinks, View↔Edit toggle |
 | [Architecture](../../docs/architecture.md) | PAC pattern, layers |
 | [Extension](../../docs/extension.md) | Decorators, bundles, multi-storage |
 | [Hooks](../../docs/hooks.md) | Alter / invoke registry |

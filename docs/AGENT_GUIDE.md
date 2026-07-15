@@ -288,6 +288,7 @@ AuthCollector shows: user, token, permissions, role hierarchy, impersonation eve
 | Philosophy | `packages/qdadm/QDADM_CREDO.md` |
 | Page compositions (start here) | `docs/page-compositions.md` |
 | CRUD Pages | `docs/crud.md` |
+| Navigation (breadcrumb, navlinks, View↔Edit toggle) | `docs/navigation.md` |
 | Forms & field widgets | `docs/forms.md` |
 | Architecture (PAC) | `docs/architecture.md` |
 | Extension overview | `docs/extension.md` |

@@ -46,7 +46,8 @@ Use `form` for the single-form pattern (recommended). Use `create`/`edit` only w
 > `useNavContext` read to resolve the **item-name breadcrumb** ("My Pool" instead
 > of the static label), the active stack, and permission binding. Declaring an
 > entity's form via raw `ctx.routes()` **silently** loses all of that — nothing
-> errors, the breadcrumb just degrades.
+> errors, the breadcrumb just degrades. Full navigation reference (breadcrumb,
+> sibling navlinks, View↔Edit toggle): [navigation.md](./navigation.md).
 
 **Options:**
 
