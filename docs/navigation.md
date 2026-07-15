@@ -43,7 +43,7 @@ semantic items) — used for custom pages that want a hand-built trail.
 `useNavContext()` turns the semantic trail into render-ready pieces:
 
 ```ts
-const { breadcrumb, navlinks, modeToggle } = useNavContext()
+const { breadcrumb, navlinks, modeToggle, modeLinks } = useNavContext()
 ```
 
 - **`breadcrumb`** — `BreadcrumbItem[]` (label, optional `to`, optional
@@ -54,7 +54,11 @@ const { breadcrumb, navlinks, modeToggle } = useNavContext()
   edit-preference is a landing default for "go to this item", not a mode
   statement).
 - **`navlinks`** — the right-side sibling links (below).
-- **`modeToggle`** — the View↔Edit toggle descriptor (below).
+- **`modeToggle`** — the single View↔Edit toggle descriptor of item pages
+  (kept for compatibility; null elsewhere).
+- **`modeLinks`** — the uniform list the breadcrumb components render: one
+  opposite-mode entry on item pages, the **parent's** View/Edit pair on child
+  pages (below).
 
 Child pages can replace either list via the provided refs
 (`qdadmBreadcrumbOverride`, `qdadmNavlinksOverride`) — `PageNav` uses this.
@@ -110,6 +114,16 @@ Rendering contract (both breadcrumb components):
 - navigation is a plain `router.push`: leaving a dirty edit form triggers the
   form page's own unsaved-changes guard (`useUnsavedChangesGuard`'s
   `onBeforeRouteLeave`) — the toggle needs no plumbing of its own.
+
+### On child pages (#1353)
+
+On a **child-list page** (`/books/:id/loans`) the terminal is the child
+collection — the page is in *neither* mode of the parent item. The navlinks
+group then carries the **parent's** mode links: both `View` and `Edit`
+(each under the same existence/permission rules, parent id in the params,
+`entityData` — the parent item on such pages — feeding the `canUpdate`
+gate). The `Details` navlink keeps its role as the "go back to the item"
+landing default.
 
 The toggle needs the show/edit **pair** to exist. With `ctx.crud()` that
 means declaring both pages:

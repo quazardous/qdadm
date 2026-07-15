@@ -137,6 +137,13 @@ describe('useNavContext modeToggle (#1332)', () => {
     expect(nav.modeToggle.value.to).toEqual({ name: 'bots-edit', params: { uuid: 'abc-42' } })
   })
 
+  it('modeLinks mirrors modeToggle on item pages (single opposite entry)', async () => {
+    const { nav } = await mountNav(createTestRouter(), { path: '/bots/1' })
+
+    expect(nav.modeLinks.value).toHaveLength(1)
+    expect(nav.modeLinks.value[0]).toMatchObject({ current: 'show', target: 'edit' })
+  })
+
   it('resolves the label from the i18n catalog when the key exists', async () => {
     const i18n = {
       locale: ref('fr'),
@@ -147,5 +154,67 @@ describe('useNavContext modeToggle (#1332)', () => {
     const { nav } = await mountNav(createTestRouter(), { path: '/bots/1', i18n })
 
     expect(nav.modeToggle.value.label).toBe('Éditer')
+  })
+})
+
+describe('useNavContext modeLinks on child pages (#1353)', () => {
+  function createChildRouter({ withShow = true, withEdit = true } = {}) {
+    const routes = [
+      { path: '/', name: 'home', component: Stub },
+      { path: '/bots', name: 'bots', meta: { entity: 'bots' }, component: Stub },
+      {
+        path: '/bots/:id/tasks',
+        name: 'bot-tasks',
+        meta: { entity: 'tasks', layout: 'list', parent: { entity: 'bots', param: 'id' } },
+        component: Stub,
+      },
+    ]
+    if (withShow) {
+      routes.push({ path: '/bots/:id', name: 'bots-show', meta: { entity: 'bots' }, component: Stub })
+    }
+    if (withEdit) {
+      routes.push({
+        path: '/bots/:id/edit',
+        name: 'bots-edit',
+        meta: { entity: 'bots' },
+        component: Stub,
+      })
+    }
+    return createRouter({ history: createMemoryHistory(), routes })
+  }
+
+  it("offers the PARENT's View|Edit pair on a child-list page", async () => {
+    const { nav } = await mountNav(createChildRouter(), { path: '/bots/1/tasks' })
+
+    expect(nav.modeToggle.value).toBeNull()
+    expect(nav.modeLinks.value).toEqual([
+      { target: 'show', to: { name: 'bots-show', params: { id: '1' } }, label: 'View' },
+      { target: 'edit', to: { name: 'bots-edit', params: { id: '1' } }, label: 'Edit' },
+    ])
+  })
+
+  it('drops the Edit entry when canUpdate denies', async () => {
+    const manager = createManager({ canUpdate: () => false })
+    const { nav } = await mountNav(createChildRouter(), { path: '/bots/1/tasks', manager })
+
+    expect(nav.modeLinks.value).toEqual([
+      { target: 'show', to: { name: 'bots-show', params: { id: '1' } }, label: 'View' },
+    ])
+  })
+
+  it('drops an entry whose route does not exist', async () => {
+    const { nav } = await mountNav(createChildRouter({ withShow: false }), {
+      path: '/bots/1/tasks',
+    })
+
+    expect(nav.modeLinks.value).toEqual([
+      { target: 'edit', to: { name: 'bots-edit', params: { id: '1' } }, label: 'Edit' },
+    ])
+  })
+
+  it('returns no links on non-child list pages', async () => {
+    const { nav } = await mountNav(createChildRouter(), { path: '/bots' })
+
+    expect(nav.modeLinks.value).toEqual([])
   })
 })
