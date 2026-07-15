@@ -76,9 +76,10 @@ export interface BreadcrumbItem {
  * permissions are honored once the item is loaded.
  */
 export interface BreadcrumbModeToggle {
-  /** Mode of the current route */
-  current: 'show' | 'edit'
-  /** Mode the toggle navigates to */
+  /** Mode of the current route — absent on child pages (#1353), where the
+   *  page is in neither mode of the parent item */
+  current?: 'show' | 'edit'
+  /** Mode the link navigates to */
   target: 'show' | 'edit'
   /** Twin-route location — a plain router.push; any dirty-form protection
    *  comes from the form page's own onBeforeRouteLeave guard */
@@ -130,6 +131,7 @@ export interface UseNavContextReturn {
   breadcrumb: ComputedRef<BreadcrumbItem[]>
   navlinks: ComputedRef<NavLinkItem[]>
   modeToggle: ComputedRef<BreadcrumbModeToggle | null>
+  modeLinks: ComputedRef<BreadcrumbModeToggle[]>
 
   // Helpers
   parentConfig: ComputedRef<ParentConfig | undefined>
@@ -443,7 +445,7 @@ export function useNavContext(_options: UseNavContextOptions = {}): UseNavContex
   })
 
   // ============================================================================
-  // MODE TOGGLE (#1332)
+  // MODE TOGGLE / MODE LINKS (#1332, #1353)
   // ============================================================================
 
   function toggleLabel(target: 'show' | 'edit'): string {
@@ -452,6 +454,26 @@ export function useNavContext(_options: UseNavContextOptions = {}): UseNavContex
     return target === 'edit' ? 'Edit' : 'View'
   }
 
+  /** Build one mode link if its route exists and (for edit) permission allows. */
+  function buildModeLink(
+    manager: EntityManager,
+    target: 'show' | 'edit',
+    id: unknown,
+    permissionEntity: unknown
+  ): BreadcrumbModeToggle | null {
+    const routeName = `${manager.routePrefix}-${target}`
+    if (!router.hasRoute(routeName)) return null
+    if (target === 'edit' && !manager.canUpdate(permissionEntity ?? undefined)) return null
+    return {
+      target,
+      to: { name: routeName, params: { [manager.idField || 'id']: id as string } },
+      label: toggleLabel(target),
+    }
+  }
+
+  // Item pages (#1332): the terminal is entity-show/entity-edit — offer the
+  // OPPOSITE mode (getDefaultItemRoute's edit-preference is a landing
+  // default, not a toggle).
   const modeToggle = computed<BreadcrumbModeToggle | null>(() => {
     void i18nLocale.value // label re-resolves on locale change
 
@@ -464,20 +486,29 @@ export function useNavContext(_options: UseNavContextOptions = {}): UseNavContex
     if (!manager?.routePrefix) return null
 
     const current = terminal.kind === 'entity-edit' ? 'edit' : 'show'
-    // Target is the OPPOSITE of the current mode — getDefaultItemRoute's
-    // edit-preference is a landing default, not a toggle.
     const target = current === 'edit' ? 'show' : 'edit'
-    const twinRoute = `${manager.routePrefix}-${target}`
-    if (!router.hasRoute(twinRoute)) return null
+    const link = buildModeLink(manager, target, terminal.id, entityData.value)
+    return link ? { ...link, current } : null
+  })
 
-    if (target === 'edit' && !manager.canUpdate(entityData.value ?? undefined)) return null
+  // Uniform list for rendering (#1353). Item pages: the single opposite-mode
+  // entry (modeToggle). Child pages (route carries meta.parent): the PARENT
+  // item's applicable pair — the page is in neither mode, so both View and
+  // Edit are offered, each under the same existence/permission rules. On a
+  // child page, `entityData` resolves to the parent item (last item segment
+  // of the chain), so the canUpdate gate is ownership-aware once hydrated.
+  const modeLinks = computed<BreadcrumbModeToggle[]>(() => {
+    const itemToggle = modeToggle.value
+    if (itemToggle) return [itemToggle]
 
-    return {
-      current,
-      target,
-      to: { name: twinRoute, params: { [manager.idField || 'id']: terminal.id } },
-      label: toggleLabel(target),
-    }
+    void i18nLocale.value
+    if (!parentConfig.value || parentId.value == null) return []
+    const manager = getManager(parentConfig.value.entity)
+    if (!manager?.routePrefix) return []
+
+    return (['show', 'edit'] as const)
+      .map((target) => buildModeLink(manager, target, parentId.value, entityData.value))
+      .filter((link): link is BreadcrumbModeToggle => link !== null)
   })
 
   return {
@@ -494,6 +525,7 @@ export function useNavContext(_options: UseNavContextOptions = {}): UseNavContex
     breadcrumb,
     navlinks,
     modeToggle,
+    modeLinks,
 
     // Helpers
     parentConfig,

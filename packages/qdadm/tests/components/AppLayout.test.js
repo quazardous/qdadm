@@ -11,7 +11,7 @@ import { mount } from '@vue/test-utils'
 import { ref } from 'vue'
 import AppLayout from '../../src/components/layout/AppLayout.vue'
 
-const modeToggleRef = ref(null)
+const modeLinksRef = ref([])
 
 vi.mock('vue-router', () => ({
   useRouter: () => ({ push: vi.fn() }),
@@ -37,7 +37,7 @@ vi.mock('../../src/composables/useNavContext', () => ({
   useNavContext: () => ({
     breadcrumb: ref([{ label: 'Bots', to: { name: 'bots' } }, { label: 'Bot 1' }]),
     navlinks: ref([]),
-    modeToggle: modeToggleRef,
+    modeLinks: modeLinksRef,
   }),
 }))
 
@@ -83,14 +83,11 @@ function mountLayout({ features } = {}) {
   })
 }
 
-describe('AppLayout inline breadcrumb mode toggle (#1341)', () => {
+describe('AppLayout inline breadcrumb mode links (#1341/#1353)', () => {
   it('renders the toggle in the right-side navlinks block, no icon (#ctgnc4)', () => {
-    modeToggleRef.value = {
-      current: 'show',
-      target: 'edit',
-      to: { name: 'bots-edit', params: { id: '1' } },
-      label: 'Edit',
-    }
+    modeLinksRef.value = [
+      { current: 'show', target: 'edit', to: { name: 'bots-edit', params: { id: '1' } }, label: 'Edit' },
+    ]
     const wrapper = mountLayout({
       features: { breadcrumb: true, breadcrumbModeToggle: true },
     })
@@ -102,13 +99,25 @@ describe('AppLayout inline breadcrumb mode toggle (#1341)', () => {
     expect(toggle.find('i').exists()).toBe(false)
   })
 
+  it('renders the parent View|Edit pair on child pages (#1353)', () => {
+    modeLinksRef.value = [
+      { target: 'show', to: { name: 'book-show', params: { bookId: '1' } }, label: 'View' },
+      { target: 'edit', to: { name: 'book-edit', params: { bookId: '1' } }, label: 'Edit' },
+    ]
+    const wrapper = mountLayout({
+      features: { breadcrumb: true, breadcrumbModeToggle: true },
+    })
+
+    const links = wrapper.findAll('.layout-navlinks .breadcrumb-mode-toggle')
+    expect(links.map((l) => l.text())).toEqual(['View', 'Edit'])
+    // pipe separator between the two entries
+    expect(wrapper.findAll('.layout-navlinks .layout-navlinks-separator')).toHaveLength(1)
+  })
+
   it('renders nothing without the opt-in flag (default features)', () => {
-    modeToggleRef.value = {
-      current: 'show',
-      target: 'edit',
-      to: { name: 'bots-edit', params: { id: '1' } },
-      label: 'Edit',
-    }
+    modeLinksRef.value = [
+      { current: 'show', target: 'edit', to: { name: 'bots-edit', params: { id: '1' } }, label: 'Edit' },
+    ]
     const wrapper = mountLayout()
 
     expect(wrapper.find('.breadcrumb-mode-toggle').exists()).toBe(false)
@@ -116,8 +125,8 @@ describe('AppLayout inline breadcrumb mode toggle (#1341)', () => {
     expect(wrapper.find('.mock-breadcrumb').exists()).toBe(true)
   })
 
-  it('renders nothing when the toggle is null even with the feature on', () => {
-    modeToggleRef.value = null
+  it('renders nothing when no link resolves even with the feature on', () => {
+    modeLinksRef.value = []
     const wrapper = mountLayout({
       features: { breadcrumb: true, breadcrumbModeToggle: true },
     })

@@ -24,7 +24,7 @@ const route = useRoute()
 const features = inject<FeaturesConfig>('qdadmFeatures', { breadcrumb: true })
 
 // Navigation context (breadcrumb + navlinks from route config)
-const { breadcrumb: defaultBreadcrumb, navlinks: defaultNavlinks, modeToggle } = useNavContext()
+const { breadcrumb: defaultBreadcrumb, navlinks: defaultNavlinks, modeLinks } = useNavContext()
 
 // Allow child pages to override breadcrumb/navlinks via provide/inject
 const breadcrumbOverride = inject<Ref<BreadcrumbItem[] | null>>('qdadmBreadcrumbOverride', ref(null))
@@ -42,10 +42,10 @@ const showBreadcrumb = computed<boolean>(() => {
   return true
 })
 
-// View↔Edit toggle on the terminal crumb (#1332) — opt-in, and only when
-// useNavContext resolved a reachable, permitted twin-mode route
-const shownModeToggle = computed(() =>
-  features.breadcrumbModeToggle === true ? modeToggle.value : null
+// View↔Edit mode links (#1332/#1353) — opt-in; single opposite-mode link on
+// item pages, the parent's View/Edit pair on child pages
+const shownModeLinks = computed(() =>
+  features.breadcrumbModeToggle === true ? modeLinks.value : []
 )
 </script>
 
@@ -65,9 +65,9 @@ const shownModeToggle = computed(() =>
     </Breadcrumb>
 
     <!-- Navlinks (provided by PageNav for child routes) + View↔Edit mode
-         toggle (#1332/#1341) — plain navigation; the form page's own
+         links (#1332/#1341/#1353) — plain navigation; the form page's own
          route-leave guard covers unsaved changes on edit→show -->
-    <div v-if="navlinks.length > 0 || shownModeToggle" class="breadcrumb-navlinks">
+    <div v-if="navlinks.length > 0 || shownModeLinks.length > 0" class="breadcrumb-navlinks">
       <template v-for="(link, index) in navlinks" :key="link.to?.name || index">
         <span v-if="index > 0" class="navlinks-separator">|</span>
         <RouterLink
@@ -78,13 +78,13 @@ const shownModeToggle = computed(() =>
           {{ link.label }}
         </RouterLink>
       </template>
-      <template v-if="shownModeToggle">
-        <span v-if="navlinks.length > 0" class="navlinks-separator">|</span>
+      <template v-for="(mode, index) in shownModeLinks" :key="`mode-${mode.target}`">
+        <span v-if="navlinks.length > 0 || index > 0" class="navlinks-separator">|</span>
         <RouterLink
-          :to="shownModeToggle.to"
+          :to="mode.to"
           class="navlink breadcrumb-mode-toggle"
         >
-          {{ shownModeToggle.label }}
+          {{ mode.label }}
         </RouterLink>
       </template>
     </div>
