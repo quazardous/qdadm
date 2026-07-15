@@ -39,7 +39,8 @@ export interface ShowFieldDefinition {
   type?: string
   schemaType?: string
   label?: string
-  reference?: string
+  /** Canonical FieldConfig object form, or the entity name as a bare string */
+  reference?: string | { entity: string; labelField?: string; valueField?: string }
   referenceRoute?: string | ((value: unknown) => { name: string; params: Record<string, unknown> })
   referenceLabel?: string | ((value: unknown, option?: unknown) => string)
   options?: unknown[]
@@ -73,6 +74,8 @@ export interface ShowResolvedFieldConfig extends ShowFieldDefinition {
  */
 export interface ShowResolverOrchestrator {
   get: (entityName: string) => ShowResolverManager | undefined
+  /** Real Orchestrator.get THROWS on unknown entities — probe first when available */
+  has?: (entityName: string) => boolean
 }
 
 /**
@@ -133,13 +136,20 @@ export function createShowFieldResolver(
     let resolvedDisplayType = SHOW_TYPE_MAPPINGS[type] || SHOW_TYPE_MAPPINGS[schemaType] || 'text'
     const resolvedLabel = label || snakeCaseToTitle(name)
 
-    // Auto-set reference route if reference entity is specified
+    // Auto-set reference route if reference entity is specified.
+    // FieldConfig.reference is canonically { entity, ... }; the bare-string
+    // form stays accepted. Passing the object to orchestrator.get produced
+    // '[object Object]' lookups that THREW during generateFields (#1341).
     let referenceRoute = rest.referenceRoute
     if (reference && !referenceRoute) {
-      const refManager = orchestrator.get(reference)
+      const refEntity = typeof reference === 'string' ? reference : reference.entity
+      const refManager =
+        refEntity && (!orchestrator.has || orchestrator.has(refEntity))
+          ? orchestrator.get(refEntity)
+          : undefined
       if (refManager) {
         referenceRoute = (value: unknown) => ({
-          name: `${refManager.routePrefix || reference}-show`,
+          name: `${refManager.routePrefix || refEntity}-show`,
           params: { [refManager.idField]: value },
         })
       }
