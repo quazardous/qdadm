@@ -83,7 +83,7 @@ mode toggle below is the affordance for that distinction.
 ## View↔Edit mode toggle (opt-in)
 
 When the terminal crumb is `entity-show` or `entity-edit` and the **twin-mode
-route exists**, the navlinks group grows one last entry: a plain text
+route exists**, the navlinks group gains a leading entry: a plain text
 `Edit` / `View` link that switches mode for the same item.
 
 ```js
@@ -107,8 +107,8 @@ Resolution rules (`useNavContext().modeToggle`, null when any fails):
 
 Rendering contract (both breadcrumb components):
 
-- the toggle is the **last pipe-separated entry of the right-side navlinks
-  group**, styled like the other navlinks — plain text, no icon;
+- the mode links **lead the right-side navlinks group** (pipe-separated,
+  sibling tabs follow), styled like the other navlinks — plain text, no icon;
 - labels resolve through i18n keys `breadcrumb.view` / `breadcrumb.edit`
   (fallbacks `View` / `Edit`), locale-reactive;
 - navigation is a plain `router.push`: leaving a dirty edit form triggers the

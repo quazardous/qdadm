@@ -68,23 +68,24 @@ const shownModeLinks = computed(() =>
          links (#1332/#1341/#1353) — plain navigation; the form page's own
          route-leave guard covers unsaved changes on edit→show -->
     <div v-if="navlinks.length > 0 || shownModeLinks.length > 0" class="breadcrumb-navlinks">
-      <template v-for="(link, index) in navlinks" :key="link.to?.name || index">
+      <!-- mode links lead the group (#j7udkh), sibling tabs follow -->
+      <template v-for="(mode, index) in shownModeLinks" :key="`mode-${mode.target}`">
         <span v-if="index > 0" class="navlinks-separator">|</span>
+        <RouterLink
+          :to="mode.to"
+          class="navlink breadcrumb-mode-toggle"
+        >
+          {{ mode.label }}
+        </RouterLink>
+      </template>
+      <template v-for="(link, index) in navlinks" :key="link.to?.name || index">
+        <span v-if="shownModeLinks.length > 0 || index > 0" class="navlinks-separator">|</span>
         <RouterLink
           :to="link.to"
           class="navlink"
           :class="{ 'navlink--active': link.active }"
         >
           {{ link.label }}
-        </RouterLink>
-      </template>
-      <template v-for="(mode, index) in shownModeLinks" :key="`mode-${mode.target}`">
-        <span v-if="navlinks.length > 0 || index > 0" class="navlinks-separator">|</span>
-        <RouterLink
-          :to="mode.to"
-          class="navlink breadcrumb-mode-toggle"
-        >
-          {{ mode.label }}
         </RouterLink>
       </template>
     </div>
