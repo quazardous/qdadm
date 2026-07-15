@@ -104,6 +104,7 @@ function onUserSelect(event) {
           placeholder="Select user..."
           class="sidebar-box-full-input"
           appendTo="self"
+          :pt="{ transition: { css: false } /* #1352: see LocaleSwitcher */ }"
           @change="onUserSelect"
         />
       </template>

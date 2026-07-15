@@ -34,6 +34,9 @@ const current = computed({
   <SidebarBox v-if="i18n">
     <template #full>
       <span class="sidebar-box-full-label">Language</span>
+      <!-- transition css:false (#1352): a frame-starved Chrome window (occlusion
+           throttling) leaves Vue's overlay transition stuck mid-enter, showing a
+           semi-transparent panel over the dark sidebar — render instantly instead -->
       <Select
         v-model="current"
         :options="options"
@@ -42,7 +45,7 @@ const current = computed({
         size="small"
         class="sidebar-box-full-input"
         appendTo="self"
-        :pt="{ root: { 'aria-label': 'Locale' } }"
+        :pt="{ root: { 'aria-label': 'Locale' }, transition: { css: false } }"
       />
     </template>
   </SidebarBox>
