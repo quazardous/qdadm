@@ -39,9 +39,14 @@ jobs:
           registry-url: https://registry.npmjs.org
 
       # Node 22 LTS ships with npm 10.x; OIDC Trusted Publishing requires
-      # npm 11.5.1+ for the registry handshake. Upgrade explicitly.
+      # npm 11.5.1+ for the registry handshake. Upgrade explicitly — but PIN
+      # the 11.x line: npm v12 changed `npm info --json` to always return an
+      # array, which @changesets/cli misparses as "package never published"
+      # and re-attempts every already-published version (registry then
+      # refuses, exit 1 — red publish step on every train). Restore @latest
+      # once changesets/changesets#2159 is merged and released.
       - name: Upgrade npm for OIDC Trusted Publishers
-        run: npm install -g npm@latest
+        run: npm install -g npm@11
 
       - name: Install
         run: npm ci
