@@ -57,6 +57,16 @@ $sidebar-box-content-duration: 0.1s;
   background: var(--p-surface-700, #334155);
 }
 
+// #1352 — every .sidebar-box is its own stacking context (z-index: 1), so an
+// open select overlay (appendTo="self", z-index 1001) is TRAPPED inside its
+// box's context and the NEXT sibling box (same z: 1, later in DOM) paints over
+// it — the "transparent dropdown" symptom. An open overlay implies focus
+// inside the box: raise the whole box above its siblings for that duration.
+// (The z-index: 9999 on the overlays themselves can't help across siblings.)
+.sidebar-box:focus-within {
+  z-index: 20;
+}
+
 .sidebar-box-inner {
   display: flex;
   align-items: center;
