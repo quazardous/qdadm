@@ -144,6 +144,15 @@ describe('useNavContext modeToggle (#1332)', () => {
     expect(nav.modeLinks.value[0]).toMatchObject({ current: 'show', target: 'edit' })
   })
 
+  it('keeps the linked list crumb on the create page (#1356)', async () => {
+    const { nav } = await mountNav(createTestRouter(), { path: '/bots/create' })
+
+    expect(nav.breadcrumb.value).toEqual([
+      { label: 'Bots', to: { name: 'bots' } },
+      { label: 'Create' },
+    ])
+  })
+
   it('resolves the label from the i18n catalog when the key exists', async () => {
     const i18n = {
       locale: ref('fr'),

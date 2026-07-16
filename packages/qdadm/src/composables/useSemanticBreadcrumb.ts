@@ -89,10 +89,15 @@ export function computeSemanticBreadcrumb(
         items.push({ kind: actionKind, entity: lastEntity, id: pendingId })
         pendingId = null
       } else {
-        // No pending ID - update last item's kind (e.g., /books/create)
+        // No pending ID and the last item is an id-less entity level
+        // (e.g. /books/create): append the action as its own item so the
+        // entity-list crumb survives — mutating the list item into
+        // entity-create ate the "Books" level (#1356). When the last item
+        // already carries an id (/books/1/edit) the action was consumed
+        // at the id segment; swallow it as before.
         const lastItem = items[items.length - 1]
         if (lastItem && lastItem.kind.startsWith('entity-') && !lastItem.id) {
-          lastItem.kind = actionKind
+          items.push({ kind: actionKind, entity: lastEntity })
         }
       }
       continue
