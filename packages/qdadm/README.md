@@ -2,11 +2,11 @@
 
 **Vue 3 admin framework. PrimeVue. Zero boilerplate.**
 
-Quick start: [../../README.md](../../README.md) (5 min tutorial)
+Quick start: [README](https://github.com/quazardous/qdadm/blob/main/README.md) (5 min tutorial)
 
-Concepts & patterns: [QDADM_CREDO.md](QDADM_CREDO.md)
+Concepts & patterns: [QDADM_CREDO](https://github.com/quazardous/qdadm/blob/main/packages/qdadm/QDADM_CREDO.md)
 
-Changelog: [../../CHANGELOG.md](../../CHANGELOG.md)
+Changelog: [CHANGELOG](https://github.com/quazardous/qdadm/blob/main/CHANGELOG.md)
 
 ## Installation
 
@@ -95,20 +95,20 @@ Options: `transformRequest`, `transformResponse`, `responseFormat`, `clientSideP
 
 | Doc | Purpose |
 |-----|---------|
-| [QDADM_CREDO](QDADM_CREDO.md) | Philosophy, patterns, concepts |
-| [Page compositions](../../docs/page-compositions.md) | **Start here** — which composition for which need |
-| [CRUD Pages](../../docs/crud.md) | List / form / show / child pages reference |
-| [Navigation](../../docs/navigation.md) | Breadcrumb, sibling navlinks, View↔Edit toggle |
-| [Architecture](../../docs/architecture.md) | PAC pattern, layers |
-| [Extension](../../docs/extension.md) | Decorators, bundles, multi-storage |
-| [Hooks](../../docs/hooks.md) | Alter / invoke registry |
-| [Signals](../../docs/signals.md) | Event bus, SSE bridge |
-| [Zones](../../docs/zones.md) | Extensible UI blocks |
-| [Security](../../docs/security.md) | Permissions, roles |
-| [i18n](../../docs/i18n.md) | Messages, providers, strategies |
-| [Codegen](../../docs/gen.md) | Generate managers (OpenAPI / manual) |
-| [Deferred](../../docs/deferred.md) | Deferred values & warmup |
-| [AGENT_GUIDE](../../docs/AGENT_GUIDE.md) | Quick index for AI agents |
+| [QDADM_CREDO](https://github.com/quazardous/qdadm/blob/main/packages/qdadm/QDADM_CREDO.md) | Philosophy, patterns, concepts |
+| [Page compositions](https://github.com/quazardous/qdadm/blob/main/docs/page-compositions.md) | **Start here** — which composition for which need |
+| [CRUD Pages](https://github.com/quazardous/qdadm/blob/main/docs/crud.md) | List / form / show / child pages reference |
+| [Navigation](https://github.com/quazardous/qdadm/blob/main/docs/navigation.md) | Breadcrumb, sibling navlinks, View↔Edit toggle |
+| [Architecture](https://github.com/quazardous/qdadm/blob/main/docs/architecture.md) | PAC pattern, layers |
+| [Extension](https://github.com/quazardous/qdadm/blob/main/docs/extension.md) | Decorators, bundles, multi-storage |
+| [Hooks](https://github.com/quazardous/qdadm/blob/main/docs/hooks.md) | Alter / invoke registry |
+| [Signals](https://github.com/quazardous/qdadm/blob/main/docs/signals.md) | Event bus, SSE bridge |
+| [Zones](https://github.com/quazardous/qdadm/blob/main/docs/zones.md) | Extensible UI blocks |
+| [Security](https://github.com/quazardous/qdadm/blob/main/docs/security.md) | Permissions, roles |
+| [i18n](https://github.com/quazardous/qdadm/blob/main/docs/i18n.md) | Messages, providers, strategies |
+| [Codegen](https://github.com/quazardous/qdadm/blob/main/docs/gen.md) | Generate managers (OpenAPI / manual) |
+| [Deferred](https://github.com/quazardous/qdadm/blob/main/docs/deferred.md) | Deferred values & warmup |
+| [AGENT_GUIDE](https://github.com/quazardous/qdadm/blob/main/docs/AGENT_GUIDE.md) | Quick index for AI agents |
 
 ## Peer Dependencies
 

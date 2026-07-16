@@ -6,7 +6,8 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/quazardous/qdadm.git"
+    "url": "git+https://github.com/quazardous/qdadm.git",
+    "directory": "packages/qdadm"
   },
   "homepage": "https://github.com/quazardous/qdadm#readme",
   "bugs": {
