@@ -69,7 +69,11 @@ On a **child route** (a route with `meta.parent = { entity, param }`, e.g.
 `/books/:bookId/loans`), the right side of the bar shows the parent item's
 tab set:
 
-- **`Details`** — back to the parent item's default route;
+- **`Details`** — back to the parent item's default route (label via i18n key
+  `breadcrumb.details`, fallback `Details`). Note the default route **prefers
+  `-edit`** over `-show` (`getDefaultItemRoute`), so with mode links enabled
+  Details usually points where the `Edit` mode link points — and is then
+  **deduped away** (see below);
 - one link per **sibling route** of the same parent (`getSiblingRoutes`),
   labeled by `meta.navLabel` or the sibling manager's `labelPlural`, with the
   active one highlighted.
@@ -105,12 +109,18 @@ Resolution rules (`useNavContext().modeToggle`, null when any fails):
    ownership-aware once the item is hydrated;
 4. the target is always the **opposite** of the current mode.
 
-Rendering contract (both breadcrumb components):
+Rendering contract (one shared component, `NavlinksGroup`, used by both
+AppLayout's inline breadcrumb and `DefaultBreadcrumb` — #1357):
 
 - the mode links **lead the right-side navlinks group** (pipe-separated,
   sibling tabs follow), styled like the other navlinks — plain text, no icon;
 - labels resolve through i18n keys `breadcrumb.view` / `breadcrumb.edit`
   (fallbacks `View` / `Edit`), locale-reactive;
+- **dedup (#1357)**: a navlink whose target route is already covered by a
+  shown mode link is dropped. In practice this removes the auto `Details`
+  link on child pages (it resolves to the parent's edit route — the same
+  destination as the `Edit` mode link). With the feature flag off, no mode
+  links are shown and every navlink stays (back-compat);
 - navigation is a plain `router.push`: leaving a dirty edit form triggers the
   form page's own unsaved-changes guard (`useUnsavedChangesGuard`'s
   `onBeforeRouteLeave`) — the toggle needs no plumbing of its own.
@@ -122,8 +132,9 @@ collection — the page is in *neither* mode of the parent item. The navlinks
 group then carries the **parent's** mode links: both `View` and `Edit`
 (each under the same existence/permission rules, parent id in the params,
 `entityData` — the parent item on such pages — feeding the `canUpdate`
-gate). The `Details` navlink keeps its role as the "go back to the item"
-landing default.
+gate). The `Details` navlink is deduped when a mode link covers its route
+(#1357); it remains the "go back to the item" affordance only for consumers
+without the feature flag.
 
 The toggle needs the show/edit **pair** to exist. With `ctx.crud()` that
 means declaring both pages:
@@ -138,6 +149,22 @@ ctx.crud('books', {
 
 The imperative per-page actions (`show.addEditAction()`,
 `form.addCancelAction()`) keep working unchanged — the toggle is additive.
+
+## Auto-injected nav affordances — inventory (#1357)
+
+What appears "automatically" around a page, and what is actually opt-in:
+
+| Affordance | Where | Automatic? | Label resolution |
+|---|---|---|---|
+| Breadcrumb trail | breadcrumb bar (left) | yes — derived from the URL + route meta | manager `labelPlural` / `getEntityLabel`, `meta.navLabel` |
+| `Details` link | navlinks group, child pages only | yes — whenever the route has `meta.parent` | i18n `breadcrumb.details`, fallback `Details` |
+| Sibling tabs | navlinks group, child pages only | yes — one per sibling route with `meta.layout: 'list' \| 'page'` | `meta.navLabel` → sibling `labelPlural` → route name |
+| View↔Edit mode links | navlinks group (leading) | **opt-in** — `features.breadcrumbModeToggle` | i18n `breadcrumb.view` / `breadcrumb.edit`, fallbacks `View` / `Edit` |
+| List header create action (e.g. "Add Book") | list page header | **opt-in** — the page calls `list.addCreateAction(label?)` | explicit label, or `Create ${Entity}` |
+
+All navlinks-group entries render through the shared `NavlinksGroup`
+component (exported), which owns the feature gate, the ordering (mode links
+lead) and the dedup rule.
 
 For consumers typing against the API: `BreadcrumbModeToggle`,
 `BreadcrumbItem` and `NavLinkItem` are exported from the main barrel.

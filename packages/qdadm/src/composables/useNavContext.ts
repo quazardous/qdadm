@@ -377,6 +377,8 @@ export function useNavContext(_options: UseNavContextOptions = {}): UseNavContex
   })
 
   const navlinks = computed(() => {
+    void i18nLocale.value // "Details" label re-resolves on locale change
+
     if (!parentConfig.value) return []
 
     const { entity: parentEntity, param, itemRoute } = parentConfig.value
@@ -391,7 +393,7 @@ export function useNavContext(_options: UseNavContextOptions = {}): UseNavContex
     // Details link - use manager's idField for param name
     const links: NavLinkItem[] = [
       {
-        label: 'Details',
+        label: breadcrumbLabel('details', 'Details'),
         to: {
           name: parentRouteName!,
           params: { [parentManager.idField!]: parentId.value as string },
@@ -448,10 +450,17 @@ export function useNavContext(_options: UseNavContextOptions = {}): UseNavContex
   // MODE TOGGLE / MODE LINKS (#1332, #1353)
   // ============================================================================
 
-  function toggleLabel(target: 'show' | 'edit'): string {
-    const trace = kernelI18n?.resolve(target === 'edit' ? 'breadcrumb.edit' : 'breadcrumb.view')
+  /** Resolve a `breadcrumb.*` label from the i18n catalog, with fallback. */
+  function breadcrumbLabel(key: string, fallback: string): string {
+    const trace = kernelI18n?.resolve(`breadcrumb.${key}`)
     if (trace?.hit) return trace.result
-    return target === 'edit' ? 'Edit' : 'View'
+    return fallback
+  }
+
+  function toggleLabel(target: 'show' | 'edit'): string {
+    return target === 'edit'
+      ? breadcrumbLabel('edit', 'Edit')
+      : breadcrumbLabel('view', 'View')
   }
 
   /** Build one mode link if its route exists and (for edit) permission allows. */
