@@ -11,6 +11,7 @@ export { default as Breadcrumb } from './layout/Breadcrumb.vue'
 export { default as PageNav } from './layout/PageNav.vue'
 export { default as Zone } from './layout/Zone.vue'
 export { default as SidebarBox } from './layout/SidebarBox.vue'
+export { default as NavlinksGroup } from './layout/NavlinksGroup.vue'
 
 // Default zone components
 export { default as DefaultHeader } from './layout/defaults/DefaultHeader.vue'

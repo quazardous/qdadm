@@ -25,6 +25,7 @@ import Breadcrumb from 'primevue/breadcrumb'
 import UnsavedChangesDialog from '../dialogs/UnsavedChangesDialog.vue'
 import SidebarBox from './SidebarBox.vue'
 import Zone from './Zone.vue'
+import NavlinksGroup from './NavlinksGroup.vue'
 import qdadmLogo from '../../assets/logo.svg'
 import { version as qdadmVersion } from '../../../package.json'
 
@@ -261,12 +262,6 @@ const showBreadcrumb = computed<boolean>(() => {
   return true
 })
 
-// View↔Edit mode links (#1332/#1341/#1353) — same opt-in contract as
-// DefaultBreadcrumb; single opposite-mode link on item pages, the parent's
-// View/Edit pair on child pages
-const shownModeLinks = computed(() =>
-  features.breadcrumbModeToggle === true ? modeLinks.value : []
-)
 </script>
 
 <template>
@@ -392,30 +387,8 @@ const shownModeLinks = computed(() =>
         </Breadcrumb>
 
         <!-- Navlinks (provided by PageNav for child routes) + View↔Edit mode
-             links (#1332/#1341/#1353) — plain navigation; the form page's own
-             route-leave guard covers unsaved changes on edit→show -->
-        <div v-if="navlinks.length > 0 || shownModeLinks.length > 0" class="layout-navlinks">
-          <!-- mode links lead the group (#j7udkh), sibling tabs follow -->
-          <template v-for="(mode, index) in shownModeLinks" :key="`mode-${mode.target}`">
-            <span v-if="index > 0" class="layout-navlinks-separator">|</span>
-            <RouterLink
-              :to="mode.to"
-              class="layout-navlink breadcrumb-mode-toggle"
-            >
-              {{ mode.label }}
-            </RouterLink>
-          </template>
-          <template v-for="(link, index) in navlinks" :key="link.to?.name || index">
-            <span v-if="shownModeLinks.length > 0 || index > 0" class="layout-navlinks-separator">|</span>
-            <RouterLink
-              :to="link.to"
-              class="layout-navlink"
-              :class="{ 'layout-navlink--active': link.active }"
-            >
-              {{ link.label }}
-            </RouterLink>
-          </template>
-        </div>
+             links (#1332/#1341/#1353) — shared rendering + dedup (#1357) -->
+        <NavlinksGroup :navlinks="navlinks" :mode-links="modeLinks" variant="layout" />
       </div>
 
       <div class="page-content">
@@ -723,33 +696,7 @@ const shownModeLinks = computed(() =>
   padding-bottom: 0;
 }
 
-.layout-navlinks {
-  display: flex;
-  align-items: center;
-  gap: 0.375rem;
-  font-size: var(--fad-font-size-sm);
-}
-
-.layout-navlinks-separator {
-  color: var(--p-surface-400, #94a3b8);
-  opacity: 0.5;
-}
-
-.layout-navlink {
-  color: var(--p-primary-500, #3b82f6);
-  text-decoration: none;
-  transition: color var(--fad-transition-fast);
-}
-
-.layout-navlink:hover {
-  color: var(--p-primary-600, #2563eb);
-}
-
-.layout-navlink--active {
-  color: var(--p-surface-600, #475569);
-  font-weight: var(--fad-font-weight-medium);
-  pointer-events: none;
-}
+/* Navlinks styles moved to NavlinksGroup.vue (#1357) */
 
 /* Override PrimeVue Breadcrumb styles for flat look */
 .layout-nav-bar :deep(.p-breadcrumb) {
