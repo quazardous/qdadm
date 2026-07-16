@@ -1,5 +1,21 @@
 # Changelog
 
+## 2.9.0
+
+### Minor Changes
+
+- Navigation train: shared NavlinksGroup + breadcrumb fixes
+  - New exported `NavlinksGroup` component (#1357): single rendering of the
+    mode-links + navlinks group used by AppLayout's inline breadcrumb and
+    DefaultBreadcrumb. Dedups navlinks whose target route a shown mode link
+    already covers — the auto "Details" link no longer renders next to an
+    identical "Edit" mode link on child pages. "Details" label now resolves
+    through i18n (`breadcrumb.details`, fallback "Details").
+  - Create pages keep their entity-list crumb (#1356): `/books/create` renders
+    `Dashboard > Books > Create` (Books linked) instead of `Dashboard > Create`.
+  - Package README doc links are absolute GitHub URLs so they work on
+    npmjs.com; `repository.directory` added (#1358).
+
 ## 2.8.0
 
 ### Minor Changes
