@@ -298,16 +298,34 @@ export const authAdapter = new MyAuthAdapter()
 `role_hierarchy` below (e.g. `ROLE_ADMIN`, not `admin`). An unknown role
 fails *silently*: the user just has no permissions.
 
+The built-in `LoginPage` takes a `#footer` slot — use it to surface the
+demo accounts:
+
+```vue
+<!-- src/pages/Login.vue -->
+<script setup lang="ts">
+import { LoginPage } from '@quazardous/qdadm/components'
+</script>
+
+<template>
+  <LoginPage>
+    <template #footer>
+      <p>Demo accounts: <code>admin / admin</code> · <code>bob / bob</code></p>
+    </template>
+  </LoginPage>
+</template>
+```
+
 Kernel options (`src/main.ts`):
 
 ```ts
-import { AppLayout, LoginPage } from '@quazardous/qdadm/components'
+import { AppLayout } from '@quazardous/qdadm/components'
 import { createLocalStorageRolesProvider } from '@quazardous/qdadm/security'
 import { authAdapter } from './auth/authAdapter'
 
 const kernel = new Kernel({
   // ...
-  pages: { layout: AppLayout, login: LoginPage },  // built-in login page
+  pages: { layout: AppLayout, login: () => import('./pages/Login.vue') },
   authAdapter,
   // Bridges the session user into entity-level permission checks.
   // Without this line, permission gating is silently permissive.

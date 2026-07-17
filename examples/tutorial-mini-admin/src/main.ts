@@ -1,5 +1,5 @@
 import { Kernel } from '@quazardous/qdadm'
-import { AppLayout, LoginPage } from '@quazardous/qdadm/components'
+import { AppLayout } from '@quazardous/qdadm/components'
 import { createLocalStorageRolesProvider } from '@quazardous/qdadm/security'
 import { authAdapter } from './auth/authAdapter'
 import PrimeVue from 'primevue/config'
@@ -14,7 +14,7 @@ const kernel = new Kernel({
   root: App,
   hashMode: true, // hash routing keeps the GitHub Pages deploy simple
   moduleDefs,
-  pages: { layout: AppLayout, login: LoginPage },
+  pages: { layout: AppLayout, login: () => import('./pages/Login.vue') },
   authAdapter,
   entityAuthAdapter: () => authAdapter.getUser(),
   security: {

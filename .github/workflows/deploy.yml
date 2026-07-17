@@ -78,7 +78,7 @@ jobs:
               </div>
               <div class="card">
                 <h2>Tutorial Mini Admin</h2>
-                <p>The 5-step tutorial app: CRUD, auth, navigation, parent-child (~310 LOC)</p>
+                <p>The 5-step tutorial app: CRUD, auth, navigation, parent-child (~310 LOC). Login: admin / admin</p>
                 <a href="./tutorial/">View Demo &rarr;</a>
               </div>
               <div class="card">
