@@ -30,6 +30,7 @@ class TasksModule extends Module {
       },
       storage: new MockApiStorage({
         entityName: 'tasks',
+        storageKey: 'hello_mockapi_tasks_data', // several apps share the github.io origin
         initialData: [
           { id: '1', title: 'Learn qdadm', done: false },
           { id: '2', title: 'Build an admin', done: false },

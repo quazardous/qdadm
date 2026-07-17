@@ -17,6 +17,7 @@ export class BooksModule extends Module {
       },
       storage: new MockApiStorage({
         entityName: 'books',
+        storageKey: 'tutorial_mockapi_books_data', // several apps share the github.io origin
         initialData: [
           { id: '1', title: 'Dune', author: 'Frank Herbert', year: 1965 },
           { id: '2', title: 'Neuromancer', author: 'William Gibson', year: 1984 },
@@ -34,6 +35,7 @@ export class BooksModule extends Module {
       },
       storage: new MockApiStorage({
         entityName: 'loans',
+        storageKey: 'tutorial_mockapi_loans_data', // several apps share the github.io origin
         initialData: [
           { id: 'l1', borrower: 'Alice', book_id: '1', returned: false },
           { id: 'l2', borrower: 'Bob', book_id: '1', returned: true },

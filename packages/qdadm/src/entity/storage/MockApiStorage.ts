@@ -13,6 +13,10 @@ export interface MockApiStorageOptions<T extends EntityRecord = EntityRecord> {
   generateId?: () => string
   initialData?: T[] | null
   authCheck?: (() => boolean) | null
+  /** Override the localStorage key (default `mockapi_${entityName}_data`).
+   *  Needed when several apps sharing an origin use the same entity names
+   *  (e.g. multiple demos on one GitHub Pages site) (#1382). */
+  storageKey?: string
 }
 
 /**
@@ -63,6 +67,7 @@ export class MockApiStorage<T extends EntityRecord = EntityRecord> extends IStor
       generateId = defaultGenerateId,
       initialData = null,
       authCheck = null,
+      storageKey = null,
     } = options
 
     if (!entityName) {
@@ -72,7 +77,7 @@ export class MockApiStorage<T extends EntityRecord = EntityRecord> extends IStor
     this.entityName = entityName
     this.idField = idField
     this.generateId = generateId
-    this._storageKey = `mockapi_${entityName}_data`
+    this._storageKey = storageKey || `mockapi_${entityName}_data`
     this._data = new Map()
     this._authCheck = authCheck
 
