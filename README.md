@@ -15,6 +15,7 @@ TypeScript-first. Module-driven. Zero boilerplate.
 
 **Stop writing CRUD boilerplate.** qdadm gives you:
 
+- **AI-native** - Every app is self-describing at runtime; agents introspect and drive it via the [debug bridge](docs/DEBUG.md)
 - **Entity-driven architecture** - Define once, get list/form/routes/permissions
 - **Smart defaults** - Works instantly, customize when needed
 - **TypeScript everywhere** - Full type safety, autocomplete, refactoring
@@ -235,6 +236,7 @@ ctx.block('books-list-header', { id: 'export-btn', component: ExportButton, weig
 ## Docs
 
 - [Tutorial: Mini Admin](docs/tutorial-mini-admin.md) - **Start here** — verified 5-step walkthrough (bootstrap → CRUD → auth → nav → children)
+- [Debug bridge (for AI agents)](docs/DEBUG.md) - Introspect and drive any qdadm app at runtime
 - [QDADM_CREDO](docs/QDADM_CREDO.md) - Philosophy & patterns
 
 ---

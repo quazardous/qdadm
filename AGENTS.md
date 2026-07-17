@@ -10,7 +10,7 @@ remote actions. An agent can introspect the app without touching the source.
 
 1. **Codebase navigation** for source-code questions: see [`docs/AGENT_GUIDE.md`](docs/AGENT_GUIDE.md).
 2. **Live introspection** of a running dev server: use the `/__qdadm/*` endpoints described below.
-3. **Architecture & conventions**: [`docs/QDADM_CREDO.md`](docs/QDADM_CREDO.md), [`docs/architecture.md`](docs/architecture.md).
+3. **Architecture & conventions**: [`docs/QDADM_CREDO.md`](docs/QDADM_CREDO.md), [`docs/DEBUG.md`](docs/DEBUG.md) (runtime debug bridge), [`docs/architecture.md`](docs/architecture.md).
 4. **i18n surface**: [`docs/i18n.md`](docs/i18n.md) — keys, fallbacks, providers.
 
 ## "I want to build a page" — quick routing

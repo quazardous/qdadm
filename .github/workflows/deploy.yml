@@ -82,6 +82,11 @@ jobs:
                 <a href="./tutorial/">View Demo &rarr;</a>
               </div>
               <div class="card">
+                <h2>For AI Agents</h2>
+                <p>Every qdadm app is self-describing: open the demo, then drive it via window.__qdadm</p>
+                <a href="https://github.com/quazardous/qdadm/blob/main/docs/DEBUG.md">Read DEBUG.md &rarr;</a>
+              </div>
+              <div class="card">
                 <h2>Full Demo</h2>
                 <p>Complete admin with multiple entities, forms, auth. Login: admin / admin (full access) or bob / bob (read-only)</p>
                 <a href="./demo/">View Demo &rarr;</a>
