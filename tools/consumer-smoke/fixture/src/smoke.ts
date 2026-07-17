@@ -5,6 +5,9 @@
  * manager subclassing, registry augmentation, structural views, storage
  * resolution overrides, codegen entry, utils.
  */
+// Side-effect styles import — resolves via the exports map's types
+// condition (#1386); fails TS2882 if the d.ts companion goes missing.
+import '@quazardous/qdadm/styles'
 import {
   EntityManager,
   useEntity,

@@ -8,6 +8,6 @@ declare module '*.vue' {
   export default component
 }
 
-// qdadm depends on pluralize, which ships no types; consumers (and this
-// fixture) shim it. If qdadm ever bundles the shim, this line can go.
-declare module 'pluralize'
+// pluralize types now travel with qdadm (@types/pluralize in its
+// dependencies, #1386) — the fixture deliberately ships NO shim so the
+// gate proves consumers don't need one.

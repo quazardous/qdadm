@@ -151,7 +151,6 @@ export class ModuleLoadError extends Error {
  */
 class ObjectModuleAdapter implements ModuleLike {
   private _def: ObjectModuleDefinition
-  private _ctx: ModuleContext | null = null
 
   constructor(def: ObjectModuleDefinition) {
     this._def = def
@@ -177,7 +176,6 @@ class ObjectModuleAdapter implements ModuleLike {
   }
 
   async connect(ctx: ModuleContext): Promise<void> {
-    this._ctx = ctx
     if (typeof this._def.connect === 'function') {
       await this._def.connect(ctx)
     }
@@ -187,7 +185,6 @@ class ObjectModuleAdapter implements ModuleLike {
     if (typeof this._def.disconnect === 'function') {
       await this._def.disconnect()
     }
-    this._ctx = null
   }
 }
 
@@ -201,7 +198,6 @@ class ObjectModuleAdapter implements ModuleLike {
 class ClassModuleAdapter implements ModuleLike {
   private _ClassDef: ModuleClassConstructor
   private _instance: ModuleLike
-  private _ctx: ModuleContext | null = null
 
   constructor(ClassDef: ModuleClassConstructor) {
     this._ClassDef = ClassDef
@@ -237,7 +233,6 @@ class ClassModuleAdapter implements ModuleLike {
   }
 
   async connect(ctx: ModuleContext): Promise<void> {
-    this._ctx = ctx
     if (typeof this._instance.connect === 'function') {
       await this._instance.connect(ctx)
     }
@@ -247,7 +242,6 @@ class ClassModuleAdapter implements ModuleLike {
     if (typeof this._instance.disconnect === 'function') {
       await this._instance.disconnect()
     }
-    this._ctx = null
   }
 }
 

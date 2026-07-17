@@ -434,8 +434,8 @@ export function createOrchestrator(options?: OrchestratorOptions): Orchestrator 
 // ============================================================================
 type _AssertManagerLike<T extends EntityManagerLike> = T
 type _AssertOrchestratorLike<T extends OrchestratorLike> = T
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-type _LikeChecks = [
+// (exported so strict consumer typechecks don't flag it unused, #1386)
+export type _LikeChecks = [
   _AssertManagerLike<EntityManager>,
   _AssertOrchestratorLike<Orchestrator>,
 ]

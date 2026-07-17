@@ -107,7 +107,6 @@ export class FilterQuery<T = unknown> {
   toQuery: ((value: unknown) => Record<string, unknown>) | null
 
   private _options: FilterOption[] | null = null
-  private _signals: SignalBusLike | null = null
   private _subscriptions: Array<() => void> = []
 
   constructor(options: FilterQueryOptions<T>) {
@@ -164,8 +163,6 @@ export class FilterQuery<T = unknown> {
     // Clean up existing subscriptions if any
     this._cleanupSubscriptions()
 
-    this._signals = signals
-
     if (!signals) return this
 
     // Subscribe to entity CRUD signals for cache invalidation
@@ -200,7 +197,6 @@ export class FilterQuery<T = unknown> {
    */
   dispose(): void {
     this._cleanupSubscriptions()
-    this._signals = null
     this._options = null
   }
 

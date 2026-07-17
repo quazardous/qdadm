@@ -54,7 +54,6 @@ export interface HydratedPayload {
 }
 
 export class StackHydrator implements Hydrator<EntityStackLevel, HydratedLevel> {
-  private _activeStack: ActiveStack
   private _orchestrator: Orchestrator
   private _signalBus: SignalBus | null
   private _levels: HydratedLevel[] = []
@@ -62,11 +61,10 @@ export class StackHydrator implements Hydrator<EntityStackLevel, HydratedLevel> 
   private _unsubscribe: (() => void) | null = null
 
   constructor(
-    activeStack: ActiveStack,
+    _activeStack: ActiveStack,
     orchestrator: Orchestrator,
     signalBus: SignalBus | null = null
   ) {
-    this._activeStack = activeStack
     this._orchestrator = orchestrator
     this._signalBus = signalBus
 

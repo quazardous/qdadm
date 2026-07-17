@@ -537,15 +537,14 @@ describe('FilterQuery', () => {
   })
 
   describe('setSignals', () => {
-    it('stores signals reference', () => {
+    it('accepts a signal bus and chains', () => {
       const query = new FilterQuery({
         source: 'entity',
         entity: 'genres'
       })
       const mockSignals = { on: () => {} }
-      query.setSignals(mockSignals)
 
-      expect(query._signals).toBe(mockSignals)
+      expect(query.setSignals(mockSignals)).toBe(query)
     })
 
     it('returns this for chaining', () => {
@@ -1200,7 +1199,6 @@ describe('FilterQuery', () => {
         })
         query.setSignals(null)
 
-        expect(query._signals).toBeNull()
         expect(query._subscriptions).toHaveLength(0)
       })
     })
@@ -1330,7 +1328,6 @@ describe('FilterQuery', () => {
         query.dispose()
 
         expect(signals.listenerCount()).toBe(0)
-        expect(query._signals).toBeNull()
         expect(query._subscriptions).toHaveLength(0)
       })
 
@@ -1359,7 +1356,6 @@ describe('FilterQuery', () => {
         query.dispose()
         query.dispose()
 
-        expect(query._signals).toBeNull()
         expect(query._subscriptions).toHaveLength(0)
       })
 

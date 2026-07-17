@@ -269,7 +269,7 @@ const slotActions = computed<SlotActions>(() => ({
         <!-- Step panels -->
         <StepPanels>
           <StepPanel
-            v-for="(stepDef, idx) in steps"
+            v-for="(_, idx) in steps"
             :key="idx"
             :value="idx + 1"
           >
