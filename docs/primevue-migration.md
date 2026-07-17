@@ -53,8 +53,12 @@ Structure of the exposure:
 
 qdadm **stays on the MIT PrimeVue 4 line** and keeps the exit viable:
 
-- **Watch the ecosystem**: the MIT v4 codebase is forkable — if a
-  community-maintained fork emerges, it becomes the natural continuation.
+- **Watch the ecosystem**: community continuations of the MIT v4 line
+  already exist — most notably [OpenVue](https://github.com/openvi-foundation/openvue)
+  (foundation-style org, published on npm as `openvue`, MIT) and
+  [BumbleVue](https://github.com/CJDevStudios/bumblevue) (active fixes,
+  MIT). Both are young; qdadm tracks which one earns traction and keeps
+  the v4 drop-in API before considering adoption.
 - **Shrink raw exposure** progressively so that any exit (fork or another
   MIT library) stays cheap: the widest raw touchpoints (`button`,
   `message`) go behind qdadm wrappers first; form inputs, tables and
