@@ -83,7 +83,7 @@ jobs:
               </div>
               <div class="card">
                 <h2>Full Demo</h2>
-                <p>Complete admin with multiple entities, forms, auth</p>
+                <p>Complete admin with multiple entities, forms, auth. Login: admin / admin (full access) or bob / bob (read-only)</p>
                 <a href="./demo/">View Demo &rarr;</a>
               </div>
             </div>
