@@ -64,10 +64,12 @@ export function qdadmVitePlugin(options: QdadmVitePluginOptions = {}): Plugin {
       // Symlinked install (file:/workspace link)? Allow serving from the
       // link target, which typically lives outside the consumer's root.
       const fsAllow: string[] = []
+      let symlinked = false
       try {
         const pkgDir = path.join(root, 'node_modules', '@quazardous', 'qdadm')
         const real = fs.realpathSync(pkgDir)
         if (real !== pkgDir) {
+          symlinked = true
           fsAllow.push(searchForWorkspaceRoot(root), real)
         }
       } catch {
@@ -80,10 +82,13 @@ export function qdadmVitePlugin(options: QdadmVitePluginOptions = {}): Plugin {
         },
         optimizeDeps: {
           exclude: ['primevue', '@primeuix/themes', '@quazardous/qdadm'],
-          include: [
-            ...CJS_TRANSITIVES.map((dep) => `@quazardous/qdadm > ${dep}`),
-            ...CJS_TRANSITIVES,
-          ],
+          // One form per install mode: the nested path resolves through a
+          // real node_modules chain (npm installs), the plain form through a
+          // symlink realpath — declaring the unused one logs a "Failed to
+          // resolve dependency" warning (skybot testbed, #1389).
+          include: symlinked
+            ? [...CJS_TRANSITIVES]
+            : CJS_TRANSITIVES.map((dep) => `@quazardous/qdadm > ${dep}`),
         },
         ...(fsAllow.length > 0 ? { server: { fs: { allow: fsAllow } } } : {}),
       }

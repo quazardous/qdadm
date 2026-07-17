@@ -13,6 +13,9 @@
  *
  * Run: npm test
  */
+import fs from 'node:fs'
+import os from 'node:os'
+import path from 'node:path'
 import { describe, it, expect } from 'vitest'
 import { qdadmVitePlugin } from '../../src/vite/qdadmPlugin'
 
@@ -28,11 +31,8 @@ describe('qdadmVitePlugin', () => {
       '@primeuix/themes',
       '@quazardous/qdadm',
     ])
-    // nested form for npm installs, plain form for symlinked installs
-    expect(config.optimizeDeps.include).toEqual([
-      '@quazardous/qdadm > pluralize',
-      'pluralize',
-    ])
+    // non-symlinked root → nested form only (plain form would warn)
+    expect(config.optimizeDeps.include).toEqual(['@quazardous/qdadm > pluralize'])
   })
 
   it('appends extra dedupe entries after the defaults', () => {
@@ -44,6 +44,22 @@ describe('qdadmVitePlugin', () => {
       'pinia',
       'vanilla-jsoneditor',
     ])
+  })
+
+  it('symlinked install: plain CJS include + fs.allow with realpath and workspace root', () => {
+    // fabricate <root>/node_modules/@quazardous/qdadm -> symlink to a real dir
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'qdadm-plugin-'))
+    const target = path.join(tmp, 'linked-qdadm')
+    const root = path.join(tmp, 'app')
+    fs.mkdirSync(target, { recursive: true })
+    fs.mkdirSync(path.join(root, 'node_modules', '@quazardous'), { recursive: true })
+    fs.symlinkSync(target, path.join(root, 'node_modules', '@quazardous', 'qdadm'))
+
+    const config = qdadmVitePlugin().config({ root })
+    expect(config.optimizeDeps.include).toEqual(['pluralize'])
+    expect(config.server.fs.allow).toContain(fs.realpathSync(target))
+
+    fs.rmSync(tmp, { recursive: true, force: true })
   })
 
   it('omits server.fs.allow when qdadm is not a symlinked install', () => {
