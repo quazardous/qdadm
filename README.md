@@ -54,23 +54,33 @@ Or start fresh:
 ```bash
 npm create vite@latest my-admin -- --template vue-ts
 cd my-admin
-npm install qdadm primevue @primeuix/themes
+npm install @quazardous/qdadm primevue @primeuix/themes primeicons vue-router@4 pinia@3
 ```
+
+> ⚠️ The package is **`@quazardous/qdadm`** (scoped) — plain `qdadm` on npm is a
+> stale 1.x snapshot. Pin `vue-router@4` and `pinia@3`: newer majors don't satisfy
+> the peer ranges yet. A required `vite.config.ts` tweak and two TypeScript shims
+> are covered in the **[step-by-step tutorial](docs/tutorial-mini-admin.md)** —
+> follow it for a verified path from empty folder to running admin.
 
 ```js
 // main.js
 import { Kernel } from '@quazardous/qdadm'
+import { AppLayout } from '@quazardous/qdadm/components'
 import PrimeVue from 'primevue/config'
 import Aura from '@primeuix/themes/aura'
 import '@quazardous/qdadm/styles'
 import 'primeicons/primeicons.css'
 
 import App from './App.vue'
+import HomePage from './pages/HomePage.vue'
 import { moduleDefs } from './config/modules'
 
 const kernel = new Kernel({
   root: App,
-  moduleDefs,
+  moduleDefs,                                  // your modules (see below)
+  pages: { layout: AppLayout },                // required — the admin shell
+  homeRoute: { name: 'home', component: HomePage },
   primevue: { plugin: PrimeVue, theme: Aura },
   app: { name: 'My Admin' }
 })
@@ -212,8 +222,8 @@ ctx.block('books-list-header', { id: 'export-btn', component: ExportButton, weig
 
 ## Docs
 
+- [Tutorial: Mini Admin](docs/tutorial-mini-admin.md) - **Start here** — verified 5-step walkthrough (bootstrap → CRUD → auth → nav → children)
 - [QDADM_CREDO](packages/qdadm/QDADM_CREDO.md) - Philosophy & patterns
-- [Tutorial: Mini Admin](docs/tutorial-mini-admin.md) - Build a parent-child admin from scratch
 
 ---
 
