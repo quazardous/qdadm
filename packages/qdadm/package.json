@@ -39,6 +39,7 @@
     "./styles/variables": "./src/styles/_variables.scss",
     "./gen": "./src/gen/index.ts",
     "./gen/vite-plugin": "./src/gen/vite-plugin.ts",
+    "./vite": "./src/vite/qdadmPlugin.ts",
     "./vite-plugin-debug": "./src/vite/qdadmDebugPlugin.ts"
   },
   "files": [

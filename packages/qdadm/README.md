@@ -11,8 +11,24 @@ Changelog: [CHANGELOG](https://github.com/quazardous/qdadm/blob/main/CHANGELOG.m
 ## Installation
 
 ```bash
-npm install @quazardous/qdadm primevue @primeuix/themes
+npm install @quazardous/qdadm primevue @primeuix/themes primeicons vue-router pinia
 ```
+
+qdadm ships raw TS/Vue sources, so Vite needs a small config assist to keep
+PrimeVue as a single module instance in dev. One line:
+
+```ts
+// vite.config.ts
+import { qdadmVitePlugin } from '@quazardous/qdadm/vite'
+
+export default defineConfig({
+  plugins: [vue(), qdadmVitePlugin()],
+})
+```
+
+(It applies `resolve.dedupe` + the `optimizeDeps` exclude/include set — see
+the plugin's JSDoc for details. Without it, dev boots to a blank page with
+`Error: No PrimeVue Toast provided!`.)
 
 ## Exports
 
@@ -136,7 +152,7 @@ export default defineConfig({
 
 This is the canonical Vite/Webpack pattern for Vue plugin singletons. The `file:` link can stay in place — useful for hot-reload during qdadm development — and the dedupe ensures only one instance of each peer ends up in the bundle.
 
-Installing qdadm from npm (`@quazardous/qdadm@^1.19.3`) doesn't have this issue: the published tarball ships no `node_modules/`, so peers always resolve from the host. The trap is specific to `file:` / `workspace:` links onto a package that lives inside another monorepo.
+Installing qdadm from npm avoids the *duplicate-copy* trap (the published tarball ships no `node_modules/`, so peers resolve from the host) — but a related *split-pipeline* trap still applies in Vite dev: the host's `primevue` import gets pre-bundled into `.vite/deps` while qdadm's raw sources import `node_modules/primevue/` directly, which also yields two PrimeVue instances. `qdadmVitePlugin()` (see Installation above) handles both cases — dedupe for links, optimizeDeps exclude/include for the pre-bundle split.
 
 One more caveat: qdadm ships TypeScript sources, so with a `file:` link your `vue-tsc` / lint / test counters measure qdadm's **working tree**, not a released version. Any local qdadm edit moves your numbers with zero change on your side — don't calibrate quality ratchets or CI thresholds against a linked checkout; pin them to the published package your CI actually installs.
 

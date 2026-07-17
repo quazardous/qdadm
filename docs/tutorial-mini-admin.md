@@ -42,11 +42,23 @@ optimizer would otherwise pre-bundle *your* `primevue` import while serving
 qdadm's raw imports from `node_modules` directly — two PrimeVue instances,
 and the app dies at boot with `Error: No PrimeVue Toast provided!`.
 
+With qdadm ≥ 2.11.0, one plugin line handles it:
+
 ```ts
 // vite.config.ts
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
+import { qdadmVitePlugin } from '@quazardous/qdadm/vite'
 
+export default defineConfig({
+  plugins: [vue(), qdadmVitePlugin()],
+})
+```
+
+<details>
+<summary>What the plugin applies (or the manual config for qdadm ≤ 2.10)</summary>
+
+```ts
 export default defineConfig({
   plugins: [vue()],
   resolve: {
@@ -60,6 +72,8 @@ export default defineConfig({
   },
 })
 ```
+
+</details>
 
 ### 1.3 TypeScript workarounds
 
