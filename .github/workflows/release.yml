@@ -67,13 +67,22 @@ jobs:
       - name: Consumer smoke test (packed tarball)
         run: bash tools/consumer-smoke/run.sh
 
+      # Versioning happens LOCALLY in this repo (npm run release:version →
+      # chore(release) commit). A push that still carries pending changesets
+      # is an intermediate push: the changesets action would try to open a
+      # "Version Packages" PR, which repo settings forbid (red X noise).
+      # Skip the step instead — the publish path only matters once the
+      # changesets are consumed and versions are ahead of the registry.
+      - name: Check for pending changesets
+        id: pending
+        run: echo "count=$(find .changeset -name '*.md' ! -name 'README.md' | wc -l)" >> "$GITHUB_OUTPUT"
+
       - name: Create release PR or publish
         id: changesets
+        if: steps.pending.outputs.count == '0'
         uses: changesets/action@v1
         with:
-          # When there are pending .changeset/*.md files: opens/updates a
-          # "Version Packages" PR that bumps versions and refreshes the
-          # lockfile. When there are none and versions are ahead of the
+          # No pending .changeset/*.md files and versions ahead of the
           # registry: publishes everything in topological order.
           version: npm run release:version
           publish: npx changeset publish
