@@ -235,7 +235,7 @@ ctx.block('books-list-header', { id: 'export-btn', component: ExportButton, weig
 ## Docs
 
 - [Tutorial: Mini Admin](docs/tutorial-mini-admin.md) - **Start here** — verified 5-step walkthrough (bootstrap → CRUD → auth → nav → children)
-- [QDADM_CREDO](packages/qdadm/QDADM_CREDO.md) - Philosophy & patterns
+- [QDADM_CREDO](docs/QDADM_CREDO.md) - Philosophy & patterns
 
 ---
 

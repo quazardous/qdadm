@@ -7,7 +7,7 @@
 
 qdadm provides a few **canonical compositions**. Knowing the right one up front
 avoids reaching for a hand-rolled `DataTable` where a compliant `ListPage` would do
-(see [QDADM_CREDO](../packages/qdadm/QDADM_CREDO.md) — invisible storage + ListPage by default).
+(see [QDADM_CREDO](./QDADM_CREDO.md) — invisible storage + ListPage by default).
 
 ## Decision table
 

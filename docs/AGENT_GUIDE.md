@@ -1,7 +1,7 @@
 # AGENT_GUIDE - qdadm Quick Index
 
 > Navigation index for AI agents. Read code directly for details.
-> Philosophy: see [QDADM_CREDO.md](../packages/qdadm/QDADM_CREDO.md)
+> Philosophy: see [QDADM_CREDO.md](./QDADM_CREDO.md)
 
 ## Dev Commands
 
@@ -285,7 +285,7 @@ AuthCollector shows: user, token, permissions, role hierarchy, impersonation eve
 
 | Topic | File |
 |-------|------|
-| Philosophy | `packages/qdadm/QDADM_CREDO.md` |
+| Philosophy | `docs/QDADM_CREDO.md` |
 | Page compositions (start here) | `docs/page-compositions.md` |
 | CRUD Pages | `docs/crud.md` |
 | Navigation (breadcrumb, navlinks, View↔Edit toggle) | `docs/navigation.md` |
