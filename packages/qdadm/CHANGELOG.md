@@ -1,5 +1,66 @@
 # Changelog
 
+## 2.11.0
+
+### Minor Changes
+
+- 35a3411: New `qdadmVitePlugin()` export at `@quazardous/qdadm/vite` (#1385)
+
+  One line in the consumer's `vite.config.ts` replaces the hand-written
+  `resolve.dedupe` + `optimizeDeps` block that npm-installed qdadm needed to
+  avoid the dual-PrimeVue instance split (`Error: No PrimeVue Toast provided!`
+  blank page in dev). Covers both the npm-install and `file:`/workspace-link
+  scenarios. The package README's misleading claim that npm installs were
+  unaffected is corrected.
+
+### Patch Changes
+
+- ad1069d: Published sources now pass a strict consumer typecheck out of the box (#1386)
+  - Removed the write-only private fields and unused v-for alias that failed
+    `noUnusedLocals` in consumer builds (create-vite vue-ts template flags),
+    including `EntityRolesProvider._ctx` (caught once the smoke fixture gained
+    the `/security` subpath import).
+  - `@types/pluralize` moved into dependencies — consumers no longer shim it.
+  - `@quazardous/qdadm/styles` gained a `types` exports condition + d.ts
+    companion, so the side-effect import typechecks (was TS2882).
+  - The consumer-smoke CI gate now runs with the vue-ts template's strict
+    flags (`noUnusedLocals`, `noUnusedParameters`, `noFallthroughCasesInSwitch`,
+    `erasableSyntaxOnly`) and no local shims, so this can't regress.
+
+- 05edc80: DX polish pack from the onboarding audit (#1388)
+  - SecurityChecker warns (once per role) when a user's role matches no
+    configured role — the "role: admin instead of ROLE_ADMIN → silently zero
+    permissions" trap is now debuggable.
+  - Kernel warns at boot when `security` is configured without
+    `entityAuthAdapter` (permission checks silently permissive).
+  - No-auth apps no longer log `injection "authAdapter" not found` on every
+    page (inject defaults in useAuth).
+  - Number fields accept `useGrouping: false` to disable locale digit
+    grouping in show displays (years render as 1965, not "1 965").
+  - Sidebar user zone prettifies unmapped ROLE\_\* constants
+    (ROLE_SUPER_USER → "Super User").
+  - `examples/hello-world` rewritten on the canonical Kernel bootstrap
+    (drops the legacy createQdadm path, toast stub and stale
+    @primevue/themes import; dogfoods qdadmVitePlugin).
+  - Sibling navlinks only forward the route params their target declares —
+    silences vue-router's "Discarded invalid param(s)" warning on child
+    item pages.
+
+- 0fdb5e6: Shipped types now match the documented patterns — no more `as any` in a
+  strict TS consumer (#1387)
+  - `KernelOptions.authAdapter` accepts session-adapter subclasses (removed
+    the index signature that rejected class instances).
+  - `entityAuthAdapter` accepts the documented function form
+    (`() => authAdapter.getUser()`).
+  - `ChildConfig` gains `foreignKey` / `label` (the README parent-child shape).
+  - `FormInput` accepts generated fields (`ResolvedFieldConfig`) and binds
+    v-model over `Record<string, unknown>` indexes; `ShowField.value` accepts
+    arbitrary values.
+  - `useEntityItemShowPage` data defaults to `Record<string, unknown>`;
+    `parentData` is a typed record (property access works).
+  - The tutorial patterns are now a cast-free type-conformance fixture inside
+    the consumer-smoke CI gate — docs and types can no longer drift apart.
+
 ## 2.10.0
 
 ### Minor Changes
