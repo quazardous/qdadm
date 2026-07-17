@@ -21,14 +21,31 @@
  * - `resolve.dedupe` collapses duplicate peer copies (also covers the
  *   `file:`/workspace-link scenario described in the package README).
  * - `optimizeDeps.exclude` keeps primevue/@primeuix/themes/qdadm out of the
- *   pre-bundle so BOTH pipelines resolve the same raw modules.
- * - `optimizeDeps.include` pre-bundles qdadm's CJS dep `pluralize`, which
- *   cannot be served raw as ESM.
+ *   pre-bundle so BOTH pipelines resolve the same raw modules. Excluding
+ *   qdadm also keeps HMR sane when the package is consumed via a symlink.
+ * - `optimizeDeps.include` pre-bundles qdadm's CJS transitives (currently
+ *   `pluralize`), which cannot be served raw as ESM. The list lives HERE —
+ *   consumers should not have to track qdadm's internal CJS deps (skybot
+ *   feedback on #1389). Both the nested (`@quazardous/qdadm > pluralize`,
+ *   npm installs) and plain (`pluralize`, symlinked installs where the
+ *   nested path can't resolve) forms are declared; the unused one is a
+ *   no-op warning at worst.
+ * - When `node_modules/@quazardous/qdadm` is a symlink (file:/workspace
+ *   link — qdadm's own dev mode against a testbed app), its realpath is
+ *   appended to `server.fs.allow` so qdadm's `?raw` dynamic imports (i18n
+ *   YAML defaults) are servable from outside the consumer's workspace
+ *   root. The workspace root is re-added explicitly because a populated
+ *   `fs.allow` disables Vite's implicit default.
  *
  * Returned partial config is deep-merged by Vite (arrays concatenate), so
  * consumer overrides in their own `defineConfig` still apply.
  */
-import type { Plugin } from 'vite'
+import fs from 'node:fs'
+import path from 'node:path'
+import { searchForWorkspaceRoot, type Plugin, type UserConfig } from 'vite'
+
+/** qdadm's CJS transitive deps that must be pre-bundled (internal knowledge). */
+const CJS_TRANSITIVES = ['pluralize']
 
 export interface QdadmVitePluginOptions {
   /**
@@ -41,14 +58,35 @@ export interface QdadmVitePluginOptions {
 export function qdadmVitePlugin(options: QdadmVitePluginOptions = {}): Plugin {
   return {
     name: 'qdadm',
-    config: () => ({
-      resolve: {
-        dedupe: ['vue', 'vue-router', 'primevue', 'pinia', ...(options.dedupe ?? [])],
-      },
-      optimizeDeps: {
-        exclude: ['primevue', '@primeuix/themes', '@quazardous/qdadm'],
-        include: ['@quazardous/qdadm > pluralize'],
-      },
-    }),
+    config: (userConfig: UserConfig = {}) => {
+      const root = path.resolve(userConfig.root ?? process.cwd())
+
+      // Symlinked install (file:/workspace link)? Allow serving from the
+      // link target, which typically lives outside the consumer's root.
+      const fsAllow: string[] = []
+      try {
+        const pkgDir = path.join(root, 'node_modules', '@quazardous', 'qdadm')
+        const real = fs.realpathSync(pkgDir)
+        if (real !== pkgDir) {
+          fsAllow.push(searchForWorkspaceRoot(root), real)
+        }
+      } catch {
+        // not installed under root node_modules (aliased/hoisted) — nothing to allow
+      }
+
+      return {
+        resolve: {
+          dedupe: ['vue', 'vue-router', 'primevue', 'pinia', ...(options.dedupe ?? [])],
+        },
+        optimizeDeps: {
+          exclude: ['primevue', '@primeuix/themes', '@quazardous/qdadm'],
+          include: [
+            ...CJS_TRANSITIVES.map((dep) => `@quazardous/qdadm > ${dep}`),
+            ...CJS_TRANSITIVES,
+          ],
+        },
+        ...(fsAllow.length > 0 ? { server: { fs: { allow: fsAllow } } } : {}),
+      }
+    },
   }
 }
