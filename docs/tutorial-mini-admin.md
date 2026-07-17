@@ -1,9 +1,8 @@
 # Tutorial — build a mini admin in 5 steps
 
-This is a **verified, end-to-end walkthrough**: every step below was built and run
-against the published `@quazardous/qdadm` npm package (v2.9.0; install lines
-updated for v2.10.0) in a fresh `npm create vite` app. Each step produces a working app; the whole thing is
-~310 lines of code.
+This is a **verified, end-to-end walkthrough**: every step below was built and
+run in a fresh `npm create vite` app. Each step produces a working app; the
+whole thing is ~310 lines of code.
 
 The 5 steps:
 
@@ -28,21 +27,14 @@ npm install
 npm install @quazardous/qdadm primevue @primeuix/themes primeicons vue-router pinia
 ```
 
-⚠️ **Gotchas (as of mid-2026):**
-
-- The package is **`@quazardous/qdadm`** (scoped). Plain `npm install qdadm`
-  installs a stale, unmaintained 1.x snapshot.
-- qdadm ≥ 2.10.0 accepts vue-router 4/5 and pinia 2/3/4. On qdadm 2.9.x or
-  older, pin `vue-router@4 pinia@3` or npm's latest majors hit `ERESOLVE`.
+> The package is **`@quazardous/qdadm`** (scoped) — plain `qdadm` on npm is a
+> different, unmaintained package.
 
 ### 1.2 Required Vite config
 
-qdadm ships raw TypeScript/Vue sources (no prebuilt dist). Vite's dependency
-optimizer would otherwise pre-bundle *your* `primevue` import while serving
-qdadm's raw imports from `node_modules` directly — two PrimeVue instances,
-and the app dies at boot with `Error: No PrimeVue Toast provided!`.
-
-With qdadm ≥ 2.11.0, one plugin line handles it:
+qdadm ships raw TypeScript/Vue sources. `qdadmVitePlugin()` supplies the
+resolver/optimizer config Vite needs to keep PrimeVue as a single module
+instance (it also handles `file:`/workspace-linked installs):
 
 ```ts
 // vite.config.ts
@@ -55,48 +47,10 @@ export default defineConfig({
 })
 ```
 
-<details>
-<summary>What the plugin applies (or the manual config for qdadm ≤ 2.10)</summary>
+The template's `npm run build` (vue-tsc, strict flags) passes as-is — no
+shims, no compiler-flag changes.
 
-```ts
-export default defineConfig({
-  plugins: [vue()],
-  resolve: {
-    dedupe: ['vue', 'vue-router', 'primevue', 'pinia'],
-  },
-  optimizeDeps: {
-    // Serve primevue raw on both sides → single instance
-    exclude: ['primevue', '@primeuix/themes', '@quazardous/qdadm'],
-    // qdadm's CJS dep must still be pre-bundled
-    include: ['@quazardous/qdadm > pluralize'],
-  },
-})
-```
-
-</details>
-
-### 1.3 TypeScript workarounds (qdadm ≤ 2.10 only)
-
-With qdadm ≥ 2.11.0 the template's `npm run build` (vue-tsc) passes out of
-the box — no shims, no flag changes (a strict-consumer CI gate keeps it
-that way). On older versions, three adjustments were needed:
-
-```bash
-npm i -D @types/pluralize
-```
-
-```jsonc
-// tsconfig.app.json — the template enables these; old qdadm sources fail them
-"noUnusedLocals": false,
-"noUnusedParameters": false,
-```
-
-```ts
-// src/qdadm-shims.d.ts — the styles export was invisible to TS before 2.11
-declare module '@quazardous/qdadm/styles'
-```
-
-### 1.4 The app
+### 1.3 The app
 
 ```ts
 // src/main.ts
@@ -300,9 +254,6 @@ form.addDeleteAction()
   </FormPage>
 </template>
 ```
-
-> **TS note**: on qdadm ≤ 2.10 these loops needed `as any` casts (fields vs
-> `FormInput` prop type, `data.value` indexing); fixed in 2.11.
 
 That's the whole CRUD: create (`/books/create`), edit, delete with
 confirmation, search, toasts, redirects. **~55 more lines.**

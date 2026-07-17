@@ -88,7 +88,6 @@ export class EntityRoleProvider extends RoleProvider {
   private _inheritsField: string
 
   private _cache: RoleCache | null = null
-  private _ctx: RoleProviderContext | null = null
   private _orchestrator: Orchestrator | null = null
   private _signalCleanup: (() => void) | null = null
   private _loading: Promise<void> | null = null
@@ -106,7 +105,6 @@ export class EntityRoleProvider extends RoleProvider {
    * Install adapter (called by Kernel after orchestrator ready)
    */
   install(ctx: RoleProviderContext): void {
-    this._ctx = ctx
     this._orchestrator = ctx.orchestrator as Orchestrator
 
     // Auto-invalidate on role changes
@@ -125,7 +123,6 @@ export class EntityRoleProvider extends RoleProvider {
       this._signalCleanup()
       this._signalCleanup = null
     }
-    this._ctx = null
     this._orchestrator = null
     this._cache = null
     this._loading = null

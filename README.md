@@ -57,10 +57,23 @@ cd my-admin
 npm install @quazardous/qdadm primevue @primeuix/themes primeicons vue-router pinia
 ```
 
-> ⚠️ The package is **`@quazardous/qdadm`** (scoped) — plain `qdadm` on npm is a
-> stale 1.x snapshot. A required `vite.config.ts` tweak and two TypeScript shims
-> are covered in the **[step-by-step tutorial](docs/tutorial-mini-admin.md)** —
-> follow it for a verified path from empty folder to running admin.
+> The package is **`@quazardous/qdadm`** (scoped) — plain `qdadm` on npm is a
+> different, unmaintained package.
+
+Add the qdadm plugin to your Vite config (it wires the resolver/optimizer
+settings qdadm's raw-source packaging needs):
+
+```ts
+// vite.config.ts
+import { qdadmVitePlugin } from '@quazardous/qdadm/vite'
+
+export default defineConfig({
+  plugins: [vue(), qdadmVitePlugin()],
+})
+```
+
+The **[step-by-step tutorial](docs/tutorial-mini-admin.md)** walks the whole
+path — bootstrap, CRUD, auth, navigation, parent-child — in ~310 lines.
 
 ```js
 // main.js

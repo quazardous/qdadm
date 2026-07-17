@@ -38,11 +38,15 @@ jobs:
       - name: Build hello-world
         run: npm run build -w examples/hello-world -- --base=/qdadm/hello-world/
 
+      - name: Build tutorial mini-admin
+        run: npm run build -w examples/tutorial-mini-admin -- --base=/qdadm/tutorial/
+
       - name: Assemble dist
         run: |
           mkdir -p dist
           cp -r packages/demo/dist dist/demo
           cp -r examples/hello-world/dist dist/hello-world
+          cp -r examples/tutorial-mini-admin/dist dist/tutorial
 
       - name: Generate index.html
         run: |
@@ -71,6 +75,11 @@ jobs:
                 <h2>Hello World</h2>
                 <p>Minimal list page in ~50 lines of code</p>
                 <a href="./hello-world/">View Demo &rarr;</a>
+              </div>
+              <div class="card">
+                <h2>Tutorial Mini Admin</h2>
+                <p>The 5-step tutorial app: CRUD, auth, navigation, parent-child (~310 LOC)</p>
+                <a href="./tutorial/">View Demo &rarr;</a>
               </div>
               <div class="card">
                 <h2>Full Demo</h2>

@@ -23,6 +23,10 @@ import {
   type QdadmManagerRegistry as _QdadmManagerRegistry,
 } from '@quazardous/qdadm'
 import { generateManagers, OpenAPIConnector } from '@quazardous/qdadm/gen'
+// Security subpath — pulls EntityRolesProvider & co into the typecheck
+// graph (a TS6133 there escaped the gate before this import, #1390 followup)
+import { createLocalStorageRolesProvider } from '@quazardous/qdadm/security'
+void createLocalStorageRolesProvider
 import { humanizeFieldName, formatFetchError } from '@quazardous/qdadm/utils'
 
 // ── Manager subclass + registry augmentation (the #1253 pattern) ────────────
