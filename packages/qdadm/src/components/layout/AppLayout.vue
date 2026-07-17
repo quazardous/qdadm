@@ -59,6 +59,9 @@ const guardDialog = useGuardDialog()
 const router = useRouter()
 const route = useRoute()
 const app = useApp()
+// Top-level binding so the template unwraps the ComputedRef — `app.version`
+// nested in a plain object stays a ref object (always truthy) in v-if (#1382)
+const appVersion = app.version
 const { navSections, isNavActive, sectionHasActiveItem, handleNavClick } = useNavigation()
 const { user, logout, authEnabled } = useAuth()
 const signals = inject<SignalBus | null>('qdadmSignals', null)
@@ -288,7 +291,7 @@ const showBreadcrumb = computed<boolean>(() => {
           <img v-if="app.logo" :src="app.logo" :alt="app.name" class="sidebar-logo" />
           <h1 v-else>{{ app.name }}</h1>
         </div>
-        <span v-if="app.version" class="version">v{{ app.version }}</span>
+        <span v-if="appVersion" class="version">v{{ appVersion }}</span>
       </div>
 
       <nav class="sidebar-nav">
