@@ -68,3 +68,21 @@ qdadm **stays on the MIT PrimeVue 4 line** and keeps the exit viable:
   services are already behind qdadm indirection.
 - **No PrimeUI licensing** at the framework level — that would be a
   per-consumer legal decision qdadm refuses to impose.
+
+## Choose your flavor
+
+qdadm officially maintains and tests **`primevue@4`** only. A compatible
+fork ("flavor") can be swapped in from the consumer's Vite config — one
+option, zero qdadm source changes:
+
+```ts
+// vite.config.ts — e.g. OpenVue
+qdadmVitePlugin({ primevue: { package: 'openvue' } })
+```
+
+The plugin aliases every `primevue/*` import to the flavor and adjusts its
+dedupe/optimizer lists. `@primeuix/themes` stays as-is (its v4-era versions
+are MIT); if a flavor ever ships its own themes fork, add
+`themes: '<pkg>'` to the option. The flavor package is the consumer's
+responsibility: drop-in as long as it keeps the v4 module layout and API —
+divergences are theirs to absorb.

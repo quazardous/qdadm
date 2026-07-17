@@ -53,6 +53,26 @@ export interface QdadmVitePluginOptions {
    * (vue, vue-router, primevue, pinia).
    */
   dedupe?: string[]
+  /**
+   * PrimeVue "flavor" (#1393): alias every `primevue/*` import to a
+   * compatible fork (e.g. OpenVue). qdadm officially maintains and tests
+   * `primevue@4` (MIT) only — a flavor keeping the v4 module layout/API is
+   * drop-in; divergences are the consumer's to absorb.
+   *
+   * ```ts
+   * qdadmVitePlugin({ primevue: { package: 'openvue' } })
+   * ```
+   */
+  primevue?: {
+    /** Package that replaces `primevue` (e.g. 'openvue'). */
+    package: string
+    /**
+     * Optional package replacing `@primeuix/themes` — only needed if the
+     * flavor ships its own themes fork (none does today; OpenVue keeps the
+     * MIT @primeuix/* versions).
+     */
+    themes?: string
+  }
 }
 
 export function qdadmVitePlugin(options: QdadmVitePluginOptions = {}): Plugin {
@@ -76,12 +96,33 @@ export function qdadmVitePlugin(options: QdadmVitePluginOptions = {}): Plugin {
         // not installed under root node_modules (aliased/hoisted) — nothing to allow
       }
 
+      // Flavor aliasing (#1393): after the alias, no `primevue`/themes ids
+      // remain in the graph — dedupe/exclude lists must name the flavor.
+      const flavor = options.primevue ?? null
+      const widgetPkg = flavor?.package ?? 'primevue'
+      const themesPkg = flavor?.themes ?? '@primeuix/themes'
+      const alias = []
+      if (flavor) {
+        alias.push({ find: /^primevue(\/|$)/, replacement: `${flavor.package}$1` })
+        if (flavor.themes) {
+          alias.push({ find: /^@primeuix\/themes(\/|$)/, replacement: `${flavor.themes}$1` })
+        }
+      }
+
+      // With a flavor, the original packages may still be installed — keep
+      // them excluded too, or the optimizer pre-bundles a stray
+      // `primevue/*` id that bypassed the alias (split-instance again).
+      const widgetExcludes = flavor ? [widgetPkg, 'primevue'] : [widgetPkg]
+      const themesExcludes =
+        flavor?.themes ? [themesPkg, '@primeuix/themes'] : [themesPkg]
+
       return {
         resolve: {
-          dedupe: ['vue', 'vue-router', 'primevue', 'pinia', ...(options.dedupe ?? [])],
+          ...(alias.length > 0 ? { alias } : {}),
+          dedupe: ['vue', 'vue-router', widgetPkg, 'pinia', ...(options.dedupe ?? [])],
         },
         optimizeDeps: {
-          exclude: ['primevue', '@primeuix/themes', '@quazardous/qdadm'],
+          exclude: [...widgetExcludes, ...themesExcludes, '@quazardous/qdadm'],
           // One form per install mode: the nested path resolves through a
           // real node_modules chain (npm installs), the plain form through a
           // symlink realpath — declaring the unused one logs a "Failed to

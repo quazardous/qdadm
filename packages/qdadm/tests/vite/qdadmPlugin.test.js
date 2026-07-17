@@ -62,6 +62,38 @@ describe('qdadmVitePlugin', () => {
     fs.rmSync(tmp, { recursive: true, force: true })
   })
 
+  it('flavor option aliases primevue and switches dedupe/exclude to the flavor (#1393)', () => {
+    const config = qdadmVitePlugin({ primevue: { package: 'openvue' } }).config({})
+
+    expect(config.resolve.alias).toHaveLength(1)
+    expect(config.resolve.alias[0].replacement).toBe('openvue$1')
+    expect('primevue/button'.replace(config.resolve.alias[0].find, config.resolve.alias[0].replacement)).toBe('openvue/button')
+    expect('primevue'.replace(config.resolve.alias[0].find, config.resolve.alias[0].replacement)).toBe('openvue')
+    // packages merely PREFIXED with primevue must not be rewritten
+    expect('primevue-extras'.replace(config.resolve.alias[0].find, config.resolve.alias[0].replacement)).toBe('primevue-extras')
+
+    expect(config.resolve.dedupe).toContain('openvue')
+    expect(config.resolve.dedupe).not.toContain('primevue')
+    expect(config.optimizeDeps.exclude).toEqual(['openvue', 'primevue', '@primeuix/themes', '@quazardous/qdadm'])
+  })
+
+  it('flavor themes package aliases @primeuix/themes when provided', () => {
+    const config = qdadmVitePlugin({
+      primevue: { package: 'openvue', themes: '@acme/themes' },
+    }).config({})
+
+    expect(config.resolve.alias).toHaveLength(2)
+    expect('@primeuix/themes/aura'.replace(config.resolve.alias[1].find, config.resolve.alias[1].replacement)).toBe('@acme/themes/aura')
+    expect(config.optimizeDeps.exclude).toEqual(['openvue', 'primevue', '@acme/themes', '@primeuix/themes', '@quazardous/qdadm'])
+  })
+
+  it('no flavor → no alias, stock lists (back-compat)', () => {
+    const config = qdadmVitePlugin().config({})
+    expect(config.resolve.alias).toBeUndefined()
+    expect(config.resolve.dedupe).toContain('primevue')
+    expect(config.optimizeDeps.exclude).toEqual(['primevue', '@primeuix/themes', '@quazardous/qdadm'])
+  })
+
   it('omits server.fs.allow when qdadm is not a symlinked install', () => {
     // In this repo's root, node_modules/@quazardous/qdadm does not exist
     // as a real dir at the scratch root used here — realpath throws or is

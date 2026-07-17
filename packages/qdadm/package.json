@@ -71,6 +71,9 @@
     },
     "vite": {
       "optional": true
+    },
+    "primevue": {
+      "optional": true
     }
   },
   "optionalDependencies": {
