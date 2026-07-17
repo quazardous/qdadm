@@ -75,8 +75,8 @@ export default defineConfig({
 The **[step-by-step tutorial](docs/tutorial-mini-admin.md)** walks the whole
 path — bootstrap, CRUD, auth, navigation, parent-child — in ~310 lines.
 
-```js
-// main.js
+```ts
+// src/main.ts
 import { Kernel } from '@quazardous/qdadm'
 import { AppLayout } from '@quazardous/qdadm/components'
 import PrimeVue from 'primevue/config'
