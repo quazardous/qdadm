@@ -49,13 +49,15 @@ Structure of the exposure:
 - **Services** (`toast`, `confirm`) are already abstracted behind the
   orchestrator/Kernel (components rarely touch them directly).
 
-## Strategy options (decision pending)
+## Strategy (decided)
 
-1. **Stay on frozen MIT v4** and progressively reduce raw exposure,
-   starting with the two widest raw touchpoints (`button`, `message`)
-   behind qdadm wrappers. Cheap, incremental, keeps every option open.
-2. **Adopt PrimeUI licensing** (per-app decision for consumers; heavy for
-   a framework).
-3. **Migrate the widget layer** to another MIT library — cost is bounded
-   by the map above (form inputs and tables are already behind qdadm
-   indirection; the long tail is small).
+qdadm **stays on the MIT PrimeVue 4 line** and keeps the exit viable:
+
+- **Watch the ecosystem**: the MIT v4 codebase is forkable — if a
+  community-maintained fork emerges, it becomes the natural continuation.
+- **Shrink raw exposure** progressively so that any exit (fork or another
+  MIT library) stays cheap: the widest raw touchpoints (`button`,
+  `message`) go behind qdadm wrappers first; form inputs, tables and
+  services are already behind qdadm indirection.
+- **No PrimeUI licensing** at the framework level — that would be a
+  per-consumer legal decision qdadm refuses to impose.
