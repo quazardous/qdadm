@@ -61,8 +61,10 @@ export function useAuth(): UseAuthReturn {
     throw new Error('[qdadm] useAuth() must be called within component setup()')
   }
 
-  const auth = inject<AuthAdapter | null>('authAdapter')
-  const features = inject<FeaturesConfig | null>('qdadmFeatures')
+  // null defaults: a no-auth app must not log "injection not found" warnings
+  // on every page (#1388)
+  const auth = inject<AuthAdapter | null>('authAdapter', null)
+  const features = inject<FeaturesConfig | null>('qdadmFeatures', null)
 
   // If auth disabled or not provided, return neutral values
   if (!features?.auth || !auth) {

@@ -409,10 +409,19 @@ export function useNavContext(_options: UseNavContextOptions = {}): UseNavContex
     )
     for (const sibling of siblings) {
       const sibManager = sibling.meta?.entity ? getManager(sibling.meta.entity as string) : null
+      // Only pass the params the sibling path declares — forwarding the full
+      // current params (e.g. the child item id on an edit page) triggers
+      // vue-router's "Discarded invalid param(s)" warning (#1388)
+      const declared = new Set(
+        (String(sibling.path || '').match(/:([A-Za-z0-9_]+)/g) || []).map((m) => m.slice(1))
+      )
+      const params = declared.size
+        ? Object.fromEntries(Object.entries(route.params).filter(([k]) => declared.has(k)))
+        : route.params
       links.push({
         label:
           (sibling.meta?.navLabel as string) || sibManager?.labelPlural || (sibling.name as string),
-        to: { name: sibling.name as string, params: route.params as RouteParamsRawGeneric },
+        to: { name: sibling.name as string, params: params as RouteParamsRawGeneric },
         active: route.name === sibling.name,
       })
     }

@@ -11,9 +11,10 @@
     "vue": "^3.5.0",
     "vue-router": "^4.5.0",
     "primevue": "^4.2.0",
-    "@primevue/themes": "^4.2.0",
     "primeicons": "^7.0.0",
-    "@quazardous/qdadm": "*"
+    "@quazardous/qdadm": "*",
+    "@primeuix/themes": "^1.0.0",
+    "pinia": "^3.0.0"
   },
   "devDependencies": {
     "vite": "^6.0.0",

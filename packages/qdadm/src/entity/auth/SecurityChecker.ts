@@ -53,6 +53,8 @@ export interface SecurityCheckerConfig {
 export class SecurityChecker {
   protected _rolesProvider: RoleProvider
   readonly getCurrentUser: () => AuthUser | null
+  /** Roles already warned about (warn-once, #1388) */
+  protected _warnedRoles = new Set<string>()
 
   constructor({ rolesProvider, roleHierarchy, rolePermissions, getCurrentUser }: SecurityCheckerOptions) {
     if (rolesProvider) {
@@ -134,6 +136,7 @@ export class SecurityChecker {
         const rolePerms = this._rolesProvider.getPermissions(r)
         rolePerms.forEach((p) => perms.add(p))
       }
+      this._warnUnknownRole(role)
     }
 
     // User-specific permission overrides
@@ -142,6 +145,26 @@ export class SecurityChecker {
     }
 
     return [...perms]
+  }
+
+  /**
+   * A user role that matches NO configured role silently yields zero
+   * permissions (e.g. `admin` instead of `ROLE_ADMIN`) — surface it once
+   * per role so the misconfiguration is debuggable (#1388).
+   */
+  protected _warnUnknownRole(role: string): void {
+    if (this._warnedRoles.has(role)) return
+    const known = this._rolesProvider.getRoles()
+    if (known.includes(role)) return
+    // Hierarchy-only roles (declared in role_hierarchy without own
+    // permissions) still count as known.
+    if (Object.keys(this._rolesProvider.getHierarchy()).includes(role)) return
+    this._warnedRoles.add(role)
+    console.warn(
+      `[qdadm] SecurityChecker: user role "${role}" matches no configured role ` +
+        `(known: ${known.join(', ') || 'none'}) — the user gets NO permissions. ` +
+        `Roles must match role_permissions/role_hierarchy keys exactly.`
+    )
   }
 
   /**

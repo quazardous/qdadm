@@ -203,3 +203,17 @@ export function formatPercent(value: number | null | undefined, decimals = 1): s
   if (value === null || value === undefined) return '-'
   return `${(value * 100).toFixed(decimals)}%`
 }
+
+/**
+ * Prettify a role constant for display when no role_labels entry exists:
+ * ROLE_SUPER_USER → "Super User" (#1388).
+ */
+export function prettifyRole(role: string): string {
+  return role
+    .replace(/^ROLE_/, '')
+    .toLowerCase()
+    .split('_')
+    .filter(Boolean)
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+    .join(' ')
+}

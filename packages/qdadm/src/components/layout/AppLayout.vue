@@ -16,6 +16,7 @@ import { ref, watch, onMounted, onUnmounted, computed, inject, provide, useSlots
 import { SIDEBAR_COLLAPSED_KEY } from '../../composables/useSidebarState'
 import { RouterLink, RouterView, useRouter, useRoute } from 'vue-router'
 import { useNavigation, type NavSection } from '../../composables/useNavigation'
+import { prettifyRole } from '../../utils/formatters'
 import { useApp } from '../../composables/useApp'
 import { useAuth } from '../../composables/useAuth'
 import { useGuardDialog } from '../../composables/useGuardStore'
@@ -210,7 +211,9 @@ const userDisplayName = computed<string>(() => {
 
 const userSubtitle = computed<string>(() => {
   const userData = user.value as UserData | null
-  return userData?.email || userData?.role || ''
+  if (userData?.email) return userData.email
+  // raw ROLE_* constants are ugly by default — prettify (#1388)
+  return userData?.role ? prettifyRole(userData.role) : ''
 })
 
 async function handleLogout(): Promise<void> {

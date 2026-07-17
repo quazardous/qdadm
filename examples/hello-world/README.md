@@ -4,8 +4,8 @@ Minimal example showing a qdadm list page in ~50 lines of code.
 
 ## What's included
 
-- `main.js` - App setup with one EntityManager (tasks)
-- `App.vue` - AppLayout wrapper
+- `main.js` - Kernel bootstrap with one module (tasks)
+- `App.vue` - RouterView root (the Kernel mounts AppLayout as the layout route)
 - `TaskList.vue` - List page (5 lines!)
 
 ## Run it
@@ -18,34 +18,47 @@ npm run dev
 
 ## Key concepts
 
-### 1. EntityManager setup
+### 1. Module + Kernel setup (canonical)
 
 ```javascript
-import { createQdadm, MockApiStorage, EntityManager } from '@quazardous/qdadm'
+import { Kernel, Module, EntityManager, MockApiStorage } from '@quazardous/qdadm'
+import { AppLayout } from '@quazardous/qdadm/components'
 
-// Create EntityManager instance
-const tasksManager = new EntityManager({
-  name: 'tasks',
-  label: 'Task',
-  labelField: 'title',
-  storage: new MockApiStorage({
-    entityName: 'tasks',
-    initialData: [...]
-  }),
-  fields: {
-    title: { type: 'text', label: 'Title' },
-    done: { type: 'boolean', label: 'Done' }
+class TasksModule extends Module {
+  static name = 'tasks'
+
+  async connect(ctx) {
+    ctx.entity('tasks', new EntityManager({
+      name: 'tasks',
+      labelField: 'title',
+      fields: {
+        title: { type: 'text', label: 'Title' },
+        done: { type: 'boolean', label: 'Done' }
+      },
+      storage: new MockApiStorage({ entityName: 'tasks', initialData: [...] })
+    }))
+
+    ctx.crud('tasks', {
+      list: () => import('./TaskList.vue')
+    }, { nav: { section: 'Main', icon: 'pi pi-check-square' } })
   }
+}
+
+const kernel = new Kernel({
+  root: App,
+  moduleDefs: [TasksModule],
+  pages: { layout: AppLayout },   // the admin shell (sidebar, breadcrumb…)
+  homeRoute: 'tasks',
+  primevue: { plugin: PrimeVue, theme: Aura },
+  app: { name: 'Hello qdadm' }
 })
 
-// Pass to createQdadm
-const qdadm = createQdadm({
-  router,
-  toast: { add: () => {}, remove: () => {} },
-  features: { auth: false },
-  managers: { tasks: tasksManager }
-})
+kernel.createApp().mount('#app')
 ```
+
+No hand-rolled router, no toast stub: the Kernel builds routes from the
+module and installs the PrimeVue services itself. The `qdadmVitePlugin()`
+in `vite.config.js` supplies the dedupe/optimizeDeps config qdadm needs.
 
 ### 2. List page (canonical)
 

@@ -84,6 +84,8 @@ export interface FieldConfig {
   type: FieldType
   label?: string
   required?: boolean
+  /** number fields: false → no locale digit grouping in displays (#1388) */
+  useGrouping?: boolean
   default?: unknown | (() => unknown)
   options?: Array<{ label: string; value: unknown }>
   reference?: {

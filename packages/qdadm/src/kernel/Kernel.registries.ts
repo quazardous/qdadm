@@ -117,6 +117,16 @@ export function applyRegistryMethods(KernelClass: { prototype: Kernel }): void {
 
     if (!security) return
 
+    // security configured but no user source: every isGranted() falls back
+    // to permissive — a newcomer believes gating is on when it isn't (#1388)
+    if (!entityAuthAdapter) {
+      console.warn(
+        '[Kernel] security is configured but entityAuthAdapter is not — entity ' +
+          'permission checks default to PERMISSIVE (no current user to check). ' +
+          'Pass entityAuthAdapter (e.g. `() => authAdapter.getUser()`) to enable gating.'
+      )
+    }
+
     let rolesProvider = security.rolesProvider
     if (!rolesProvider && (security.role_permissions || security.role_hierarchy)) {
       rolesProvider = new StaticRoleProvider({

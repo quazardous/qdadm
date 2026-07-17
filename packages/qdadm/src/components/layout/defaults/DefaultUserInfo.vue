@@ -9,6 +9,7 @@
  */
 import { computed, type ComputedRef } from 'vue'
 import { useRouter } from 'vue-router'
+import { prettifyRole } from '../../../utils/formatters'
 import { useAuth } from '../../../composables/useAuth'
 import Button from 'primevue/button'
 
@@ -37,7 +38,9 @@ const userDisplayName: ComputedRef<string> = computed(() => {
 })
 
 const userSubtitle: ComputedRef<string> = computed(() => {
-  return userData.value?.email || userData.value?.role || ''
+  if (userData.value?.email) return userData.value.email
+  // raw ROLE_* constants are ugly by default — prettify (#1388)
+  return userData.value?.role ? prettifyRole(userData.value.role) : ''
 })
 
 function handleLogout(): void {

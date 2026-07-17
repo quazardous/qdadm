@@ -62,6 +62,8 @@ interface FieldConfig {
   dateFormat?: string
   currencyCode?: string
   locale?: string
+  /** false → no locale digit grouping for number fields (years, ids) (#1388) */
+  useGrouping?: boolean
   booleanLabels?: { true: string; false: string }
   // Reference options
   reference?: string
@@ -107,7 +109,10 @@ const numberValue = computed(() => {
   if (isEmpty.value) return '-'
   const num = Number(props.value)
   if (isNaN(num)) return String(props.value)
-  return formatNumber(num, {}, props.field.locale)
+  // useGrouping: false → no locale digit grouping (years, ids… "1965",
+  // not "1 965") (#1388)
+  const opts = props.field.useGrouping === false ? { useGrouping: false } : {}
+  return formatNumber(num, opts, props.field.locale)
 })
 
 // Format currency value
