@@ -1,5 +1,21 @@
 # Changelog
 
+## 2.12.0
+
+### Minor Changes
+
+- d0ceb97: MockApiStorage accepts a `storageKey` option to override the default
+  `mockapi_<entityName>_data` localStorage key — several apps sharing one
+  origin (e.g. multiple demos on a GitHub Pages site) can now seed the same
+  entity names without clobbering each other.
+
+### Patch Changes
+
+- 6798731: qdadmVitePlugin picks ONE CJS-transitive include form per install mode
+  (nested for npm installs, plain for symlinked) instead of declaring both —
+  kills the cosmetic "Failed to resolve dependency" optimizer warning
+  (skybot testbed feedback).
+
 ## 2.11.0
 
 ### Minor Changes

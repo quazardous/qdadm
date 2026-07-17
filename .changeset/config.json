@@ -7,5 +7,9 @@
   "access": "public",
   "baseBranch": "main",
   "updateInternalDependencies": "patch",
-  "ignore": ["qdadm-demo", "@qdadm/hello-world", "qdadm-hello-world"]
+  "ignore": [
+    "qdadm-demo",
+    "qdadm-hello-world",
+    "qdadm-tutorial-mini-admin"
+  ]
 }
