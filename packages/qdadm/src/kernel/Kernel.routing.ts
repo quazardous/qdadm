@@ -4,7 +4,6 @@ import {
   createWebHashHistory,
   type RouteRecordRaw,
   type RouteLocationNormalized,
-  type NavigationGuardNext,
   type RouteRecordNormalized,
 } from 'vue-router'
 import { getRoutes } from '../module/moduleRegistry'
@@ -170,7 +169,9 @@ export function applyRoutingMethods(KernelClass: { prototype: Kernel }): void {
       )
     })
 
-    this.router!.beforeEach((to: RouteLocationNormalized, _from: RouteLocationNormalized, next: NavigationGuardNext) => {
+    // Return-style guard (no next() callback): supported since vue-router 4,
+    // required to avoid the R0025 deprecation warning on vue-router 5 (#1384)
+    this.router!.beforeEach((to: RouteLocationNormalized) => {
       if (authAdapter.isAuthenticated()) {
         wasEverAuthenticated = true
       }
@@ -181,7 +182,6 @@ export function applyRoutingMethods(KernelClass: { prototype: Kernel }): void {
       )
 
       if (isPublic) {
-        next()
         return
       }
 
@@ -204,11 +204,9 @@ export function applyRoutingMethods(KernelClass: { prototype: Kernel }): void {
           wasEverAuthenticated = false
         }
 
-        const loginRoute = this.router!.hasRoute('login')
+        return this.router!.hasRoute('login')
           ? { name: 'login', query: { session_lost: '1' } }
           : '/'
-        next(loginRoute)
-        return
       }
 
       const entity = to.meta?.entity as string | undefined
@@ -233,20 +231,16 @@ export function applyRoutingMethods(KernelClass: { prototype: Kernel }): void {
               entity,
               manager,
             })
-            next({ path: '/' })
-            return
+            return { path: '/' }
           }
         } catch (err) {
           console.error(
             `[qdadm] Access check failed for ${to.path} (entity: ${entity}) — denying navigation:`,
             err
           )
-          next({ path: '/' })
-          return
+          return { path: '/' }
         }
       }
-
-      next()
     })
   }
 

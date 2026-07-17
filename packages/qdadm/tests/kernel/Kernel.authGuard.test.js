@@ -5,6 +5,9 @@
  * allow. The only pass-through is "entity not registered" (manager not
  * loaded yet), which is checked explicitly.
  *
+ * The guard is return-style (#1384): allow = returns undefined,
+ * deny/redirect = returns a route location. No next() callback.
+ *
  * Run: npm test
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
@@ -46,20 +49,18 @@ describe('auth guard entity access check (#1190)', () => {
     const { guard } = makeKernel({
       manager: { canRead: () => { throw new Error('security backend down') } },
     })
-    const next = vi.fn()
-    guard(to('books'), {}, next)
+    const result = guard(to('books'), {})
 
-    expect(next).toHaveBeenCalledWith({ path: '/' })
+    expect(result).toEqual({ path: '/' })
     expect(errorSpy).toHaveBeenCalled()
     expect(String(errorSpy.mock.calls[0][0])).toContain('Access check failed')
   })
 
   it('allows navigation when the entity is not registered (manager not loaded yet)', () => {
     const { kernel, guard } = makeKernel({ registered: false })
-    const next = vi.fn()
-    guard(to('books'), {}, next)
+    const result = guard(to('books'), {})
 
-    expect(next).toHaveBeenCalledWith()
+    expect(result).toBeUndefined()
     expect(kernel.orchestrator.get).not.toHaveBeenCalled()
   })
 
@@ -67,10 +68,9 @@ describe('auth guard entity access check (#1190)', () => {
     const { kernel, guard } = makeKernel({
       manager: { canRead: () => false, labelPlural: 'Books' },
     })
-    const next = vi.fn()
-    guard(to('books'), {}, next)
+    const result = guard(to('books'), {})
 
-    expect(next).toHaveBeenCalledWith({ path: '/' })
+    expect(result).toEqual({ path: '/' })
     expect(kernel.signals.emit).toHaveBeenCalledWith(
       'auth:access-denied',
       expect.objectContaining({ entity: 'books' }),
@@ -79,9 +79,31 @@ describe('auth guard entity access check (#1190)', () => {
 
   it('allows navigation when canRead() returns true', () => {
     const { guard } = makeKernel({ manager: { canRead: () => true } })
-    const next = vi.fn()
-    guard(to('books'), {}, next)
+    const result = guard(to('books'), {})
 
-    expect(next).toHaveBeenCalledWith()
+    expect(result).toBeUndefined()
+  })
+
+  it('redirects to login when auth is required and the session is missing', () => {
+    let guard = null
+    const kernel = {
+      options: {
+        authAdapter: { isAuthenticated: () => false },
+        debug: false,
+      },
+      signals: { on: vi.fn(), emit: vi.fn() },
+      orchestrator: { isRegistered: vi.fn(), get: vi.fn(), toast: { error: vi.fn(), warn: vi.fn() } },
+      router: {
+        beforeEach: vi.fn((fn) => { guard = fn }),
+        hasRoute: (name) => name === 'login',
+      },
+    }
+    Kernel.prototype._setupAuthGuard.call(kernel)
+    const result = guard(
+      { path: '/books', matched: [{ meta: { requiresAuth: true } }], meta: {} },
+      {},
+    )
+
+    expect(result).toEqual({ name: 'login', query: { session_lost: '1' } })
   })
 })
