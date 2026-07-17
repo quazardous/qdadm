@@ -1,22 +1,19 @@
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import { resolve } from 'path'
+import { qdadmVitePlugin } from '@quazardous/qdadm/vite'
 import { qdadmDebugPlugin } from '@quazardous/qdadm/vite-plugin-debug'
 
+// Tutorial-conform consumer config (#1390): qdadmVitePlugin() supplies the
+// dedupe + optimizeDeps + symlink fs.allow this file used to hand-roll
+// (aliases into ../qdadm/src, manual dedupe, usetoast/useconfirm includes).
+// The demo consumes @quazardous/qdadm through the workspace link, exactly
+// like a real app consumes the npm package.
 export default defineConfig({
   base: process.env.GITHUB_PAGES ? '/qdadm/' : '/',
-  plugins: [vue(), qdadmDebugPlugin()],
+  plugins: [vue(), qdadmVitePlugin({ dedupe: ['vanilla-jsoneditor'] }), qdadmDebugPlugin()],
   resolve: {
-    alias: [
-      { find: '@', replacement: resolve(__dirname, 'src') },
-      { find: 'qdadm/styles', replacement: resolve(__dirname, '../qdadm/src/styles/index.scss') },
-      { find: 'qdadm/modules/debug', replacement: resolve(__dirname, '../qdadm/src/modules/debug/index.js') },
-      { find: 'qdadm', replacement: resolve(__dirname, '../qdadm/src') }
-    ],
-    dedupe: ['vue', 'vue-router', 'primevue', 'pinia', 'vanilla-jsoneditor']
-  },
-  optimizeDeps: {
-    include: ['primevue/usetoast', 'primevue/useconfirm']
+    alias: [{ find: '@', replacement: resolve(__dirname, 'src') }]
   },
   server: {
     port: 5174

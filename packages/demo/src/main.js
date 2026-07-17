@@ -12,7 +12,7 @@ import { debugBar } from '@quazardous/qdadm/modules/debug'
 import { createLocalStorageRolesProvider } from '@quazardous/qdadm/security'
 import PrimeVue from 'primevue/config'
 import Aura from '@primeuix/themes/aura'
-import 'qdadm/styles'
+import '@quazardous/qdadm/styles'
 import 'primeicons/primeicons.css'
 
 import App from './App.vue'
