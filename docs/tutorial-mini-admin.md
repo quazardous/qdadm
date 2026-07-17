@@ -1,8 +1,8 @@
 # Tutorial — build a mini admin in 5 steps
 
 This is a **verified, end-to-end walkthrough**: every step below was built and run
-against the published `@quazardous/qdadm` npm package (v2.9.0) in a fresh
-`npm create vite` app. Each step produces a working app; the whole thing is
+against the published `@quazardous/qdadm` npm package (v2.9.0; install lines
+updated for v2.10.0) in a fresh `npm create vite` app. Each step produces a working app; the whole thing is
 ~310 lines of code.
 
 The 5 steps:
@@ -25,16 +25,15 @@ The 5 steps:
 npm create vite@latest my-admin -- --template vue-ts
 cd my-admin
 npm install
-npm install @quazardous/qdadm primevue @primeuix/themes primeicons vue-router@4 pinia@3
+npm install @quazardous/qdadm primevue @primeuix/themes primeicons vue-router pinia
 ```
 
 ⚠️ **Gotchas (as of mid-2026):**
 
 - The package is **`@quazardous/qdadm`** (scoped). Plain `npm install qdadm`
   installs a stale, unmaintained 1.x snapshot.
-- Pin **`vue-router@4`** and **`pinia@3`** explicitly: npm's latest
-  (vue-router 5 / pinia 4) do not satisfy qdadm's peer ranges yet and cause
-  an `ERESOLVE` conflict.
+- qdadm ≥ 2.10.0 accepts vue-router 4/5 and pinia 2/3/4. On qdadm 2.9.x or
+  older, pin `vue-router@4 pinia@3` or npm's latest majors hit `ERESOLVE`.
 
 ### 1.2 Required Vite config
 

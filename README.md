@@ -54,12 +54,11 @@ Or start fresh:
 ```bash
 npm create vite@latest my-admin -- --template vue-ts
 cd my-admin
-npm install @quazardous/qdadm primevue @primeuix/themes primeicons vue-router@4 pinia@3
+npm install @quazardous/qdadm primevue @primeuix/themes primeicons vue-router pinia
 ```
 
 > ⚠️ The package is **`@quazardous/qdadm`** (scoped) — plain `qdadm` on npm is a
-> stale 1.x snapshot. Pin `vue-router@4` and `pinia@3`: newer majors don't satisfy
-> the peer ranges yet. A required `vite.config.ts` tweak and two TypeScript shims
+> stale 1.x snapshot. A required `vite.config.ts` tweak and two TypeScript shims
 > are covered in the **[step-by-step tutorial](docs/tutorial-mini-admin.md)** —
 > follow it for a verified path from empty folder to running admin.
 
