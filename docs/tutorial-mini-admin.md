@@ -75,23 +75,24 @@ export default defineConfig({
 
 </details>
 
-### 1.3 TypeScript workarounds
+### 1.3 TypeScript workarounds (qdadm ≤ 2.10 only)
 
-The vue-ts template's `npm run build` runs `vue-tsc`, which typechecks
-qdadm's shipped sources with *your* compiler flags. Three adjustments:
+With qdadm ≥ 2.11.0 the template's `npm run build` (vue-tsc) passes out of
+the box — no shims, no flag changes (a strict-consumer CI gate keeps it
+that way). On older versions, three adjustments were needed:
 
 ```bash
 npm i -D @types/pluralize
 ```
 
 ```jsonc
-// tsconfig.app.json — the template enables these; qdadm sources don't pass them
+// tsconfig.app.json — the template enables these; old qdadm sources fail them
 "noUnusedLocals": false,
 "noUnusedParameters": false,
 ```
 
 ```ts
-// src/qdadm-shims.d.ts — the styles export is a .scss file, invisible to TS
+// src/qdadm-shims.d.ts — the styles export was invisible to TS before 2.11
 declare module '@quazardous/qdadm/styles'
 ```
 
@@ -293,16 +294,15 @@ form.addDeleteAction()
   <FormPage v-bind="form.props.value" v-on="form.events">
     <template #fields>
       <FormField v-for="field in form.fields.value" :key="field.name" :name="field.name" :label="field.label">
-        <FormInput :field="field as any" v-model="(form.data.value as any)[field.name]" />
+        <FormInput :field="field" v-model="form.data.value[field.name]" />
       </FormField>
     </template>
   </FormPage>
 </template>
 ```
 
-> **TS note**: the `as any` casts are currently needed — `form.data.value`
-> is typed `{}` unless you pass a generic, and `form.fields.value` items
-> don't match `FormInput`'s prop type. Tracked as a known type-layer gap.
+> **TS note**: on qdadm ≤ 2.10 these loops needed `as any` casts (fields vs
+> `FormInput` prop type, `data.value` indexing); fixed in 2.11.
 
 That's the whole CRUD: create (`/books/create`), edit, delete with
 confirmation, search, toasts, redirects. **~55 more lines.**
@@ -357,10 +357,10 @@ import { authAdapter } from './auth/authAdapter'
 const kernel = new Kernel({
   // ...
   pages: { layout: AppLayout, login: LoginPage },  // built-in login page
-  authAdapter: authAdapter as any,
+  authAdapter,
   // Bridges the session user into entity-level permission checks.
   // Without this line, permission gating is silently permissive.
-  entityAuthAdapter: (() => authAdapter.getUser()) as any,
+  entityAuthAdapter: () => authAdapter.getUser(),
   security: {
     rolesProvider: createLocalStorageRolesProvider({
       key: 'my_admin_roles',
@@ -435,7 +435,7 @@ show.addBackAction()
         v-for="f in show.fields.value"
         :key="f.name"
         :field="f"
-        :value="(show.data.value as any)?.[f.name]"
+        :value="show.data.value?.[f.name]"
         horizontal
         label-width="140px"
       />
@@ -464,7 +464,7 @@ ctx.entity('books', new EntityManager({
   name: 'books',
   labelField: 'title',
   children: {
-    loans: { entity: 'loans', foreignKey: 'book_id', label: 'Loans' } as any,
+    loans: { entity: 'loans', foreignKey: 'book_id', label: 'Loans' },
   },
   // ... fields, storage as before
 }))
@@ -549,9 +549,9 @@ form.addSaveAction()
     </template>
 
     <template #fields>
-      <p v-if="parentBook">Loan for "{{ (parentBook as any).title }}"</p>
+      <p v-if="parentBook">Loan for "{{ parentBook.title }}"</p>
       <FormField v-for="f in form.fields.value" :key="f.name" :name="f.name" :label="f.label">
-        <FormInput :field="f as any" v-model="(form.data.value as any)[f.name]" />
+        <FormInput :field="f" v-model="form.data.value[f.name]" />
       </FormField>
     </template>
   </FormPage>

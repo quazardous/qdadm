@@ -21,7 +21,9 @@ export interface AuthAdapter {
   getToken?(): string | null
   logout?(): void
   connectSignals?(signals: SignalBus): () => void
-  [key: string]: unknown
+  // NOTE: no string index signature here — class instances (e.g. a
+  // LocalStorageSessionAuthAdapter subclass, the documented pattern) do not
+  // satisfy implicit index signatures and would stop being assignable (#1387).
 }
 
 /**
@@ -161,7 +163,12 @@ export interface KernelOptions {
   storageResolver?: (config: unknown, entityName: string) => unknown
   managerResolver?: (config: unknown, entityName: string, context: unknown) => EntityManager
   authAdapter?: AuthAdapter | null
-  entityAuthAdapter?: EntityAuthAdapter | string | Record<string, unknown> | null
+  entityAuthAdapter?:
+    | EntityAuthAdapter
+    | string
+    | Record<string, unknown>
+    | (() => Record<string, unknown> | null)
+    | null
   authTypes?: Record<string, unknown>
   pages?: Pages
   homeRoute?: HomeRoute

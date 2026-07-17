@@ -257,7 +257,7 @@ interface ConfirmService {
   }) => void
 }
 
-export function useEntityItemShowPage<T = unknown>(
+export function useEntityItemShowPage<T = Record<string, unknown>>(
   options: UseEntityItemShowPageOptions<T>
 ): UseEntityItemShowPageReturn<T> {
   const { entity, loadOnMount = true, transformLoad, onLoadSuccess, onLoadError } = options

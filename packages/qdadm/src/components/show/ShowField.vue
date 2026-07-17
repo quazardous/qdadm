@@ -27,7 +27,9 @@ const props = defineProps({
   // Field config (for auto-display mode)
   field: { type: Object as PropType<FieldConfig | null>, default: null },
   // Value (for auto-display mode)
-  value: { type: [String, Number, Boolean, Date, Object, Array], default: null },
+  // unknown: show.data.value?.[f.name] over the default Record generic (#1387)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  value: { type: null as unknown as PropType<any>, default: null },
   // Manual props (override field config)
   name: { type: String, default: '' },
   label: { type: String, default: '' },

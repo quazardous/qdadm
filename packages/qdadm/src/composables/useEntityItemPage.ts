@@ -103,8 +103,8 @@ export interface UseEntityItemPageReturn<T = unknown> {
   // Parent chain
   parentConfig: ComputedRef<ParentConfig | null>
   parentId: ComputedRef<string | number | null>
-  parentData: ComputedRef<unknown | null>
-  parentChain: Ref<Map<number, unknown>>
+  parentData: ComputedRef<Record<string, unknown> | null>
+  parentChain: Ref<Map<number, Record<string, unknown>>>
   parentLoading: Ref<boolean>
   loadParent: () => Promise<void>
   loadParentChain: () => Promise<void>
@@ -189,7 +189,7 @@ export function useEntityItemPage<T = unknown>(config: UseEntityItemPageOptions<
    * Loaded parent entities data (Map: level -> data)
    * Level 1 = immediate parent, Level 2 = grandparent, etc.
    */
-  const parentChain = ref<Map<number, unknown>>(new Map())
+  const parentChain = ref<Map<number, Record<string, unknown>>>(new Map())
   const parentLoading = ref(false)
 
   /**
@@ -228,7 +228,7 @@ export function useEntityItemPage<T = unknown>(config: UseEntityItemPageOptions<
     if (!parentConfig.value || !parentId.value) return
 
     parentLoading.value = true
-    const newChain = new Map<number, unknown>()
+    const newChain = new Map<number, Record<string, unknown>>()
 
     try {
       // Calculate total depth to set correct breadcrumb levels
@@ -251,7 +251,7 @@ export function useEntityItemPage<T = unknown>(config: UseEntityItemPageOptions<
 
         const loadedData = await parentManager.get(parentEntityId)
         if (loadedData) {
-          newChain.set(level, loadedData)
+          newChain.set(level, loadedData as Record<string, unknown>)
 
           // Update active stack
           hydrator.setEntityData(currentConfig.entity, loadedData)

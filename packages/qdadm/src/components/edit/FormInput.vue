@@ -28,18 +28,23 @@ interface SelectOption {
 
 interface FieldConfig {
   name: string
-  type?: InputType
+  /** Known widget types get dedicated rendering; other strings (e.g. from
+   *  ResolvedFieldConfig, #1387) fall back to the text input. */
+  type?: InputType | (string & {})
   placeholder?: string
   disabled?: boolean
   readonly?: boolean
-  options?: SelectOption[]
+  options?: SelectOption[] | unknown[]
   optionLabel?: string
   optionValue?: string
 }
 
 const props = defineProps({
   field: { type: Object as PropType<FieldConfig>, required: true },
-  modelValue: { type: [String, Number, Boolean, Date, Object] as PropType<ModelValue>, default: null },
+  // unknown: v-model over Record<string, unknown> indexes (the documented
+  // generateFields loop) must bind without casts (#1387)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  modelValue: { type: null as unknown as PropType<any>, default: null },
   hint: { type: String as () => InputType | null, default: null }  // Optional type hint override
 })
 
@@ -48,7 +53,7 @@ const emit = defineEmits<{
 }>()
 
 const value = computed<ModelValue>({
-  get: (): ModelValue => props.modelValue,
+  get: (): ModelValue => (props.modelValue ?? null) as ModelValue,
   set: (v: ModelValue): void => emit('update:modelValue', v)
 })
 
@@ -64,17 +69,17 @@ const numberValue = computed<number | null>({
 })
 
 const booleanValue = computed<boolean>({
-  get: (): boolean => (props.modelValue as boolean) ?? false,
+  get: (): boolean => (props.modelValue as boolean | null | undefined) ?? false,
   set: (v: boolean): void => emit('update:modelValue', v)
 })
 
 // Resolve component type: field.type > hint > 'text'
-const inputType = computed<InputType>(() => props.field?.type || props.hint || 'text')
+const inputType = computed<InputType>(() => (props.field?.type as InputType) || props.hint || 'text')
 
 // Date value with string ↔ Date conversion for DatePicker
 const dateValue = computed<Date | null>({
   get: (): Date | null => {
-    const v = props.modelValue
+    const v = props.modelValue as string | Date | null
     if (!v) return null
     if (v instanceof Date) return v
     // Convert ISO string to Date

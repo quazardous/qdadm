@@ -108,6 +108,10 @@ export interface FieldConfig {
 export interface ChildConfig {
   entity: string
   endpoint?: string
+  /** FK field on the child pointing at this entity (documented README shape, #1387) */
+  foreignKey?: string
+  /** Label for child navlinks/tabs */
+  label?: string
 }
 
 /**

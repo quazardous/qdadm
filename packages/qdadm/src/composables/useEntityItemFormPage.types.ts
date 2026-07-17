@@ -271,7 +271,7 @@ export interface UseEntityItemFormPageReturn<T extends Record<string, unknown> =
   // Parent chain (from route.meta.parent, supports N-level nesting)
   parentConfig: ComputedRef<ParentConfig | null>
   parentId: ComputedRef<string | number | null>
-  parentData: ComputedRef<unknown | null>
+  parentData: ComputedRef<Record<string, unknown> | null>
   parentChain: Ref<Map<number, unknown>>
   getChainDepth: (config?: ParentConfig | null) => number
 
