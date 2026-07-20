@@ -56,6 +56,30 @@ await books.create({
 `AGENTS.md` (repo root) is the operational how-to for agents working ON the
 qdadm codebase; this page is about driving a qdadm APP from the outside.
 
+## MCP server — one connection, full arsenal
+
+Install [`@quazardous/qdadm-mcp`](https://github.com/quazardous/qdadm/tree/main/packages/qdadm-mcp)
+and any MCP-capable agent debugs the live app directly:
+
+```ts
+// vite.config.ts
+import { qdadmMcpPlugin } from '@quazardous/qdadm-mcp'
+plugins: [vue(), qdadmVitePlugin(), qdadmDebugPlugin(), qdadmMcpPlugin()]
+```
+
+```bash
+claude mcp add --transport http qdadm http://localhost:5174/__qdadm/mcp
+```
+
+Tools: `session_info` (zombie-tab detector), `boot_errors` (captures
+failures from BEFORE the app booted), `routes`, `entity_state`,
+`entity_list/get/create/update/delete` (through the manager — permissions,
+cache and signals apply; `readOnly: true` to disable writes),
+`storage_dump` (raw localStorage view to diff against the manager),
+`recent_signals`, plus `describe`/`bridge_call` for collector discovery.
+Every response carries a session stamp. Dev-server only by construction —
+the endpoint cannot exist in a production build.
+
 ## Dev-server HTTP endpoints
 
 With the debug vite plugin enabled, the bridge is also reachable over HTTP —

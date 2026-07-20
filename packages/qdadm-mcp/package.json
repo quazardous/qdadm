@@ -1,0 +1,56 @@
+{
+  "name": "@quazardous/qdadm-mcp",
+  "version": "0.0.0",
+  "description": "MCP server for running qdadm apps \u2014 agents debug a live app in one connection (vite dev plugin over the qdadm debug bridge)",
+  "author": "quazardous",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/quazardous/qdadm.git",
+    "directory": "packages/qdadm-mcp"
+  },
+  "homepage": "https://github.com/quazardous/qdadm/tree/main/packages/qdadm-mcp#readme",
+  "bugs": {
+    "url": "https://github.com/quazardous/qdadm/issues"
+  },
+  "type": "module",
+  "main": "src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "files": [
+    "src",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "type-check": "tsc --noEmit -p tsconfig.json"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.29.0",
+    "zod": "^3.24.0"
+  },
+  "peerDependencies": {
+    "vite": "^5.0.0 || ^6.0.0 || ^7.0.0 || ^8.0.0"
+  },
+  "peerDependenciesMeta": {
+    "vite": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "typescript": "^5.9.3",
+    "vite": "^6.0.0",
+    "vitest": "^2.1.8"
+  },
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "qdadm",
+    "debug",
+    "vite-plugin",
+    "ai-agent"
+  ]
+}
