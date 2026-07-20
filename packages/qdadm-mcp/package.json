@@ -16,10 +16,12 @@
   "type": "module",
   "main": "src/index.ts",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./connector": "./src/connector.ts"
   },
   "files": [
     "src",
+    "bin",
     "README.md",
     "LICENSE"
   ],
@@ -30,7 +32,8 @@
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.29.0",
-    "zod": "^3.24.0"
+    "zod": "^3.24.0",
+    "ws": "^8.18.0"
   },
   "peerDependencies": {
     "vite": "^5.0.0 || ^6.0.0 || ^7.0.0 || ^8.0.0"
@@ -43,7 +46,8 @@
   "devDependencies": {
     "typescript": "^5.9.3",
     "vite": "^6.0.0",
-    "vitest": "^2.1.8"
+    "vitest": "^2.1.8",
+    "@types/ws": "^8.5.0"
   },
   "keywords": [
     "mcp",
@@ -52,5 +56,8 @@
     "debug",
     "vite-plugin",
     "ai-agent"
-  ]
+  ],
+  "bin": {
+    "qdadm-mcp-relay": "./bin/qdadm-mcp-relay.mjs"
+  }
 }

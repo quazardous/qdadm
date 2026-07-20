@@ -7,6 +7,12 @@
  * storage, routes, and navigation.
  */
 
+// FIRST import: opt-in MCP relay connector (#1400) — inert without the
+// #qdadm-relay=<ws-url>/<token> URL fragment; imported first so its boot
+// capture sees everything.
+import { installQdadmRelayConnector } from '@quazardous/qdadm-mcp/connector'
+installQdadmRelayConnector()
+
 import { Kernel } from '@quazardous/qdadm'
 import { debugBar } from '@quazardous/qdadm/modules/debug'
 import { createLocalStorageRolesProvider } from '@quazardous/qdadm/security'

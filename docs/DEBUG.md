@@ -80,6 +80,26 @@ cache and signals apply; `readOnly: true` to disable writes),
 Every response carries a session stamp. Dev-server only by construction —
 the endpoint cannot exist in a production build.
 
+## Static sites — the MCP relay
+
+No dev server, no backend (e.g. GitHub Pages)? The page dials OUT to a
+tiny relay, and the relay fronts the same 13-tool MCP:
+
+```bash
+npx qdadm-mcp-relay          # prints the pairing fragment + MCP endpoint
+```
+
+```ts
+// main.ts — FIRST import (boot capture); inert without the URL fragment
+import { installQdadmRelayConnector } from '@quazardous/qdadm-mcp/connector'
+installQdadmRelayConnector()
+```
+
+Open the site with `#qdadm-relay=ws://localhost:7777/<token>`, then
+`claude mcp add --transport http qdadm-relay http://localhost:7778/mcp`.
+Activation is explicit (token pairing, never ambient); the MCP acts within
+that browser session — manager permissions apply.
+
 ## Dev-server HTTP endpoints
 
 With the debug vite plugin enabled, the bridge is also reachable over HTTP —
