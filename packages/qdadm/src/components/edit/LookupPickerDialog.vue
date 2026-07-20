@@ -12,7 +12,7 @@ import Dialog from 'primevue/dialog'
 import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
 import InputText from 'primevue/inputtext'
-import Button from 'primevue/button'
+import QdButton from '../base/QdButton.vue'
 import { useI18n } from '../../i18n/useI18n'
 
 const { t } = useI18n()
@@ -208,12 +208,12 @@ const confirmLabel = computed(() => {
     </DataTable>
 
     <template #footer>
-      <Button
+      <QdButton
         :label="t('core.actions.cancel')"
         severity="secondary"
         @click="onCancel"
       />
-      <Button
+      <QdButton
         :label="confirmLabel"
         icon="pi pi-check"
         :disabled="confirmDisabled"

@@ -11,7 +11,7 @@ import { computed, type ComputedRef } from 'vue'
 import { useRouter } from 'vue-router'
 import { prettifyRole } from '../../../utils/formatters'
 import { useAuth } from '../../../composables/useAuth'
-import Button from 'primevue/button'
+import QdButton from '../../base/QdButton.vue'
 
 interface UserData {
   username?: string
@@ -56,7 +56,7 @@ function handleLogout(): void {
       <div class="user-name">{{ userDisplayName }}</div>
       <div class="user-role">{{ userSubtitle }}</div>
     </div>
-    <Button
+    <QdButton
       icon="pi pi-sign-out"
       severity="secondary"
       text

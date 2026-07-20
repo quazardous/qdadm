@@ -10,10 +10,10 @@
  */
 
 import { ref, computed, watch } from 'vue'
-import Button from 'primevue/button'
+import QdButton from '../base/QdButton.vue'
 import Textarea from 'primevue/textarea'
 import InputText from 'primevue/inputtext'
-import Message from 'primevue/message'
+import QdMessage from '../base/QdMessage.vue'
 import { getJsonValueType, getJsonPreview } from '../../composables/useJsonSyntax'
 
 interface Props {
@@ -165,7 +165,7 @@ function isMultiline(value: unknown): boolean {
     <!-- Toolbar -->
     <div class="editor-toolbar">
       <div class="toolbar-left">
-        <Button
+        <QdButton
           :icon="rawJsonMode ? 'pi pi-list' : 'pi pi-code'"
           :label="rawJsonMode ? 'Structured' : 'Raw JSON'"
           size="small"
@@ -175,7 +175,7 @@ function isMultiline(value: unknown): boolean {
         />
       </div>
       <div class="toolbar-right" v-if="!rawJsonMode">
-        <Button
+        <QdButton
           icon="pi pi-plus"
           label="Expand All"
           size="small"
@@ -183,7 +183,7 @@ function isMultiline(value: unknown): boolean {
           text
           @click="expandAll"
         />
-        <Button
+        <QdButton
           icon="pi pi-minus"
           label="Collapse All"
           size="small"
@@ -282,12 +282,12 @@ function isMultiline(value: unknown): boolean {
         spellcheck="false"
       ></textarea>
       <div v-if="parseError" class="raw-json-actions">
-        <Message severity="error" :closable="false" class="parse-error">
+        <QdMessage severity="error" :closable="false" class="parse-error">
           {{ parseError }}
-        </Message>
+        </QdMessage>
       </div>
       <div v-else class="raw-json-actions">
-        <Button
+        <QdButton
           label="Apply Changes"
           icon="pi pi-check"
           size="small"

@@ -42,7 +42,7 @@
 
 import { ref, computed, watch } from 'vue'
 import SelectButton from 'primevue/selectbutton'
-import Message from 'primevue/message'
+import QdMessage from '../base/QdMessage.vue'
 import VanillaJsonEditor from './VanillaJsonEditor.vue'
 import type { Mode } from 'vanilla-jsoneditor'
 
@@ -179,14 +179,14 @@ watch(() => props.mode, (newMode: ViewMode | null | undefined) => {
 
     <!-- JSON View -->
     <div v-if="viewMode === 'json'" class="json-view">
-      <Message
+      <QdMessage
         v-if="guardInvalidJson && hasJsonError"
         severity="error"
         :closable="false"
         class="json-error"
       >
         {{ invalidJsonMessage }}
-      </Message>
+      </QdMessage>
       <VanillaJsonEditor
         :modelValue="effectiveJsonValue"
         :mode="jsonMode"

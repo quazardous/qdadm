@@ -10,6 +10,24 @@ export default tseslint.config(
   ...pluginVue.configs['flat/recommended'],
   prettierConfig,
   {
+    // Raw widget imports go through the Qd* wrappers (#1391) — importing
+    // primevue/button|message anywhere else reopens the exposure the
+    // wrappers exist to shrink.
+    files: ['src/**/*.{ts,vue}'],
+    ignores: ['src/components/base/**'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          paths: [
+            { name: 'primevue/button', message: 'Use QdButton (components/base) — #1391.' },
+            { name: 'primevue/message', message: 'Use QdMessage (components/base) — #1391.' },
+          ],
+        },
+      ],
+    },
+  },
+  {
     languageOptions: {
       globals: {
         ...globals.browser,

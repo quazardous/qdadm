@@ -3,6 +3,10 @@
  */
 
 // Layout
+// Base widget wrappers — the single indirection points over the widget
+// library (#1391 exit-readiness)
+export { default as QdButton } from './base/QdButton.vue'
+export { default as QdMessage } from './base/QdMessage.vue'
 export { default as AppLayout } from './layout/AppLayout.vue'
 export { default as BaseLayout } from './layout/BaseLayout.vue'
 export { default as PageLayout } from './layout/PageLayout.vue'

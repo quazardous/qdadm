@@ -12,7 +12,7 @@
  * - handler: Click handler function
  * - isDisabled: Boolean disabled state
  */
-import Button from 'primevue/button'
+import QdButton from '../base/QdButton.vue'
 
 interface Action {
   name: string
@@ -32,7 +32,7 @@ defineProps<Props>()
 
 <template>
   <div class="table-actions">
-    <Button
+    <QdButton
       v-for="action in actions"
       :key="action.name"
       :icon="action.icon"

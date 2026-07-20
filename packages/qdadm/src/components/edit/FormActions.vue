@@ -13,7 +13,7 @@
  * - cancel: Cancel/close without saving
  */
 
-import Button from 'primevue/button'
+import QdButton from '../base/QdButton.vue'
 import { useI18n } from '../../i18n/useI18n'
 
 const { t } = useI18n()
@@ -42,7 +42,7 @@ const emit = defineEmits<{
 <template>
   <div class="form-actions">
     <div class="form-actions-left">
-      <Button
+      <QdButton
         type="button"
         :label="isEdit ? t('core.actions.update') : t('core.actions.create')"
         :loading="saving"
@@ -51,7 +51,7 @@ const emit = defineEmits<{
         @click="emit('save')"
         v-tooltip.top="t('core.tooltips.saveAndContinue')"
       />
-      <Button
+      <QdButton
         v-if="showSaveAndClose"
         type="button"
         :label="isEdit ? t('core.actions.updateAndClose') : t('core.actions.createAndClose')"
@@ -66,7 +66,7 @@ const emit = defineEmits<{
         <i class="pi pi-circle-fill"></i>
       </span>
     </div>
-    <Button
+    <QdButton
       type="button"
       :label="t('core.actions.cancel')"
       severity="secondary"

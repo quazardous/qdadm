@@ -21,7 +21,7 @@ import FilterBar from './FilterBar.vue'
 import ActionButtons from './ActionButtons.vue'
 import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
-import Button from 'primevue/button'
+import QdButton from '../base/QdButton.vue'
 import Select from 'primevue/select'
 import AutoComplete from 'primevue/autocomplete'
 import SplitButton from 'primevue/splitbutton'
@@ -333,7 +333,7 @@ function getFilterClass(filter: FilterConfig): Record<string, boolean> {
         <!-- Mobile: split button (primary action + dropdown) -->
         <template v-if="isMobile && headerActions.length > 0 && primaryHeaderAction">
           <!-- Single action: just a button -->
-          <Button
+          <QdButton
             v-if="headerActions.length === 1"
             :label="resolveLabel(primaryHeaderAction.label)"
             :icon="primaryHeaderAction.icon"
@@ -355,7 +355,7 @@ function getFilterClass(filter: FilterConfig): Record<string, boolean> {
         </template>
         <!-- Desktop: individual buttons -->
         <template v-else>
-          <Button
+          <QdButton
             v-for="action in headerActions"
             :key="action.name"
             :label="resolveLabel(action.label)"
@@ -417,7 +417,7 @@ function getFilterClass(filter: FilterConfig): Record<string, boolean> {
           />
         </template>
         <slot name="filters" ></slot>
-        <Button
+        <QdButton
           v-if="hasActiveFilters"
           icon="pi pi-filter-slash"
           severity="secondary"

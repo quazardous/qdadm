@@ -38,8 +38,8 @@ import FormActions from './FormActions.vue'
 import UnsavedChangesDialog from '../dialogs/UnsavedChangesDialog.vue'
 import CardShell from '../layout/CardShell.vue'
 import { formatFetchError } from '../../utils/errors'
-import Button from 'primevue/button'
-import Message from 'primevue/message'
+import QdButton from '../base/QdButton.vue'
+import QdMessage from '../base/QdMessage.vue'
 import type { ResolvedAction, ResolvedFieldConfig } from '../../composables/useEntityItemFormPage'
 import type { GuardDialogState } from '../../composables/useUnsavedChangesGuard'
 
@@ -151,7 +151,7 @@ function onGuardStay(): void {
       <template #actions>
         <slot name="header-actions" />
         <!-- Header actions from builder (excludes save/delete/cancel) -->
-        <Button
+        <QdButton
           v-for="action in headerActions"
           :key="action.name"
           :label="action.label"
@@ -180,16 +180,16 @@ function onGuardStay(): void {
     <!-- Error State (fetch error) -->
     <template v-else-if="fetchError">
       <slot name="error" :error="fetchError">
-        <Message severity="error" :closable="false" class="form-error-message">
+        <QdMessage severity="error" :closable="false" class="form-error-message">
           {{ fetchErrorMessage }}
-        </Message>
+        </QdMessage>
       </slot>
     </template>
 
     <!-- Form Content -->
     <template v-else>
       <!-- Validation Error Summary -->
-      <Message
+      <QdMessage
         v-if="errorSummary && errorSummary.length > 0"
         severity="warn"
         :closable="false"
@@ -200,7 +200,7 @@ function onGuardStay(): void {
             <strong>{{ error.label }}:</strong> {{ error.message }}
           </li>
         </ul>
-      </Message>
+      </QdMessage>
 
       <!-- Single content body; Card wrapper is conditional (#1193) -->
       <CardShell :card="cardWrapper">

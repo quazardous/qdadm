@@ -18,7 +18,7 @@
  */
 
 import { ref, computed } from 'vue'
-import Button from 'primevue/button'
+import QdButton from '../base/QdButton.vue'
 import InputText from 'primevue/inputtext'
 import AutoComplete from 'primevue/autocomplete'
 import Slider from 'primevue/slider'
@@ -161,7 +161,7 @@ function updateItemValue(index: number, value: string | number): void {
             />
           </template>
         </div>
-        <Button
+        <QdButton
           icon="pi pi-times"
           severity="danger"
           text
@@ -172,7 +172,7 @@ function updateItemValue(index: number, value: string | number): void {
       </div>
     </div>
     <div class="kv-add">
-      <Button
+      <QdButton
         icon="pi pi-plus"
         @click="addItem"
         :disabled="!newItem.key || (isTextMode && !newItem.value)"

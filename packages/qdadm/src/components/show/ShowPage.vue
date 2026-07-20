@@ -41,8 +41,8 @@ import { computed, type PropType } from 'vue'
 import PageHeader from '../layout/PageHeader.vue'
 import CardShell from '../layout/CardShell.vue'
 import { formatFetchError } from '../../utils/errors'
-import Button from 'primevue/button'
-import Message from 'primevue/message'
+import QdButton from '../base/QdButton.vue'
+import QdMessage from '../base/QdMessage.vue'
 import FieldGroups from '../item/FieldGroups.vue'
 import ShowField from './ShowField.vue'
 import type { ButtonSeverity } from '../../types'
@@ -187,7 +187,7 @@ type ShowFieldValue = string | number | boolean | Date | Record<string, unknown>
       <template #actions>
         <slot name="header-actions" />
         <!-- Header actions from builder (e.g., edit) -->
-        <Button
+        <QdButton
           v-for="action in headerActions"
           :key="action.name"
           :label="action.label"
@@ -215,9 +215,9 @@ type ShowFieldValue = string | number | boolean | Date | Record<string, unknown>
     <!-- Error State (fetch error) -->
     <template v-else-if="fetchError">
       <slot name="error" :error="fetchError">
-        <Message severity="error" :closable="false" class="show-error-message">
+        <QdMessage severity="error" :closable="false" class="show-error-message">
           {{ fetchErrorMessage }}
-        </Message>
+        </QdMessage>
       </slot>
     </template>
 
@@ -269,7 +269,7 @@ type ShowFieldValue = string | number | boolean | Date | Record<string, unknown>
         <template v-if="showActions && footerActions.length > 0">
           <slot name="footer">
             <div class="show-actions">
-              <Button
+              <QdButton
                 v-for="action in footerActions"
                 :key="action.name"
                 :label="action.label"

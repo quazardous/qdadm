@@ -20,7 +20,7 @@
  *   Just some information.
  * </InfoBanner>
  */
-import Message from 'primevue/message'
+import QdMessage from './base/QdMessage.vue'
 import { computed } from 'vue'
 
 type Severity = 'info' | 'success' | 'warn' | 'error' | 'secondary' | 'contrast'
@@ -58,7 +58,7 @@ const iconClass = computed(() => {
 </script>
 
 <template>
-  <Message
+  <QdMessage
     :severity="severity"
     :closable="closable"
     class="info-banner"
@@ -69,5 +69,5 @@ const iconClass = computed(() => {
         <slot />
       </span>
     </div>
-  </Message>
+  </QdMessage>
 </template>

@@ -9,7 +9,7 @@
  */
 
 import { ref, computed } from 'vue'
-import Button from 'primevue/button'
+import QdButton from '../base/QdButton.vue'
 import InputText from 'primevue/inputtext'
 import Slider from 'primevue/slider'
 import Checkbox from 'primevue/checkbox'
@@ -113,7 +113,7 @@ function updateFluency(index: number, fluency: number | number[]): void {
             style="width: 100px"
           />
         </div>
-        <Button
+        <QdButton
           v-if="lang.primary"
           icon="pi pi-star-fill"
           severity="warning"
@@ -122,7 +122,7 @@ function updateFluency(index: number, fluency: number | number[]): void {
           size="small"
           v-tooltip.top="'Primary language'"
         />
-        <Button
+        <QdButton
           v-else
           icon="pi pi-star"
           severity="secondary"
@@ -132,7 +132,7 @@ function updateFluency(index: number, fluency: number | number[]): void {
           @click="setPrimaryLanguage(index)"
           v-tooltip.top="'Set as primary'"
         />
-        <Button
+        <QdButton
           icon="pi pi-times"
           severity="danger"
           text
@@ -143,7 +143,7 @@ function updateFluency(index: number, fluency: number | number[]): void {
       </div>
     </div>
     <div class="lang-add">
-      <Button
+      <QdButton
         icon="pi pi-plus"
         @click="addLanguage"
         :disabled="!newLanguage.code"

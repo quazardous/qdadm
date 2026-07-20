@@ -58,7 +58,7 @@
  */
 import { computed, watch, type PropType } from 'vue'
 import Dialog from 'primevue/dialog'
-import Button from 'primevue/button'
+import QdButton from '../base/QdButton.vue'
 import Stepper from 'primevue/stepper'
 import StepList from 'primevue/steplist'
 import Step from 'primevue/step'
@@ -284,7 +284,7 @@ const slotActions = computed<SlotActions>(() => ({
               <div class="step-actions">
                 <slot name="actions" v-bind="slotActions">
                   <!-- Back button -->
-                  <Button
+                  <QdButton
                     v-if="!isFirstStep || showBackOnFirst"
                     :label="backLabel"
                     icon="pi pi-arrow-left"
@@ -294,7 +294,7 @@ const slotActions = computed<SlotActions>(() => ({
                   />
 
                   <!-- Cancel button -->
-                  <Button
+                  <QdButton
                     :label="cancelLabel"
                     severity="secondary"
                     @click="cancel"
@@ -302,7 +302,7 @@ const slotActions = computed<SlotActions>(() => ({
                   />
 
                   <!-- Next button (not on last step) -->
-                  <Button
+                  <QdButton
                     v-if="!isLastStep"
                     :label="nextLabel"
                     icon="pi pi-arrow-right"
@@ -312,7 +312,7 @@ const slotActions = computed<SlotActions>(() => ({
                   />
 
                   <!-- Submit button (only on last step) -->
-                  <Button
+                  <QdButton
                     v-if="isLastStep"
                     :label="submitLabel"
                     icon="pi pi-check"

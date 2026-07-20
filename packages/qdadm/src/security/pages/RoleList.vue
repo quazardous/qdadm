@@ -5,7 +5,7 @@
 
 import { useListPage, ListPage, useOrchestrator } from '../../index.js'
 import Column from 'primevue/column'
-import Message from 'primevue/message'
+import QdMessage from '../../components/base/QdMessage.vue'
 import Chip from 'primevue/chip'
 
 /**
@@ -49,7 +49,7 @@ const storageCanPersist: boolean = manager?.rolesProvider?.canPersist ?? false
   <ListPage v-bind="list.props.value" v-on="list.events">
     <!-- Read-only Warning -->
     <template #before-table>
-      <Message v-if="!storageCanPersist" severity="info" :closable="false" class="mb-4">
+      <QdMessage v-if="!storageCanPersist" severity="info" :closable="false" class="mb-4">
         <div class="flex align-items-center gap-2">
           <i class="pi pi-info-circle text-xl"></i>
           <span>
@@ -57,7 +57,7 @@ const storageCanPersist: boolean = manager?.rolesProvider?.canPersist ?? false
             Use a PersistableRoleProvider for editing.
           </span>
         </div>
-      </Message>
+      </QdMessage>
     </template>
 
     <template #columns>

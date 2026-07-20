@@ -21,7 +21,7 @@ import { useApp } from '../../composables/useApp'
 import { useAuth } from '../../composables/useAuth'
 import { useGuardDialog } from '../../composables/useGuardStore'
 import { useNavContext, type BreadcrumbItem, type NavLinkItem } from '../../composables/useNavContext'
-import Button from 'primevue/button'
+import QdButton from '../base/QdButton.vue'
 import Breadcrumb from 'primevue/breadcrumb'
 import UnsavedChangesDialog from '../dialogs/UnsavedChangesDialog.vue'
 import SidebarBox from './SidebarBox.vue'
@@ -366,7 +366,7 @@ const showBreadcrumb = computed<boolean>(() => {
     <main class="main-content" :class="{ 'main-content--sidebar-collapsed': sidebarCollapsed }">
       <!-- Mobile header bar -->
       <div class="mobile-header">
-        <Button
+        <QdButton
           icon="pi pi-bars"
           severity="secondary"
           text

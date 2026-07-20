@@ -3,7 +3,7 @@ import { ref, computed, onMounted, watch, inject } from 'vue'
 import type { HttpClient } from '../../entity/storage/ApiStorage'
 import AutoComplete from 'primevue/autocomplete'
 import Select from 'primevue/select'
-import Button from 'primevue/button'
+import QdButton from '../base/QdButton.vue'
 
 interface ScopeRow {
   resource: string
@@ -266,7 +266,7 @@ onMounted(async () => {
       />
       <span v-if="isRowComplete(row)" class="scope-valid">✓</span>
       <span v-else class="scope-incomplete">...</span>
-      <Button
+      <QdButton
         icon="pi pi-trash"
         severity="danger"
         text
@@ -279,7 +279,7 @@ onMounted(async () => {
     </div>
 
     <div class="scope-add">
-      <Button
+      <QdButton
         label="Add Scope"
         icon="pi pi-plus"
         severity="secondary"

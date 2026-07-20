@@ -17,7 +17,7 @@
  */
 import PageHeader from './PageHeader.vue'
 import CardsGrid from '../display/CardsGrid.vue'
-import Button from 'primevue/button'
+import QdButton from '../base/QdButton.vue'
 
 interface TitleParts {
   action?: string
@@ -89,7 +89,7 @@ function resolveLabel(label: string | (() => string)): string {
       </template>
       <template #actions>
         <slot name="header-actions" ></slot>
-        <Button
+        <QdButton
           v-for="action in headerActions"
           :key="action.name"
           :label="resolveLabel(action.label)"

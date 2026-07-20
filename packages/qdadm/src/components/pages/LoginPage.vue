@@ -22,7 +22,7 @@ import { useRouter } from 'vue-router'
 import Card from 'primevue/card'
 import InputText from 'primevue/inputtext'
 import Password from 'primevue/password'
-import Button from 'primevue/button'
+import QdButton from '../base/QdButton.vue'
 import type { OrchestratorLike } from '../../entity/EntityManager.interface'
 
 /**
@@ -245,7 +245,7 @@ async function handleLogin(): Promise<void> {
               :disabled="loading"
             />
           </div>
-          <Button
+          <QdButton
             type="submit"
             :label="submitLabel"
             icon="pi pi-sign-in"

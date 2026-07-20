@@ -26,13 +26,13 @@
  *   <SimpleDialog v-model:visible="showDialog" title="View Key" :showConfirm="false">
  *     <p>{{ key }}</p>
  *     <template #actions>
- *       <Button label="Copy" icon="pi pi-copy" @click="copyKey" />
+ *       <QdButton label="Copy" icon="pi pi-copy" @click="copyKey" />
  *     </template>
  *   </SimpleDialog>
  */
 import { computed } from 'vue'
 import Dialog from 'primevue/dialog'
-import Button from 'primevue/button'
+import QdButton from '../base/QdButton.vue'
 
 interface Props {
   visible?: boolean
@@ -101,14 +101,14 @@ const canClose = computed((): boolean => props.closable && !props.loading)
 
     <template #footer v-if="showCancel || showConfirm || $slots.actions">
       <slot name="actions" />
-      <Button
+      <QdButton
         v-if="showCancel"
         :label="cancelLabel"
         severity="secondary"
         @click="onCancel"
         :disabled="loading"
       />
-      <Button
+      <QdButton
         v-if="showConfirm"
         :label="confirmLabel"
         :icon="confirmIcon"

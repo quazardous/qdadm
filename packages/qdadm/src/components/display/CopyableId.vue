@@ -7,7 +7,7 @@
  *   <CopyableId :value="apiKey" label="API Key" />
  */
 import { ref, inject } from 'vue'
-import Button from 'primevue/button'
+import QdButton from '../base/QdButton.vue'
 import type { Orchestrator } from '../../orchestrator/Orchestrator'
 
 interface Props {
@@ -40,7 +40,7 @@ async function copyToClipboard(): Promise<void> {
   <div class="form-field">
     <label class="form-field-label">{{ label }}</label>
     <div class="copyable-id">
-      <Button
+      <QdButton
         type="button"
         :icon="copied ? 'pi pi-check' : 'pi pi-copy'"
         :severity="copied ? 'success' : 'secondary'"

@@ -8,7 +8,7 @@
  * - Stay: cancels navigation
  */
 import SimpleDialog from './SimpleDialog.vue'
-import Button from 'primevue/button'
+import QdButton from '../base/QdButton.vue'
 
 interface Props {
   visible?: boolean
@@ -67,7 +67,7 @@ function onSaveAndLeave(): void {
     </div>
 
     <template #actions>
-      <Button
+      <QdButton
         v-if="hasOnSave"
         label="Save & Leave"
         icon="pi pi-save"
