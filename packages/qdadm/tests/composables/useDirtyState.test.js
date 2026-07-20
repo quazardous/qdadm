@@ -79,6 +79,71 @@ describe('useDirtyState (#1194)', () => {
     expect(ds.dirty.value).toBe(false)
   })
 
+  describe('path-aware isFieldDirty (#1396)', () => {
+    it('a nested sub-field lights up like a root field', async () => {
+      const { state, ds } = await makeState({
+        name: 'proxy-1',
+        config: { login: 'bob', password: 'x' },
+      })
+      state.form = { name: 'proxy-1', config: { login: 'alice', password: 'x' } }
+      ds.checkDirty()
+
+      expect(ds.isFieldDirty('config.login')).toBe(true)
+      expect(ds.isFieldDirty('config.password')).toBe(false)
+      // root + global behavior untouched
+      expect(ds.isFieldDirty('config')).toBe(true)
+      expect(ds.dirtyFields.value).toEqual(['config'])
+    })
+
+    it('clean parent short-circuits every sub-path', async () => {
+      const { state, ds } = await makeState({
+        name: 'proxy-1',
+        config: { login: 'bob' },
+      })
+      state.form = { name: 'renamed', config: { login: 'bob' } }
+      ds.checkDirty()
+
+      expect(ds.isFieldDirty('name')).toBe(true)
+      expect(ds.isFieldDirty('config.login')).toBe(false)
+    })
+
+    it('whole-object replacement marks the touched sub-field only', async () => {
+      const { state, ds } = await makeState({ config: { a: 1, b: 2 } })
+      state.form = { config: { a: 1, b: 3 } }
+      ds.checkDirty()
+
+      expect(ds.isFieldDirty('config.a')).toBe(false)
+      expect(ds.isFieldDirty('config.b')).toBe(true)
+    })
+
+    it('missing paths and non-object segments resolve to not-dirty', async () => {
+      const { state, ds } = await makeState({ config: { a: 1 } })
+      state.form = { config: { a: 2 } }
+      ds.checkDirty()
+
+      expect(ds.isFieldDirty('config.nope')).toBe(false)
+      expect(ds.isFieldDirty('config.a.deeper')).toBe(false)
+      expect(ds.isFieldDirty('ghost.path')).toBe(false)
+    })
+
+    it('a sub-field added after the snapshot is dirty', async () => {
+      const { state, ds } = await makeState({ config: { a: 1 } })
+      state.form = { config: { a: 1, added: true } }
+      ds.checkDirty()
+
+      expect(ds.isFieldDirty('config.added')).toBe(true)
+      expect(ds.isFieldDirty('config.a')).toBe(false)
+    })
+
+    it('deep paths work (three segments)', async () => {
+      const { state, ds } = await makeState({ config: { auth: { user: 'bob' } } })
+      state.form = { config: { auth: { user: 'alice' } } }
+      ds.checkDirty()
+
+      expect(ds.isFieldDirty('config.auth.user')).toBe(true)
+    })
+  })
+
   it('reset clears everything', async () => {
     const { state, ds } = await makeState({ name: 'Dune' })
     state.form = { name: 'X' }

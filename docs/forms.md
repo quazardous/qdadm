@@ -72,6 +72,23 @@ unsaved-changes guard.
 | `showErrorOnSubmit` | Only show the error after submit |
 | `fullWidth` | Stretch the field row |
 
+### Nested values (path-addressable dirty)
+
+`name` accepts dot paths: a `FormField` bound to a sub-field of a JSON
+object tracks dirty like any root field —
+
+```vue
+<FormField name="config.login" label="Login">
+  <InputText v-model="form.data.value.config.login" />
+</FormField>
+```
+
+`isFieldDirty('config.login')` compares that exact path between the current
+form and the snapshot. No flattening via `transformLoad`/`transformSave`
+needed. Dot-free names behave exactly as before. (Repeatable rows —
+`items.0.foo` with add/remove shifting indices — are not index-stable;
+prefer keys that don't move.)
+
 ---
 
 ## 3. Dropping a custom widget into a form
