@@ -1,5 +1,20 @@
 # Changelog
 
+## 2.13.0
+
+### Minor Changes
+
+- 910a7c2: Path-addressable dirty detection (#1396): `isFieldDirty('config.login')`
+  tracks sub-fields of JSON objects like root fields — `FormField` accepts
+  dot paths in `name` with zero changes, dot-free names keep the exact
+  previous behavior. Kills the flatten-and-repack pattern for pages editing
+  nested objects.
+- d60b123: qdadmVitePlugin `primevue` flavor option (#1393): alias every `primevue/*`
+  import to a compatible fork (e.g. `openvue`) from the consumer config —
+  qdadm officially tests primevue@4 only, other flavors are the consumer's
+  adaptation. `primevue` peer is now optional so flavor-only installs don't
+  fight npm.
+
 ## 2.12.0
 
 ### Minor Changes
