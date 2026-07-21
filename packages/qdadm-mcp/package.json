@@ -58,6 +58,6 @@
     "ai-agent"
   ],
   "bin": {
-    "qdadm-mcp-relay": "./bin/qdadm-mcp-relay.mjs"
+    "qdadm-mcp-relay": "bin/qdadm-mcp-relay.mjs"
   }
 }
