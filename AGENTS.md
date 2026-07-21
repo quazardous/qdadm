@@ -9,7 +9,7 @@ remote actions. An agent can introspect the app without touching the source.
 ## Where to start
 
 1. **Codebase navigation** for source-code questions: see [`docs/AGENT_GUIDE.md`](docs/AGENT_GUIDE.md).
-2. **Live introspection** of a running dev server: use the `/__qdadm/*` endpoints described below.
+2. **Live introspection** of a running app: hook up the [MCP server](#mcp--one-connection-recommended) (recommended), or use the raw `/__qdadm/*` endpoints described below.
 3. **Architecture & conventions**: [`docs/QDADM_CREDO.md`](docs/QDADM_CREDO.md), [`docs/DEBUG.md`](docs/DEBUG.md) (runtime debug bridge), [`docs/architecture.md`](docs/architecture.md).
 4. **i18n surface**: [`docs/i18n.md`](docs/i18n.md) — keys, fallbacks, providers.
 
@@ -22,6 +22,24 @@ remote actions. An agent can introspect the app without touching the source.
 | Render & edit fields — the form façade (`FormInput`), field widgets (`LookupField`, `KeyValueEditor`, `Scope`/`PermissionEditor`, JSON editors, structured/raw JSON dual), non-entity forms (`useBareForm`) | [`docs/forms.md`](docs/forms.md) |
 | Extensibility (hooks / signals / zones / decorators) | [`docs/extension.md`](docs/extension.md) |
 | Full source-code index | [`docs/AGENT_GUIDE.md`](docs/AGENT_GUIDE.md) |
+
+## MCP — one connection (recommended)
+
+[`@quazardous/qdadm-mcp`](packages/qdadm-mcp) fronts the debug bridge as an
+MCP server with a curated 13-tool arsenal (`session_info`, `boot_errors`,
+`entity_*`, `storage_dump`, …) and actionable errors — no curl plumbing:
+
+```bash
+npm install -D @quazardous/qdadm-mcp
+# vite.config: plugins [vue(), qdadmVitePlugin(), qdadmDebugPlugin(), qdadmMcpPlugin()]
+claude mcp add --transport http qdadm http://localhost:5174/__qdadm/mcp
+```
+
+Static site / no dev server? The same package ships `npx qdadm-mcp-relay`
+(the page dials out, token pairing). Full setup guide + agent playbook:
+[`packages/qdadm-mcp/README.md`](packages/qdadm-mcp/README.md).
+
+The raw surfaces below remain available and are what the MCP is built on.
 
 ## Live debug bridge — `/__qdadm/*` (dev only)
 
