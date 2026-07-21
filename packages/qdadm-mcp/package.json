@@ -1,7 +1,7 @@
 {
   "name": "@quazardous/qdadm-mcp",
-  "version": "0.0.0",
-  "description": "MCP server for running qdadm apps \u2014 agents debug a live app in one connection (vite dev plugin over the qdadm debug bridge)",
+  "version": "0.1.0",
+  "description": "MCP server for running qdadm apps — agents debug a live app in one connection (vite dev plugin over the qdadm debug bridge)",
   "author": "quazardous",
   "license": "MIT",
   "repository": {

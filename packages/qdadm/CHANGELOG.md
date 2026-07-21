@@ -1,5 +1,28 @@
 # Changelog
 
+## 2.14.0
+
+### Minor Changes
+
+- 516a440: Debug plugin: inter-plugin broker api + typed page-side queries (#1398)
+
+  `qdadmDebugPlugin` exposes its ws broker through the standard Vite plugin
+  `api` (consumed by @quazardous/qdadm-mcp), and the injected client gains
+  typed, bridge-independent handlers: sessionInfo, routes, entityState,
+  entityCall, storageDump, recentSignals, and a boot log buffered from
+  BEFORE the app boots (console/page errors visible even when the app dies
+  pre-bridge). Unknown subpaths under /\_\_qdadm now fall through so sibling
+  plugins can mount their own endpoints.
+
+### Patch Changes
+
+- decf3fc: QdButton / QdMessage wrappers (#1391): the framework's 24 raw
+  primevue/button and primevue/message imports now go through two thin
+  pass-through components (components/base/, exported), concentrating any
+  future widget-library divergence into two files. An ESLint
+  no-restricted-imports guard keeps raw imports from creeping back.
+  Zero visual or behavioral change; flavor-compatible by construction.
+
 ## 2.13.0
 
 ### Minor Changes
