@@ -82,6 +82,7 @@ export class EntityManager<T extends EntityRecord = EntityRecord> {
   protected _badges: ((entity: T) => EntityBadge[]) | null
   protected _label: string | null
   protected _labelPlural: string | null
+  protected _description: string | null
   protected _routePrefix: string | null
   protected _fields: Record<string, FieldConfig>
 
@@ -153,6 +154,7 @@ export class EntityManager<T extends EntityRecord = EntityRecord> {
       idField = 'id',
       label = null,
       labelPlural = null,
+      description = null,
       routePrefix = null,
       labelField = 'name',
       badges = null,
@@ -185,6 +187,7 @@ export class EntityManager<T extends EntityRecord = EntityRecord> {
 
     this._label = label
     this._labelPlural = labelPlural
+    this._description = description
     this._routePrefix = routePrefix
     this._fields = fields
 
@@ -413,6 +416,13 @@ export class EntityManager<T extends EntityRecord = EntityRecord> {
     if (!this.name) return 'Items'
     const plural = pluralize.plural(this.name)
     return plural.charAt(0).toUpperCase() + plural.slice(1)
+  }
+
+  /**
+   * Optional one-liner explaining what the entity is (list page subtitle)
+   */
+  get description(): string | null {
+    return this._description
   }
 
   /**

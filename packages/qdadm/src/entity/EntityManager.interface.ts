@@ -37,6 +37,8 @@ export interface EntityManagerBase<T = unknown> {
   readonly idField: string
   label?: string
   labelPlural?: string
+  /** Optional one-liner explaining what the entity is (list page subtitle) */
+  description?: string | null
   routePrefix?: string
   labelField?: string | ((entity: T) => string)
   readOnly?: boolean
@@ -137,6 +139,7 @@ export interface EntityManagerLike {
   idField: string
   label?: string
   labelPlural?: string
+  description?: string | null
   // Function-typed PROPERTY → strictly contravariant param; `never` is the
   // contravariant top, so the canonical `(entity: T) => string` assigns.
   // Cast at the call site when invoking.

@@ -1592,3 +1592,50 @@ describe('useListPage - optionsFromCache with FilterQuery (T281)', () => {
     expect(uniqueValues).toContain('completed')
   })
 })
+
+describe('useListPage - subtitle (entity punchline)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mockRouteState = { name: 'book', params: {}, query: {}, meta: {} }
+    mockManager = createMockManager()
+    mockOrchestrator.get.mockImplementation(() => mockManager)
+  })
+
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
+  it('defaults subtitle from manager.description', () => {
+    mockManager = createMockManager({ description: 'All the books we track.' })
+
+    const { result } = createWrapper(() => useListPage({ entity: 'books' }))
+
+    expect(result.props.value.subtitle).toBe('All the books we track.')
+  })
+
+  it('subtitle is null when manager has no description', () => {
+    const { result } = createWrapper(() => useListPage({ entity: 'books' }))
+
+    expect(result.props.value.subtitle).toBeNull()
+  })
+
+  it('config.subtitle overrides manager.description', () => {
+    mockManager = createMockManager({ description: 'From the manager.' })
+
+    const { result } = createWrapper(() =>
+      useListPage({ entity: 'books', subtitle: 'From the page.' })
+    )
+
+    expect(result.props.value.subtitle).toBe('From the page.')
+  })
+
+  it('config.subtitle null suppresses manager.description', () => {
+    mockManager = createMockManager({ description: 'From the manager.' })
+
+    const { result } = createWrapper(() =>
+      useListPage({ entity: 'books', subtitle: null })
+    )
+
+    expect(result.props.value.subtitle).toBeNull()
+  })
+})

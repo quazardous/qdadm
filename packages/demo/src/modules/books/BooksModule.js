@@ -141,6 +141,7 @@ export class BooksModule extends Module {
       name: 'books',
       idField: 'bookId',  // Custom ID field name (also used as route param)
       labelField: 'title',
+      description: 'The library catalog — every title we track, with author, year and genre.',
       fields: {
         title: { type: 'text', label: 'Title', required: true, default: '' },
         author: { type: 'text', label: 'Author', required: true, default: '' },
@@ -162,6 +163,7 @@ export class BooksModule extends Module {
     ctx.entity('genres', new EntityManager({
       name: 'genres',
       labelField: 'name',
+      description: 'Reference list of book genres — used to classify and filter the catalog.',
       fields: {
         id: { type: 'text', label: 'ID' },
         name: { type: 'text', label: 'Name' },

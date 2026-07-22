@@ -113,6 +113,7 @@ export class CountriesModule extends Module {
     // ════════════════════════════════════════════════════════════════════════
     ctx.entity('countries', new EntityManager({
       name: 'countries',
+      description: 'Read-only world countries dataset (REST Countries) — demos asymmetric list/get and local filtering.',
       labelField: (country) => country.name?.common || country.cca3,
       badges: (country) => {
         if (!country.region) return []

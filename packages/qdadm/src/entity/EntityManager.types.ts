@@ -209,6 +209,8 @@ export interface EntityManagerOptions<T extends EntityRecord = EntityRecord> {
   idField?: string
   label?: string
   labelPlural?: string
+  /** Optional one-liner explaining what the entity is — shown under the list page title */
+  description?: string
   routePrefix?: string
   labelField?: string | ((entity: T) => string)
   /** Callback to compute badges for an entity item header */

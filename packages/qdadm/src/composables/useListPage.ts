@@ -1112,6 +1112,7 @@ export function useListPage<T = unknown>(config: UseListPageOptions<T>): UseList
 
   const listProps = computed<ListPageProps>(() => ({
     title: manager.labelPlural,
+    subtitle: config.subtitle !== undefined ? config.subtitle : (manager.description ?? null),
     headerActions: headerActions.value,
     cards: cards.value,
     columns: columns.value,

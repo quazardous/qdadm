@@ -159,6 +159,11 @@ list.addDeleteAction({ labelField: 'title' })
 </template>
 ```
 
+The page title comes from the manager's `labelPlural`. If the manager declares a
+`description` (see [Field Definition](#field-definition)), it renders as a muted
+subtitle under the title — a one-liner telling the user what the entity is.
+Override per page with the `subtitle` option (`null` suppresses it).
+
 ### Builder methods
 
 | Method | Description |
@@ -258,6 +263,7 @@ useListPage({
   persistFilters: true,        // Remember filters across navigation
   persistSort: true,           // Remember active sort across navigation (per entity)
   syncUrlParams: true,         // Sync filters/sort with URL
+  subtitle: 'Custom subtitle', // Override manager.description (null = no subtitle)
 })
 ```
 
@@ -630,6 +636,8 @@ ctx.entity('books', new EntityManager({
   name: 'books',
   idField: 'bookId',
   labelField: 'title',
+  // Optional one-liner shown under the list page title
+  description: 'The library catalog — every title we track.',
   fields: {
     title:   { type: 'text', label: 'Title', required: true, default: '' },
     author:  { type: 'text', label: 'Author', required: true, default: '' },

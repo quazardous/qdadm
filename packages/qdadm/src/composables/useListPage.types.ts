@@ -247,6 +247,8 @@ export interface UseListPageOptions<T = unknown> {
   entityName?: string
   /** Override manager.labelPlural */
   entityNamePlural?: string
+  /** Override manager.description (list page subtitle). Pass null to suppress it. */
+  subtitle?: string | null
   /** Override manager.routePrefix */
   routePrefix?: string
 }
@@ -256,6 +258,7 @@ export interface UseListPageOptions<T = unknown> {
  */
 export interface ListPageProps {
   title: string | undefined
+  subtitle: string | null
   headerActions: ResolvedHeaderAction[]
   cards: CardConfig[]
   columns: ColumnConfig[]
