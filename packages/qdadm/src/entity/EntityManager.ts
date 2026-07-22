@@ -1,7 +1,7 @@
 import { PermissiveAuthAdapter } from './auth/PermissiveAdapter'
 import { AuthActions, type AuthUser } from './auth/EntityAuthAdapter'
 import type { EntityAuthAdapter as IEntityAuthAdapter } from './auth/EntityAuthAdapter'
-import pluralize from 'pluralize'
+import pluralize from '../utils/pluralize'
 import { applyCacheMethods } from './EntityManager.cache'
 import { applyQueryMethods } from './EntityManager.query'
 import { applyRelationsMethods } from './EntityManager.relations'

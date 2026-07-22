@@ -5,11 +5,12 @@
  * TextEncoder invariant check.)
  *
  * The plugin must exclude primevue/@primeuix/themes/@quazardous/qdadm from
- * optimizeDeps (single raw pipeline → one PrimeVue instance), pre-bundle
- * qdadm's CJS transitives in BOTH nested (npm install) and plain (symlinked
- * install) forms, and dedupe the peer singletons. When the package resolves
- * through a symlink, its realpath must land in server.fs.allow together
- * with the workspace root (skybot feedback, #1389).
+ * optimizeDeps (single raw pipeline → one PrimeVue instance) and dedupe the
+ * peer singletons. It must NOT emit optimizeDeps.include: qdadm has no CJS
+ * transitives (pluralize vendored as ESM, #1454), and an include entry that
+ * can't resolve from the consumer root breaks file:-linked installs. When
+ * the package resolves through a symlink, its realpath must land in
+ * server.fs.allow together with the workspace root (skybot feedback, #1389).
  *
  * Run: npm test
  */
@@ -31,8 +32,9 @@ describe('qdadmVitePlugin', () => {
       '@primeuix/themes',
       '@quazardous/qdadm',
     ])
-    // non-symlinked root → nested form only (plain form would warn)
-    expect(config.optimizeDeps.include).toEqual(['@quazardous/qdadm > pluralize'])
+    // no CJS transitives left (#1454) — an include entry unresolvable from
+    // the consumer root would break file:-linked installs
+    expect(config.optimizeDeps.include).toBeUndefined()
   })
 
   it('appends extra dedupe entries after the defaults', () => {
@@ -46,7 +48,7 @@ describe('qdadmVitePlugin', () => {
     ])
   })
 
-  it('symlinked install: plain CJS include + fs.allow with realpath and workspace root', () => {
+  it('symlinked install: no include either + fs.allow with realpath and workspace root', () => {
     // fabricate <root>/node_modules/@quazardous/qdadm -> symlink to a real dir
     const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'qdadm-plugin-'))
     const target = path.join(tmp, 'linked-qdadm')
@@ -56,7 +58,7 @@ describe('qdadmVitePlugin', () => {
     fs.symlinkSync(target, path.join(root, 'node_modules', '@quazardous', 'qdadm'))
 
     const config = qdadmVitePlugin().config({ root })
-    expect(config.optimizeDeps.include).toEqual(['pluralize'])
+    expect(config.optimizeDeps.include).toBeUndefined()
     expect(config.server.fs.allow).toContain(fs.realpathSync(target))
 
     fs.rmSync(tmp, { recursive: true, force: true })

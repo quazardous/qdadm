@@ -23,13 +23,11 @@
  * - `optimizeDeps.exclude` keeps primevue/@primeuix/themes/qdadm out of the
  *   pre-bundle so BOTH pipelines resolve the same raw modules. Excluding
  *   qdadm also keeps HMR sane when the package is consumed via a symlink.
- * - `optimizeDeps.include` pre-bundles qdadm's CJS transitives (currently
- *   `pluralize`), which cannot be served raw as ESM. The list lives HERE —
- *   consumers should not have to track qdadm's internal CJS deps (skybot
- *   feedback on #1389). Both the nested (`@quazardous/qdadm > pluralize`,
- *   npm installs) and plain (`pluralize`, symlinked installs where the
- *   nested path can't resolve) forms are declared; the unused one is a
- *   no-op warning at worst.
+ * - qdadm has NO CJS transitives (pluralize is vendored as ESM, #1454), so
+ *   there is nothing to `optimizeDeps.include` — which also means nothing
+ *   for the optimizer to fail resolving in file:-linked installs where
+ *   npm (install-links=false) never materializes qdadm's deps at the
+ *   consumer root.
  * - When `node_modules/@quazardous/qdadm` is a symlink (file:/workspace
  *   link — qdadm's own dev mode against a testbed app), its realpath is
  *   appended to `server.fs.allow` so qdadm's `?raw` dynamic imports (i18n
@@ -43,9 +41,6 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import { searchForWorkspaceRoot, type Plugin, type UserConfig } from 'vite'
-
-/** qdadm's CJS transitive deps that must be pre-bundled (internal knowledge). */
-const CJS_TRANSITIVES = ['pluralize']
 
 export interface QdadmVitePluginOptions {
   /**
@@ -84,12 +79,10 @@ export function qdadmVitePlugin(options: QdadmVitePluginOptions = {}): Plugin {
       // Symlinked install (file:/workspace link)? Allow serving from the
       // link target, which typically lives outside the consumer's root.
       const fsAllow: string[] = []
-      let symlinked = false
       try {
         const pkgDir = path.join(root, 'node_modules', '@quazardous', 'qdadm')
         const real = fs.realpathSync(pkgDir)
         if (real !== pkgDir) {
-          symlinked = true
           fsAllow.push(searchForWorkspaceRoot(root), real)
         }
       } catch {
@@ -123,13 +116,6 @@ export function qdadmVitePlugin(options: QdadmVitePluginOptions = {}): Plugin {
         },
         optimizeDeps: {
           exclude: [...widgetExcludes, ...themesExcludes, '@quazardous/qdadm'],
-          // One form per install mode: the nested path resolves through a
-          // real node_modules chain (npm installs), the plain form through a
-          // symlink realpath — declaring the unused one logs a "Failed to
-          // resolve dependency" warning (skybot testbed, #1389).
-          include: symlinked
-            ? [...CJS_TRANSITIVES]
-            : CJS_TRANSITIVES.map((dep) => `@quazardous/qdadm > ${dep}`),
         },
         ...(fsAllow.length > 0 ? { server: { fs: { allow: fsAllow } } } : {}),
       }

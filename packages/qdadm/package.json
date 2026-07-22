@@ -52,10 +52,8 @@
   ],
   "dependencies": {
     "@quazardous/qdcore": "^1.0.0",
-    "@types/pluralize": "^0.0.33",
     "@quazardous/qddebug": "^1.0.0",
     "@quazardous/quarkernel": "^2.1.0",
-    "pluralize": "^8.0.0",
     "yaml": "^2.8.4"
   },
   "peerDependencies": {
