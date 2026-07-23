@@ -25,9 +25,9 @@
  */
 import type { Plugin } from 'vite'
 import type { IncomingMessage, ServerResponse } from 'node:http'
-import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js'
-import { buildToolset, type DebugBrokerApi, type ToolsetOptions } from './tools.ts'
+import { createQdadmMcpServer } from './server.ts'
+import type { DebugBrokerApi, ToolsetOptions } from './tools.ts'
 
 export interface QdadmMcpPluginOptions extends ToolsetOptions {
   /**
@@ -42,30 +42,12 @@ export function qdadmMcpPlugin(options: QdadmMcpPluginOptions = {}): Plugin {
   let broker: DebugBrokerApi | null = null
   let mcpPath = options.path ?? null
 
-  function buildServer(): McpServer {
-    const server = new McpServer({
+  const buildServer = () =>
+    createQdadmMcpServer(broker!, {
+      ...options,
       name: options.serverInfo?.name ?? 'qdadm',
       version: options.serverInfo?.version ?? '1.0.0',
     })
-    for (const tool of buildToolset(broker!, options)) {
-      server.registerTool(
-        tool.name,
-        { description: tool.description, inputSchema: tool.inputSchema },
-        async (args: Record<string, unknown>) => {
-          try {
-            const result = await tool.handler(args ?? {})
-            return { content: [{ type: 'text' as const, text: JSON.stringify(result, null, 2) }] }
-          } catch (e) {
-            return {
-              isError: true,
-              content: [{ type: 'text' as const, text: (e as Error).message }],
-            }
-          }
-        }
-      )
-    }
-    return server
-  }
 
   return {
     name: 'qdadm-mcp',

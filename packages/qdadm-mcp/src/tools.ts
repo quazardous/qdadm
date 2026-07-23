@@ -11,8 +11,13 @@
  *
  * Tools receive the broker surface exposed by qdadm's debug plugin via the
  * Vite inter-plugin `api` (duck-typed here — no dependency on qdadm).
+ *
+ * Argument schemas are plain `ToolArg` specs, not zod (#1497): the MCP SDK
+ * validates zod shapes BEFORE the handler runs and surfaces failures as raw
+ * ZodError JSON dumps. Our own registration layer (server.ts) advertises
+ * these specs as JSON Schema and validates them with one-sentence
+ * actionable errors — the same register as the no-session message.
  */
-import { z } from 'zod'
 
 /** Duck-typed view of qdadm's QdadmDebugPluginApi. */
 export interface DebugBrokerApi {
@@ -29,29 +34,62 @@ export interface ToolsetOptions {
   readOnly?: boolean
 }
 
+/**
+ * Argument spec — the whole vocabulary the toolset needs.
+ * `string` / `id` (string|number) / `object` (free-form record).
+ */
+export interface ToolArg {
+  kind: 'string' | 'id' | 'object'
+  required?: boolean
+  description: string
+}
+
 export interface ToolDef {
   name: string
   description: string
-  // zod raw shape (registerTool inputSchema)
-  inputSchema: Record<string, z.ZodTypeAny>
+  args: Record<string, ToolArg>
+  /**
+   * Tool-specific guidance replacing the generic "open the app in a
+   * browser" advice when no session is connected (#1497 — boot_errors is
+   * exactly the tool an agent reaches for when the page is blank).
+   */
+  noSessionHint?: string
   handler: (args: Record<string, unknown>) => Promise<unknown>
 }
 
-const session = z
-  .string()
-  .optional()
-  .describe("Target session id (default 'latest' — the most recently active tab)")
+const session: ToolArg = {
+  kind: 'string',
+  description: "Target session id (default 'latest' — the most recently active tab)",
+}
 
-class NoSessionError extends Error {}
+const entity: ToolArg = {
+  kind: 'string',
+  required: true,
+  description: 'Entity name, as registered in the app',
+}
 
-function resolveSession(api: DebugBrokerApi, args: Record<string, unknown>) {
-  const s = api.pickSession((args.session as string) ?? 'latest')
-  if (!s) {
-    throw new NoSessionError(
-      'No connected browser session. Open the app in a browser once, then retry. ' +
-        `Known sessions: ${JSON.stringify(api.listSessions())}`
+const id: ToolArg = {
+  kind: 'id',
+  required: true,
+  description: 'Record id (mind entity_state.idField — it is often not "id")',
+}
+
+export class NoSessionError extends Error {
+  readonly sessions: Array<Record<string, unknown>>
+
+  constructor(sessions: Array<Record<string, unknown>>, hint?: string) {
+    super(
+      'No connected browser session. ' +
+        (hint ?? 'Open the app in a browser once, then retry.') +
+        ` Known sessions: ${JSON.stringify(sessions)}`
     )
+    this.sessions = sessions
   }
+}
+
+function resolveSession(api: DebugBrokerApi, args: Record<string, unknown>, hint?: string) {
+  const s = api.pickSession((args.session as string) ?? 'latest')
+  if (!s) throw new NoSessionError(api.listSessions(), hint)
   return s
 }
 
@@ -60,18 +98,42 @@ function stamped(s: { id: string; lastSeenAt: number }, data: unknown) {
   return { session: { id: s.id, ageMs: Date.now() - s.lastSeenAt }, data }
 }
 
+/**
+ * Best-effort list of registered entity names, for enriching entity-arg
+ * validation errors (#1497). Null when no session or the ask fails — the
+ * caller falls back to pointing at entity_state.
+ */
+export async function listRegisteredEntities(
+  api: DebugBrokerApi,
+  args: Record<string, unknown>
+): Promise<string[] | null> {
+  try {
+    const s = api.pickSession((args.session as string) ?? 'latest')
+    if (!s) return null
+    const data = (await api.ask('entityState', {}, s.id)) as { entities?: unknown }
+    return Array.isArray(data?.entities) ? (data.entities as string[]) : null
+  } catch {
+    return null
+  }
+}
+
 export function buildToolset(api: DebugBrokerApi, options: ToolsetOptions = {}): ToolDef[] {
   const readOnly = options.readOnly ?? false
 
-  const ask = async (
-    args: Record<string, unknown>,
-    type: string,
-    payload?: unknown
-  ): Promise<unknown> => {
-    const s = resolveSession(api, args)
-    const data = await api.ask(type, payload, s.id)
-    return stamped(s, data)
-  }
+  const makeAsk =
+    (hint?: string) =>
+    async (args: Record<string, unknown>, type: string, payload?: unknown): Promise<unknown> => {
+      const s = resolveSession(api, args, hint)
+      const data = await api.ask(type, payload, s.id)
+      return stamped(s, data)
+    }
+  const ask = makeAsk()
+
+  const bootErrorsHint =
+    'boot_errors needs an open tab: the pre-boot buffer lives in the page. ' +
+    'Open the app URL in a browser — even if it renders a blank page, the capture ' +
+    'script loads before the app and holds everything it threw while dying. Then retry.'
+  const askBootErrors = makeAsk(bootErrorsHint)
 
   const tools: ToolDef[] = [
     {
@@ -80,24 +142,26 @@ export function buildToolset(api: DebugBrokerApi, options: ToolsetOptions = {}):
         'Identity card of the live app session: app name/version, boot time, current route, ' +
         'bridge readiness, buffered-error counts. Call this FIRST — it detects zombie tabs ' +
         '(stale HMR chunks) and tells you which session you are talking to.',
-      inputSchema: { session },
+      args: { session },
       handler: (a) => ask(a, 'sessionInfo'),
     },
     {
       name: 'boot_errors',
       description:
-        'Console errors/warnings, page errors and unhandled rejections buffered since BEFORE ' +
-        'the app booted — works even when the app died before the debug bridge existed ' +
-        '(blank-page class of failures).',
-      inputSchema: { session },
-      handler: (a) => ask(a, 'bootlog'),
+        'Console errors/warnings, page errors and unhandled rejections buffered by the ' +
+        'pre-boot capture script, which loads BEFORE the app bundle — so it holds everything ' +
+        'the app threw while dying (blank-page class of failures). Needs a connected tab: the ' +
+        'buffer lives in the page, so open the app URL even if it renders blank.',
+      args: { session },
+      noSessionHint: bootErrorsHint,
+      handler: (a) => askBootErrors(a, 'bootlog'),
     },
     {
       name: 'routes',
       description:
         'All registered routes: name, path, and meta (entity, layout, auth flags). Route NAMES ' +
         'are singularized (entity "tasks" → route "task") while paths stay plural.',
-      inputSchema: { session },
+      args: { session },
       handler: (a) => ask(a, 'routes'),
     },
     {
@@ -106,7 +170,7 @@ export function buildToolset(api: DebugBrokerApi, options: ToolsetOptions = {}):
         'Without `entity`: the list of registered entities. With `entity`: its manager state — ' +
         'idField (beware: often not "id"), labelField, field schema, CURRENT-USER permissions ' +
         '(canCreate/read/update/delete), and the storage kind + localStorage key.',
-      inputSchema: { session, entity: z.string().optional() },
+      args: { session, entity: { ...entity, required: false } },
       handler: (a) => ask(a, 'entityState', { entity: a.entity }),
     },
     {
@@ -114,26 +178,29 @@ export function buildToolset(api: DebugBrokerApi, options: ToolsetOptions = {}):
       description:
         'List records through the EntityManager (permissions, cache and signals apply — the ' +
         'same path the UI uses). params supports page/page_size/search/filters/sort_by.',
-      inputSchema: {
+      args: {
         session,
-        entity: z.string(),
-        params: z.record(z.unknown()).optional(),
+        entity,
+        params: {
+          kind: 'object',
+          description: 'Query params: page/page_size/search/filters/sort_by',
+        },
       },
       handler: (a) => ask(a, 'entityCall', { entity: a.entity, op: 'list', params: a.params }),
     },
     {
       name: 'entity_get',
       description: 'Fetch one record by id through the EntityManager.',
-      inputSchema: { session, entity: z.string(), id: z.union([z.string(), z.number()]) },
+      args: { session, entity, id },
       handler: (a) => ask(a, 'entityCall', { entity: a.entity, op: 'get', id: a.id }),
     },
     {
       name: 'storage_dump',
       description:
-        "RAW storage view for an entity (localStorage-backed storages): the key and its parsed " +
+        'RAW storage view for an entity (localStorage-backed storages): the key and its parsed ' +
         'content, bypassing the manager. Diff against entity_list to catch seed/cache/collision ' +
         'bugs — the manager view and the raw view disagreeing IS the finding.',
-      inputSchema: { session, entity: z.string() },
+      args: { session, entity },
       handler: (a) => ask(a, 'storageDump', { entity: a.entity }),
     },
     {
@@ -141,7 +208,7 @@ export function buildToolset(api: DebugBrokerApi, options: ToolsetOptions = {}):
       description:
         'Ring buffer of the last signal names emitted on the bus (auth:login, entity:*:created…). ' +
         'Arms on first call if the app is up.',
-      inputSchema: { session },
+      args: { session },
       handler: (a) => ask(a, 'recentSignals'),
     },
     {
@@ -149,7 +216,7 @@ export function buildToolset(api: DebugBrokerApi, options: ToolsetOptions = {}):
       description:
         'Discovery: the self-describing manifests of every debug collector (entry shapes + ' +
         'available actions). Use it to find collector actions callable via bridge_call.',
-      inputSchema: { session },
+      args: { session },
       handler: (a) => ask(a, 'describe'),
     },
     {
@@ -157,11 +224,19 @@ export function buildToolset(api: DebugBrokerApi, options: ToolsetOptions = {}):
       description:
         'Escape hatch: invoke any collector action exposed by describe — ' +
         '{ collector, action, args }.',
-      inputSchema: {
+      args: {
         session,
-        collector: z.string(),
-        action: z.string(),
-        args: z.record(z.unknown()).optional(),
+        collector: {
+          kind: 'string',
+          required: true,
+          description: 'Collector name (see describe)',
+        },
+        action: {
+          kind: 'string',
+          required: true,
+          description: 'Action name on the collector (see describe)',
+        },
+        args: { kind: 'object', description: 'Action arguments' },
       },
       handler: (a) =>
         ask(a, 'call', { collector: a.collector, action: a.action, args: a.args ?? {} }),
@@ -174,17 +249,21 @@ export function buildToolset(api: DebugBrokerApi, options: ToolsetOptions = {}):
       description:
         'Create a record through the EntityManager (permissions checked, signals emitted, ' +
         'caches invalidated — exactly like the UI).',
-      inputSchema: { session, entity: z.string(), data: z.record(z.unknown()) },
+      args: {
+        session,
+        entity,
+        data: { kind: 'object', required: true, description: 'Record fields' },
+      },
       handler: (a) => ask(a, 'entityCall', { entity: a.entity, op: 'create', data: a.data }),
     },
     {
       name: 'entity_update',
       description: 'Update a record by id through the EntityManager.',
-      inputSchema: {
+      args: {
         session,
-        entity: z.string(),
-        id: z.union([z.string(), z.number()]),
-        data: z.record(z.unknown()),
+        entity,
+        id,
+        data: { kind: 'object', required: true, description: 'Fields to update' },
       },
       handler: (a) =>
         ask(a, 'entityCall', { entity: a.entity, op: 'update', id: a.id, data: a.data }),
@@ -192,7 +271,7 @@ export function buildToolset(api: DebugBrokerApi, options: ToolsetOptions = {}):
     {
       name: 'entity_delete',
       description: 'Delete a record by id through the EntityManager.',
-      inputSchema: { session, entity: z.string(), id: z.union([z.string(), z.number()]) },
+      args: { session, entity, id },
       handler: (a) => ask(a, 'entityCall', { entity: a.entity, op: 'delete', id: a.id }),
     },
   ]

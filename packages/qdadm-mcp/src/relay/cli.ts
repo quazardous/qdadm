@@ -16,10 +16,9 @@
 import { randomUUID } from 'node:crypto'
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http'
 import { WebSocketServer } from 'ws'
-import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js'
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
-import { buildToolset } from '../tools.ts'
+import { createQdadmMcpServer } from '../server.ts'
 import { RelayBroker } from './broker.ts'
 
 interface CliOptions {
@@ -49,24 +48,8 @@ function parseArgs(argv: string[]): CliOptions {
   return opts
 }
 
-function buildServer(broker: RelayBroker, readOnly: boolean): McpServer {
-  const server = new McpServer({ name: 'qdadm-relay', version: '1.0.0' })
-  for (const tool of buildToolset(broker, { readOnly })) {
-    server.registerTool(
-      tool.name,
-      { description: tool.description, inputSchema: tool.inputSchema },
-      async (args: Record<string, unknown>) => {
-        try {
-          const result = await tool.handler(args ?? {})
-          return { content: [{ type: 'text' as const, text: JSON.stringify(result, null, 2) }] }
-        } catch (e) {
-          return { isError: true, content: [{ type: 'text' as const, text: (e as Error).message }] }
-        }
-      }
-    )
-  }
-  return server
-}
+const buildServer = (broker: RelayBroker, readOnly: boolean) =>
+  createQdadmMcpServer(broker, { readOnly, name: 'qdadm-relay' })
 
 export async function main(argv = process.argv.slice(2)): Promise<void> {
   const opts = parseArgs(argv)
