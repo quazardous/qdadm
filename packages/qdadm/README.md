@@ -6,6 +6,7 @@
 
 ```bash
 npm install @quazardous/qdadm primevue @primeuix/themes primeicons vue-router pinia
+npm install -D sass-embedded   # compiles qdadm's shipped .scss styles (or `sass`)
 ```
 
 ```ts
