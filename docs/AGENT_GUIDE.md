@@ -7,7 +7,7 @@
 
 ```bash
 npm install          # Install all (from root)
-npm run dev          # Start demo http://localhost:5175
+npm run dev          # Start demo http://localhost:5174
 npm test             # Run tests (from packages/qdadm)
 ```
 
@@ -286,6 +286,7 @@ AuthCollector shows: user, token, permissions, role hierarchy, impersonation eve
 | Topic | File |
 |-------|------|
 | Philosophy | `docs/QDADM_CREDO.md` |
+| Decision records (the why) | `docs/adr/` |
 | Page compositions (start here) | `docs/page-compositions.md` |
 | CRUD Pages | `docs/crud.md` |
 | Navigation (breadcrumb, navlinks, View↔Edit toggle) | `docs/navigation.md` |
