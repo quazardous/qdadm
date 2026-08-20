@@ -4,6 +4,10 @@
  * Integrates generateManagers with Vite's build pipeline, triggering
  * entity manager file generation during the buildStart hook.
  *
+ * @experimental Undocumented build-time entry. Prefer the programmatic
+ * `generateManagers` entry (`@quazardous/qdadm/gen`), which is stable — see
+ * docs/API_STABILITY.md.
+ *
  * @module gen/vite-plugin
  */
 
