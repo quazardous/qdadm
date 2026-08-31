@@ -48,6 +48,32 @@ decides what that implies.
 would be a mistake: the front would be trusting data that bypassed its own
 permission filters. It asks again through the normal read path instead.
 
+## `entities` means entities
+
+The declaration names **registered entities**, and the mechanism works by
+invalidating their `EntityManager`. A backend usually pushes more than that —
+progress, notifications, and screens that have no manager behind them.
+
+A pushed name with no registered manager is dropped, with a one-off dev
+warning. That is the correct behaviour, but it is worth knowing *before* you
+meet it: a list backed by something you deliberately never modelled as an
+entity — an archive view, a read-only child listing — will not refresh, and no
+amount of declaring will change that.
+
+If you have such a screen, you have three options, in increasing order of cost:
+
+1. **Subscribe directly** for that one screen. The frames are on the signal bus
+   whatever happens, so `signals.on('sse:entity:updated', …)` — or
+   [`useSSEBridge`](../packages/qdadm/src/composables/useSSEBridge.ts) — costs a
+   few lines and no modelling change.
+2. **Register it as an entity** if it genuinely is one and you were only
+   avoiding the ceremony. You then get the whole mechanism for free.
+3. **Leave it stale** and reload on navigation, which is what happens today.
+
+Option 1 is usually right: the reason the screen has no manager is generally a
+good one, and inventing an entity to unlock a refresh trades a real modelling
+decision for a mechanical one.
+
 ## Per-entity policy
 
 *That* an entity has an external writer is a property of your deployment, so it
