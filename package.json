@@ -9,6 +9,7 @@
     "dev": "npm run dev -w packages/demo",
     "build": "npm run build -w packages/demo",
     "preview": "npm run preview -w packages/demo",
+    "live": "npm run dev -w examples/live-entities",
     "test": "npm test --workspaces --if-present",
     "type-check": "npm run type-check --workspaces --if-present",
     "smoke:consumer": "bash tools/consumer-smoke/run.sh",
