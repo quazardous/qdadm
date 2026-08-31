@@ -77,6 +77,7 @@ export { default as BannerZone } from './display/BannerZone.vue'
 
 // Pages
 export { default as LoginPage } from './pages/LoginPage.vue'
+export { default as OAuthCallbackPage } from './pages/OAuthCallbackPage.vue'
 export { default as NotFoundPage } from './pages/NotFoundPage.vue'
 
 // Host integration helper — render in a host App.vue when using

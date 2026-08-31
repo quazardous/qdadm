@@ -252,6 +252,14 @@ async function handleLogin(): Promise<void> {
             class="w-full"
             :loading="loading"
           />
+          <!-- Alternative sign-ins (#1775): SSO buttons go between the form
+               and the footer, which is where users look for them. Rendered
+               only when filled, so the divider never shows on its own. -->
+          <div v-if="$slots.alternatives" class="qdadm-login-alternatives">
+            <div class="qdadm-login-divider"><span>or</span></div>
+            <slot name="alternatives"></slot>
+          </div>
+
           <slot name="footer"></slot>
         </form>
       </template>
@@ -260,6 +268,27 @@ async function handleLogin(): Promise<void> {
 </template>
 
 <style scoped>
+.qdadm-login-alternatives {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.qdadm-login-divider {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  color: var(--p-text-muted-color, #6b7280);
+  font-size: 0.875rem;
+}
+
+.qdadm-login-divider::before,
+.qdadm-login-divider::after {
+  content: '';
+  flex: 1;
+  border-top: 1px solid var(--p-content-border-color, #e5e7eb);
+}
+
 /*
  * Only keep styles here that REQUIRE scoping (:deep, dynamic binding, component-specific overrides).
  * Generic/reusable styles belong in src/styles/ partials (see _forms.scss, _cards.scss, etc.).

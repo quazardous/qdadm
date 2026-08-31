@@ -13,3 +13,12 @@ export {
   type ISessionAuthAdapter,
   type LocalStorageAuthConfig,
 } from './SessionAuthAdapter'
+
+export {
+  GoogleOAuthAdapter,
+  createGoogleOAuthAdapter,
+  createPkceChallenge,
+  type GoogleOAuthAdapterOptions,
+  type OAuthExchangePayload,
+  type PkceChallenge,
+} from './oauth/index'
