@@ -1,0 +1,21 @@
+{
+  // qdadm-mcp is loaded by NODE end to end — a vite plugin and an MCP server.
+  // Nothing here is bundled by a consumer's app bundler, so the raw-source
+  // shipping of ADR 0003 does not apply: the whole package is built.
+  //
+  // Node refuses to strip types under node_modules, so publishing .ts made
+  // every vite.config.js importing this plugin fail (#1895). It is the same
+  // defect qdadm had, one package over.
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": false,
+    "declaration": true,
+    "outDir": "./dist",
+    "rootDir": "./src",
+    "allowImportingTsExtensions": false,
+    // Sources import './plugin.ts'; Node needs './plugin.js' at runtime.
+    "rewriteRelativeImportExtensions": true
+  },
+  "include": ["src/**/*.ts"],
+  "exclude": ["node_modules", "dist", "**/*.test.ts", "**/*.spec.ts", "tests"]
+}

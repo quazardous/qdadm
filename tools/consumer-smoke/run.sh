@@ -22,7 +22,7 @@ trap 'rm -rf "$WORKDIR"' EXIT
 # tarballs instead of requiring them on the registry first.
 echo "[consumer-smoke] packing the workspace train..."
 TARBALLS=()
-for PKG in qdcore qddebug qdadm; do
+for PKG in qdcore qddebug qdadm qdadm-mcp; do
   TARBALL="$(cd "$ROOT/packages/$PKG" && npm pack --silent --pack-destination "$WORKDIR" | tail -1)"
   echo "[consumer-smoke]   $TARBALL"
   TARBALLS+=("$WORKDIR/$TARBALL")
@@ -50,6 +50,12 @@ node --input-type=module -e "
   await import('@quazardous/qdadm/vite')
   await import('@quazardous/qdadm/vite-plugin-debug')
   await import('@quazardous/qdadm/gen/vite-plugin')
+  // Sibling packages count (#1895): they are published separately but land in
+  // the SAME vite.config.js, and a config does not load halfway. A gate that
+  // only watches qdadm reports green while the consumer is blocked — the very
+  // mistake the typecheck-only gate made, one level up.
+  await import('@quazardous/qdadm-mcp')
+  await import('@quazardous/qdadm-mcp/connector')
   console.log('[consumer-smoke]   node entry points import cleanly')
 "
 
@@ -60,7 +66,8 @@ echo "[consumer-smoke] loading a vite config that uses the plugin..."
 cat > vite.smoke.config.js <<'SMOKE_CONFIG'
 import { qdadmVitePlugin } from '@quazardous/qdadm/vite'
 import { qdadmDebugPlugin } from '@quazardous/qdadm/vite-plugin-debug'
-export default { plugins: [qdadmVitePlugin(), qdadmDebugPlugin()] }
+import { qdadmMcpPlugin } from '@quazardous/qdadm-mcp'
+export default { plugins: [qdadmVitePlugin(), qdadmDebugPlugin(), qdadmMcpPlugin()] }
 SMOKE_CONFIG
 node --input-type=module -e "
   const { loadConfigFromFile } = await import('vite')
@@ -69,7 +76,7 @@ node --input-type=module -e "
     './vite.smoke.config.js'
   )
   const plugins = loaded?.config?.plugins ?? []
-  if (plugins.length < 2) {
+  if (plugins.length < 3) {
     throw new Error('config loaded but the qdadm plugins are missing')
   }
   console.log('[consumer-smoke]   vite resolved the config with', plugins.length, 'qdadm plugins')

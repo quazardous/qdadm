@@ -1,7 +1,7 @@
 {
   "name": "@quazardous/qdadm-mcp",
   "version": "0.2.0",
-  "description": "MCP server for running qdadm apps — agents debug a live app in one connection (vite dev plugin over the qdadm debug bridge)",
+  "description": "MCP server for running qdadm apps \u2014 agents debug a live app in one connection (vite dev plugin over the qdadm debug bridge)",
   "author": "quazardous",
   "license": "MIT",
   "repository": {
@@ -14,12 +14,13 @@
     "url": "https://github.com/quazardous/qdadm/issues"
   },
   "type": "module",
-  "main": "src/index.ts",
+  "main": "dist/index.js",
   "exports": {
-    ".": "./src/index.ts",
-    "./connector": "./src/connector.ts"
+    ".": "./dist/index.js",
+    "./connector": "./dist/connector.js"
   },
   "files": [
+    "dist",
     "src",
     "bin",
     "README.md",
@@ -28,7 +29,9 @@
   "scripts": {
     "test": "vitest run",
     "test:watch": "vitest",
-    "type-check": "tsc --noEmit -p tsconfig.json"
+    "type-check": "tsc --noEmit -p tsconfig.json",
+    "build": "tsc -p tsconfig.build.json",
+    "prepack": "npm run build"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.29.0",
@@ -59,5 +62,6 @@
   ],
   "bin": {
     "qdadm-mcp-relay": "bin/qdadm-mcp-relay.mjs"
-  }
+  },
+  "types": "dist/index.d.ts"
 }
