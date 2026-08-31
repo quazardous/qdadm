@@ -261,6 +261,10 @@ export class EntityManager<T extends EntityRecord = EntityRecord> {
       entity: this.name,
       action,
       id,
+      // This manager just performed the mutation and has already repaired its
+      // own cache — marking the origin lets it ignore its own echo instead of
+      // refetching a list it is already holding correctly (#1888 lot B).
+      source: 'local',
     })
   }
 

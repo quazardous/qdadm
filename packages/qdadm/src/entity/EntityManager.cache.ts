@@ -332,6 +332,26 @@ export function applyCacheMethods(EntityManagerClass: { prototype: any }): void 
       )
     }
 
+    // Listen for REMOTE changes to this entity — a mutation nobody here made.
+    //
+    // The invalidation signals were written for local mutations, where the
+    // manager that mutates repairs its own cache on the way out. A change that
+    // happened elsewhere repairs nothing, so the list cache would stay stale
+    // while claiming to be valid (#1887). Gated on the origin marker: without
+    // it, this handler would fire on every local write too and force a refetch
+    // of a list the manager is already holding correctly.
+    cleanups.push(
+      signals.on('entity:data-invalidate', (event: { name: string; data: unknown }) => {
+        const { entity, source } = (event.data || {}) as {
+          entity?: string
+          source?: string
+        }
+        if (source !== 'remote') return
+        if (entity !== this.name) return
+        this.invalidateCache()
+      })
+    )
+
     // Listen for own entity data changes to invalidate detail cache
     if (this.isAsymmetric && this.isDetailCacheEnabled) {
       cleanups.push(
