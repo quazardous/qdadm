@@ -14,9 +14,16 @@ The stable tier is not a curated list — curated lists drift. It is defined
 
 > **Stable = what `tools/consumer-smoke/fixture/` and the tutorial exercise.**
 
-That fixture is a strict-TypeScript app installed from the *packed tarball* and
-typechecked with `vue-tsc`. If a stable signature regresses, the release fails
-before it publishes. See
+That fixture is a strict-TypeScript app installed from the *packed tarball*. It
+is typechecked with `vue-tsc`, **and** every Node-loaded entry point is
+imported for real while vite is asked to resolve a config that uses the
+plugins. If a stable signature regresses, or an entry point stops loading, the
+release fails before it publishes.
+
+The loading half was added after a published release turned out to compile
+perfectly and be unloadable from Node (see
+[ADR 0010](adr/0010-build-node-entry-points.md)). A gate that only compiles
+cannot speak for what runs. See
 [ADR 0006](adr/0006-consumer-smoke-as-stability-contract.md) for why the
 contract is drawn this way.
 
@@ -55,7 +62,9 @@ schema, the `parents` / `children` / `reference` relation shapes,
 So are `ButtonSeverity` and `ShowActionConfig`.
 
 **Subpath entry points** — `@quazardous/qdadm/gen` (`generateManagers`,
-`OpenAPIConnector`), `/security` (`createLocalStorageRolesProvider`),
+`OpenAPIConnector` — typed and bundler-loadable; **not** importable from Node,
+see [ADR 0010](adr/0010-build-node-entry-points.md)),
+`/security` (`createLocalStorageRolesProvider`),
 `/utils` (`humanizeFieldName`, `formatFetchError`), `/editors`
 (`VanillaJsonEditor`, `JsonStructuredField`, `Mode`), and the `/styles`
 side-effect import with its types condition.

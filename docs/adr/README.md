@@ -23,6 +23,7 @@ For how things work today, read [`../architecture.md`](../architecture.md),
 | [0007](0007-documentation-policies.md) | Current-state-only docs, lean README |
 | [0008](0008-namespaced-local-storage-keys.md) | Namespaced localStorage keys for shared origins |
 | [0009](0009-live-entities.md) | Live entities: the app declares which entities the backend mutates out of session |
+| [0010](0010-build-node-entry-points.md) | Build the entry points Node loads; keep shipping the rest as source |
 
 ## Writing a new one
 

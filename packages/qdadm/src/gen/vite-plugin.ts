@@ -11,7 +11,10 @@
  * @module gen/vite-plugin
  */
 
-import { generateManagers, type GenerateManagersConfig } from './generateManagers'
+// Explicit .js extension: this module is compiled for Node (#1895), and Node
+// ESM will not resolve an extensionless relative import. TypeScript maps the
+// .js specifier back to the .ts source, so the bundler path is unaffected.
+import { generateManagers, type GenerateManagersConfig } from './generateManagers.js'
 import { pathToFileURL } from 'node:url'
 import { resolve } from 'node:path'
 import type { Plugin } from 'vite'

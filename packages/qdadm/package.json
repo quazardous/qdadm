@@ -23,7 +23,9 @@
     "lint": "eslint src/",
     "lint:fix": "eslint src/ --fix",
     "format": "prettier --write src/",
-    "build:types": "vue-tsc --declaration --emitDeclarationOnly --outDir dist/types"
+    "build:types": "vue-tsc --declaration --emitDeclarationOnly --outDir dist/types",
+    "build:node": "tsc -p tsconfig.node.json",
+    "prepack": "npm run build:node"
   },
   "exports": {
     ".": "./src/index.ts",
@@ -41,14 +43,15 @@
     },
     "./styles/variables": "./src/styles/_variables.scss",
     "./gen": "./src/gen/index.ts",
-    "./gen/vite-plugin": "./src/gen/vite-plugin.ts",
-    "./vite": "./src/vite/qdadmPlugin.ts",
-    "./vite-plugin-debug": "./src/vite/qdadmDebugPlugin.ts"
+    "./gen/vite-plugin": "./dist/node/gen/vite-plugin.js",
+    "./vite": "./dist/node/vite/qdadmPlugin.js",
+    "./vite-plugin-debug": "./dist/node/vite/qdadmDebugPlugin.js"
   },
   "files": [
     "src",
     "README.md",
-    "LICENSE"
+    "LICENSE",
+    "dist/node"
   ],
   "dependencies": {
     "@quazardous/qdcore": "^1.1.0",

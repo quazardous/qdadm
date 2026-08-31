@@ -1,0 +1,33 @@
+{
+  // Build for the entry points NODE loads directly (#1895).
+  //
+  // qdadm ships raw sources (ADR 0003) and that stays true for everything the
+  // consumer's bundler compiles. But Node refuses to strip types under
+  // node_modules, so `import { qdadmVitePlugin } from '@quazardous/qdadm/vite'`
+  // inside a vite.config.js cannot work from a real npm install — it only ever
+  // worked for us because our examples consume through a workspace symlink,
+  // whose realpath escapes node_modules.
+  //
+  // Only build tooling belongs here. Anything the app bundles stays source.
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": false,
+    "declaration": true,
+    "declarationDir": null,
+    "outDir": "./dist/node",
+    "rootDir": "./src",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "types": ["node"],
+    "lib": ["ES2022"],
+    "isolatedModules": false,
+    "allowImportingTsExtensions": false,
+    "verbatimModuleSyntax": false
+  },
+  "include": [
+    "src/vite/qdadmPlugin.ts",
+    "src/vite/qdadmDebugPlugin.ts",
+    "src/gen/vite-plugin.ts"
+  ],
+  "exclude": ["node_modules", "dist", "**/*.test.ts", "**/*.spec.ts"]
+}
