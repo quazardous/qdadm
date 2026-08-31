@@ -70,6 +70,8 @@ export class I18n {
   // Concurrent domain loads — share one in-flight promise per (locale, domain)
   // pair across providers and t() callers.
   private _inflightDomains: Map<string, Promise<void>> = new Map()
+  // (locale::key) pairs already announced on the bus — see onMissing.
+  private _missingReported: Set<string> = new Set()
 
   constructor(options: I18nOptions = {}, deps: I18nDeps = {}) {
     this._defaultLocale = options.defaultLocale ?? 'en'
@@ -101,7 +103,16 @@ export class I18n {
       fallbackLocale: this._fallbackLocale,
       globalAliases: this._currentStrategyAliases(),
       onMissing: (key, locale) => {
-        if (this._emitMissing) this._signals?.emit('i18n:missing', { key, locale })
+        if (!this._emitMissing) return
+        // A missing key is a FACT, not a stream: knowing it once is the whole
+        // diagnostic value. Emitting on every resolution turned a signal into
+        // a firehose — the same seven nav keys fired 1616 times in two seconds
+        // downstream, and each emission was recorded by two collectors, which
+        // fed the tick that triggered the next resolution (#1896).
+        const seenKey = `${locale}::${key}`
+        if (this._missingReported.has(seenKey)) return
+        this._missingReported.add(seenKey)
+        this._signals?.emit('i18n:missing', { key, locale })
       },
     })
 
@@ -184,6 +195,7 @@ export class I18n {
     if (this.locale.value === locale && this._loadedLocales.has(locale)) return
     await this._loadLocale(locale)
     this.locale.value = locale
+    this._resetMissingReports()
     this._signals?.emit('locale:changed', locale)
   }
 
@@ -247,6 +259,17 @@ export class I18n {
   // Internals
   // ---------------------------------------------------------------------------
 
+  /**
+   * Forget which missing keys were already announced.
+   *
+   * Called whenever new messages arrive or the locale changes: a key that was
+   * missing may now resolve, and one that goes missing again afterwards is
+   * news worth reporting once more.
+   */
+  private _resetMissingReports(): void {
+    this._missingReported.clear()
+  }
+
   private async _loadLocale(locale: string): Promise<void> {
     for (const p of this._providers) {
       const bundle = await p.load(locale)
@@ -300,6 +323,7 @@ export class I18n {
       this._loadedDomains.add(cacheKey)
       this._inflightDomains.delete(cacheKey)
       if (merged) {
+        this._resetMissingReports()
         this._signals?.emit('i18n:domain-loaded', { locale, domain })
       }
     })()

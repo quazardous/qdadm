@@ -48,6 +48,10 @@ export class DebugBridge {
   enabled: Ref<boolean>
   collectors: ShallowReactive<Map<string, Collector>>
   tick: Ref<number>
+  /** True while describe()/dump() walks the collectors — see notify(). */
+  private _reading: boolean
+  /** A tick is already queued for the next frame — see notify(). */
+  private _notifyScheduled: boolean
   private _installed: boolean = false
   private _ctx: CollectorContext | null = null
 
@@ -56,9 +60,51 @@ export class DebugBridge {
     this.enabled = ref(options.enabled ?? false)
     this.collectors = shallowReactive(new Map())
     this.tick = ref(0)
+    this._reading = false
+    this._notifyScheduled = false
   }
 
+  /**
+   * Bump the reactive tick that tells observers something changed.
+   *
+   * Inert while a snapshot is being produced (#1896): observing must not
+   * perturb. A collector that emits during `dump()` — resolving a missing i18n
+   * key, say — would otherwise feed the very tick the snapshot pusher watches,
+   * and the observer becomes an actor in the system it claims to describe.
+   */
   notify(): void {
+    if (this._reading) return
+    if (!this.tick || typeof this.tick !== 'object' || !('value' in this.tick)) return
+
+    // Coalesce to at most one tick per frame (#1896 lot B).
+    //
+    // The structural half of the fix: A closes the cycle we found, B makes the
+    // whole CLASS survivable. A future collector that notifies in a loop then
+    // costs one tick per frame instead of thousands per second — a measurable
+    // slowdown rather than a dead page.
+    if (this._notifyScheduled) return
+    this._notifyScheduled = true
+
+    const flush = (): void => {
+      this._notifyScheduled = false
+      this.tick.value++
+    }
+
+    // rAF where there is a document; a timer in tests and Node.
+    if (typeof requestAnimationFrame === 'function') {
+      requestAnimationFrame(flush)
+    } else {
+      setTimeout(flush, 0)
+    }
+  }
+
+  /**
+   * Bump the tick immediately, bypassing the frame coalescing.
+   *
+   * For tests and for callers that must observe the effect synchronously.
+   */
+  notifySync(): void {
+    if (this._reading) return
     if (this.tick && typeof this.tick === 'object' && 'value' in this.tick) {
       this.tick.value++
     }
@@ -135,6 +181,9 @@ export class DebugBridge {
 
   describe(): BridgeManifest {
     const collectors: Record<string, CollectorManifest> = {}
+    // Same read-only contract as dump(): describing must not notify.
+    this._reading = true
+    try {
     for (const [name, collector] of this.collectors) {
       try {
         collectors[name] = collector.describe()
@@ -153,10 +202,18 @@ export class DebugBridge {
       tick: this.tick.value,
       collectors,
     }
+    } finally {
+      this._reading = false
+    }
   }
 
   dump(): BridgeSnapshot {
     const collectors: Record<string, CollectorSnapshot> = {}
+    // Re-entrance guard: a snapshot is a READ. Anything a collector emits
+    // while we walk them is a side effect of observing, and must not come
+    // back as a change notification (#1896).
+    this._reading = true
+    try {
     for (const [name, collector] of this.collectors) {
       try {
         collectors[name] = collector.snapshot()
@@ -176,6 +233,9 @@ export class DebugBridge {
       tick: this.tick.value,
       takenAt: Date.now(),
       collectors,
+    }
+    } finally {
+      this._reading = false
     }
   }
 

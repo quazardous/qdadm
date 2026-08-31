@@ -97,11 +97,28 @@ describe('DebugBridge — toggle / notify / clearAll', () => {
     expect(c.uninstallCount).toBe(1)
   })
 
-  it('notify increments tick (used by debug bar reactivity)', () => {
+  it('notify coalesces to one tick per frame (used by debug bar reactivity)', async () => {
+    // Was "one tick per call" until #1896: a collector emitting during a
+    // snapshot fed the tick that triggered the next snapshot, and the bar spun
+    // at ~8000 ticks/s until the page died. Coalescing bounds any such loop to
+    // one tick per frame — the tick still fires, it just cannot run away.
     const bridge = new DebugBridge()
     const start = bridge.tick.value
+
     bridge.notify()
     bridge.notify()
+    await new Promise((r) => setTimeout(r, 20))
+
+    expect(bridge.tick.value).toBe(start + 1)
+  })
+
+  it('notifySync keeps the immediate path for callers that need it', () => {
+    const bridge = new DebugBridge()
+    const start = bridge.tick.value
+
+    bridge.notifySync()
+    bridge.notifySync()
+
     expect(bridge.tick.value).toBe(start + 2)
   })
 
