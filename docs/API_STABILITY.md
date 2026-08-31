@@ -86,6 +86,7 @@ change gets a minor and a CHANGELOG entry rather than silence.
 | Module extension and manager decorators — `extendModule`, `createDecoratedManager` | [extension.md](extension.md) |
 | Notifications — `useNotifications`, `NotificationModule` | [AGENT_GUIDE.md](AGENT_GUIDE.md) |
 | Live entities — `sse.entities`, the `live` policy | [live-entities.md](live-entities.md) |
+| Google sign-in — `GoogleOAuthAdapter`, the `#alternatives` slot | [auth-google.md](auth-google.md) |
 | Debug bridge and collectors — `@quazardous/qdadm/modules/debug` | [DEBUG.md](DEBUG.md), [AGENTS.md](../AGENTS.md) |
 | Vite plugins — `qdadmVitePlugin`, `qdadmDebugPlugin` | [README](../README.md) |
 | Layout components — `AppLayout`, `PageLayout`, `ListPage` | [crud.md](crud.md), [page-compositions.md](page-compositions.md) |
@@ -107,6 +108,7 @@ change shape in a minor release without a deprecation cycle.
 | `src/gen/vite-plugin.ts` | `qdadmGen` — codegen in the Vite build pipeline | Undocumented; the programmatic `generateManagers` entry is the stable one |
 | `src/kernel/LiveEntityRouter.ts` | Routes external entity changes to cache invalidation | New in this line; the transport-agnostic `notify()` seam has one transport so far |
 | `src/composables/useLiveEntity.ts` | Reloads a mounted screen on a remote change | New; called for you by `useListPage` / `useEntityItemShowPage`, direct use is the experimental part |
+| `src/auth/oauth/` | `GoogleOAuthAdapter`, PKCE helpers, `OAuthCallbackPage` | New in this line; the backend contract is settled but the front shape has one consumer so far |
 
 Using an experimental API is fine — it is exported, it works, and the demo or
 the framework itself often depends on it. Just pin your qdadm version, or be

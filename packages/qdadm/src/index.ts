@@ -164,6 +164,12 @@ export * from './entity/auth'
 // SESSION AUTH (user authentication)
 // ════════════════════════════════════════════════════════════════════════════
 export { LocalStorageSessionAuthAdapter } from './auth'
+export { GoogleOAuthAdapter, createGoogleOAuthAdapter, createPkceChallenge } from './auth'
+export type {
+  GoogleOAuthAdapterOptions,
+  OAuthExchangePayload,
+  PkceChallenge,
+} from './auth'
 export type {
   LoginCredentials,
   SessionData,

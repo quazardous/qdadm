@@ -297,6 +297,7 @@ AuthCollector shows: user, token, permissions, role hierarchy, impersonation eve
 | Signals deep dive | `docs/signals.md` |
 | Zones deep dive | `docs/zones.md` |
 | Security | `docs/security.md` |
+| Google sign-in (OAuth + PKCE) | `docs/auth-google.md` |
 | i18n | `docs/i18n.md` |
 | Live entities (backend-pushed changes) | `docs/live-entities.md` |
 | Manager codegen | `docs/gen.md` |
