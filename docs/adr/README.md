@@ -22,7 +22,7 @@ For how things work today, read [`../architecture.md`](../architecture.md),
 | [0006](0006-consumer-smoke-as-stability-contract.md) | The consumer-smoke fixture *is* the stability contract |
 | [0007](0007-documentation-policies.md) | Current-state-only docs, lean README |
 | [0008](0008-namespaced-local-storage-keys.md) | Namespaced localStorage keys for shared origins |
-| [0009](0009-live-entities.md) | Live entities: the app declares which entities the backend mutates out of session *(proposed)* |
+| [0009](0009-live-entities.md) | Live entities: the app declares which entities the backend mutates out of session |
 
 ## Writing a new one
 

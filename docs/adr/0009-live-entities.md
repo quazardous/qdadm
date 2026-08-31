@@ -1,8 +1,8 @@
 # 0009 — Live entities: the app declares which entities the backend mutates out of session
 
-**Status:** Proposed (2026-08-31) — written BEFORE implementation, to test
-whether the feature belongs in qdadm at all. Rejecting it is a legitimate
-outcome; this file records the decision either way.
+**Status:** Accepted (2026-08-31) — written before implementation, to test
+whether the feature belongs in qdadm at all; accepted and shipped the same day.
+The Consequences below were the test, and they are now obligations.
 
 ## Context
 
@@ -143,9 +143,20 @@ Six design points are fixed here:
   mitigation is that the default has to be right often enough that most apps
   never name it.
 
-## The test to re-run before accepting
+## The test, and how it came out
 
-If the Consequences above look disproportionate to the benefit, the right call
-is **not** to take the feature in, and to publish a recipe in
-[`../signals.md`](../signals.md) instead — consumers keep writing it downstream,
-knowingly.
+The test was: if the Consequences above look disproportionate to the benefit,
+do **not** take the feature in — publish a recipe in
+[`../signals.md`](../signals.md) instead and let consumers keep writing it
+downstream, knowingly.
+
+It came out in favour, on the argument the doc-first pass surfaced and the
+original report did not contain: the gap does not merely inconvenience
+consumers, it **pushes them into breaking the architecture**, since the only
+workaround is a refresh call in every page. Closing it removes logic from the
+presentation layer rather than adding a convenience.
+
+Shipped in four increments — async stream token, origin-marked invalidation,
+the declaration and its router, and mounted-screen refresh — with
+[`../live-entities.md`](../live-entities.md) as the user-facing documentation
+and `examples/live-entities/` as the reference implementation.

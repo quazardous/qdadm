@@ -298,5 +298,6 @@ AuthCollector shows: user, token, permissions, role hierarchy, impersonation eve
 | Zones deep dive | `docs/zones.md` |
 | Security | `docs/security.md` |
 | i18n | `docs/i18n.md` |
+| Live entities (backend-pushed changes) | `docs/live-entities.md` |
 | Manager codegen | `docs/gen.md` |
 | Deferred values | `docs/deferred.md` |

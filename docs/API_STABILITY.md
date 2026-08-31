@@ -76,6 +76,7 @@ change gets a minor and a CHANGELOG entry rather than silence.
 | Non-entity forms — `useBareForm` | [forms.md](forms.md) |
 | Module extension and manager decorators — `extendModule`, `createDecoratedManager` | [extension.md](extension.md) |
 | Notifications — `useNotifications`, `NotificationModule` | [AGENT_GUIDE.md](AGENT_GUIDE.md) |
+| Live entities — `sse.entities`, the `live` policy | [live-entities.md](live-entities.md) |
 | Debug bridge and collectors — `@quazardous/qdadm/modules/debug` | [DEBUG.md](DEBUG.md), [AGENTS.md](../AGENTS.md) |
 | Vite plugins — `qdadmVitePlugin`, `qdadmDebugPlugin` | [README](../README.md) |
 | Layout components — `AppLayout`, `PageLayout`, `ListPage` | [crud.md](crud.md), [page-compositions.md](page-compositions.md) |
@@ -95,6 +96,8 @@ change shape in a minor release without a deprecation cycle.
 | `src/query/` | `QueryExecutor`, `FilterQuery` — the classes | Direct use only. The **query object syntax** they interpret (`{ field: { $in: [...] } }`) is stable — it is what list filters and `EntityManager.query()` speak |
 | `src/kernel/SSEBridge.ts` | Server-sent-events bridge (re-exported from qdcore) | Signal-mapping and reconnection options still moving |
 | `src/gen/vite-plugin.ts` | `qdadmGen` — codegen in the Vite build pipeline | Undocumented; the programmatic `generateManagers` entry is the stable one |
+| `src/kernel/LiveEntityRouter.ts` | Routes external entity changes to cache invalidation | New in this line; the transport-agnostic `notify()` seam has one transport so far |
+| `src/composables/useLiveEntity.ts` | Reloads a mounted screen on a remote change | New; called for you by `useListPage` / `useEntityItemShowPage`, direct use is the experimental part |
 
 Using an experimental API is fine — it is exported, it works, and the demo or
 the framework itself often depends on it. Just pin your qdadm version, or be
