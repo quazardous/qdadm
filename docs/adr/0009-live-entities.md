@@ -1,4 +1,4 @@
-# 0009 — Live entities: the backend declares what it mutates out of session
+# 0009 — Live entities: the app declares which entities the backend mutates out of session
 
 **Status:** Proposed (2026-08-31) — written BEFORE implementation, to test
 whether the feature belongs in qdadm at all. Rejecting it is a legitimate
@@ -57,25 +57,62 @@ sse: {
 ```
 
 The application declares **which entities have an external writer**. It wires
-nothing: the framework routes, invalidates, and refreshes the mounted screens of
-those entities.
+nothing by default: the framework routes, invalidates, and refreshes the mounted
+screens of those entities.
 
-Three design points are fixed here:
+Note who declares: the **app**, not the backend. The backend knows nothing about
+this configuration — it only emits. The declaration is the front stating what it
+knows about the backend serving it.
 
-1. **The declaration lives in the kernel config, not on the `EntityManager`.**
-   "Mutated out of session" is a property of the backend serving the entity, not
-   of its domain: the same entity is live behind a pushing backend and inert
-   behind a `MockApiStorage` in tests. Declaring it on the entity would freeze a
-   deployment characteristic into the domain model.
-2. **Scope and origin are two different things.** The declaration says *which*
+Six design points are fixed here:
+
+1. **Two separate things, two separate homes.** *That* an entity has an
+   external writer is a property of the backend serving it — the same entity is
+   live behind a pushing backend and inert behind a `MockApiStorage` in tests —
+   so it is declared in the kernel config, not baked into the domain model.
+   *What the entity does about it* is behaviour, and belongs to the entity:
+
+   ```js
+   new EntityManager({
+     name: 'runs',
+     live: { refresh: 'mounted', coalesceMs: 300 },   // pre-wired default
+   })
+   ```
+
+   The front-side entity listens and applies **its own policy**. A default is
+   pre-wired so nothing has to be written for the common case, and it stays
+   overridable per entity — a heavy `logs` entity may want to invalidate without
+   refetching, while `runs` refreshes on sight. One uniform behaviour across
+   every declared entity would be the wrong answer for any app with more than a
+   handful.
+2. **The backend never sets the policy.** It emits facts; the entity decides.
+   This is point 3 seen from the other end: were the policy expressed in the
+   payload, the backend would be configuring the front.
+3. **Scope and origin are two different things.** The declaration says *which*
    entities are concerned; a `source: 'local' | 'remote'` marker on the event
    says *where it came from*. Without the second, a local write on a declared
    entity would trigger a pointless reload.
-3. **The seam is transport-agnostic.** The concept is "this entity has an
+4. **The event carries a fact, never an instruction.** The backend says "entity
+   `runs` changed, id 42". It does not say "reload", "invalidate", or "this is
+   urgent". SSE is a feedback channel from back to front; **the refresh
+   mechanics stay entirely the front's business** — nothing more, nothing less.
+   The payload is therefore closed to front-side directives: no `refresh: true`,
+   no `strategy`, no priority. Without that boundary written down, a backend
+   that knows nothing of the UI ends up driving it.
+5. **The security scope is the front's.** An incoming event says what changed,
+   never who may see it. A remote event must never trigger a request the current
+   user could not have issued: the refresh goes back through the normal path —
+   `canRead()`, `SecurityChecker`, the manager's own filters — and an event for
+   an entity the user cannot read is dropped rather than refetched. Skipping
+   that check would spray 401/403 for every pushed event and risk tripping
+   `auth:expired` over a stream unrelated to the session.
+6. **The seam is transport-agnostic.** The concept is "this entity has an
    external writer", not "this entity is wired to SSE". SSE is the first
    transport; the same path must accept a WebSocket, or a `BroadcastChannel`
    between two tabs of the same admin — a real case that needs no server at all
-   and that an SSE-shaped design would exclude from the start.
+   and that an SSE-shaped design would exclude from the start. This follows from
+   point 4: if all the mechanics are front-side, where the fact came from is
+   irrelevant.
 
 ## Consequences
 
@@ -98,6 +135,13 @@ Three design points are fixed here:
 - A server contract becomes public (`event: entity:updated`,
   `data: {"entity": "..."}`, optional `id`) and therefore has to be honoured
   over time.
+- What the stream discloses stays the backend's call, and the front does not
+  compensate for it: pushing `entity: payroll` to every connected client leaks
+  that the entity exists, even to users who cannot read it. The front ignores
+  such an event (point 5); it cannot un-send it.
+- A per-entity policy is one more thing to document and to get wrong. The
+  mitigation is that the default has to be right often enough that most apps
+  never name it.
 
 ## The test to re-run before accepting
 
