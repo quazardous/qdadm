@@ -75,6 +75,18 @@ export class SSEBridge {
   private _getToken: (() => string | null | Promise<string | null>) | null
   private _debug: boolean
 
+  /**
+   * Event names to (re)attach on every connection (#1898 lot F).
+   *
+   * Listeners live on an EventSource instance, and every reconnect builds a
+   * new one. Remembering the names here is what keeps named events working
+   * across reconnects — the caller registers once, the bridge honours it for
+   * the life of the bridge. Leaving that to the caller is how the named
+   * channel silently died after the first drop while the stream still looked
+   * alive, because `onmessage` is re-attached and unnamed events kept flowing.
+   */
+  private _registeredEvents = new Set<string>()
+
   private _eventSource: EventSource | null = null
   private _reconnectTimer: ReturnType<typeof setTimeout> | null = null
   private _connected = false
@@ -203,6 +215,10 @@ export class SSEBridge {
       this._eventSource.onmessage = (event: MessageEvent): void => {
         this._handleEvent('message', event)
       }
+
+      // Re-bind every remembered name: listeners belong to the instance we
+      // just replaced, so without this the named channel dies on reconnect.
+      this._attachEvents(this._registeredEvents)
     } catch (err) {
       const error = err as Error
       this._log('Connect error:', error.message)
@@ -216,12 +232,29 @@ export class SSEBridge {
     }
   }
 
+  /**
+   * Subscribe to named SSE events, now and after every reconnect.
+   *
+   * Safe to call before connecting and safe to call twice: names are
+   * remembered, and only the ones not yet bound to the current connection are
+   * attached.
+   */
   registerEvents(eventNames: string[]): void {
+    const fresh = eventNames.filter((name) => !this._registeredEvents.has(name))
+    for (const name of eventNames) this._registeredEvents.add(name)
+
     if (!this._eventSource) {
-      this._log('Cannot register events: not connected')
+      // Not a failure: they will be attached when the connection opens.
+      this._log('Registered for the next connection:', eventNames.join(', '))
       return
     }
 
+    this._attachEvents(fresh)
+  }
+
+  /** Bind the given names to the current EventSource. */
+  private _attachEvents(eventNames: Iterable<string>): void {
+    if (!this._eventSource) return
     for (const eventName of eventNames) {
       this._eventSource.addEventListener(eventName, (event) => {
         this._handleEvent(eventName, event as MessageEvent)

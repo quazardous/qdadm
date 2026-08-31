@@ -83,11 +83,11 @@ describe('SSEBridge — what survives a reconnect', () => {
     expect(seen).toHaveLength(1)
   })
 
-  // CHARACTERISATION OF A DEFECT, not of intended behaviour: this assertion is
-  // meant to be flipped by the fix. Named events are how the live-entities
-  // feature receives everything it routes, so it stops working after the first
-  // reconnect. Filed on #1898, which already collects one-shot wiring bugs.
-  it('LOSES named listeners on reconnect — they are bound to the old EventSource', async () => {
+  it('keeps named listeners across a reconnect — the bridge re-attaches them', async () => {
+    // Was the defect (#1898 lot F): listeners live on an EventSource instance
+    // and every reconnect builds a new one, so the named channel died after
+    // the first drop. Silently — the stream stayed connected and unnamed
+    // events kept flowing, which is exactly why nobody noticed.
     const { signals, bridge } = makeBridge()
     const seen: unknown[] = []
     signals.on('sse:entity:updated', (e: { data: unknown }) => seen.push(e.data))
@@ -102,9 +102,52 @@ describe('SSEBridge — what survives a reconnect', () => {
     const fresh = FakeEventSource.instances[1]!
     fresh.emitNamed('entity:updated', { entity: 'runs' })
 
-    // The new stream carries no named listeners: the event is dropped.
-    expect(fresh.listeners['entity:updated']).toBeUndefined()
-    expect(seen).toHaveLength(0)
+    expect(fresh.listeners['entity:updated']).toHaveLength(1)
+    expect(seen).toHaveLength(1)
+  })
+
+  it('survives many reconnects, and binds each name exactly once per connection', async () => {
+    const { signals, bridge } = makeBridge()
+    const seen: unknown[] = []
+    signals.on('sse:entity:updated', (e: { data: unknown }) => seen.push(e.data))
+
+    await bridge.connect()
+    bridge.registerEvents(['entity:updated'])
+    for (let i = 0; i < 5; i++) await bridge.connect()
+
+    const last = FakeEventSource.instances.at(-1)!
+    // One listener, not six: a duplicated binding would deliver the same event
+    // several times and look like a burst from the server.
+    expect(last.listeners['entity:updated']).toHaveLength(1)
+
+    last.emitNamed('entity:updated', { entity: 'runs' })
+    expect(seen).toHaveLength(1)
+  })
+
+  it('accepts registration BEFORE the first connection', async () => {
+    const { signals, bridge } = makeBridge()
+    const seen: unknown[] = []
+    signals.on('sse:entity:updated', (e: { data: unknown }) => seen.push(e.data))
+
+    // Registering while disconnected used to be a silent no-op.
+    bridge.registerEvents(['entity:updated'])
+    await bridge.connect()
+
+    FakeEventSource.instances[0]!.emitNamed('entity:updated', { entity: 'runs' })
+    expect(seen).toHaveLength(1)
+  })
+
+  it('does not double-bind when the same name is registered twice', async () => {
+    const { signals, bridge } = makeBridge()
+    const seen: unknown[] = []
+    signals.on('sse:entity:updated', (e: { data: unknown }) => seen.push(e.data))
+
+    await bridge.connect()
+    bridge.registerEvents(['entity:updated'])
+    bridge.registerEvents(['entity:updated', 'entity:deleted'])
+
+    FakeEventSource.instances[0]!.emitNamed('entity:updated', { entity: 'runs' })
+    expect(seen).toHaveLength(1)
   })
 
   it('keeps routing UNNAMED events across reconnects — onmessage is re-attached', async () => {
