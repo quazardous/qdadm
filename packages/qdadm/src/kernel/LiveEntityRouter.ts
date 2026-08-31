@@ -118,10 +118,18 @@ export class LiveEntityRouter {
       return false
     }
 
-    const manager = this._orchestrator?.get(entity)
-    if (this._orchestrator && !manager) {
-      this._log(`Ignoring a live event for "${entity}": no manager registered under that name.`)
-      return false
+    // has() first: Orchestrator.get() THROWS for an unknown name (it is built
+    // to catch developer typos loudly). Letting that escape would blow up
+    // inside the signal bus on every incoming frame — a declared entity whose
+    // module is lazily loaded, or a typo in sse.entities, must degrade to a
+    // dropped event, not to an exception storm.
+    let manager: { canRead?: () => boolean } | undefined
+    if (this._orchestrator) {
+      if (!this._orchestrator.has(entity)) {
+        this._log(`Ignoring a live event for "${entity}": no manager registered under that name.`)
+        return false
+      }
+      manager = this._orchestrator.get(entity)
     }
 
     // The security scope is the front's: never refetch what this user could not
