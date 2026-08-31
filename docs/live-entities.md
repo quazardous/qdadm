@@ -143,6 +143,23 @@ sse: {
 is fetched every time. Pass `null` to send no token at all — for cookie auth
 with `withCredentials`, or a gateway that injects identity.
 
+### A single-use ticket disables the browser's own reconnect
+
+`EventSource` reconnects by itself, replaying **the same URL** — and therefore
+the same token. If your ticket is single-use, that native retry can never
+succeed: the server is right to refuse a burned credential.
+
+It is not a failure mode you will see. The browser's attempt fails silently,
+qdadm's `onerror` handler picks it up, and the bridge reconnects on its own
+timer with a fresh ticket. What you lose is the seamless recovery: every
+transient drop becomes a `reconnectDelay`-long gap instead of an invisible
+reconnect.
+
+Nothing to fix if that trade is acceptable — a few seconds of gap for a
+credential that cannot be replayed is usually the right side of it. Just know
+which one you chose: shorten `reconnectDelay` if the gap matters, or issue a
+ticket that survives one retry if the gap matters more than the replay window.
+
 ## Other transports
 
 The mechanics are front-side, so where a fact came from does not matter. SSE is
