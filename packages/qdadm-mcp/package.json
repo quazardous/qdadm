@@ -1,7 +1,7 @@
 {
   "name": "@quazardous/qdadm-mcp",
   "version": "0.2.1",
-  "description": "MCP server for running qdadm apps — agents debug a live app in one connection (vite dev plugin over the qdadm debug bridge)",
+  "description": "MCP server for running qdadm apps \u2014 agents debug a live app in one connection (vite dev plugin over the qdadm debug bridge)",
   "author": "quazardous",
   "license": "MIT",
   "repository": {
@@ -31,7 +31,7 @@
     "test:watch": "vitest",
     "type-check": "tsc --noEmit -p tsconfig.json",
     "build": "tsc -p tsconfig.build.json",
-    "prepack": "npm run build"
+    "prepare": "npm run build"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.29.0",

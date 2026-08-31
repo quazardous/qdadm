@@ -25,7 +25,7 @@
     "format": "prettier --write src/",
     "build:types": "vue-tsc --declaration --emitDeclarationOnly --outDir dist/types",
     "build:node": "tsc -p tsconfig.node.json",
-    "prepack": "npm run build:node"
+    "prepare": "npm run build:node"
   },
   "exports": {
     ".": "./src/index.ts",
