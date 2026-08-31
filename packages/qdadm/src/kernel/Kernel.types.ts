@@ -110,6 +110,18 @@ export interface SSEConfig {
   tokenParam?: string
   events?: string[]
   /**
+   * Entities this backend writes to out of session.
+   *
+   * The APP declares what it knows about the backend — the backend knows
+   * nothing of this config, it only emits. Declaring an entity here routes the
+   * stream's `entity:{created,updated,deleted}` frames to that entity's cache
+   * invalidation; anything not declared is ignored (a stream carries more than
+   * entity mutations). `true` or `'*'` accepts every registered entity.
+   *
+   * See docs/adr/0009-live-entities.md.
+   */
+  entities?: string[] | true | '*'
+  /**
    * Token appended to the SSE URL as a query parameter.
    *
    * Defaults to the session auth adapter's token. Override it — the function

@@ -9,6 +9,7 @@ import { defaultStorageResolver } from '../entity/storage/factory'
 import { createDeferredRegistry } from '../deferred/DeferredRegistry.js'
 import { createEventRouter } from './EventRouter'
 import { createSSEBridge } from './SSEBridge'
+import { createLiveEntityRouter, type LiveOrchestratorLike } from './LiveEntityRouter'
 import { ActiveStack } from '../chain/ActiveStack.js'
 import { StackHydrator } from '../chain/StackHydrator.js'
 import { Orchestrator } from '../orchestrator/Orchestrator'
@@ -245,10 +246,28 @@ export function applyRegistryMethods(KernelClass: { prototype: Kernel }): void {
       debug,
     })
 
-    if (sse.events?.length) {
+    // The declared entities imply their own frames: an app that declares
+    // `entities` should not also have to remember to list the event names.
+    const declaredEvents = sse.entities
+      ? ['entity:created', 'entity:updated', 'entity:deleted']
+      : []
+    const events = [...new Set([...(sse.events ?? []), ...declaredEvents])]
+
+    if (events.length) {
       this.signals!.once('sse:connected', () => {
-        this.sseBridge!.registerEvents(sse.events!)
+        this.sseBridge!.registerEvents(events)
       })
+    }
+
+    if (sse.entities) {
+      this.liveEntityRouter = createLiveEntityRouter({
+        signals: this.signals!,
+        entities: sse.entities,
+        orchestrator: this.orchestrator as unknown as LiveOrchestratorLike,
+        signalPrefix: sse.signalPrefix ?? 'sse',
+        debug,
+      })
+      this.liveEntityRouter.attachSignalTransport()
     }
   }
 }

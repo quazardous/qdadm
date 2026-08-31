@@ -39,6 +39,13 @@ export type {
 } from './kernel/EventRouter'
 export { SSEBridge, createSSEBridge, SSE_SIGNALS } from './kernel/SSEBridge'
 export type { SSEBridgeOptions } from './kernel/SSEBridge'
+export { LiveEntityRouter, createLiveEntityRouter } from './kernel/LiveEntityRouter'
+export type {
+  LiveEntityRouterOptions,
+  LiveEntityAction,
+  LiveEntitiesDeclaration,
+  LiveOrchestratorLike,
+} from './kernel/LiveEntityRouter'
 export { Module } from './kernel/Module'
 export { KernelContext, createKernelContext } from './kernel/KernelContext'
 export type {

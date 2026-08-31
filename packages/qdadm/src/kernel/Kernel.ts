@@ -39,6 +39,7 @@ import type { KernelContext } from './KernelContext'
 import type { DeferredRegistry } from '../deferred/DeferredRegistry.js'
 import type { EventRouter } from './EventRouter'
 import type { SSEBridge } from './SSEBridge'
+import type { LiveEntityRouter } from './LiveEntityRouter'
 import type { ActiveStack } from '../chain/ActiveStack.js'
 import type { StackHydrator } from '../chain/StackHydrator.js'
 import { NotificationModule } from '../notifications/NotificationModule'
@@ -89,6 +90,8 @@ export class Kernel {
   deferred: DeferredRegistry | null = null
   eventRouter: EventRouter | null = null
   sseBridge: SSEBridge | null = null
+  /** Routes external entity changes to cache invalidation (#1888). */
+  liveEntityRouter: LiveEntityRouter | null = null
   layoutComponents: InternalLayoutComponents | null = null
   securityChecker: SecurityChecker | null = null
   permissionRegistry: PermissionRegistry | null = null
