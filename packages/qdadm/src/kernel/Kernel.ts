@@ -144,10 +144,26 @@ export class Kernel {
       const debugModule = new DebugModuleClass(debugModuleOptions)
       options.moduleDefs = options.moduleDefs || []
       options.moduleDefs.push(debugModule)
+
+      // `enabled: false` now actually disables (#1900 lot D).
+      //
+      // The component used to be registered whatever `enabled` said, and
+      // Kernel forced options.debug = true on top — which DebugModule.enabled()
+      // reads as "turn on". A consumer who wrote `debugBar: { enabled: false }`
+      // to switch the bar OFF found it running in PRODUCTION, and the only way
+      // out was to omit the key entirely.
+      //
+      // Note this cuts both ways: an app that passed `enabled: false` believing
+      // the key inert — including to keep the bar ON, "since it changes
+      // nothing" — will now see it disappear. Both readings were possible
+      // precisely because the flag did nothing.
+      const debugBarEnabled = debugModuleOptions.enabled !== false
+
       // Store component for root wrapper
-      setQdadmDebugBar(options.debugBar.component || null)
-      // Enable debug mode
-      if (!options.debug) {
+      setQdadmDebugBar(debugBarEnabled ? options.debugBar.component || null : null)
+
+      // Debug mode follows the bar, and only when the bar is actually on.
+      if (debugBarEnabled && !options.debug) {
         options.debug = true
       }
     }
