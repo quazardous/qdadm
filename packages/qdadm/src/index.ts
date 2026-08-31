@@ -39,6 +39,9 @@ export type {
 } from './kernel/EventRouter'
 export { SSEBridge, createSSEBridge, SSE_SIGNALS } from './kernel/SSEBridge'
 export type { SSEBridgeOptions } from './kernel/SSEBridge'
+export { useLiveEntity } from './composables/useLiveEntity'
+export type { UseLiveEntityOptions } from './composables/useLiveEntity'
+export type { LiveEntityPolicy } from './entity/EntityManager.types'
 export { LiveEntityRouter, createLiveEntityRouter } from './kernel/LiveEntityRouter'
 export type {
   LiveEntityRouterOptions,

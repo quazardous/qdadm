@@ -201,6 +201,24 @@ export type SeverityMapValue = string | SeverityDescriptor
 export type SeverityMap = Record<string, SeverityMapValue>
 
 /**
+ * Policy for reacting to a change that happened outside this session.
+ *
+ * @experimental Shape may change in a minor release — see docs/API_STABILITY.md.
+ */
+export interface LiveEntityPolicy {
+  /**
+   * `'mounted'` (default) — a screen currently showing this entity reloads.
+   * `false` — invalidate the cache only; the screen updates next time it asks.
+   */
+  refresh?: 'mounted' | false
+  /**
+   * Window (ms) over which a burst of events collapses into a single reload.
+   * Default 300. `0` reloads on every event — rarely what you want.
+   */
+  coalesceMs?: number
+}
+
+/**
  * EntityManager constructor options
  */
 export interface EntityManagerOptions<T extends EntityRecord = EntityRecord> {
@@ -230,6 +248,18 @@ export interface EntityManagerOptions<T extends EntityRecord = EntityRecord> {
   readOnly?: boolean
   warmup?: boolean
   authSensitive?: boolean
+  /**
+   * What this entity does when it learns it changed elsewhere (#1888).
+   *
+   * The kernel's `sse.entities` declares *that* an entity has an external
+   * writer — a deployment property. This is *what the entity does about it*,
+   * which is behaviour and belongs here. Pre-wired so the common case needs
+   * nothing: mounted screens refresh, bursts coalesce over 300 ms.
+   *
+   * Override per entity — a heavy `logs` list may want `refresh: false`, i.e.
+   * drop the stale cache but leave the screen alone until the user asks.
+   */
+  live?: LiveEntityPolicy
   system?: boolean
   scopeWhitelist?: string[] | null
   isOwn?: ((record: T, user: AuthUser) => boolean) | null

@@ -34,6 +34,7 @@ import { useHooks } from './useHooks.js'
 import { useEntityItemPage, type ParentConfig, type UseEntityItemPageReturn } from './useEntityItemPage.js'
 import { useActiveStack } from '../chain/useActiveStack.js'
 import { useI18n } from '../i18n/useI18n'
+import { useLiveEntity } from './useLiveEntity'
 import { formatDateOnly } from '../utils/formatters'
 import { humanizeFieldName } from '../utils/humanize'
 
@@ -1045,6 +1046,27 @@ export function useListPage<T = unknown>(config: UseListPageOptions<T>): UseList
 
   onUnmounted(() => {
     window.removeEventListener('resize', handleResize)
+  })
+
+  // Reload when this entity changed outside the session (#1888 lot D).
+  //
+  // Only fires for entities the app declared in sse.entities, so an app with
+  // no live backend is untouched. The reload preserves selection: a list
+  // refreshing under someone mid-bulk-action must not silently empty their
+  // checkboxes — the rows are re-matched by key, and anything that vanished
+  // server-side simply drops out.
+  useLiveEntity(entity, manager, async () => {
+    const keptKeys = new Set(
+      selected.value.map((item) => (item as Record<string, unknown>)[resolvedDataKey])
+    )
+
+    await loadItems({}, { force: true })
+
+    if (keptKeys.size) {
+      selected.value = items.value.filter((item) =>
+        keptKeys.has((item as Record<string, unknown>)[resolvedDataKey])
+      ) as T[]
+    }
   })
 
   // ============ UTILITIES ============

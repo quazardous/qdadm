@@ -57,6 +57,7 @@ import {
 import type { OrchestratorLike } from '../entity/EntityManager.interface'
 import type { ButtonSeverity } from '../types'
 import { useActionRegistry } from './useActionRegistry'
+import { useLiveEntity } from './useLiveEntity'
 
 // #1191 — shared structural view (manager tier from useEntityItemPage)
 type Orchestrator = OrchestratorLike<EntityManager>
@@ -306,6 +307,13 @@ export function useEntityItemShowPage<T = Record<string, unknown>>(
   })
 
   const { manager, orchestrator: baseOrchestrator, data, loading, error, entityId, entityLabel, isLoaded, hydrator } = base
+
+  // Reload when THIS record changed outside the session (#1888 lot D).
+  // Scoped by id: an event about another record must not reload every open
+  // detail page. An event carrying no id concerns the whole entity and applies.
+  useLiveEntity(entity, manager, async () => {
+    await base.reload()
+  }, { id: () => entityId.value })
   // Cast orchestrator to include toast methods
   const orchestrator = baseOrchestrator as Orchestrator
 

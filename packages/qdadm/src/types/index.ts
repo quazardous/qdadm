@@ -164,6 +164,8 @@ export interface EntityManagerOptions<T extends EntityRecord = EntityRecord> {
   readOnly?: boolean
   warmup?: boolean
   authSensitive?: boolean
+  /** What this entity does when it changed elsewhere (#1888). */
+  live?: { refresh?: 'mounted' | false; coalesceMs?: number }
   system?: boolean
   scopeWhitelist?: string[] | null
   isOwn?: ((record: T, user: unknown) => boolean) | null

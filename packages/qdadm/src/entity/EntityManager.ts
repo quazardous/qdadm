@@ -63,6 +63,7 @@ import type {
   SeverityMap,
   SeverityDescriptor,
   EntityManagerOptions,
+  LiveEntityPolicy,
 } from './EntityManager.types'
 
 /**
@@ -98,6 +99,8 @@ export class EntityManager<T extends EntityRecord = EntityRecord> {
   protected _readOnly: boolean
   protected _warmup: boolean
   protected _authSensitive: boolean
+  /** Reaction policy for changes made outside this session (#1888). */
+  protected _live: Required<LiveEntityPolicy>
   protected _system: boolean
 
   protected _scopeWhitelist: string[] | null
@@ -168,6 +171,7 @@ export class EntityManager<T extends EntityRecord = EntityRecord> {
       readOnly = false,
       warmup = true,
       authSensitive,
+      live,
       system = false,
       scopeWhitelist = null,
       isOwn = null,
@@ -200,6 +204,11 @@ export class EntityManager<T extends EntityRecord = EntityRecord> {
     this._readOnly = readOnly
     this._warmup = warmup
     this._authSensitive = authSensitive ?? this._getStorageRequiresAuth()
+    // Pre-wired defaults: the common case declares nothing.
+    this._live = {
+      refresh: live?.refresh ?? 'mounted',
+      coalesceMs: live?.coalesceMs ?? 300,
+    }
     this._system = system
 
     this._scopeWhitelist = scopeWhitelist
@@ -568,6 +577,11 @@ export class EntityManager<T extends EntityRecord = EntityRecord> {
   /**
    * Check if user can read entities
    */
+  /** Reaction policy for changes made outside this session (#1888). */
+  get live(): Required<LiveEntityPolicy> {
+    return this._live
+  }
+
   canRead(entity: T | null = null): boolean {
     return this.canAccess(AuthActions.READ, entity)
   }
