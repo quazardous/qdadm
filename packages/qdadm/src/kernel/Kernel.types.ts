@@ -109,6 +109,25 @@ export interface SSEConfig {
   withCredentials?: boolean
   tokenParam?: string
   events?: string[]
+  /**
+   * Token appended to the SSE URL as a query parameter.
+   *
+   * Defaults to the session auth adapter's token. Override it — the function
+   * may be async — when that durable credential must not reach an access log:
+   * return a short-lived, single-use ticket fetched per connect instead. Pass
+   * `null` to send no token at all (e.g. cookie auth with `withCredentials`).
+   */
+  getToken?: (() => string | null | Promise<string | null>) | null
+  /**
+   * Signal that triggers a connect. Defaults to `'auth:login'`;
+   * `null` disables the auth coupling.
+   */
+  connectOnSignal?: string | null
+  /**
+   * Signal that triggers a disconnect. Defaults to `'auth:logout'`;
+   * `null` disables the auth coupling.
+   */
+  disconnectOnSignal?: string | null
 }
 
 /**

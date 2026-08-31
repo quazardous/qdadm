@@ -52,8 +52,15 @@ export interface SSEBridgeOptions {
   withCredentials?: boolean
   /** Query param name for auth token */
   tokenParam?: string
-  /** Function to get auth token */
-  getToken?: (() => string | null) | null
+  /**
+   * Function to get the auth token appended to the SSE URL.
+   *
+   * May be async: `EventSource` accepts no headers, so the token travels as a
+   * query parameter and ends up in access logs. Returning a promise lets an
+   * app fetch a short-lived, single-use ticket before each connect instead of
+   * leaking a durable credential into files that live for months (#1888 lot A).
+   */
+  getToken?: (() => string | null | Promise<string | null>) | null
   /** Enable debug logging */
   debug?: boolean
 }
@@ -65,13 +72,20 @@ export class SSEBridge {
   private _signalPrefix: string
   private _withCredentials: boolean
   private _tokenParam: string
-  private _getToken: (() => string | null) | null
+  private _getToken: (() => string | null | Promise<string | null>) | null
   private _debug: boolean
 
   private _eventSource: EventSource | null = null
   private _reconnectTimer: ReturnType<typeof setTimeout> | null = null
   private _connected = false
   private _reconnecting = false
+  /**
+   * Bumped by every connect() and disconnect(). A connect that awaited an async
+   * token checks it before opening the EventSource: if something superseded it
+   * while the token resolved, the attempt is discarded instead of resurrecting
+   * a connection the caller already tore down.
+   */
+  private _generation = 0
 
   constructor(options: SSEBridgeOptions) {
     const {
@@ -101,11 +115,11 @@ export class SSEBridge {
     this._debug = debug
 
     if (autoConnect) {
-      this.connect()
+      void this.connect()
     } else if (connectOnSignal) {
       this._signals.once(connectOnSignal, () => {
         this._log(`Received ${connectOnSignal}, connecting SSE`)
-        this.connect()
+        void this.connect()
       })
     }
 
@@ -125,8 +139,8 @@ export class SSEBridge {
     if (this._debug) console.debug('[SSEBridge]', ...args)
   }
 
-  private _buildUrl(): string {
-    const token = this._getToken?.()
+  private async _buildUrl(): Promise<string> {
+    const token = await this._getToken?.()
     const sseUrl = new URL(this._url, window.location.origin)
     if (token && this._tokenParam) {
       sseUrl.searchParams.set(this._tokenParam, token)
@@ -134,7 +148,13 @@ export class SSEBridge {
     return sseUrl.toString()
   }
 
-  connect(): void {
+  /**
+   * Open the connection. Returns a promise because `getToken` may be async;
+   * callers that don't care can ignore it — the reconnect loop does.
+   */
+  async connect(): Promise<void> {
+    const generation = ++this._generation
+
     if (this._eventSource) {
       this._eventSource.close()
       this._eventSource = null
@@ -146,7 +166,15 @@ export class SSEBridge {
     }
 
     try {
-      const url = this._buildUrl()
+      const url = await this._buildUrl()
+
+      // Someone called disconnect() or connect() again while the token
+      // resolved: that newer intent wins, drop this one.
+      if (generation !== this._generation) {
+        this._log('Discarded a stale connect (superseded while resolving token)')
+        return
+      }
+
       this._log('Connecting to', url)
 
       this._eventSource = new EventSource(url, { withCredentials: this._withCredentials })
@@ -178,6 +206,11 @@ export class SSEBridge {
     } catch (err) {
       const error = err as Error
       this._log('Connect error:', error.message)
+
+      // A failed token fetch on a superseded attempt is not this bridge's
+      // problem any more — stay quiet rather than fight the newer intent.
+      if (generation !== this._generation) return
+
       this._signals.emit(SSE_SIGNALS.ERROR, { error: error.message, timestamp: new Date() })
       this._scheduleReconnect()
     }
@@ -225,11 +258,14 @@ export class SSEBridge {
 
     this._reconnectTimer = setTimeout(() => {
       this._reconnectTimer = null
-      if (!this._connected) this.connect()
+      if (!this._connected) void this.connect()
     }, this._reconnectDelay)
   }
 
   disconnect(): void {
+    // Invalidate any connect still waiting on an async token.
+    this._generation++
+
     if (this._reconnectTimer) {
       clearTimeout(this._reconnectTimer)
       this._reconnectTimer = null
@@ -249,9 +285,9 @@ export class SSEBridge {
     this._log('Disconnected')
   }
 
-  reconnect(): void {
+  reconnect(): Promise<void> {
     this.disconnect()
-    this.connect()
+    return this.connect()
   }
 
   isConnected(): boolean {

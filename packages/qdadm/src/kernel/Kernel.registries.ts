@@ -222,9 +222,14 @@ export function applyRegistryMethods(KernelClass: { prototype: Kernel }): void {
 
     const debug = this.options.debug ?? false
 
-    const getToken = authAdapter?.getToken
-      ? () => authAdapter.getToken!()
-      : () => localStorage.getItem('auth_token')
+    // An explicit sse.getToken wins — including an explicit null, which means
+    // "send no token" and must not fall back to the auth adapter.
+    const getToken =
+      sse.getToken !== undefined
+        ? sse.getToken
+        : authAdapter?.getToken
+          ? () => authAdapter.getToken!()
+          : () => localStorage.getItem('auth_token')
 
     this.sseBridge = createSSEBridge({
       signals: this.signals!,
@@ -235,6 +240,8 @@ export function applyRegistryMethods(KernelClass: { prototype: Kernel }): void {
       withCredentials: sse.withCredentials ?? false,
       tokenParam: sse.tokenParam ?? 'token',
       getToken,
+      ...(sse.connectOnSignal !== undefined ? { connectOnSignal: sse.connectOnSignal } : {}),
+      ...(sse.disconnectOnSignal !== undefined ? { disconnectOnSignal: sse.disconnectOnSignal } : {}),
       debug,
     })
 
