@@ -51,8 +51,34 @@ export function applyAuthMethods(KernelClass: { prototype: Kernel }): void {
     const { authAdapter, onAuthExpired } = this.options
     if (!authAdapter) return
 
+    // A new session re-arms the guard below. Registered before the handler so
+    // the ordering is obvious to whoever reads this next.
+    this.signals!.on('auth:login', () => {
+      this._expiredHandled = false
+    })
+
     this.signals!.on('auth:expired', async (payload: { data: unknown }) => {
       const debug = this.options.debug ?? false
+
+      // One expiry per session (#1905 lot E).
+      //
+      // The handler logs out, emits auth:logout — which _setupAuthInvalidation
+      // turns into a full invalidateApp() — and redirects. Without this guard
+      // a page firing four requests that all 401 remounts the app four times
+      // while navigating to the login screen.
+      //
+      // Guarded on OUR OWN state, deliberately: an earlier draft tested
+      // `authAdapter.isAuthenticated()`, which would have skipped the very
+      // first signal for any consumer that clears its auth state before
+      // emitting — turning this fix into the silent no-op it exists to remove.
+      if (this._expiredHandled) {
+        if (debug) {
+          console.debug('[Kernel] auth:expired already handled for this session, ignoring')
+        }
+        return
+      }
+      this._expiredHandled = true
+
       if (debug) {
         console.warn('[Kernel] auth:expired received:', payload)
       }

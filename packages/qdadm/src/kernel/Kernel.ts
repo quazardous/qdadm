@@ -84,6 +84,15 @@ export class Kernel {
   options: KernelOptions
   vueApp: App | null = null
   router: Router | null = null
+  /**
+   * Available from construction, not from createApp() (#1905 lot B).
+   *
+   * It used to be null until createApp(), so wiring `kernel.signals` right
+   * after `new Kernel()` — the natural place — silently did nothing:
+   * `null?.emit?.()` does not throw. The bus has no dependencies, so the
+   * window existed for no reason. Removing it beats warning about it
+   * (ADR 0011).
+   */
   signals: SignalBus | null = null
   orchestrator: Orchestrator | null = null
   zoneRegistry: ZoneRegistry | null = null
@@ -100,6 +109,8 @@ export class Kernel {
   activeStack: ActiveStack | null = null
   stackHydrator: StackHydrator | null = null
   notificationStore: NotificationStore | null = null
+  /** One auth:expired per session — see Kernel.auth.ts (#1905). */
+  _expiredHandled = false
   i18nInstance: I18n | null = null
 
   /** Pending provides from modules (applied after vueApp creation) */
@@ -149,6 +160,12 @@ export class Kernel {
     }
 
     this.options = options
+
+    // The bus exists from here on (#1905 lot B). It has no dependencies, and
+    // the natural place to wire it is right after `new Kernel()` — so it must
+    // be usable there. _createSignalBus() is idempotent, so the later call in
+    // createApp() keeps this instance rather than orphaning its listeners.
+    this._createSignalBus()
   }
 
   /**

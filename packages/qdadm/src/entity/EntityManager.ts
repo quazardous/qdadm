@@ -358,6 +358,61 @@ export class EntityManager<T extends EntityRecord = EntityRecord> {
   }
 
   /**
+   * Announce an expired session, whatever the transport (#1905 lot A).
+   *
+   * `auth:expired` used to be emitted only by the kernel's axios response
+   * interceptor. But `SdkStorage` exists so a consumer can bring their own
+   * transport, and one that did — a fetch-based SDK — never triggered expiry
+   * detection at all: the screen kept requesting with a dead token and stacked
+   * one error toast per attempt, indefinitely.
+   *
+   * Watching here rather than in a storage adapter is deliberate. Storages
+   * have no access to the signal bus, and every call passes through this
+   * manager whichever adapter is underneath — so this covers ApiStorage,
+   * MockApiStorage, SdkStorage and whatever someone writes next.
+   *
+   * 401 only, never 403: a 403 says the session is valid and this door is
+   * closed. Logging the user out would send them to sign in again for a
+   * permission they will not have afterwards — a loop, not an error.
+   */
+  protected _watchStorageAuth(storage: IStorage<T> | null): IStorage<T> | null {
+    if (!storage || !this._signals) return storage
+
+    const emitExpired = (error: unknown): void => {
+      const status = (error as { status?: number })?.status
+      if (status !== 401) return
+      this._signals?.emit('auth:expired', { status, entity: this.name })
+    }
+
+    return new Proxy(storage as IStorage<T> & object, {
+      get(target, prop, receiver) {
+        const value = Reflect.get(target, prop, receiver)
+        if (typeof value !== 'function') return value
+
+        return function (this: unknown, ...args: unknown[]) {
+          try {
+            const result = (value as (...a: unknown[]) => unknown).apply(
+              this === receiver ? target : this,
+              args
+            )
+            // Storage methods are async; a rejection is the normal error path.
+            if (result instanceof Promise) {
+              return result.catch((error: unknown) => {
+                emitExpired(error)
+                throw error
+              })
+            }
+            return result
+          } catch (error) {
+            emitExpired(error)
+            throw error
+          }
+        }
+      },
+    })
+  }
+
+  /**
    * Normalize resolveStorage() return value to standard format
    */
   protected _normalizeResolveResult(
@@ -367,7 +422,7 @@ export class EntityManager<T extends EntityRecord = EntityRecord> {
     // Function = dynamic endpoint builder
     if (typeof result === 'function') {
       return {
-        storage: this.storage,
+        storage: this._watchStorageAuth(this.storage),
         endpoint: result(context),
         isDynamic: true,
       }
@@ -375,18 +430,18 @@ export class EntityManager<T extends EntityRecord = EntityRecord> {
 
     // String = endpoint with primary storage
     if (typeof result === 'string') {
-      return { storage: this.storage, endpoint: result }
+      return { storage: this._watchStorageAuth(this.storage), endpoint: result }
     }
 
     // Null/undefined = primary storage
     if (!result) {
-      return { storage: this.storage }
+      return { storage: this._watchStorageAuth(this.storage) }
     }
 
     // Object with endpoint function = dynamic endpoint builder
     if (typeof result.endpoint === 'function') {
       return {
-        storage: result.storage || this.storage,
+        storage: this._watchStorageAuth(result.storage || this.storage),
         endpoint: result.endpoint(context),
         params: result.params,
         isDynamic: true,
@@ -396,14 +451,14 @@ export class EntityManager<T extends EntityRecord = EntityRecord> {
     // Object without storage = use primary storage
     if (!result.storage) {
       return {
-        storage: this.storage,
+        storage: this._watchStorageAuth(this.storage),
         endpoint: result.endpoint as string | undefined,
         params: result.params,
       }
     }
 
     return {
-      storage: result.storage,
+      storage: this._watchStorageAuth(result.storage ?? this.storage),
       endpoint: result.endpoint as string | undefined,
       params: result.params,
     }

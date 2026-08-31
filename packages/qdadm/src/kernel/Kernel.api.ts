@@ -46,7 +46,14 @@ export function applyApiMethods(KernelClass: { prototype: Kernel }): void {
           error: axiosError,
         })
 
-        if (status === 401 || status === 403) {
+        // 401 only, never 403 (#1905 lot F).
+        //
+        // A 403 says the session is valid and this door is closed. Logging the
+        // user out sends them to sign in again for a permission they will not
+        // have any more afterwards — a loop, not an error. The 403 still
+        // travels as api:error above, which is where a permission refusal
+        // belongs.
+        if (status === 401) {
           if (debug) {
             console.warn(
               `[Kernel] API ${status} error on ${url}, emitting auth:expired`

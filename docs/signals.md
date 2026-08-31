@@ -176,11 +176,35 @@ Auth signals handle session lifecycle and security events:
 | `auth:login` | User logs in | `{ user }` | Resolves `auth:ready` deferred |
 | `auth:login:error` | Login failed | `{ username, error, status }` | Toast error shown |
 | `auth:logout` | User logs out | `{ user?, reason? }` | - |
-| `auth:expired` | Token expired or 401/403 | `{ status?, url? }` | Logout + redirect to `/login` |
+| `auth:expired` | Session no longer valid — a 401 | `{ status?, url?, entity? }` | Logout + redirect to `/login`, **once per session** |
 | `auth:impersonate` | Admin impersonates user | `{ target, original }` | - |
 | `auth:impersonate:stop` | Impersonation ends | `{ original }` | - |
 
 ### Login Error vs Session Expired
+
+### Who emits `auth:expired`
+
+Two places, and between them every transport is covered:
+
+- the kernel's **axios response interceptor**, for storages using the kernel
+  API client;
+- the **`EntityManager`**, whenever a storage call fails with a 401 — which
+  covers `SdkStorage` and any custom adapter, since every call passes through
+  the manager whichever transport is underneath.
+
+You can emit it yourself as well; the handler is the same. Two details worth
+knowing if you do:
+
+**It is handled once per session.** The handler logs out, emits `auth:logout`
+— which remounts the app — and redirects. A page firing four requests that all
+401 would otherwise do that four times. The guard re-arms on the next
+`auth:login`, and it does not read your auth state, so emitting after you have
+cleared your own session still redirects.
+
+**A 403 is not an expired session.** A 403 says the session is valid and this
+door is closed; logging the user out would send them to sign in again for a
+permission they will not have afterwards. Permission refusals travel as
+`api:error`.
 
 **Important**: `auth:login:error` ≠ `auth:expired`
 

@@ -72,13 +72,18 @@ describe('Kernel', () => {
         authAdapter: mockAuthAdapter
       })
 
-      // Before _createSignalBus, signals should be null
-      expect(kernel.signals).toBeNull()
+      // Was "null until _createSignalBus()" until #1905: wiring kernel.signals
+      // right after `new Kernel()` — the natural place — silently did nothing,
+      // because null?.emit?.() does not throw. The bus has no dependencies, so
+      // the window existed for no reason and is now closed.
+      expect(kernel.signals).toBeInstanceOf(SignalBus)
 
+      const fromConstructor = kernel.signals
       kernel._createSignalBus()
 
-      // After _createSignalBus, signals should be SignalBus instance
-      expect(kernel.signals).toBeInstanceOf(SignalBus)
+      // Idempotent: replacing the bus here would orphan every listener
+      // registered between construction and createApp().
+      expect(kernel.signals).toBe(fromConstructor)
     })
 
     it('getSignals() returns SignalBus after creation', () => {

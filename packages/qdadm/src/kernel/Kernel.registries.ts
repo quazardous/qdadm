@@ -34,6 +34,12 @@ export function applyRegistryMethods(KernelClass: { prototype: Kernel }): void {
    * mounted on the same Vue app.
    */
   proto._createSignalBus = function (this: Self): void {
+    // Idempotent (#1905 lot B): the constructor builds the bus so consumers can
+    // wire it immediately. Replacing it here would orphan every listener
+    // registered between construction and createApp() — silently, which is
+    // exactly the failure mode this lot exists to remove.
+    if (this.signals) return
+
     if (this.options.existingSignals) {
       this.signals = this.options.existingSignals
       return
