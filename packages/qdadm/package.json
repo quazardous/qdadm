@@ -1,6 +1,6 @@
 {
   "name": "@quazardous/qdadm",
-  "version": "2.17.0",
+  "version": "2.17.1",
   "description": "Vue 3 framework for admin dashboards with PrimeVue",
   "author": "quazardous",
   "license": "MIT",
@@ -54,7 +54,7 @@
     "dist/node"
   ],
   "dependencies": {
-    "@quazardous/qdcore": "^1.1.0",
+    "@quazardous/qdcore": "^1.1.1",
     "@quazardous/qddebug": "^1.1.0",
     "@quazardous/quarkernel": "^2.1.0",
     "yaml": "^2.8.4"
