@@ -128,8 +128,14 @@ per connection.
 string — and query strings land in access logs, browser history and `Referer`
 headers, all of which outlive the session.
 
-By default qdadm sends the session auth token, which is fine for an internal
-deployment. When it is not, serve a short-lived single-use ticket instead:
+**By default qdadm sends the session auth token** — the same durable
+credential your API calls authenticate with. It works, and for an internal
+deployment it is a defensible choice; the point is that it should be a choice.
+Omitting `getToken` is not neutral, it selects the most sensitive option
+available, and the query string it travels in reaches access logs, browser
+history and `Referer` headers that outlive the session by months.
+
+When that is not acceptable, serve a short-lived single-use ticket instead:
 
 ```js
 sse: {
@@ -142,6 +148,12 @@ sse: {
 `getToken` may return a promise, awaited before each connect, so a fresh ticket
 is fetched every time. Pass `null` to send no token at all — for cookie auth
 with `withCredentials`, or a gateway that injects identity.
+
+A configuration key qdadm does not recognise raises a dev-mode warning naming
+what happens *instead* — `sse.getToken` on a version that predates it is
+ignored, and the session token goes out in its place. "Ignored" reads as "no
+effect"; here it means "falls back to a more sensitive secret", which is why
+the warning says so.
 
 ### A single-use ticket disables the browser's own reconnect
 

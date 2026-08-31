@@ -51,6 +51,7 @@ import type {
   KernelOptions,
   InternalLayoutComponents,
   AxiosLikeClient,
+  SSEConfig as SSEConfigType,
 } from './Kernel.types'
 
 // Re-export public types
@@ -440,6 +441,7 @@ export interface Kernel {
   _createStackHydrator(): void
   _createDeferredRegistry(): void
   _createEventRouter(): void
+  _validateSseConfig(sse: SSEConfigType): void
   _createSSEBridge(): void
 
   // Vue (Kernel.vue.ts)

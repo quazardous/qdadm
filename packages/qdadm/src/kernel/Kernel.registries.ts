@@ -15,6 +15,7 @@ import { StackHydrator } from '../chain/StackHydrator.js'
 import { Orchestrator } from '../orchestrator/Orchestrator'
 import type { EntityAuthAdapter } from '../entity/auth/EntityAuthAdapter'
 import type { Kernel } from './Kernel'
+import type { SSEConfig } from './Kernel.types'
 // #1196 Phase B — this-typing against the real Kernel shape (was Self = any)
 type Self = Kernel
 
@@ -217,11 +218,71 @@ export function applyRegistryMethods(KernelClass: { prototype: Kernel }): void {
   /**
    * Create SSEBridge for Server-Sent Events to SignalBus integration
    */
+  /**
+   * Warn about unrecognised `sse` keys (#1898 lot A).
+   *
+   * A consumer configured `sse.getToken` against a version that predated it.
+   * It was not rejected — it was ignored, and the bridge fell back to the
+   * session's DURABLE token, which then travelled in the query string of every
+   * `/events` request and into logs that outlive the session by months. No
+   * error, no warning, and a stream that worked perfectly.
+   *
+   * The warning therefore names what happens INSTEAD, not merely that the key
+   * was ignored: "ignored" reads as "no effect", not as "falls back to a more
+   * sensitive secret". That reading is what made the failure invisible.
+   */
+  proto._validateSseConfig = function (this: Self, sse: SSEConfig): void {
+    const known = new Set([
+      'url',
+      'reconnectDelay',
+      'signalPrefix',
+      'autoConnect',
+      'withCredentials',
+      'tokenParam',
+      'events',
+      'entities',
+      'getToken',
+      'connectOnSignal',
+      'disconnectOnSignal',
+    ])
+
+    const unknown = Object.keys(sse).filter((key) => !known.has(key))
+    if (!unknown.length) return
+
+    // What the app loses by having the key ignored, wherever we can say it.
+    const consequences: Record<string, string> = {
+      getToken:
+        'the session auth token will be sent in the stream URL instead — ' +
+        'and query strings reach access logs',
+      entities: 'no entity cache will be invalidated from the stream',
+      tokenParam: 'the token will be sent under the default name "token"',
+    }
+
+    for (const key of unknown) {
+      const near = [...known].find(
+        (k) => k.toLowerCase() === key.toLowerCase() || k.startsWith(key) || key.startsWith(k)
+      )
+      // Look the consequence up under the NEAREST KNOWN key: a typo like
+      // `getTokens` means `getToken` is absent, and it is that absence whose
+      // effect the reader needs to hear.
+      const consequence = consequences[key] ?? (near ? consequences[near] : undefined)
+      const because = consequence ? ` — ${consequence}` : ''
+      const suggestion = near ? ` Did you mean "${near}"?` : ''
+      console.warn(
+        `[Kernel] sse.${key} is not a recognised option and is IGNORED${because}.` +
+          `${suggestion} This usually means the installed qdadm predates the option ` +
+          `— check the version before assuming the key has no effect.`
+      )
+    }
+  }
+
   proto._createSSEBridge = function (this: Self): void {
     const { sse, authAdapter } = this.options
     if (!sse?.url) return
 
     const debug = this.options.debug ?? false
+
+    this._validateSseConfig(sse)
 
     // An explicit sse.getToken wins — including an explicit null, which means
     // "send no token" and must not fall back to the auth adapter.
@@ -257,6 +318,29 @@ export function applyRegistryMethods(KernelClass: { prototype: Kernel }): void {
       this.signals!.once('sse:connected', () => {
         this.sseBridge!.registerEvents(events)
       })
+    }
+
+    // A restored session must connect the stream too (#1898 lot C).
+    //
+    // The bridge waits for `auth:login`, which is emitted by the LOGIN PAGE —
+    // by the interface, not by the authentication state. So reloading a page
+    // with a valid session, or revalidating one without going through our
+    // login form, left the stream permanently disconnected.
+    //
+    // Deliberately NOT fixed by emitting `auth:login` at boot: the kernel
+    // listens to it in _setupAuthInvalidation and remounts the whole app, so
+    // announcing a restored session that way would remount on every reload.
+    // Connecting the bridge directly says the same thing without the blast
+    // radius.
+    // `in`, not `??`: an EXPLICIT null means "I drive the connection myself",
+    // and `??` would treat it as absent and override the opt-out.
+    const connectsOnSignal =
+      ('connectOnSignal' in sse ? sse.connectOnSignal : 'auth:login') !== null
+    if (!sse.autoConnect && connectsOnSignal && authAdapter?.isAuthenticated?.()) {
+      if (debug) {
+        console.debug('[Kernel] session already authenticated → connecting SSE')
+      }
+      void this.sseBridge.connect()
     }
 
     if (sse.entities) {

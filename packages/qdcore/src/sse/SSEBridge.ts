@@ -129,7 +129,12 @@ export class SSEBridge {
     if (autoConnect) {
       void this.connect()
     } else if (connectOnSignal) {
-      this._signals.once(connectOnSignal, () => {
+      // `on`, not `once` (#1898 lot B): disconnectOnSignal is a permanent
+      // subscription, and the asymmetry was the bug — login connected, logout
+      // disconnected, and a SECOND login reconnected nothing. The stream never
+      // came back for the rest of the session.
+      this._signals.on(connectOnSignal, () => {
+        if (this._connected) return
         this._log(`Received ${connectOnSignal}, connecting SSE`)
         void this.connect()
       })
@@ -149,6 +154,28 @@ export class SSEBridge {
 
   private _log(...args: unknown[]): void {
     if (this._debug) console.debug('[SSEBridge]', ...args)
+  }
+
+  /**
+   * Hide the token before a URL reaches a log (#1898 lot E).
+   *
+   * `tokenParam` exists precisely to carry a secret, so no path may write it
+   * in clear. The console is the least of it: any error reporter that captures
+   * logs makes the credential outlive the session. The rest of the URL stays
+   * readable, because a redacted URL you cannot recognise is useless.
+   */
+  private _redactToken(url: string): string {
+    if (!this._tokenParam) return url
+    try {
+      const parsed = new URL(url)
+      if (!parsed.searchParams.has(this._tokenParam)) return url
+      // Plain word, not a bracketed placeholder: URLSearchParams would
+      // percent-encode the brackets and the log would read %3C…%3E.
+      parsed.searchParams.set(this._tokenParam, 'REDACTED')
+      return parsed.toString()
+    } catch {
+      return url
+    }
   }
 
   private async _buildUrl(): Promise<string> {
@@ -187,7 +214,7 @@ export class SSEBridge {
         return
       }
 
-      this._log('Connecting to', url)
+      this._log('Connecting to', this._redactToken(url))
 
       this._eventSource = new EventSource(url, { withCredentials: this._withCredentials })
 
