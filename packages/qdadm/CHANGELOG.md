@@ -1,5 +1,13 @@
 # Changelog
 
+## 2.17.2
+
+### Patch Changes
+
+- 2d8ebc6: The SSE stream now connects for a restored session, survives a second login, keeps the token out of the logs, and says when a config key is ignored (#1898, from a consumer's production incident). Four fixes that composed into one symptom — the stream only ever connected on a _fresh interactive login_, never on a reload nor after logging in again. `connectOnSignal` was a `once()` while `disconnectOnSignal` was an `on()`, so a second login reconnected nothing; it is now symmetric, and ignores the signal while already connected. A session restored from storage connects the stream at boot: `auth:login` is emitted by the login _page_, so a reload — which never renders it — left the stream dead. The bridge redacts the value of `tokenParam` before logging a URL, since that option exists precisely to carry a secret and any error reporter capturing logs would outlive the session with it. And an unrecognised `sse` key now warns in dev naming **what happens instead** — an unknown `getToken` means the durable session token goes into the stream URL, which is how the incident happened: "ignored" reads as "no effect", not as "falls back to a more sensitive secret".
+- Updated dependencies [2d8ebc6]
+  - @quazardous/qdcore@1.1.2
+
 ## 2.17.1
 
 ### Patch Changes
