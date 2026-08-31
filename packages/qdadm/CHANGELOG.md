@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.17.0
+
+### Minor Changes
+
+- 6762a83: Google sign-in facilitator, authorization-code + PKCE (#1775). `GoogleOAuthAdapter` builds the authorize URL with an S256 challenge, remembers where the user was heading, validates `state` on the way back, and hands the code to **your** backend — which redeems it with the client secret and issues its own session. qdadm never validates a Google credential in the browser: there is deliberately no code path from a provider response to a session without your backend, because decoding a JWT client-side proves nothing. The backend contract is an open HTTP shape (`POST` → `{ token, user }`), so `new GoogleOAuthAdapter({ clientId, exchangeUrl })` is enough and an app with a Python or Go backend writes no adapter code at all; override `exchange()` only for a non-standard endpoint. Ships with `OAuthCallbackPage` — register it on a **public** route, since the router sends unauthenticated visitors to the login page and the callback arrives before the session exists — and an `#alternatives` slot on `LoginPage`, between the form and the footer, which is where users look for SSO buttons. Marked `@experimental`.
+
 ## 2.16.1
 
 ### Patch Changes
