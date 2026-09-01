@@ -76,6 +76,7 @@ import { applyRoutingMethods } from './Kernel.routing'
 import { applyModuleMethods } from './Kernel.modules'
 import { applyRegistryMethods } from './Kernel.registries'
 import { setQdadmDebugBar, applyVueMethods } from './Kernel.vue'
+import { isDebugBarKilled } from './debugBarKillSwitch'
 import { applyApiMethods } from './Kernel.api'
 import { applyI18nMethods } from './Kernel.i18n'
 import type { I18n } from '../i18n/I18n'
@@ -157,7 +158,10 @@ export class Kernel {
       // the key inert — including to keep the bar ON, "since it changes
       // nothing" — will now see it disappear. Both readings were possible
       // precisely because the flag did nothing.
-      const debugBarEnabled = debugModuleOptions.enabled !== false
+      // The emergency switch wins over everything (#1900 lot C.3): a bar that
+      // is taking the app down has to be stoppable without a redeploy, so
+      // `?qddebug=off` overrides even an explicit `enabled: true`.
+      const debugBarEnabled = debugModuleOptions.enabled !== false && !isDebugBarKilled()
 
       // Store component for root wrapper
       setQdadmDebugBar(debugBarEnabled ? options.debugBar.component || null : null)

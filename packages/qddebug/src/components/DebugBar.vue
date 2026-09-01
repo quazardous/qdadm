@@ -14,9 +14,10 @@
  * Generic panels (`signals`, `toasts`, plus a default entries fallback) are
  * built in; qdadm/qdcms layer their own (auth, entities, router, zones, …).
  */
-import { ref, computed, watch, onMounted, onUnmounted, type Ref, type Component } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted, onUpdated, type Ref, type Component } from 'vue'
 import pkg from '../../package.json'
 
+import { createRenderLoopDetector } from './renderLoopDetector'
 import EntriesPanel from './panels/EntriesPanel.vue'
 import SignalsPanel from './panels/SignalsPanel.vue'
 import ToastsPanel from './panels/ToastsPanel.vue'
@@ -191,7 +192,7 @@ function updateMobileState(): void {
   isMobile.value = window.innerWidth < MOBILE_BREAKPOINT
 }
 
-const headerRef = ref<HTMLElement | null>(null)
+const panelRef = ref<HTMLElement | null>(null)
 const headerWidth = ref<number>(1000)
 const isHorizontalHeader = computed<boolean>(() => !isMobile.value && (displayMode.value === 'bottom' || displayMode.value === 'window' || fullscreen.value) && displayMode.value !== 'right')
 const tabsCompact = computed<boolean>(() => isHorizontalHeader.value && headerWidth.value < 600)
@@ -200,6 +201,38 @@ const showTabsDropdown = ref<boolean>(false)
 
 watch(tabsDropdown, (isDropdown: boolean) => {
   if (!isDropdown) showTabsDropdown.value = false
+})
+
+/**
+ * The bar suspends itself rather than take the app down (#1900 lot C.2).
+ *
+ * A runaway render loop throws nothing, so the Kernel's error boundary cannot
+ * see it: the app simply stops responding while the bar re-renders forever.
+ * That is what a consumer lived through, and their only exit was to rebuild
+ * without the bar.
+ *
+ * So the bar watches its own update rate. Past the threshold it freezes and
+ * says so in plain words, in place of itself. A diagnostic that scuttles
+ * itself legibly is worth more than one that takes everything down.
+ *
+ * The window logic lives in `renderLoopDetector` — a plain object holding no
+ * reactive state, so counting can never itself schedule a render.
+ */
+const loopDetector = createRenderLoopDetector()
+const suspended = ref<boolean>(false)
+
+onUpdated(() => {
+  if (suspended.value) return
+
+  if (loopDetector.record(Date.now())) {
+    suspended.value = true
+    console.error(
+      `[qddebug] Render loop detected (${loopDetector.count} updates in ` +
+        '1000ms). The debug bar has suspended itself; the application is ' +
+        'unaffected. Reload to try again, or use ?qddebug=off to keep the ' +
+        'bar off.'
+    )
+  }
 })
 
 let resizeObserver: ResizeObserver | null = null
@@ -217,7 +250,26 @@ onUnmounted(() => {
   document.removeEventListener('click', onDocumentClick)
   window.removeEventListener('resize', updateMobileState)
 })
-watch(headerRef, (el: HTMLElement | null) => {
+/**
+ * Never measure your own content (#1900 lot C.4).
+ *
+ * This used to observe `headerRef` — the very element whose contents it
+ * drives: `headerWidth` decides `tabsCompact`/`tabsDropdown`, which decide how
+ * the header's tabs render. Measure a box, resize its contents, re-measure:
+ * that is a ResizeObserver feedback loop waiting for the day the header stops
+ * being width-constrained by its parent.
+ *
+ * It was NOT the cause of the loop reported in #1896 — the consumer measured
+ * zero firings, and the deduction that blamed it was wrong. It is fixed here
+ * as hygiene, not as a cure.
+ *
+ * The panel is the honest thing to measure: its width comes from the display
+ * mode (fixed, dragged, or full width) and never from the tabs inside it, so
+ * the reading cannot feed itself. The compact thresholds now see the panel's
+ * width rather than the header's — wider by the header's padding, a handful of
+ * pixels against thresholds of 400 and 600 that are heuristics to begin with.
+ */
+watch(panelRef, (el: HTMLElement | null) => {
   resizeObserver?.disconnect()
   if (el) resizeObserver?.observe(el)
 }, { immediate: true })
@@ -537,8 +589,14 @@ const currentPanel = computed<Component | null>(() => panelFor(currentCollector.
          and ours can't bleed out. The wrapper is `display: contents`
          so it doesn't add a layout box. -->
     <div class="qd-debug" style="display: contents">
+    <!-- Suspended: the bar caught itself looping and stopped. It says so
+         rather than vanishing, so nobody hunts a bar that removed itself. -->
+    <div v-if="suspended" class="debug-suspended" :style="{ zIndex }">
+      Debug bar suspended: render loop detected. The app is unaffected.
+      Reload to retry, or add <code>?qddebug=off</code> to keep it off.
+    </div>
     <!-- Minimized: corner button with separate badges -->
-    <div v-if="minimized" class="debug-minimized" :style="{ zIndex }" @click="expand">
+    <div v-else-if="minimized" class="debug-minimized" :style="{ zIndex }" @click="expand">
       <svg viewBox="0 0 100 100" width="28" height="28">
         <polygon points="50,5 93,27.5 93,72.5 50,95 7,72.5 7,27.5" fill="#1E3A8A"/>
         <text x="48" y="50" text-anchor="middle" dominant-baseline="central" font-family="system-ui" font-size="58" font-weight="800" letter-spacing="-4">
@@ -556,7 +614,7 @@ const currentPanel = computed<Component | null>(() => panelFor(currentCollector.
     </div>
 
     <!-- Full panel -->
-    <div v-else class="debug-panel" :class="[
+    <div v-else ref="panelRef" class="debug-panel" :class="[
       isMobile ? 'debug-mobile' : (fullscreen ? 'debug-fullscreen' : `debug-${displayMode}`),
       { 'debug-expanded': expanded }
     ]" :style="!isMobile && displayMode === 'window' && !fullscreen ? {
@@ -573,7 +631,7 @@ const currentPanel = computed<Component | null>(() => panelFor(currentCollector.
       width: panelSizes.rightWidth + 'px'
     } : { zIndex }">
       <!-- Header -->
-      <div ref="headerRef" class="debug-header" @mousedown="displayMode === 'window' && !fullscreen ? startDrag($event) : null" :class="{ 'debug-header-draggable': displayMode === 'window' && !fullscreen }">
+      <div class="debug-header" @mousedown="displayMode === 'window' && !fullscreen ? startDrag($event) : null" :class="{ 'debug-header-draggable': displayMode === 'window' && !fullscreen }">
         <div
           class="debug-title"
           :class="{ 'debug-title-draggable': displayMode === 'window' && !fullscreen }"

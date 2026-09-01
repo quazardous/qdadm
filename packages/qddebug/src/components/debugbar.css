@@ -81,6 +81,27 @@
 /* ============================================================================= */
 
 /* Minimized button */
+/* Suspended notice (#1900 lot C.2).
+   The bar caught itself looping and stopped. Deliberately plain: no icons,
+   no transitions, nothing that could re-enter the loop it just escaped. */
+.qd-debug .debug-suspended {
+  position: fixed;
+  bottom: 1rem;
+  right: 1rem;
+  max-width: 22rem;
+  padding: 0.625rem 0.75rem;
+  border-radius: 8px;
+  background: #450a0a;
+  border: 1px solid #b91c1c;
+  color: #fecaca;
+  font: 12px/1.45 system-ui, sans-serif;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+}
+.qd-debug .debug-suspended code {
+  font-family: ui-monospace, monospace;
+  color: #fff;
+}
+
 .qd-debug .debug-minimized {
   position: fixed;
   bottom: 1rem;

@@ -126,3 +126,24 @@ Every browser tab gets a session id; endpoints accept `?session=<id|latest>`.
 The optional in-app debug bar (`debugBar` kernel option, see the demo)
 surfaces the same collectors visually: entities, routes, signals timeline,
 auth state, i18n domains.
+
+`debugBar: { enabled: false }` turns it off — both the bar and the debug mode
+it would otherwise switch on.
+
+### Turning it off without a deploy
+
+Add `?qddebug=off` to any URL. The bar goes, and stays gone across reloads and
+redirects until `?qddebug=on` brings it back. It overrides `enabled: true`,
+needs no rebuild, and is the way out when the bar itself is the problem.
+
+### The bar cannot take the app down
+
+Two independent guards, because they catch different things:
+
+- a bar that **throws** is dropped and the application keeps rendering, with
+  the reason on the console;
+- a bar that **loops** — which throws nothing — suspends itself past 60 updates
+  in a second and says so on screen in place of itself.
+
+Both are automatic. A suspended bar comes back on reload; if it suspends again,
+use `?qddebug=off`.

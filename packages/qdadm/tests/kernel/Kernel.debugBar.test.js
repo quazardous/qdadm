@@ -10,7 +10,7 @@
  *
  * Run: npm test
  */
-import { describe, it, expect, beforeEach } from 'vitest'
+import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import { Kernel } from '../../src/kernel/Kernel'
 import { getQdadmDebugBarRef } from '../../src/kernel/Kernel.vue'
 
@@ -32,9 +32,23 @@ function makeKernel(debugBar) {
   })
 }
 
+function setSearch(search) {
+  Object.defineProperty(window, 'location', {
+    value: { search },
+    writable: true,
+    configurable: true,
+  })
+}
+
 describe('Kernel — debugBar enabled flag', () => {
   beforeEach(() => {
     getQdadmDebugBarRef().value = null
+    localStorage.clear()
+    setSearch('')
+  })
+  afterEach(() => {
+    localStorage.clear()
+    setSearch('')
   })
 
   it('registers the bar when enabled is not given', () => {
@@ -70,6 +84,39 @@ describe('Kernel — debugBar enabled flag', () => {
     const kernel = makeKernel({ module: FakeDebugModule, component: FakeBar })
 
     expect(kernel.options.debug).toBe(true)
+  })
+
+  it('?qddebug=off beats even an explicit enabled: true', () => {
+    // The emergency switch exists for the case where the bar is taking the
+    // app down. It must not be arguable with (#1900 lot C.3).
+    setSearch('?qddebug=off')
+
+    const kernel = makeKernel({ module: FakeDebugModule, component: FakeBar, enabled: true })
+
+    expect(getQdadmDebugBarRef().value).toBeNull()
+    expect(kernel.options.debug).toBeFalsy()
+  })
+
+  it('a remembered kill still holds once the parameter is gone', () => {
+    setSearch('?qddebug=off')
+    makeKernel({ module: FakeDebugModule, component: FakeBar })
+    getQdadmDebugBarRef().value = null
+
+    setSearch('')
+    makeKernel({ module: FakeDebugModule, component: FakeBar })
+
+    expect(getQdadmDebugBarRef().value).toBeNull()
+  })
+
+  it('?qddebug=on gives the bar back', () => {
+    setSearch('?qddebug=off')
+    makeKernel({ module: FakeDebugModule, component: FakeBar })
+    getQdadmDebugBarRef().value = null
+
+    setSearch('?qddebug=on')
+    makeKernel({ module: FakeDebugModule, component: FakeBar })
+
+    expect(getQdadmDebugBarRef().value).toEqual(FakeBar)
   })
 
   it('leaves an explicit debug: true alone when the bar is disabled', () => {

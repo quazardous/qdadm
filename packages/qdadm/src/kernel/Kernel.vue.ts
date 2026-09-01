@@ -3,6 +3,7 @@ import {
   h,
   defineComponent,
   ref,
+  onErrorCaptured,
   type App,
   type Component,
   type Ref,
@@ -58,6 +59,51 @@ export function setQdadmDebugBar(component: Component | null): void {
 /**
  * Patch Kernel prototype with Vue app creation methods.
  */
+/**
+ * The debug bar must not be able to take down the app it observes
+ * (#1900 lot C.1).
+ *
+ * Before this, a bar that threw during render propagated the error to the root
+ * and killed the application — a diagnostic tool failing precisely when
+ * someone needed it, and the consumer's only way out was to rebuild without
+ * it.
+ *
+ * `onErrorCaptured` returning false stops the error here: the bar is dropped,
+ * the app keeps rendering. The failure is loud in the console rather than on
+ * screen, because a crashed debug tool leaving debris in the corner of a
+ * working app helps nobody.
+ *
+ * This catches THROWN errors only. A runaway render loop throws nothing, so it
+ * needs its own guard — that is the bar's circuit breaker in `@quazardous/qddebug`,
+ * and the two are deliberately separate.
+ *
+ * Exported so the guard can be tested as a unit; the Kernel is its only caller.
+ */
+export function createDebugBarBoundary(BarComponent: Component): Component {
+  return defineComponent({
+    name: 'QdadmDebugBarBoundary',
+    setup() {
+      const failed = ref(false)
+
+      onErrorCaptured((err: unknown) => {
+        if (!failed.value) {
+          failed.value = true
+          console.error(
+            '[qdadm] The debug bar threw and has been removed for this ' +
+              'session. The application is unaffected. Use ?qddebug=off to ' +
+              'keep it off across reloads.',
+            err
+          )
+        }
+        // Stop propagation: the app must not die with its instrument.
+        return false
+      })
+
+      return () => (failed.value ? null : h(BarComponent))
+    },
+  })
+}
+
 export function applyVueMethods(KernelClass: { prototype: Kernel }): void {
   const proto = KernelClass.prototype
 
@@ -102,6 +148,9 @@ export function applyVueMethods(KernelClass: { prototype: Kernel }): void {
       this.options.debugBar?.component && debugBarRef.value
         ? debugBarRef.value
         : null
+    const DebugBarBoundary = DebugBarComponent
+      ? createDebugBarBoundary(DebugBarComponent as Component)
+      : null
     const hasPrimeVue = !!this.options.primevue?.plugin
     const appKey = this._appKey
 
@@ -116,8 +165,8 @@ export function applyVueMethods(KernelClass: { prototype: Kernel }): void {
             children.push(h(ToastListener))
           }
 
-          if (DebugBarComponent) {
-            children.push(h(DebugBarComponent))
+          if (DebugBarBoundary) {
+            children.push(h(DebugBarBoundary))
           }
 
           return h(
