@@ -16,6 +16,7 @@
  * persistence off.
  */
 import type { RouteStatePersister } from './RouteStatePersister'
+import { dottedKeyLocator, type RouteStateKeyLocator } from './keyLocator'
 
 /** The bits of vue-router this needs, so tests need no real router. */
 export interface UrlPersisterRouter {
@@ -29,6 +30,24 @@ export interface UrlPersisterOptions {
   router: UrlPersisterRouter
   /** Live route — read at call time, never captured. */
   route: UrlPersisterRoute
+  /**
+   * How a (scope, key) pair becomes a query parameter. Defaults to
+   * `offers.page`; override to impose your own scheme.
+   */
+  keyLocator?: RouteStateKeyLocator
+  /**
+   * Also read UNPREFIXED keys when the scope has none of its own.
+   *
+   * Transitional, and on by default: qdadm wrote `?page=2` flat before this
+   * seam existed, so links people bookmarked or pasted into tickets carry
+   * that shape. Without this they would silently resolve to page 1 — the
+   * reader would see a wrong screen and no error.
+   *
+   * Writes are always prefixed, so a link refreshes itself the first time
+   * anyone touches the list. Set false to drop the compatibility, and expect
+   * to remove it here in a later version.
+   */
+  readFlatFallback?: boolean
 }
 
 export class UrlPersister implements RouteStatePersister {
@@ -36,32 +55,49 @@ export class UrlPersister implements RouteStatePersister {
 
   private readonly _router: UrlPersisterRouter
   private readonly _route: UrlPersisterRoute
+  private readonly _keys: RouteStateKeyLocator
+  private readonly _readFlatFallback: boolean
 
   constructor(options: UrlPersisterOptions) {
     this._router = options.router
     this._route = options.route
+    this._keys = options.keyLocator ?? dottedKeyLocator
+    this._readFlatFallback = options.readFlatFallback ?? true
   }
 
   read(scope: string): Record<string, unknown> | null {
-    const prefix = `${scope}.`
     const state: Record<string, unknown> = {}
     let found = false
 
-    for (const [key, raw] of Object.entries(this._route.query)) {
-      if (!key.startsWith(prefix)) continue
+    for (const [storedKey, raw] of Object.entries(this._route.query)) {
+      const key = this._keys.decode(scope, storedKey)
+      if (key === null) continue
       found = true
-      state[key.slice(prefix.length)] = decodeValue(raw)
+      state[key] = decodeValue(raw)
     }
 
-    return found ? state : null
+    if (found || !this._readFlatFallback) return found ? state : null
+
+    // Nothing under this scope: possibly a link written before the seam
+    // existed. Read it flat rather than showing the wrong screen without a
+    // word — but ONLY keys nobody has scoped. `jobs.page` belongs to the jobs
+    // list, and handing it to this one would be worse than ignoring it.
+    const flat: Record<string, unknown> = {}
+    for (const [storedKey, raw] of Object.entries(this._route.query)) {
+      if (this._keys.looksScoped(storedKey)) continue
+      flat[storedKey] = decodeValue(raw)
+    }
+    return Object.keys(flat).length ? flat : null
   }
 
   write(scope: string, state: Record<string, unknown>): void {
-    const prefix = `${scope}.`
     const query = { ...this._route.query }
 
     for (const [key, value] of Object.entries(state)) {
-      const param = prefix + key
+      const param = this._keys.encode(scope, key)
+      // A flat key left by an older link would shadow the prefixed one on the
+      // next read, so writing a scope also retires its legacy twin.
+      if (this._readFlatFallback && param !== key) delete query[key]
       // Absent, not stored empty: a pristine screen leaves a clean link.
       if (value === null || value === undefined || value === '') delete query[param]
       else query[param] = encodeValue(value)
@@ -71,10 +107,9 @@ export class UrlPersister implements RouteStatePersister {
   }
 
   clear(scope: string): void {
-    const prefix = `${scope}.`
     const query = { ...this._route.query }
-    for (const key of Object.keys(query)) {
-      if (key.startsWith(prefix)) delete query[key]
+    for (const storedKey of Object.keys(query)) {
+      if (this._keys.decode(scope, storedKey) !== null) delete query[storedKey]
     }
     this._router.replace({ query })
   }

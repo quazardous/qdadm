@@ -15,3 +15,5 @@ export { isRouteStatePersister, resolveRouteStatePersister } from './RouteStateP
 export { UrlPersister } from './UrlPersister'
 export type { UrlPersisterOptions, UrlPersisterRouter, UrlPersisterRoute } from './UrlPersister'
 export { createRouteStatePersisterFactory } from './factory'
+export { dottedKeyLocator, namespacedKeyLocator } from './keyLocator'
+export type { RouteStateKeyLocator } from './keyLocator'

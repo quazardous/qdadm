@@ -107,7 +107,7 @@ export interface QdadmPlugin {
 export function createQdadm(options: QdadmOptions): QdadmPlugin {
   return {
     install(app: App) {
-      // Validation des contrats requis
+      // The contracts this plugin cannot run without.
       if (!options.entityFactory && !options.orchestrator && !options.managers) {
         throw new Error('[qdadm] entityFactory, orchestrator, or managers required')
       }

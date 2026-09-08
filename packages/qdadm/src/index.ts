@@ -334,6 +334,9 @@ export {
   type RouteStatePersisterSpec,
   type RouteStatePersisterFactory,
   type UrlPersisterOptions,
+  dottedKeyLocator,
+  namespacedKeyLocator,
+  type RouteStateKeyLocator,
 } from './routeState'
 export {
   useDeferred,
