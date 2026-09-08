@@ -129,6 +129,8 @@ export function applyRegistryMethods(KernelClass: { prototype: Kernel }): void {
 
     if (!security) return
 
+    this._validateSecurityConfig(security as unknown as Record<string, unknown>)
+
     // security configured but no user source: every isGranted() falls back
     // to permissive — a newcomer believes gating is on when it isn't (#1388)
     if (!entityAuthAdapter) {
@@ -238,6 +240,165 @@ export function applyRegistryMethods(KernelClass: { prototype: Kernel }): void {
    * Create SSEBridge for Server-Sent Events to SignalBus integration
    */
   /**
+   * The known key a typo most likely meant, or undefined.
+   *
+   * Case differences and prefixes were all the original matcher caught
+   * (#1898), which misses the commonest typo of all: one missing or
+   * transposed letter. `securty` suggested nothing, so the reader got
+   * "IGNORED" with no hint and no consequence — the two things that make the
+   * warning worth printing. An edit distance of one covers an omission, an
+   * insertion, a substitution or a transposition; two is allowed only for
+   * longer keys, where it stays specific enough not to guess wildly.
+   */
+  function nearestKnownKey(key: string, known: Set<string>): string | undefined {
+    const exact = [...known].find(
+      (k) => k.toLowerCase() === key.toLowerCase() || k.startsWith(key) || key.startsWith(k)
+    )
+    if (exact) return exact
+
+    const budget = key.length >= 8 ? 2 : 1
+    let best: string | undefined
+    let bestDistance = budget + 1
+    for (const candidate of known) {
+      const distance = editDistance(key.toLowerCase(), candidate.toLowerCase(), bestDistance)
+      if (distance < bestDistance) {
+        bestDistance = distance
+        best = candidate
+      }
+    }
+    return bestDistance <= budget ? best : undefined
+  }
+
+  /** Damerau-Levenshtein, abandoned as soon as it exceeds `cap`. */
+  function editDistance(a: string, b: string, cap: number): number {
+    if (Math.abs(a.length - b.length) > cap) return cap + 1
+
+    let previous: number[] = Array.from({ length: b.length + 1 }, (_, i) => i)
+    let beforePrevious: number[] = []
+
+    for (let i = 1; i <= a.length; i++) {
+      const current: number[] = [i]
+      let rowBest = i
+      for (let j = 1; j <= b.length; j++) {
+        const cost = a[i - 1] === b[j - 1] ? 0 : 1
+        let value = Math.min(
+          (current[j - 1] as number) + 1,
+          (previous[j] as number) + 1,
+          (previous[j - 1] as number) + cost
+        )
+        // Transposition: `raods` for `roads`.
+        if (i > 1 && j > 1 && a[i - 1] === b[j - 2] && a[i - 2] === b[j - 1]) {
+          value = Math.min(value, (beforePrevious[j - 2] as number) + 1)
+        }
+        current[j] = value
+        rowBest = Math.min(rowBest, value)
+      }
+      if (rowBest > cap) return cap + 1
+      beforePrevious = previous
+      previous = current
+    }
+    return previous[b.length] as number
+  }
+
+  /**
+   * Warn about keys a config object does not recognise (#1906 lot B2).
+   *
+   * Extracted from the `sse` validator of #1898, which was the only one of its
+   * kind: every other qdadm config accepted anything in silence. The shape of
+   * the message is the lesson from that incident and is kept intact — it names
+   * what happens INSTEAD of what was asked, because "ignored" reads as "no
+   * effect" rather than "falls back to something else", and that reading is
+   * what cost a durable auth token in access logs.
+   *
+   * Only for CLOSED shapes. A config that deliberately forwards unknown keys
+   * elsewhere — `debugBar`, whose extra options reach the DebugModule — must
+   * not be passed through here: a warning that cries wolf is worse than none
+   * (ADR 0011).
+   */
+  proto._warnUnknownKeys = function (
+    this: Self,
+    scope: string,
+    config: Record<string, unknown>,
+    known: Set<string>,
+    consequences: Record<string, string> = {}
+  ): void {
+    const unknown = Object.keys(config).filter((key) => !known.has(key))
+    if (!unknown.length) return
+
+    for (const key of unknown) {
+      const near = nearestKnownKey(key, known)
+      // Look the consequence up under the NEAREST KNOWN key: a typo like
+      // `getTokens` means `getToken` is absent, and it is that absence whose
+      // effect the reader needs to hear.
+      const consequence = consequences[key] ?? (near ? consequences[near] : undefined)
+      const because = consequence ? ` — ${consequence}` : ''
+      const suggestion = near ? ` Did you mean "${near}"?` : ''
+      console.warn(
+        `[Kernel] ${scope}${key} is not a recognised option and is IGNORED${because}.` +
+          `${suggestion} This usually means the installed qdadm predates the option ` +
+          `— check the version before assuming the key has no effect.`
+      )
+    }
+  }
+
+  /**
+   * Every option `KernelOptions` accepts (#1906 lot B2).
+   *
+   * A misspelled TOP-LEVEL key is the worst silence of the family: it does not
+   * degrade a feature, it removes a whole section of configuration. `securty:`
+   * means no security config at all, and nothing says so. TypeScript catches
+   * it; the many consumers whose module files are plain JavaScript get
+   * nothing.
+   *
+   * Kept in sync with the interface by a test that reads `Kernel.types.ts` and
+   * compares — a hand-maintained list that drifts would start crying wolf,
+   * which is the failure mode this whole ticket exists to avoid.
+   */
+  const KNOWN_KERNEL_OPTIONS = new Set([
+    'apiClient', 'app', 'authAdapter', 'authTypes', 'basePath', 'coreRoutes',
+    'debug', 'debugBar', 'defaultEntityCacheTtlMs', 'entityAuthAdapter',
+    'eventRouter', 'existingApp', 'existingRouter', 'existingSignals',
+    'features', 'hashMode', 'homeRoute', 'i18n', 'layouts', 'managerRegistry',
+    'managerResolver', 'managers', 'moduleDefs', 'modules', 'modulesOptions',
+    'notifications', 'onAuthExpired', 'pages', 'parentParamMode', 'primevue',
+    'root', 'routeParamResolver', 'routePrefix', 'sectionOrder', 'security',
+    'sse', 'storageResolver', 'toast', 'warmup',
+  ])
+
+  proto._validateKernelOptions = function (this: Self): void {
+    this._warnUnknownKeys('', this.options as Record<string, unknown>, KNOWN_KERNEL_OPTIONS, {
+      security: 'no role hierarchy or permissions will be applied — every check falls back to the default',
+      sse: 'no server-sent events will be connected',
+      debugBar: 'no debug bar will be mounted',
+      layouts: 'pages will fall back to the base layout',
+      i18n: 'translations will not be configured',
+      authAdapter: 'the app will run unauthenticated',
+    })
+  }
+
+  /**
+   * Warn about unrecognised `security` keys (#1906 lot B2).
+   *
+   * Chosen first, and by damage: a misspelled key here means a role hierarchy
+   * or a permission map is simply absent, and every check then falls through
+   * to whatever the default is. Nothing fails, nothing warns, and the app is
+   * open where its author believed it closed.
+   */
+  proto._validateSecurityConfig = function (this: Self, security: Record<string, unknown>): void {
+    this._warnUnknownKeys(
+      'security.',
+      security,
+      new Set(['role_hierarchy', 'role_permissions', 'role_labels', 'entity_permissions', 'rolesProvider']),
+      {
+        role_hierarchy: 'roles will not inherit from one another',
+        role_permissions: 'no role will carry any permission',
+        entity_permissions: 'per-entity permissions will not be generated',
+        rolesProvider: "the current user's roles will not be resolved",
+      }
+    )
+  }
+
+  /**
    * Warn about unrecognised `sse` keys (#1898 lot A).
    *
    * A consumer configured `sse.getToken` against a version that predated it.
@@ -251,48 +412,30 @@ export function applyRegistryMethods(KernelClass: { prototype: Kernel }): void {
    * sensitive secret". That reading is what made the failure invisible.
    */
   proto._validateSseConfig = function (this: Self, sse: SSEConfig): void {
-    const known = new Set([
-      'url',
-      'reconnectDelay',
-      'signalPrefix',
-      'autoConnect',
-      'withCredentials',
-      'tokenParam',
-      'events',
-      'entities',
-      'getToken',
-      'connectOnSignal',
-      'disconnectOnSignal',
-    ])
-
-    const unknown = Object.keys(sse).filter((key) => !known.has(key))
-    if (!unknown.length) return
-
-    // What the app loses by having the key ignored, wherever we can say it.
-    const consequences: Record<string, string> = {
-      getToken:
-        'the session auth token will be sent in the stream URL instead — ' +
-        'and query strings reach access logs',
-      entities: 'no entity cache will be invalidated from the stream',
-      tokenParam: 'the token will be sent under the default name "token"',
-    }
-
-    for (const key of unknown) {
-      const near = [...known].find(
-        (k) => k.toLowerCase() === key.toLowerCase() || k.startsWith(key) || key.startsWith(k)
-      )
-      // Look the consequence up under the NEAREST KNOWN key: a typo like
-      // `getTokens` means `getToken` is absent, and it is that absence whose
-      // effect the reader needs to hear.
-      const consequence = consequences[key] ?? (near ? consequences[near] : undefined)
-      const because = consequence ? ` — ${consequence}` : ''
-      const suggestion = near ? ` Did you mean "${near}"?` : ''
-      console.warn(
-        `[Kernel] sse.${key} is not a recognised option and is IGNORED${because}.` +
-          `${suggestion} This usually means the installed qdadm predates the option ` +
-          `— check the version before assuming the key has no effect.`
-      )
-    }
+    this._warnUnknownKeys(
+      'sse.',
+      sse as unknown as Record<string, unknown>,
+      new Set([
+        'url',
+        'reconnectDelay',
+        'signalPrefix',
+        'autoConnect',
+        'withCredentials',
+        'tokenParam',
+        'events',
+        'entities',
+        'getToken',
+        'connectOnSignal',
+        'disconnectOnSignal',
+      ]),
+      {
+        getToken:
+          'the session auth token will be sent in the stream URL instead — ' +
+          'and query strings reach access logs',
+        entities: 'no entity cache will be invalidated from the stream',
+        tokenParam: 'the token will be sent under the default name "token"',
+      }
+    )
   }
 
   proto._createSSEBridge = function (this: Self): void {

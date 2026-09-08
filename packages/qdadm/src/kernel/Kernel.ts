@@ -193,6 +193,11 @@ export class Kernel {
     // Every creator is idempotent, so the later calls in createApp() keep
     // these instances rather than orphaning whatever was registered on them
     // in between — which would be the same silent failure wearing a new hat.
+    // Before anything reads them (#1906 lot B2): a misspelled top-level key
+    // removes a whole section of configuration, and TypeScript only catches
+    // it for consumers whose module files are TypeScript.
+    this._validateKernelOptions()
+
     this._createSignalBus()
     this._createHookRegistry()
     this._createZoneRegistry()
@@ -491,6 +496,14 @@ export interface Kernel {
   _createDeferredRegistry(): void
   _createEventRouter(): void
   _validateSseConfig(sse: SSEConfigType): void
+  _validateSecurityConfig(security: Record<string, unknown>): void
+  _validateKernelOptions(): void
+  _warnUnknownKeys(
+    scope: string,
+    config: Record<string, unknown>,
+    known: Set<string>,
+    consequences?: Record<string, string>
+  ): void
   _createSSEBridge(): void
 
   // Vue (Kernel.vue.ts)
