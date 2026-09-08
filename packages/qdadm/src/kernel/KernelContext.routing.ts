@@ -9,9 +9,13 @@
  * The string helpers (`singularize`, `toKebab`, `capitalize`) are kept
  * module-local — they're pure, stateless, and were only used by `crud()` and
  * `childPage()`. Keeping them off the prototype keeps the public shape clean.
+ * `singularize` is a thin call into the vendored `pluralize` since #1923: the
+ * hand-rolled version disagreed with the one `EntityManager` uses, and a
+ * framework cannot afford two answers to the same question.
  */
 
 import type { RouteRecordRaw } from 'vue-router'
+import pluralize from '../utils/pluralize'
 import { registry, getRoutes } from '../module/moduleRegistry'
 import type {
   ChildPageOptions,
@@ -26,14 +30,21 @@ import type { KernelContext } from './KernelContext'
 // #1196 Phase B — this-typing against the real KernelContext shape (was Self = any)
 type Self = KernelContext
 
-/** Singularize a plural word (simple English rules) */
+/**
+ * Singularize an entity name (#1923).
+ *
+ * This used to be six hand-rolled lines, while `EntityManager.routePrefix`
+ * used the vendored `pluralize`. Two engines, and they disagreed: `crud()`
+ * named a route `people-show` while `useListPage` looked for `person-show`,
+ * so every navigation helper missed silently — no error at boot, nothing until
+ * someone clicked. They agreed on every regular plural, which is exactly why
+ * it went unnoticed.
+ *
+ * One engine now, the real one. `pluralize` is vendored (#1454) and imports
+ * nothing, so there is no cycle to fear from calling it here.
+ */
 function singularize(plural: string): string {
-  if (plural.endsWith('ies')) return plural.slice(0, -3) + 'y'
-  if (plural.endsWith('ses') || plural.endsWith('xes') || plural.endsWith('zes')) {
-    return plural.slice(0, -2)
-  }
-  if (plural.endsWith('s') && !plural.endsWith('ss')) return plural.slice(0, -1)
-  return plural
+  return pluralize.singular(plural)
 }
 
 /** Convert camelCase to kebab-case (e.g. 'botTasks' → 'bot-tasks') */

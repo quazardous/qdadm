@@ -28,7 +28,7 @@ import {
   provide,
   type Ref,
 } from 'vue'
-import { useRouter, useRoute } from 'vue-router'
+import { useRouter, useRoute, type RouteLocationRaw } from 'vue-router'
 import { useConfirm } from 'primevue/useconfirm'
 import { useHooks } from './useHooks.js'
 import { useEntityItemPage, type ParentConfig, type UseEntityItemPageReturn } from './useEntityItemPage.js'
@@ -855,21 +855,55 @@ export function useListPage<T = unknown>(config: UseListPageOptions<T>): UseList
     return { name: `${routePrefix}-create` }
   }
 
+  /** Route names already reported as missing — one warning each. */
+  const warnedMissingRoutes = new Set<string>()
+
+  /**
+   * Navigate by route name, and say something when that name does not exist
+   * (#1923 lot 2).
+   *
+   * The failure this catches is quiet by nature: the route prefix is derived
+   * from the entity name, so a mismatch between the side that NAMES routes
+   * and the side that LOOKS THEM UP produces a push to a name nobody
+   * registered. Nothing happens, and nothing says why — the divergence that
+   * caused #1923 behaved exactly like this, invisible until someone clicked.
+   *
+   * We warn at the moment of use rather than auditing the prefix upfront: an
+   * entity that only ever appears as a child of another has no routes under
+   * its own prefix and is perfectly healthy, so an upfront check would cry
+   * wolf. A warning nobody trusts is worse than none (ADR 0011).
+   */
+  function pushNamedRoute(name: string, params?: Record<string, unknown>): void {
+    if (!router.hasRoute(name)) {
+      if (!warnedMissingRoutes.has(name)) {
+        warnedMissingRoutes.add(name)
+        console.warn(
+          `[qdadm] No route named "${name}" — this navigation does nothing. ` +
+            `The list for "${entity}" derives it from the route prefix ` +
+            `"${routePrefix}". Either that page is not declared, or the ` +
+            `prefix disagrees with the one its routes were registered under ` +
+            `(pass routePrefix on the entity, or on useListPage, to pin it).`
+        )
+      }
+      return
+    }
+    router.push({ name, ...(params ? { params } : {}) } as RouteLocationRaw)
+  }
+
   function goToCreate(): void {
-    router.push(findCreateRoute() as { name: string })
+    const target = findCreateRoute() as { name: string; params?: Record<string, unknown> }
+    pushNamedRoute(target.name, target.params)
   }
 
   function goToEdit(item: unknown): void {
-    router.push({
-      name: `${routePrefix}-edit`,
-      params: { [manager.idField]: (item as Record<string, unknown>)[resolvedDataKey] as string },
+    pushNamedRoute(`${routePrefix}-edit`, {
+      [manager.idField]: (item as Record<string, unknown>)[resolvedDataKey] as string,
     })
   }
 
   function goToShow(item: unknown): void {
-    router.push({
-      name: `${routePrefix}-show`,
-      params: { [manager.idField]: (item as Record<string, unknown>)[resolvedDataKey] as string },
+    pushNamedRoute(`${routePrefix}-show`, {
+      [manager.idField]: (item as Record<string, unknown>)[resolvedDataKey] as string,
     })
   }
 
