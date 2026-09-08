@@ -28,7 +28,8 @@ useListPage({ entity: 'offers', routeState: 'local_storage' })
 
 | Slug | Medium | Reach for it when |
 |---|---|---|
-| `url` | query string | the state is worth sending someone — **the default** |
+| `default` | query string **+** cookie | what a list uses when nobody chose |
+| `url` | query string | everything in the link, **row count included** |
 | `local_storage` | `localStorage` | worth keeping, not worth linking |
 | `session_storage` | `sessionStorage` | worth keeping until the tab closes |
 | `cookie` | one cookie per scope | the **server** needs to read it |
@@ -38,6 +39,37 @@ useListPage({ entity: 'offers', routeState: 'local_storage' })
 An unknown slug **throws**. It does not fall back to the URL: a persistence
 choice that quietly does something else is the failure
 [ADR 0011](adr/0011-no-silent-no-ops.md) forbids.
+
+⚠️ **`url` is not the default.** The default is a composition — the query
+string for everything except rows-per-page, which goes to a cookie. Writing
+`routeState: 'url'` therefore *changes* behaviour rather than restating it:
+the row count joins the link, and a link then imposes the sender's row count
+on whoever opens it. Say `'default'` if you meant the default out loud.
+
+## The default is composed
+
+Filters, search and the page belong in a link — that is the whole argument for
+the URL. Rows-per-page does not: it is a comfort setting somebody picked once,
+remembered for the whole app rather than per list.
+
+```js
+new CompositePersister({
+  fallback: new UrlPersister({ router, route }),
+  keys: { pageSize: { persister: new CookiePersister(), scope: 'app' } },
+})
+```
+
+That is qdadm's default, written out. Compose your own the same way — route a
+key to any persister, and pin it to a fixed `scope` when it is one setting
+across the app rather than one per screen.
+
+Two behaviours worth knowing:
+
+- **A routed key wins over the fallback.** A stale `?pageSize=50` left in
+  somebody's URL does not beat the cookie that owns the setting.
+- **Clearing a list leaves pinned keys alone.** "Clear this list's filters" is
+  not a request to reset an app-wide row count — otherwise one list's clear
+  button would change every other list's.
 
 ## Who decides
 

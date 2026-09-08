@@ -7,7 +7,8 @@
  *
  * | Slug | Medium | Reach for it when |
  * |---|---|---|
- * | `url` | query string | the state is worth sending someone (the default) |
+ * | `default` | query string + cookie | what a list uses when nobody chose |
+ * | `url` | query string | EVERYTHING in the link, row count included |
  * | `local_storage` | `localStorage` | worth keeping, not worth linking |
  * | `session_storage` | `sessionStorage` | worth keeping until the tab closes |
  * | `cookie` | one cookie per scope | the SERVER needs to read it |
@@ -20,6 +21,7 @@ import { WebStoragePersister, type RouteStateStorage } from './WebStoragePersist
 import { CookiePersister, type CookieJar } from './CookiePersister'
 import { MemoryPersister } from './MemoryPersister'
 import { NullPersister } from './NullPersister'
+import { createDefaultRouteStatePersister } from './defaultPersister'
 
 export interface RouteStateFactoryContext {
   router: UrlPersisterRouter
@@ -50,6 +52,15 @@ export function createRouteStatePersisterFactory(
 ): RouteStatePersisterFactory {
   return (slug: string): RouteStatePersister | null => {
     switch (slug) {
+      // Nameable, so "the default, stated out loud" has a way to be said.
+      // It is NOT `url`: the default routes `pageSize` to a cookie, because a
+      // link should not impose the sender's row count on its reader.
+      case 'default':
+        return createDefaultRouteStatePersister({
+          router: context.router,
+          route: context.route,
+          cookieJar: context.cookieJar,
+        })
       case 'url':
         return new UrlPersister(context)
       case 'local_storage':

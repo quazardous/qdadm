@@ -40,6 +40,35 @@ export function persistPageSize(size: number): void {
   setCookie(COOKIE_NAME, size, COOKIE_EXPIRY_DAYS)
 }
 
+/**
+ * Settle the rows-per-page a list opens on (#2146).
+ *
+ * The seam owns this now, so the stored value arrives from whichever medium
+ * the app chose. The LEGACY bare-number cookie is read only when the seam has
+ * nothing — an existing user's choice must survive the move, or a comfort
+ * setting they picked once quietly resets on upgrade.
+ *
+ * Anything outside {@link PAGE_SIZE_OPTIONS} falls back to the default: the
+ * value reaches us from a cookie or a query string that anyone can edit, and
+ * a row count the paginator cannot offer would leave its dropdown showing a
+ * blank.
+ */
+export function restorePageSize(stored: unknown, defaultSize: number): number {
+  const fromSeam = Number(stored)
+  if (PAGE_SIZE_OPTIONS.includes(fromSeam)) return fromSeam
+  return getSavedPageSize(defaultSize)
+}
+
+/**
+ * Drop the pre-seam cookie once its value has been carried over.
+ *
+ * Left in place it would outlive the setting it stands for by a year, and
+ * shadow the seam on any machine where the new store was cleared.
+ */
+export function retireLegacyPageSizeCookie(): void {
+  setCookie(COOKIE_NAME, '', -1)
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Default label formatter (snake_case → Title Case)
 // ─────────────────────────────────────────────────────────────────────────────

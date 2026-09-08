@@ -71,6 +71,20 @@ function runList(options = {}, kernelRouteState = undefined) {
   return result
 }
 
+/**
+ * What a list stores under `books`, minus the row count.
+ *
+ * `pageSize` rides along in every write — it is a choice somebody made, and
+ * the default is not "unset". These tests are about WHICH MEDIUM answers, so
+ * they read the page and leave the row count to the tests that own it.
+ */
+function storedPage(persister = new MemoryPersister()) {
+  const state = persister.read('books')
+  if (!state) return null
+  const { pageSize: _rows, ...rest } = state
+  return rest
+}
+
 /** Where did the state actually go? */
 function wroteToUrl() {
   return mockRouter.replace.mock.calls.length > 0
@@ -100,7 +114,7 @@ describe('choosing a route-state persister (#2146)', () => {
     list.onPage({ page: 1, rows: 10 })
 
     expect(wroteToUrl()).toBe(false)
-    expect(new MemoryPersister().read('books')).toEqual({ page: 2 })
+    expect(storedPage()).toEqual({ page: 2 })
   })
 
   it('lets the entity override the kernel', () => {
@@ -110,7 +124,7 @@ describe('choosing a route-state persister (#2146)', () => {
     list.onPage({ page: 1, rows: 10 })
 
     expect(wroteToUrl()).toBe(false)
-    expect(new MemoryPersister().read('books')).toEqual({ page: 2 })
+    expect(storedPage()).toEqual({ page: 2 })
   })
 
   it('lets the list override the entity', () => {
@@ -130,7 +144,7 @@ describe('choosing a route-state persister (#2146)', () => {
 
     list.onPage({ page: 1, rows: 10 })
 
-    expect(mine.read('books')).toEqual({ page: 2 })
+    expect(storedPage(mine)).toEqual({ page: 2 })
   })
 
   it('throws on an unknown slug rather than quietly using the URL', () => {
@@ -146,14 +160,14 @@ describe('choosing a route-state persister (#2146)', () => {
 
     list.onPage({ page: 1, rows: 10 })
 
-    expect(new MemoryPersister().read('books')).toEqual({ page: 2 })
+    expect(storedPage()).toEqual({ page: 2 })
   })
 
   it('scopes by entity, so two lists never share a namespace', () => {
     const list = runList({ routeState: 'memory' })
     list.onPage({ page: 2, rows: 10 })
 
-    expect(new MemoryPersister().read('books')).toEqual({ page: 3 })
+    expect(storedPage()).toEqual({ page: 3 })
     expect(new MemoryPersister().read('offers')).toBeNull()
   })
 })

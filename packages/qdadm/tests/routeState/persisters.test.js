@@ -15,6 +15,8 @@ import { WebStoragePersister } from '../../src/routeState/WebStoragePersister'
 import { CookiePersister } from '../../src/routeState/CookiePersister'
 import { MemoryPersister, clearRouteStateMemory } from '../../src/routeState/MemoryPersister'
 import { NullPersister } from '../../src/routeState/NullPersister'
+import { CompositePersister } from '../../src/routeState/CompositePersister'
+import { createDefaultRouteStatePersister } from '../../src/routeState/defaultPersister'
 import { createRouteStatePersisterFactory } from '../../src/routeState/factory'
 import { resolveRouteStatePersister } from '../../src/routeState/RouteStatePersister'
 
@@ -255,5 +257,147 @@ describe('the factory', () => {
   it('takes an instance straight through', () => {
     const mine = new MemoryPersister({ store: new Map() })
     expect(resolveRouteStatePersister(mine, createRouteStatePersisterFactory(context()))).toBe(mine)
+  })
+})
+
+describe('CompositePersister', () => {
+  function setup() {
+    const url = new MemoryPersister({ store: new Map() })
+    const jar = new MemoryPersister({ store: new Map() })
+    url.name = 'url'
+    jar.name = 'cookie'
+    const p = new CompositePersister({
+      fallback: url,
+      keys: { pageSize: { persister: jar, scope: 'app' } },
+    })
+    return { p, url, jar }
+  }
+
+  it('sends each key to its own medium', () => {
+    const { p, url, jar } = setup()
+
+    p.write('offers', { page: 2, pageSize: 50 })
+
+    expect(url.read('offers')).toEqual({ page: 2 })
+    expect(jar.read('app')).toEqual({ pageSize: 50 })
+  })
+
+  it('reads them back as one state', () => {
+    const { p } = setup()
+    p.write('offers', { page: 2, pageSize: 50 })
+
+    expect(p.read('offers')).toEqual({ page: 2, pageSize: 50 })
+  })
+
+  it('remembers a pinned key once for the whole app, not per list', () => {
+    // Which is what the year-long global cookie already meant.
+    const { p } = setup()
+    p.write('offers', { page: 2, pageSize: 50 })
+
+    expect(p.read('jobs')).toEqual({ pageSize: 50 })
+  })
+
+  it('lets the owning medium win over a stale value in the fallback', () => {
+    // A `?pageSize=10` somebody left in a URL must not beat the cookie that
+    // owns the setting.
+    const { p, url, jar } = setup()
+    url.write('offers', { pageSize: 10 })
+    jar.write('app', { pageSize: 100 })
+
+    expect(p.read('offers').pageSize).toBe(100)
+  })
+
+  it('passes an absent routed key on as absent, so it gets removed', () => {
+    const { p, jar } = setup()
+    p.write('offers', { page: 2, pageSize: 50 })
+
+    p.write('offers', { page: 2, pageSize: null })
+
+    expect(jar.read('app')).toBeNull()
+  })
+
+  it('clearing one list does not reset an app-wide setting', () => {
+    // Otherwise one list's "clear filters" would change every other list's
+    // row count.
+    const { p, jar } = setup()
+    p.write('offers', { page: 2, pageSize: 50 })
+
+    p.clear('offers')
+
+    expect(p.read('offers')).toEqual({ pageSize: 50 })
+    expect(jar.read('app')).toEqual({ pageSize: 50 })
+  })
+
+  it('reads null when no medium holds anything', () => {
+    expect(setup().p.read('offers')).toBeNull()
+  })
+
+  it('names the media it composes, for diagnostics', () => {
+    expect(setup().p.name).toBe('composite(url+cookie)')
+  })
+})
+
+describe('the default composition', () => {
+  it('keeps the page in the link and the row count out of it', () => {
+    // The whole argument for the URL default is that a link shows what the
+    // sender was looking at. A row count is not that — it is a comfort
+    // setting, and a link carrying it would impose it on the reader.
+    const replaced = []
+    const route = { query: {} }
+    const jar = { cookie: '' }
+    const p = createDefaultRouteStatePersister({
+      router: {
+        replace: (arg) => {
+          replaced.push(arg.query)
+          route.query = arg.query
+        },
+      },
+      route,
+      cookieJar: {
+        get cookie() { return jar.cookie },
+        set cookie(v) { jar.cookie = v.split(';')[0] },
+      },
+    })
+
+    p.write('offers', { page: 2, pageSize: 50 })
+
+    expect(replaced.at(-1)).toMatchObject({ 'offers.page': '2' })
+    expect(replaced.at(-1)).not.toHaveProperty(['offers.pageSize'])
+    expect(jar.cookie.startsWith('qdadm_app=')).toBe(true)
+  })
+
+  it('reads both back as one state', () => {
+    const route = { query: {} }
+    const jar = { cookie: '' }
+    const jarView = {
+      get cookie() { return jar.cookie },
+      set cookie(v) { jar.cookie = v.split(';')[0] },
+    }
+    const p = createDefaultRouteStatePersister({
+      router: { replace: (arg) => { route.query = arg.query } },
+      route,
+      cookieJar: jarView,
+    })
+
+    p.write('offers', { page: 2, pageSize: 50 })
+
+    expect(p.read('offers')).toEqual({ page: 2, pageSize: 50 })
+  })
+
+  it('carries the row count across lists, and the page not at all', () => {
+    const route = { query: {} }
+    const jar = { cookie: '' }
+    const jarView = {
+      get cookie() { return jar.cookie },
+      set cookie(v) { jar.cookie = v.split(';')[0] },
+    }
+    const p = createDefaultRouteStatePersister({
+      router: { replace: (arg) => { route.query = arg.query } },
+      route,
+      cookieJar: jarView,
+    })
+    p.write('offers', { page: 2, pageSize: 50 })
+
+    expect(p.read('jobs')).toEqual({ pageSize: 50 })
   })
 })

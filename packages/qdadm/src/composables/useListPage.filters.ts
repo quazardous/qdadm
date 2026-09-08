@@ -29,6 +29,8 @@ export interface UseListFiltersDeps {
   items: Ref<unknown[]>
   /** Current page ref — filter changes reset it to 1. */
   page: Ref<number>
+  /** Rows per page — persisted alongside the rest (#2146). */
+  pageSize: Ref<number>
   /** Search query ref (shared with the search subsystem). */
   searchQuery: Ref<string>
   /** Session-restored filter values (already stripped of _search). */
@@ -89,6 +91,7 @@ export function useListFilters(deps: UseListFiltersDeps): UseListFiltersReturn {
     persister,
     routeStateScope,
     routeStateWrites,
+    pageSize,
     autoLoadFilters,
     filterSessionKey,
     entityFilters,
@@ -186,6 +189,11 @@ export function useListFilters(deps: UseListFiltersDeps): UseListFiltersReturn {
       ...filterValues.value,
       search: searchQuery.value || null,
       page: page.value > 1 ? page.value : null,
+      // Always written, never conditional on a default: rows-per-page is a
+      // choice somebody made, and the default is not "unset" — it is what
+      // they get back if we forget. The default composition routes it to a
+      // cookie, so it does not land in a shareable link.
+      pageSize: pageSize.value,
     })
   }
 

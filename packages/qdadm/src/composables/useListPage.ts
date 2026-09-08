@@ -30,7 +30,7 @@ import {
 } from 'vue'
 import { useRouter, useRoute, type RouteLocationRaw } from 'vue-router'
 import {
-  UrlPersister,
+  createDefaultRouteStatePersister,
   resolveRouteStatePersister,
   createRouteStatePersisterFactory,
   type RouteStatePersister,
@@ -92,11 +92,11 @@ export type {
 // Stateless utilities (cookies, session storage, formatters, constants).
 import {
   PAGE_SIZE_OPTIONS,
-  getSavedPageSize,
+  restorePageSize,
   getSessionFilters,
   getSessionSort,
   setSessionSort,
-  persistPageSize,
+  retireLegacyPageSizeCookie,
 } from './useListPage.utils'
 import { useActionRegistry } from './useActionRegistry'
 import { useListFilters } from './useListPage.filters'
@@ -226,6 +226,37 @@ export function useListPage<T = unknown>(config: UseListPageOptions<T>): UseList
   // or when there is no kernel at all — which is the case in tests.
   const kernelRouteState = inject<string | RouteStatePersister | null>('qdadmRouteState', null)
 
+  // Where this list remembers what it is showing (#2146).
+  //
+  // WHO DECIDES, most specific first: this list, then the entity (so every
+  // screen showing it agrees), then the kernel, then the default composition.
+  // Each level exists because somebody has to be able to say it at that level
+  // — a list is a screen's decision, an entity's medium is a modelling one,
+  // and the app-wide floor belongs in the bootstrap.
+  //
+  // Built HERE, before the state refs, because `pageSize` is restored from it
+  // and the table needs a row count from its very first render.
+  const routeStateScope = entity || entityName
+  const chosenRouteState = routeState ?? manager.routeState ?? kernelRouteState
+  const persister: RouteStatePersister = chosenRouteState
+    ? resolveRouteStatePersister(
+        chosenRouteState,
+        createRouteStatePersisterFactory({ router, route })
+      )
+    : createDefaultRouteStatePersister({ router, route })
+
+  // `syncUrlParams` governs WRITING, and only ever has: a list configured
+  // with `false` still restored from a query string typed by hand. Kept
+  // exactly, because moving this behind a seam must not change what any
+  // existing app does.
+  //
+  // Naming a persister is a deliberate choice about a medium, so it answers
+  // the URL flag rather than obeying it: `routeState` set means read AND
+  // write, whatever `syncUrlParams` says about the query string.
+  const routeStateWrites = chosenRouteState ? true : syncUrlParams
+
+  const storedRouteState = persister.read(routeStateScope)
+
   // Entity filters registry (optional, provided by consuming app)
   const entityFilters = inject<Record<string, { search?: SearchConfig; filters?: FilterConfig[] }>>(
     'qdadmEntityFilters',
@@ -249,7 +280,13 @@ export function useListPage<T = unknown>(config: UseListPageOptions<T>): UseList
 
   // Pagination
   const page = ref(1)
-  const pageSize = ref(getSavedPageSize(defaultPageSize))
+  // Rows per page comes through the seam now (#2146) — by default routed to
+  // the same cookie it has always used, because it is a comfort setting
+  // somebody chose once, not something a link should impose on its reader.
+  //
+  // The legacy bare-number cookie is read when the seam has nothing, so an
+  // existing user's choice survives the move; the first change retires it.
+  const pageSize = ref(restorePageSize(storedRouteState?.pageSize, defaultPageSize))
   const totalRecords = ref(0)
   const rowsPerPageOptions = PAGE_SIZE_OPTIONS
 
@@ -614,27 +651,13 @@ export function useListPage<T = unknown>(config: UseListPageOptions<T>): UseList
   // Naming a persister is a deliberate choice about a medium, so it answers
   // the URL flag rather than obeying it: `routeState` set means read AND
   // write, whatever `syncUrlParams` says about the query string.
-  //
-  // WHO DECIDES, most specific first: this list, then the entity (so every
-  // screen showing it agrees), then the kernel, then the URL. Each level
-  // exists because somebody has to be able to say it at that level — a list
-  // is a screen's decision, an entity's medium is a modelling one, and the
-  // app-wide floor belongs in the bootstrap.
-  const routeStateScope = entity || entityName
-  const chosenRouteState = routeState ?? manager.routeState ?? kernelRouteState
-  const persister: RouteStatePersister = chosenRouteState
-    ? resolveRouteStatePersister(
-        chosenRouteState,
-        createRouteStatePersisterFactory({ router, route })
-      )
-    : new UrlPersister({ router, route })
-  const routeStateWrites = chosenRouteState ? true : syncUrlParams
 
   const listFilters = useListFilters({
     entityName,
     persister,
     routeStateScope,
     routeStateWrites,
+    pageSize,
     manager,
     orchestrator,
     items: items as Ref<unknown[]>,
@@ -840,7 +863,9 @@ export function useListPage<T = unknown>(config: UseListPageOptions<T>): UseList
   function onPage(event: { page: number; rows: number }): void {
     page.value = event.page + 1
     pageSize.value = event.rows
-    persistPageSize(event.rows)
+    // Written by writeStateToUrl() below, through the persister, rather than
+    // straight to a cookie from here (#2146).
+    retireLegacyPageSizeCookie()
     // The page joins the URL (#2113) — it was the only piece of list state
     // that survived nothing, so leaving a list for a detail view and coming
     // back dropped the user on page 1.

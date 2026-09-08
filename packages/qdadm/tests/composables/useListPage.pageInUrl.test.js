@@ -35,6 +35,7 @@ function makeDeps({ query = {}, syncUrlParams = true } = {}) {
     orchestrator: null,
     items: ref([]),
     page: ref(1),
+    pageSize: ref(10),
     searchQuery: ref(''),
     route,
     router,
@@ -68,6 +69,11 @@ describe('list page number in the URL', () => {
     f.writeStateToUrl()
 
     expect(replaced.at(-1)).toMatchObject({ 'runs.page': '4' })
+    // A bare UrlPersister puts EVERYTHING in the query, page size included.
+    // The default is a composition that routes `pageSize` to a cookie — see
+    // `defaultPersister.ts`. Asserted here so the difference is on the record
+    // rather than discovered in an address bar.
+    expect(replaced.at(-1)).toMatchObject({ 'runs.pageSize': '10' })
   })
 
   it('keeps page 1 out of the URL rather than writing it', () => {
