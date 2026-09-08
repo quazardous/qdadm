@@ -63,6 +63,8 @@ export interface UseListFiltersReturn {
   loadFilterOptions: () => Promise<void>
   updateCacheBasedFilters: () => Promise<void>
   restoreFilters: () => void
+  /** Push filters, search and the page number into the URL (#2113). */
+  writeStateToUrl: () => void
 }
 
 export function useListFilters(deps: UseListFiltersDeps): UseListFiltersReturn {
@@ -89,7 +91,37 @@ export function useListFilters(deps: UseListFiltersDeps): UseListFiltersReturn {
   const filtersMap = ref<Map<string, FilterConfig>>(new Map())
   const filterValues = ref<Record<string, unknown>>(savedFilters || {})
 
+  /** Names the URL sync already owns — a filter cannot have them (#2113). */
+  const RESERVED_QUERY_KEYS = new Set(['page', 'search'])
+  const warnedReserved = new Set<string>()
+
+  /**
+   * A filter named `page` or `search` silently overwrites the query key of
+   * the same name, and is overwritten back on restore. `search` has behaved
+   * this way since the URL sync existed and nobody ever reported it, which
+   * says how quiet the failure is; `page` joins the reserved set now that the
+   * page number lives in the URL too.
+   *
+   * We name what happens INSTEAD of what was asked, rather than dropping the
+   * filter — renaming someone's filter behind their back would be a worse
+   * surprise than the collision (ADR 0011).
+   */
+  function warnIfReservedName(name: string): void {
+    if (!RESERVED_QUERY_KEYS.has(name)) return
+    if (!syncUrlParams) return
+    if (warnedReserved.has(name)) return
+    warnedReserved.add(name)
+    console.warn(
+      `[qdadm] Filter "${name}" on "${entityName}" collides with the URL ` +
+        `parameter of the same name. With syncUrlParams on, the list's own ` +
+        `${name === 'page' ? 'page number' : 'search query'} wins and this ` +
+        `filter will not survive a reload. Rename the filter, or set ` +
+        `syncUrlParams: false on this list.`
+    )
+  }
+
   function addFilter(name: string, filterConfig: Omit<FilterConfig, 'name'>): void {
+    warnIfReservedName(name)
     filtersMap.value.set(name, {
       name,
       type: 'select',
@@ -115,6 +147,46 @@ export function useListFilters(deps: UseListFiltersDeps): UseListFiltersReturn {
     onFiltersChanged()
   }
 
+  /**
+   * Push the list's own state into the URL (#2113).
+   *
+   * Filters, search AND the page number, each written only when it differs
+   * from the default and removed otherwise, so a pristine list leaves a clean
+   * URL. `router.replace` rather than `push`: paging is not a history step of
+   * its own, but the URL must carry the page at the moment the user leaves
+   * for a detail view, so that coming back restores it.
+   */
+  function writeStateToUrl(): void {
+    if (!syncUrlParams) return
+
+    const query = { ...route.query } as Record<string, string>
+
+    for (const [name, value] of Object.entries(filterValues.value)) {
+      if (value !== null && value !== undefined && value !== '') {
+        query[name] = String(value)
+      } else {
+        delete query[name]
+      }
+    }
+
+    if (searchQuery.value) {
+      query.search = searchQuery.value
+    } else {
+      delete query.search
+    }
+
+    // Page 1 is the default and stays implicit. Reserved keys are written
+    // last so the list's own state wins a collision — the warning in
+    // addFilter() names that consequence at declaration time.
+    if (page.value > 1) {
+      query.page = String(page.value)
+    } else {
+      delete query.page
+    }
+
+    router.replace({ query })
+  }
+
   function onFiltersChanged(): void {
     page.value = 1
     loadItems()
@@ -136,22 +208,7 @@ export function useListFilters(deps: UseListFiltersDeps): UseListFiltersReturn {
       }
       setSessionFilters(filterSessionKey, toPersist)
     }
-    if (syncUrlParams) {
-      const query = { ...route.query } as Record<string, string>
-      for (const [name, value] of Object.entries(filterValues.value)) {
-        if (value !== null && value !== undefined && value !== '') {
-          query[name] = String(value)
-        } else {
-          delete query[name]
-        }
-      }
-      if (searchQuery.value) {
-        query.search = searchQuery.value
-      } else {
-        delete query.search
-      }
-      router.replace({ query })
-    }
+    writeStateToUrl()
   }
 
   function clearFilters(): void {
@@ -164,15 +221,16 @@ export function useListFilters(deps: UseListFiltersDeps): UseListFiltersReturn {
     if (persistFilters) {
       clearSessionFilters(filterSessionKey)
     }
+    page.value = 1
     if (syncUrlParams) {
       const query = { ...route.query } as Record<string, string>
       for (const key of filtersMap.value.keys()) {
         delete query[key]
       }
       delete query.search
+      delete query.page
       router.replace({ query })
     }
-    page.value = 1
     loadItems()
   }
 
@@ -399,6 +457,13 @@ export function useListFilters(deps: UseListFiltersDeps): UseListFiltersReturn {
     if (route.query.search) {
       searchQuery.value = route.query.search as string
     }
+    // The page must be restored HERE, before the first loadItems(): restoring
+    // it later would mean a first request for page 1 and a second for the
+    // real one (#2113).
+    const restoredPage = Number(route.query.page)
+    if (Number.isInteger(restoredPage) && restoredPage > 0) {
+      page.value = restoredPage
+    }
   }
 
   return {
@@ -417,5 +482,6 @@ export function useListFilters(deps: UseListFiltersDeps): UseListFiltersReturn {
     loadFilterOptions,
     updateCacheBasedFilters,
     restoreFilters,
+    writeStateToUrl,
   }
 }

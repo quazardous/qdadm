@@ -623,6 +623,7 @@ export function useListPage<T = unknown>(config: UseListPageOptions<T>): UseList
     loadFilterOptions,
     updateCacheBasedFilters,
     restoreFilters,
+    writeStateToUrl,
   } = listFilters
 
   // ============ ACTIONS ============
@@ -799,6 +800,10 @@ export function useListPage<T = unknown>(config: UseListPageOptions<T>): UseList
     page.value = event.page + 1
     pageSize.value = event.rows
     persistPageSize(event.rows)
+    // The page joins the URL (#2113) — it was the only piece of list state
+    // that survived nothing, so leaving a list for a detail view and coming
+    // back dropped the user on page 1.
+    writeStateToUrl()
     loadItems()
   }
 

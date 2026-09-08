@@ -275,15 +275,25 @@ useListPage({
 | Search | yes (`syncUrlParams`) | yes (`persistFilters`) | yes |
 | Sort | no | yes (`persistSort`) | no |
 | Rows per page | no | yes (always) | no |
-| Current page | no | no | no |
+| Current page | yes (`syncUrlParams`) | no | yes |
 
-`syncUrlParams` carries **filters and search only** — not the sort, which is
-remembered per entity in the session and never appears in the URL.
+`syncUrlParams` carries **filters, search and the current page** — not the
+sort, which is remembered per entity in the session and never appears in the
+URL.
 
-Two consequences worth knowing before you rely on it. A list URL is shareable
-up to its filters, but not past page 1. And an embedded list on a page that
-already owns the URL should set `syncUrlParams: false` — see
-[page-compositions.md](./page-compositions.md).
+The page is written only once it leaves 1, and removed again when it returns,
+so a pristine list leaves a clean link. Changing a filter resets it, since the
+results are renumbered. A list URL is therefore shareable as what the sender
+was actually looking at, and leaving a list for a detail view and coming back
+returns to the same page.
+
+`page` and `search` are the URL's own keys: a filter named either of them
+collides, the list's own state wins, and qdadm says so once at declaration
+time. Rename the filter, or set `syncUrlParams: false`.
+
+An embedded list on a page that already owns the URL should set
+`syncUrlParams: false` — two synchronised lists on one route fight over
+`page`. See [page-compositions.md](./page-compositions.md).
 
 ---
 
