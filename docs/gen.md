@@ -16,11 +16,15 @@ const managers = buildManagers(entities)      // Inconsistent output
 
 **With gen:**
 ```js
-import { OpenAPIConnector, createManagers } from '@quazardous/qdadm/gen'
+import { OpenAPIConnector, createGeneratedManagers } from '@quazardous/qdadm/gen'
 
 const connector = new OpenAPIConnector()
 const schemas = connector.parse(openApiSpec)
-const managers = createManagers(schemas, { storage: ApiStorage })
+const managers = createGeneratedManagers({
+  schemas: { api: schemas },
+  storages: { api: apiProfile },
+  entities: { users: { schema: 'api', storage: 'api', endpoint: '/users' } },
+})
 ```
 
 ## Architecture
@@ -46,7 +50,7 @@ const managers = createManagers(schemas, { storage: ApiStorage })
          ┌───────────────────┼───────────────────┐
          ▼                   ▼                   ▼
 ┌─────────────┐    ┌─────────────────┐    ┌───────────────┐
-│ createManagers │  │ generateManagers │  │ Custom output │
+│ createGenerated│  │ generateManagers │  │ Custom output │
 │  (runtime)     │  │  (build-time)    │  │               │
 └─────────────┘    └─────────────────┘    └───────────────┘
 ```
@@ -203,20 +207,27 @@ getDefaultType({ type: 'string', format: 'phone' }, {
 
 ## Generators
 
-### createManagers (Runtime)
+### createGeneratedManagers (Runtime)
 
-Create EntityManager instances at runtime:
+Build `EntityManager` instances at runtime from a generated config:
 
 ```js
-import { createManagers } from '@quazardous/qdadm/gen'
+import { createGeneratedManagers } from '@quazardous/qdadm/gen'
 
-const managers = createManagers(schemas, {
-  storage: ApiStorage,
-  storageOptions: { baseUrl: '/api' }
+const managers = createGeneratedManagers({
+  schemas:  { api: schemas },
+  storages: { api: apiProfile },
+  entities: { users: { schema: 'api', storage: 'api', endpoint: '/users' } },
 })
 
-// Returns: { users: EntityManager, posts: EntityManager, ... }
+// Returns a Map:
+managers.get('users')
 ```
+
+> It was called `createManagers` until #1902, which collided with the **root's
+> own** `createManagers` — a different function taking `(config, context)` and
+> returning a plain object, so the wrong import only announced itself at the
+> first `.get()`. The old name still works and is deprecated.
 
 ### generateManagers (Build-time)
 

@@ -51,7 +51,13 @@ export { OpenAPIConnector, type OpenAPIConnectorOptions, type OperationFilter } 
 export { type StorageProfileFactory, type StorageProfileOptions } from './StorageProfileFactory'
 
 // T00317: createManagers - Runtime factory for EntityManager creation
-export { createManagers, type CreateManagersConfig, type EntityConfig } from './createManagers'
+export {
+  createGeneratedManagers,
+  /** @deprecated Renamed to `createGeneratedManagers` (#1902) — it collided with the root's own `createManagers`. */
+  createManagers,
+  type CreateManagersConfig,
+  type EntityConfig,
+} from './createManagers'
 
 // T00318: Decorators - Per-entity field customization layer
 export { applyDecorators, type FieldDecorator, type EntityDecorator } from './decorators'

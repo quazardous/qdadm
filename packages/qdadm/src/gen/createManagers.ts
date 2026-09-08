@@ -196,7 +196,7 @@ function findSchemaForEntity(
  * const users = await usersManager.list()
  * ```
  */
-export function createManagers(config: CreateManagersConfig): Map<string, EntityManager> {
+export function createGeneratedManagers(config: CreateManagersConfig): Map<string, EntityManager> {
   // Validate config structure early
   validateConfig(config)
 
@@ -243,3 +243,17 @@ export function createManagers(config: CreateManagersConfig): Map<string, Entity
 
   return managers
 }
+
+/**
+ * @deprecated Renamed to `createGeneratedManagers` (#1902).
+ *
+ * The root exports a DIFFERENT `createManagers` — `entity/factory.ts`, which
+ * takes `(config, context)` and returns a `Record`, where this one takes a
+ * single generated config and returns a `Map`. Same name, two public entry
+ * points, different signatures and different return types, with nothing to
+ * warn whoever picked the wrong import: the mistake surfaces at the first
+ * `.get()`.
+ *
+ * This alias keeps existing imports working. Use `createGeneratedManagers`.
+ */
+export const createManagers = createGeneratedManagers
