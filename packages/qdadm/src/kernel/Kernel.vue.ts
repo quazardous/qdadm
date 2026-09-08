@@ -115,6 +115,10 @@ export function applyVueMethods(KernelClass: { prototype: Kernel }): void {
     this.layoutComponents = {
       list: layouts.list || layouts.ListLayout || null,
       form: layouts.form || layouts.FormLayout || null,
+      // Until #1922 this literal had no `show` key, so an app that passed one
+      // had it dropped without a word while crud({ show }) kept emitting
+      // `layout: 'show'` for a layout nothing could honour.
+      show: layouts.show || layouts.ShowLayout || null,
       dashboard: layouts.dashboard || layouts.DashboardLayout || null,
       base: layouts.base || layouts.BaseLayout || null,
     }

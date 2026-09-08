@@ -70,10 +70,12 @@ export interface Pages {
 export interface LayoutComponents {
   list?: Component | null
   form?: Component | null
+  show?: Component | null
   dashboard?: Component | null
   base?: Component | null
   ListLayout?: Component
   FormLayout?: Component
+  ShowLayout?: Component
   DashboardLayout?: Component
   BaseLayout?: Component
 }
@@ -293,6 +295,7 @@ export interface KernelOptions {
 export interface InternalLayoutComponents {
   list: Component | null
   form: Component | null
+  show: Component | null
   dashboard: Component | null
   base: Component | null
 }

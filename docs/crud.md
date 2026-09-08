@@ -469,6 +469,26 @@ show.addBackAction({ route: 'product' })
 </template>
 ```
 
+### Layouts
+
+A page's chrome is resolved in this order: an explicit `layout` option, then
+`route.meta.layout`, then the component's name, then the route's name, then
+`base`.
+
+| Layout | Reached by |
+|---|---|
+| `list` | `meta.layout: 'list'` (set by `crud`), a `*List` component, a `*-list` route |
+| `form` | a `*Form` / `*Edit` / `*Create` component, a `*-edit` / `*-create` route |
+| `show` | `meta.layout: 'show'` (set by `crud({ show })`), a `*Show` component, a `*-show` route |
+| `dashboard` | a `*Dashboard` component, a `*-dashboard` route |
+| `base` | everything else, and the fallback whenever the resolved layout has no component |
+
+Supply the ones you want on the kernel; any you omit fall back to `base`:
+
+```js
+createApp({ layouts: { list: MyListLayout, form: MyFormLayout, show: MyShowLayout, base: MyBaseLayout } })
+```
+
 ### With media zone
 
 ```vue

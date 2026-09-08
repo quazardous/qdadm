@@ -34,6 +34,10 @@ import { useRoute } from 'vue-router'
 export const LAYOUT_TYPES = {
   LIST: 'list',
   FORM: 'form',
+  // `show` was emitted by crud({ show }) long before it existed here (#1922).
+  // The resolver returned it, found no component under that key, and fell
+  // back to `base` — gracefully, which is exactly what made it invisible.
+  SHOW: 'show',
   DASHBOARD: 'dashboard',
   BASE: 'base',
 } as const
@@ -46,6 +50,7 @@ export type LayoutType = (typeof LAYOUT_TYPES)[keyof typeof LAYOUT_TYPES]
 export interface LayoutComponentsMap {
   list?: Component | null
   form?: Component | null
+  show?: Component | null
   dashboard?: Component | null
   base?: Component | null
   [key: string]: Component | null | undefined
@@ -63,6 +68,7 @@ interface PageNamePattern {
 const PAGE_NAME_PATTERNS: PageNamePattern[] = [
   { pattern: /List(Page)?$/i, layout: LAYOUT_TYPES.LIST },
   { pattern: /(Edit|Create|Form)(Page)?$/i, layout: LAYOUT_TYPES.FORM },
+  { pattern: /Show(Page)?$/i, layout: LAYOUT_TYPES.SHOW },
   { pattern: /Dashboard(Page)?$/i, layout: LAYOUT_TYPES.DASHBOARD },
 ]
 
@@ -70,6 +76,10 @@ const PAGE_NAME_PATTERNS: PageNamePattern[] = [
 const ROUTE_NAME_PATTERNS: PageNamePattern[] = [
   { pattern: /-list$/i, layout: LAYOUT_TYPES.LIST },
   { pattern: /-(edit|create)$/i, layout: LAYOUT_TYPES.FORM },
+  // Load-bearing, not decoration: an app that declares its detail route by
+  // hand rather than through crud({ show }) has no meta.layout to go on, and
+  // this is the only path that can reach `show` for it (#1922).
+  { pattern: /-show$/i, layout: LAYOUT_TYPES.SHOW },
   { pattern: /-dashboard$/i, layout: LAYOUT_TYPES.DASHBOARD },
   // Common patterns without suffix
   { pattern: /^dashboard$/i, layout: LAYOUT_TYPES.DASHBOARD },
