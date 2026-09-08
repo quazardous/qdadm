@@ -20,6 +20,25 @@ tickets land where their sender was. The first write retires the flat key
 rather than leaving two — and so does clearing the filters, which previously
 would have left the address claiming a page the list was no longer showing.
 
+**How to tell whether this reaches your code at all**, in one sweep — a
+consumer who never reads the address bar for list state is entirely unaffected,
+and most are:
+
+```
+route.query / $route.query      any read of `page`, `search` or a filter name?
+location.search / location.href same
+searchParams                    same — ignore the ones BUILDING an API request
+```
+
+Hits on a list key mean an assertion or a feature of yours expects the flat
+shape and will now read `null`; no hits mean nothing to do. Worth two minutes
+before upgrading rather than finding out from a test that looks like a
+regression — a check for `page` returning `null` is indistinguishable from the
+fix having failed. Read both forms if you need to straddle the versions:
+`q.get('offers.page') ?? q.get('page')`.
+
+(That sweep is BookShepherd's, from qdadm#2154, generalised here with thanks.)
+
 Choose the medium per list:
 
 ```js
