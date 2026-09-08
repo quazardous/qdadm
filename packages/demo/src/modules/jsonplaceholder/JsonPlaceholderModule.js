@@ -20,8 +20,14 @@ const jpClient = axios.create({
   baseURL: 'https://jsonplaceholder.typicode.com'
 })
 
-// JSONPlaceholder ignores ?page / ?page_size and returns the full collection
-// every time, so we slice client-side. Same approach as RestCountriesStorage.
+// Fetches the whole collection and slices client-side. Kept for `todos`
+// ONLY, and for a reason that is not laziness: the local patch overlay below
+// applies user edits BEFORE filtering, so a todo whose `completed` the user
+// toggled has to be re-bucketed on the client. Ask the server to filter and
+// it filters on its own unpatched copy, and the `completed` filter starts
+// lying. Server-side pagination and a client-side overlay cannot both be
+// right; the overlay wins here because it is what makes the demo honest
+// about an API that accepts writes and persists none.
 class JsonPlaceholderStorage extends ApiStorage {
   async list({ page = 1, page_size = 20, sort_by, sort_order, filters = {} } = {}) {
     const response = await this.client.get(this.endpoint)
@@ -44,8 +50,32 @@ class JsonPlaceholderStorage extends ApiStorage {
   }
 }
 
-const jpUsersStorage = new JsonPlaceholderStorage({ endpoint: '/users', client: jpClient })
-const postsStorage = new JsonPlaceholderStorage({ endpoint: '/posts', client: jpClient })
+// REAL server-side pagination against JSONPlaceholder (#2113), and not a
+// line of code to do it.
+//
+// This used to fetch the whole collection and slice it client-side, under a
+// comment saying JSONPlaceholder "ignores ?page / ?page_size". True of THOSE
+// names, wrong as a conclusion: json-server paginates with _page/_limit,
+// sorts with _sort/_order and returns the count in X-Total-Count, which it
+// exposes via CORS. Nothing was missing but the translation — and qdadm now
+// carries pagination in the same `paramMapping` that already renamed filters,
+// so the translation is declared instead of written.
+//
+// `posts` is the one that matters: 100 rows at 10 per page is 10 real pages,
+// so the demo finally exercises the HTTP pagination path end to end instead
+// of merely hosting it.
+const JSON_SERVER_DIALECT = {
+  paramMapping: {
+    page: '_page',
+    page_size: '_limit',
+    sort_by: '_sort',
+    sort_order: '_order',
+  },
+  responseTotalHeader: 'X-Total-Count',
+}
+
+const jpUsersStorage = new ApiStorage({ endpoint: '/users', client: jpClient, ...JSON_SERVER_DIALECT })
+const postsStorage = new ApiStorage({ endpoint: '/posts', client: jpClient, ...JSON_SERVER_DIALECT })
 
 // ────────────────────────────────────────────────────────────────────────────
 // DEMO HACK — todos `completed` toggle persists in localStorage

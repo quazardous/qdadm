@@ -262,10 +262,28 @@ useListPage({
   loadOnMount: true,           // Auto-load on mount
   persistFilters: true,        // Remember filters across navigation
   persistSort: true,           // Remember active sort across navigation (per entity)
-  syncUrlParams: true,         // Sync filters/sort with URL
+  syncUrlParams: true,         // Put filters + search in the URL (see below)
   subtitle: 'Custom subtitle', // Override manager.description (null = no subtitle)
 })
 ```
+
+#### Where each piece of list state lives
+
+| State | URL | Session | Restored on a fresh link |
+|---|---|---|---|
+| Filters | yes (`syncUrlParams`) | yes (`persistFilters`) | yes |
+| Search | yes (`syncUrlParams`) | yes (`persistFilters`) | yes |
+| Sort | no | yes (`persistSort`) | no |
+| Rows per page | no | yes (always) | no |
+| Current page | no | no | no |
+
+`syncUrlParams` carries **filters and search only** — not the sort, which is
+remembered per entity in the session and never appears in the URL.
+
+Two consequences worth knowing before you rely on it. A list URL is shareable
+up to its filters, but not past page 1. And an embedded list on a page that
+already owns the URL should set `syncUrlParams: false` — see
+[page-compositions.md](./page-compositions.md).
 
 ---
 

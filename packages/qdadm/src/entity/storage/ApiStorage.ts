@@ -36,6 +36,13 @@ export interface ApiStorageOptions<T extends EntityRecord = EntityRecord> {
   getClient?: (() => HttpClient) | null
   responseItemsKey?: string
   responseTotalKey?: string
+  /**
+   * Response HEADER carrying the total, for APIs that report it there rather
+   * than in the body (`X-Total-Count` is the json-server convention). Read
+   * before `responseTotalKey`. The header must be CORS-exposed to be
+   * readable from a browser.
+   */
+  responseTotalHeader?: string | null
   paramMapping?: Record<string, string>
   normalize?: ((data: T, context?: RoutingContext | null) => T) | null
   denormalize?: ((data: Partial<T>) => Partial<T>) | null
@@ -60,6 +67,7 @@ export class ApiStorage<T extends EntityRecord = EntityRecord> extends IStorage<
   readonly endpoint: string
   readonly responseItemsKey: string
   readonly responseTotalKey: string
+  readonly responseTotalHeader: string | null
   readonly paramMapping: Record<string, string>
 
   protected _client: HttpClient | null
@@ -75,6 +83,7 @@ export class ApiStorage<T extends EntityRecord = EntityRecord> extends IStorage<
       getClient = null,
       responseItemsKey = 'items',
       responseTotalKey = 'total',
+      responseTotalHeader = null,
       paramMapping = {},
       normalize = null,
       denormalize = null,
@@ -85,13 +94,16 @@ export class ApiStorage<T extends EntityRecord = EntityRecord> extends IStorage<
     this._getClient = getClient
     this.responseItemsKey = responseItemsKey
     this.responseTotalKey = responseTotalKey
+    this.responseTotalHeader = responseTotalHeader
     this.paramMapping = paramMapping
     this._normalize = normalize
     this._denormalize = denormalize
   }
 
   /**
-   * Apply parameter mapping to transform filter names
+   * Rename outgoing query parameters to the backend's vocabulary.
+   *
+   * Applies to filters AND to the pagination/sort keys (#2113) — see `list()`.
    */
   protected _applyParamMapping(params: Record<string, unknown>): Record<string, unknown> {
     if (!this.paramMapping || Object.keys(this.paramMapping).length === 0) {
@@ -141,10 +153,19 @@ export class ApiStorage<T extends EntityRecord = EntityRecord> extends IStorage<
   async list(params: ListParams = {}, context: RoutingContext | null = null): Promise<ListResult<T>> {
     const { page = 1, page_size = 20, sort_by, sort_order, filters = {} } = params
 
-    const mappedFilters = this._applyParamMapping(filters)
+    // `paramMapping` covers the WHOLE outgoing query, pagination included
+    // (#2113). It used to be applied to the filters only, so `status` could
+    // be renamed to `state` but `page_size` could not be renamed to `limit` —
+    // and an API speaking any other pagination dialect had to subclass the
+    // storage for that alone. The names qdadm uses internally are its own
+    // business; what goes on the wire is the backend's.
+    //
+    // Filters keep their precedence over the pagination keys, exactly as
+    // before: a filter named `page` still wins, for better or worse.
+    const outgoing = { page, page_size, sort_by, sort_order, ...filters }
 
     const response = await this.client.get<Record<string, unknown>>(this.endpoint, {
-      params: { page, page_size, sort_by, sort_order, ...mappedFilters },
+      params: this._applyParamMapping(outgoing),
     })
 
     const data = response.data
@@ -154,10 +175,37 @@ export class ApiStorage<T extends EntityRecord = EntityRecord> extends IStorage<
     return {
       items,
       total:
-        (data[this.responseTotalKey] as number) ||
-        (data.total as number) ||
-        (Array.isArray(data) ? data.length : 0),
+        this._totalFromHeader(response) ??
+        ((data[this.responseTotalKey] as number) ||
+          (data.total as number) ||
+          (Array.isArray(data) ? data.length : 0)),
     }
+  }
+
+  /**
+   * Total announced in a response header, when `responseTotalHeader` says so.
+   *
+   * Returns null — not 0 — when there is nothing to read, so the body-based
+   * fallbacks still get their turn. A 0 from the server is a real answer and
+   * is preserved.
+   */
+  protected _totalFromHeader(response: unknown): number | null {
+    if (!this.responseTotalHeader) return null
+
+    const headers = (response as { headers?: unknown })?.headers as
+      | { get?: (name: string) => unknown }
+      | Record<string, unknown>
+      | undefined
+    if (!headers) return null
+
+    const raw =
+      typeof (headers as { get?: unknown }).get === 'function'
+        ? (headers as { get: (name: string) => unknown }).get(this.responseTotalHeader)
+        : (headers as Record<string, unknown>)[this.responseTotalHeader.toLowerCase()]
+
+    if (raw === null || raw === undefined || raw === '') return null
+    const total = Number(raw)
+    return Number.isFinite(total) ? total : null
   }
 
   async get(id: string | number, context: RoutingContext | null = null): Promise<T> {

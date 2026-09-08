@@ -356,6 +356,34 @@ class TasksManager extends EntityManager {
 }
 ```
 
+### Speaking your API's dialect
+
+qdadm queries with `page`, `page_size`, `sort_by`, `sort_order` and your filter
+names. Those are internal names; what goes on the wire is your backend's call.
+`paramMapping` renames the whole outgoing query — pagination and sort included,
+not just filters:
+
+```js
+new ApiStorage({
+  endpoint: '/posts',
+  // json-server / JSONPlaceholder
+  paramMapping: { page: '_page', page_size: '_limit', sort_by: '_sort', sort_order: '_order' },
+  responseTotalHeader: 'X-Total-Count',
+})
+
+new ApiStorage({
+  endpoint: '/api/tasks',
+  paramMapping: { page_size: 'limit', status: 'state' },
+})
+```
+
+Reading the total: `responseTotalHeader` for APIs that report it in a response
+header (it must be CORS-exposed to be readable from a browser),
+`responseTotalKey` for one in the body. The header wins when both are present.
+
+Filters keep precedence over the pagination keys: a filter named `page`
+overwrites the page number. Rename one of the two.
+
 ### Using Different Storages
 
 When you need different API conventions (param mapping, normalization), use separate storages:
