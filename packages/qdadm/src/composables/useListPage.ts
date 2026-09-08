@@ -29,6 +29,12 @@ import {
   type Ref,
 } from 'vue'
 import { useRouter, useRoute, type RouteLocationRaw } from 'vue-router'
+import {
+  UrlPersister,
+  resolveRouteStatePersister,
+  createRouteStatePersisterFactory,
+  type RouteStatePersister,
+} from '../routeState'
 import { useConfirm } from 'primevue/useconfirm'
 import { useHooks } from './useHooks.js'
 import { useEntityItemPage, type ParentConfig, type UseEntityItemPageReturn } from './useEntityItemPage.js'
@@ -120,6 +126,7 @@ export function useListPage<T = unknown>(config: UseListPageOptions<T>): UseList
     persistFilters = true,
     persistSort = true,
     syncUrlParams = true,
+    routeState = null,
     autoLoadFilters = true,
     onBeforeLoad = null,
     onAfterLoad = null,
@@ -588,18 +595,39 @@ export function useListPage<T = unknown>(config: UseListPageOptions<T>): UseList
   // ============ FILTERS (#1195 — extracted subsystem) ============
   // loadItems and setSearch are passed as thunks: both are declared further
   // down and only ever run post-setup.
+  // Where this list remembers what it is showing (#2146).
+  //
+  // The scope is the entity, so two lists on one route stop colliding — the
+  // case page-compositions.md currently tells people to dodge by turning
+  // persistence off entirely.
+  //
+  // `syncUrlParams` governs WRITING, and only ever has: a list configured
+  // with `false` still restored from a query string typed by hand. Kept
+  // exactly, because moving this behind a seam must not change what any
+  // existing app does — the asymmetry is arguable, but arguing it belongs in
+  // its own change with its own changelog line.
+  //
+  // Naming a persister is a deliberate choice about a medium, so it answers
+  // the URL flag rather than obeying it: `routeState` set means read AND
+  // write, whatever `syncUrlParams` says about the query string.
+  const routeStateScope = entity || entityName
+  const persister: RouteStatePersister = routeState
+    ? resolveRouteStatePersister(routeState, createRouteStatePersisterFactory({ router, route }))
+    : new UrlPersister({ router, route })
+  const routeStateWrites = routeState ? true : syncUrlParams
+
   const listFilters = useListFilters({
     entityName,
+    persister,
+    routeStateScope,
+    routeStateWrites,
     manager,
     orchestrator,
     items: items as Ref<unknown[]>,
     page,
     searchQuery,
-    route,
-    router,
     savedFilters,
     persistFilters,
-    syncUrlParams,
     autoLoadFilters,
     filterSessionKey,
     entityFilters,

@@ -19,8 +19,14 @@ import type { RouteStatePersister } from './RouteStatePersister'
 import { dottedKeyLocator, type RouteStateKeyLocator } from './keyLocator'
 
 /** The bits of vue-router this needs, so tests need no real router. */
+/** One query value, shaped as vue-router accepts them. */
+export type UrlPersisterQueryValue = string | number | null | undefined
+
 export interface UrlPersisterRouter {
-  replace(to: { query: Record<string, unknown> }): unknown
+  // Values are narrowed to what vue-router's own query type accepts, so the
+  // real router satisfies this without a cast — and so does a two-line fake
+  // in a test.
+  replace(to: { query: Record<string, UrlPersisterQueryValue> }): unknown
 }
 export interface UrlPersisterRoute {
   query: Record<string, unknown>
@@ -91,7 +97,7 @@ export class UrlPersister implements RouteStatePersister {
   }
 
   write(scope: string, state: Record<string, unknown>): void {
-    const query = { ...this._route.query }
+    const query: Record<string, UrlPersisterQueryValue> = { ...toQuery(this._route.query) }
 
     for (const [key, value] of Object.entries(state)) {
       const param = this._keys.encode(scope, key)
@@ -107,10 +113,24 @@ export class UrlPersister implements RouteStatePersister {
   }
 
   clear(scope: string): void {
-    const query = { ...this._route.query }
+    const query: Record<string, UrlPersisterQueryValue> = { ...toQuery(this._route.query) }
+    let scoped = false
     for (const storedKey of Object.keys(query)) {
-      if (this._keys.decode(scope, storedKey) !== null) delete query[storedKey]
+      if (this._keys.decode(scope, storedKey) === null) continue
+      scoped = true
+      delete query[storedKey]
     }
+
+    // Clear what read() would have READ, or the URL starts lying: arrive on a
+    // pre-scope `?page=4` link, clear the filters, and the list shows page 1
+    // under an address still claiming page 4 — and a refresh would restore
+    // the state that was just cleared.
+    if (!scoped && this._readFlatFallback) {
+      for (const storedKey of Object.keys(query)) {
+        if (!this._keys.looksScoped(storedKey)) delete query[storedKey]
+      }
+    }
+
     this._router.replace({ query })
   }
 }
@@ -159,4 +179,16 @@ function decodeValue(raw: unknown): unknown {
   }
 
   return raw
+}
+
+/** The live route's query, narrowed to what we may hand back to the router. */
+function toQuery(query: Record<string, unknown>): Record<string, UrlPersisterQueryValue> {
+  const out: Record<string, UrlPersisterQueryValue> = {}
+  for (const [key, value] of Object.entries(query)) {
+    if (value === null || value === undefined) continue
+    // An array param is one vue-router supports and we do not produce; keep
+    // its first value rather than dropping the key entirely.
+    out[key] = Array.isArray(value) ? (value[0] as UrlPersisterQueryValue) : (String(value) as string)
+  }
+  return out
 }

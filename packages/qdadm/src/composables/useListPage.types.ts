@@ -3,6 +3,7 @@
  *
  * Extracted from useListPage.ts for maintainability.
  */
+import type { RouteStatePersister } from '../routeState'
 import type { Ref, ComputedRef } from 'vue'
 import type { Router } from 'vue-router'
 import type { FilterQuery } from '../query/FilterQuery'
@@ -229,8 +230,27 @@ export interface UseListPageOptions<T = unknown> {
   persistFilters?: boolean
   /** Persist the active sort per entity (session storage), restored on init (#1218). Default true. */
   persistSort?: boolean
-  /** Sync filters to URL query params (default: true) */
+  /**
+   * WRITE filters, search and the page to the URL query (default: true).
+   *
+   * Writing only. `false` has never stopped the query string being read, so
+   * a deep link someone typed by hand still restores the list — say
+   * `routeState` if you want the state kept somewhere else entirely.
+   */
   syncUrlParams?: boolean
+  /**
+   * Where this list's state is remembered (#2146): a slug the framework
+   * knows (`'url'`, …), or your own persister. Defaults to the URL.
+   *
+   * Setting it is a deliberate choice of medium, so it answers
+   * `syncUrlParams` rather than obeying it: a list with `routeState` set
+   * reads and writes that medium whatever the URL flag says.
+   *
+   * An unknown slug throws rather than falling back to the URL — a list
+   * quietly persisting somewhere other than where you asked is worse than
+   * one that will not start (ADR 0011).
+   */
+  routeState?: string | RouteStatePersister
   /** Filter mode: 'auto' | 'manager' | 'local' */
   filterMode?: 'auto' | 'manager' | 'local'
   /** Auto-filter threshold for 'auto' mode */

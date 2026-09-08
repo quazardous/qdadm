@@ -7,17 +7,28 @@
  * showed what the sender was looking at.
  *
  * These exercise the filters subsystem directly — the URL writer and the
- * restore path both live there.
+ * restore path both live there, now through a `RouteStatePersister` (#2146).
+ * That is why the keys are scoped: `runs.page`, not `page`. Two lists on one
+ * route no longer fight over a single `page` parameter. Note the array form
+ * of `toHaveProperty` throughout — the string form would read the dot as a
+ * path and assert on a `runs` object that does not exist.
  *
  * Run: npm test
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { ref } from 'vue'
 import { useListFilters } from '../../src/composables/useListPage.filters'
+import { UrlPersister } from '../../src/routeState/UrlPersister'
 
 function makeDeps({ query = {}, syncUrlParams = true } = {}) {
   const replaced = []
   const route = { query }
+  const router = {
+    replace: (arg) => {
+      replaced.push(arg.query)
+      route.query = arg.query
+    },
+  }
   const deps = {
     entityName: 'runs',
     manager: { request: vi.fn() },
@@ -26,12 +37,13 @@ function makeDeps({ query = {}, syncUrlParams = true } = {}) {
     page: ref(1),
     searchQuery: ref(''),
     route,
-    router: {
-      replace: (arg) => {
-        replaced.push(arg.query)
-        route.query = arg.query
-      },
-    },
+    router,
+    // Built the way useListPage builds it: the persister always exists, and
+    // `syncUrlParams` decides only whether it may write — which is what that
+    // flag has always meant.
+    persister: new UrlPersister({ router, route }),
+    routeStateScope: 'runs',
+    routeStateWrites: syncUrlParams,
     savedFilters: null,
     persistFilters: false,
     syncUrlParams,
@@ -55,22 +67,22 @@ describe('list page number in the URL', () => {
     deps.page.value = 4
     f.writeStateToUrl()
 
-    expect(replaced.at(-1)).toMatchObject({ page: '4' })
+    expect(replaced.at(-1)).toMatchObject({ 'runs.page': '4' })
   })
 
   it('keeps page 1 out of the URL rather than writing it', () => {
     // A pristine list must leave a clean link.
-    const { deps, replaced } = makeDeps({ query: { page: '5' } })
+    const { deps, replaced } = makeDeps({ query: { 'runs.page': '5' } })
     const f = useListFilters(deps)
 
     deps.page.value = 1
     f.writeStateToUrl()
 
-    expect(replaced.at(-1)).not.toHaveProperty('page')
+    expect(replaced.at(-1)).not.toHaveProperty(['runs.page'])
   })
 
   it('restores the page from the URL', () => {
-    const { deps } = makeDeps({ query: { page: '3' } })
+    const { deps } = makeDeps({ query: { 'runs.page': '3' } })
     const f = useListFilters(deps)
 
     f.restoreFilters()
@@ -82,7 +94,7 @@ describe('list page number in the URL', () => {
 
   it('ignores a nonsense page instead of asking the backend for it', () => {
     for (const bad of ['0', '-2', 'abc', '1.5', '']) {
-      const { deps } = makeDeps({ query: { page: bad } })
+      const { deps } = makeDeps({ query: { 'runs.page': bad } })
       const f = useListFilters(deps)
 
       f.restoreFilters()
@@ -109,11 +121,11 @@ describe('list page number in the URL', () => {
     f.onFiltersChanged()
 
     expect(deps.page.value).toBe(1)
-    expect(replaced.at(-1)).not.toHaveProperty('page')
+    expect(replaced.at(-1)).not.toHaveProperty(['runs.page'])
   })
 
   it('drops the page when filters are cleared', () => {
-    const { deps, replaced } = makeDeps({ query: { page: '4' } })
+    const { deps, replaced } = makeDeps({ query: { 'runs.page': '4' } })
     const f = useListFilters(deps)
     f.addFilter('state', { default: null })
     deps.page.value = 4
@@ -121,7 +133,7 @@ describe('list page number in the URL', () => {
     f.clearFilters()
 
     expect(deps.page.value).toBe(1)
-    expect(replaced.at(-1)).not.toHaveProperty('page')
+    expect(replaced.at(-1)).not.toHaveProperty(['runs.page'])
   })
 
   it('carries the page alongside filters and search', () => {
@@ -134,7 +146,61 @@ describe('list page number in the URL', () => {
 
     f.writeStateToUrl()
 
-    expect(replaced.at(-1)).toMatchObject({ state: 'running', search: 'nginx', page: '2' })
+    expect(replaced.at(-1)).toMatchObject({
+      'runs.state': 'running',
+      'runs.search': 'nginx',
+      'runs.page': '2',
+    })
+  })
+
+  it('still reads a link written before the keys were scoped', () => {
+    // Links people bookmarked or pasted into tickets carry the flat shape.
+    // Dropping them silently would show the reader a different screen than
+    // the sender saw, with no error anywhere.
+    const { deps } = makeDeps({ query: { page: '3' } })
+    const f = useListFilters(deps)
+
+    f.restoreFilters()
+
+    expect(deps.page.value).toBe(3)
+  })
+
+  it('does not read another list\'s page as its own', () => {
+    // The flat fallback must not turn into a free-for-all: `jobs.page`
+    // belongs to the jobs list, and handing it to this one would be worse
+    // than ignoring it.
+    const { deps } = makeDeps({ query: { 'jobs.page': '9' } })
+    const f = useListFilters(deps)
+
+    f.restoreFilters()
+
+    expect(deps.page.value).toBe(1)
+  })
+
+  it('retires the flat key it inherited rather than leaving two', () => {
+    // Otherwise the next read finds both, and the stale flat one wins.
+    const { deps, replaced } = makeDeps({ query: { page: '3' } })
+    const f = useListFilters(deps)
+
+    deps.page.value = 5
+    f.writeStateToUrl()
+
+    expect(replaced.at(-1)).toMatchObject({ 'runs.page': '5' })
+    expect(replaced.at(-1)).not.toHaveProperty('page')
+  })
+
+  it('clears a flat key too, instead of leaving the URL claiming a page', () => {
+    // Arrive on a pre-scope link, clear the filters: the list shows page 1,
+    // and the address must not still say page 4 — a refresh would restore
+    // exactly what was just cleared.
+    const { deps, replaced } = makeDeps({ query: { page: '4' } })
+    const f = useListFilters(deps)
+    f.addFilter('state', { default: null })
+    deps.page.value = 4
+
+    f.clearFilters()
+
+    expect(replaced.at(-1)).not.toHaveProperty('page')
   })
 })
 

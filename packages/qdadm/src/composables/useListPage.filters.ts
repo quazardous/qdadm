@@ -7,9 +7,9 @@
  * useListPage composes it back in; behavior is unchanged.
  */
 import { ref, computed, type Ref, type ComputedRef } from 'vue'
-import type { RouteLocationNormalizedLoaded, Router } from 'vue-router'
 import { FilterQuery, type QueryOrchestratorLike } from '../query/FilterQuery'
 import type { FilterConfig, SearchConfig } from './useListPage.types'
+import type { RouteStatePersister } from '../routeState'
 import {
   SMART_FILTER_THRESHOLD,
   clearSessionFilters,
@@ -31,12 +31,22 @@ export interface UseListFiltersDeps {
   page: Ref<number>
   /** Search query ref (shared with the search subsystem). */
   searchQuery: Ref<string>
-  route: RouteLocationNormalizedLoaded
-  router: Router
   /** Session-restored filter values (already stripped of _search). */
   savedFilters: Record<string, unknown> | null
   persistFilters: boolean
-  syncUrlParams: boolean
+  /** Where this list's state is remembered (#2146). */
+  persister: RouteStatePersister | null
+  /** This list's namespace, so two lists on one route stop colliding. */
+  routeStateScope: string
+  /**
+   * Whether this list may WRITE its state back.
+   *
+   * Separate from having a persister because reading and writing were always
+   * separate here: `syncUrlParams: false` stopped the query string being
+   * written and never stopped it being read, so a hand-typed deep link still
+   * restored. Collapsing the two would have changed that quietly.
+   */
+  routeStateWrites: boolean
   autoLoadFilters: boolean
   filterSessionKey: string
   /** Entity filters registry (injected by the consuming app). */
@@ -74,11 +84,11 @@ export function useListFilters(deps: UseListFiltersDeps): UseListFiltersReturn {
     items,
     page,
     searchQuery,
-    route,
-    router,
     savedFilters,
     persistFilters,
-    syncUrlParams,
+    persister,
+    routeStateScope,
+    routeStateWrites,
     autoLoadFilters,
     filterSessionKey,
     entityFilters,
@@ -89,16 +99,21 @@ export function useListFilters(deps: UseListFiltersDeps): UseListFiltersReturn {
   const filtersMap = ref<Map<string, FilterConfig>>(new Map())
   const filterValues = ref<Record<string, unknown>>(savedFilters || {})
 
-  /** Names the URL sync already owns — a filter cannot have them (#2113). */
+  /** Names the route state already owns — a filter cannot have them (#2113). */
   const RESERVED_QUERY_KEYS = new Set(['page', 'search'])
   const warnedReserved = new Set<string>()
 
   /**
-   * A filter named `page` or `search` silently overwrites the query key of
+   * A filter named `page` or `search` silently overwrites the stored key of
    * the same name, and is overwritten back on restore. `search` has behaved
    * this way since the URL sync existed and nobody ever reported it, which
-   * says how quiet the failure is; `page` joins the reserved set now that the
-   * page number lives in the URL too.
+   * says how quiet the failure is; `page` joined it once the page number
+   * started being remembered too.
+   *
+   * SCOPING DID NOT FIX THIS. Prefixing keys by entity separates this list
+   * from other lists; it does not separate the list from qdadm's own two
+   * keys, which live in the same scope it does — `offers.page` is written by
+   * the pager whatever a filter called `page` wants.
    *
    * We name what happens INSTEAD of what was asked, rather than dropping the
    * filter — renaming someone's filter behind their back would be a worse
@@ -106,15 +121,17 @@ export function useListFilters(deps: UseListFiltersDeps): UseListFiltersReturn {
    */
   function warnIfReservedName(name: string): void {
     if (!RESERVED_QUERY_KEYS.has(name)) return
-    if (!syncUrlParams) return
+    // Gated on writing, not on the URL specifically: the collision is with
+    // whatever medium this list persists to.
+    if (!routeStateWrites) return
     if (warnedReserved.has(name)) return
     warnedReserved.add(name)
     console.warn(
-      `[qdadm] Filter "${name}" on "${entityName}" collides with the URL ` +
-        `parameter of the same name. With syncUrlParams on, the list's own ` +
+      `[qdadm] Filter "${name}" on "${entityName}" collides with the key of ` +
+        `the same name in this list's persisted route state. The list's own ` +
         `${name === 'page' ? 'page number' : 'search query'} wins and this ` +
-        `filter will not survive a reload. Rename the filter, or set ` +
-        `syncUrlParams: false on this list.`
+        `filter will not survive a reload. Rename the filter, or turn the ` +
+        `persistence off on this list with syncUrlParams: false.`
     )
   }
 
@@ -155,34 +172,21 @@ export function useListFilters(deps: UseListFiltersDeps): UseListFiltersReturn {
    * for a detail view, so that coming back restores it.
    */
   function writeStateToUrl(): void {
-    if (!syncUrlParams) return
+    if (!persister || !routeStateWrites) return
 
-    const query = { ...route.query } as Record<string, string>
-
-    for (const [name, value] of Object.entries(filterValues.value)) {
-      if (value !== null && value !== undefined && value !== '') {
-        query[name] = String(value)
-      } else {
-        delete query[name]
-      }
-    }
-
-    if (searchQuery.value) {
-      query.search = searchQuery.value
-    } else {
-      delete query.search
-    }
-
-    // Page 1 is the default and stays implicit. Reserved keys are written
-    // last so the list's own state wins a collision — the warning in
-    // addFilter() names that consequence at declaration time.
-    if (page.value > 1) {
-      query.page = String(page.value)
-    } else {
-      delete query.page
-    }
-
-    router.replace({ query })
+    // Page 1 is the default and stays implicit, exactly like an unset filter:
+    // the persister drops null/undefined/'' rather than storing them empty,
+    // so a pristine list leaves a clean link.
+    //
+    // `search` and `page` still share the namespace with the filter names —
+    // the scope separates this list from OTHER lists, not from qdadm's own
+    // keys — which is why addFilter() still warns about a filter called
+    // `page` or `search`.
+    persister.write(routeStateScope, {
+      ...filterValues.value,
+      search: searchQuery.value || null,
+      page: page.value > 1 ? page.value : null,
+    })
   }
 
   function onFiltersChanged(): void {
@@ -220,15 +224,7 @@ export function useListFilters(deps: UseListFiltersDeps): UseListFiltersReturn {
       clearSessionFilters(filterSessionKey)
     }
     page.value = 1
-    if (syncUrlParams) {
-      const query = { ...route.query } as Record<string, string>
-      for (const key of filtersMap.value.keys()) {
-        delete query[key]
-      }
-      delete query.search
-      delete query.page
-      router.replace({ query })
-    }
+    if (routeStateWrites) persister?.clear(routeStateScope)
     loadItems()
   }
 
@@ -472,23 +468,23 @@ export function useListFilters(deps: UseListFiltersDeps): UseListFiltersReturn {
   }
 
   function restoreFilters(): void {
+    const stored = persister?.read(routeStateScope)
+    if (!stored) return
+
+    // Only keys this list declares as filters: the scope keeps other lists
+    // out, but a persister may still hand back something the app put there.
     for (const key of filtersMap.value.keys()) {
-      if (route.query[key] !== undefined) {
-        let value: unknown = route.query[key]
-        if (value === 'true') value = true
-        else if (value === 'false') value = false
-        else if (value === 'null') value = null
-        else if (!isNaN(Number(value)) && value !== '') value = Number(value)
-        filterValues.value[key] = value
-      }
+      if (stored[key] !== undefined) filterValues.value[key] = stored[key]
     }
-    if (route.query.search) {
-      searchQuery.value = route.query.search as string
+
+    if (typeof stored.search === 'string' && stored.search) {
+      searchQuery.value = stored.search
     }
+
     // The page must be restored HERE, before the first loadItems(): restoring
     // it later would mean a first request for page 1 and a second for the
     // real one (#2113).
-    const restoredPage = Number(route.query.page)
+    const restoredPage = Number(stored.page)
     if (Number.isInteger(restoredPage) && restoredPage > 0) {
       page.value = restoredPage
     }

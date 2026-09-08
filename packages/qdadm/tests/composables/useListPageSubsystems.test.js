@@ -10,13 +10,14 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { ref } from 'vue'
 import { useListFilters } from '../../src/composables/useListPage.filters'
+import { UrlPersister } from '../../src/routeState/UrlPersister'
 import { useListAlterHooks } from '../../src/composables/useListPage.alterHooks'
 import { useActionRegistry } from '../../src/composables/useActionRegistry'
 
 beforeEach(() => sessionStorage.clear())
 
 function makeFilterDeps(overrides = {}) {
-  return {
+  const deps = {
     entityName: 'books',
     manager: { request: vi.fn() },
     orchestrator: null,
@@ -25,9 +26,13 @@ function makeFilterDeps(overrides = {}) {
     searchQuery: ref(''),
     route: { query: {} },
     router: { replace: vi.fn() },
+    routeStateScope: 'books',
+    // Reads, does not write. That was always what `syncUrlParams: false`
+    // meant on the public option — it never stopped the query string being
+    // READ — and the subsystem now says it in one dep instead (#2146).
+    routeStateWrites: false,
     savedFilters: null,
     persistFilters: true,
-    syncUrlParams: false,
     autoLoadFilters: true,
     filterSessionKey: 'books',
     entityFilters: {},
@@ -36,6 +41,10 @@ function makeFilterDeps(overrides = {}) {
     // No invokeFilterAlterHook: useListFilters stopped taking one in #1934.
     ...overrides,
   }
+  // After the overrides, so a test that supplies its own route gets a
+  // persister reading THAT route rather than the default empty one.
+  deps.persister = deps.persister ?? new UrlPersister({ router: deps.router, route: deps.route })
+  return deps
 }
 
 describe('useListFilters (#1195)', () => {

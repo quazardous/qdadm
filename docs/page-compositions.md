@@ -128,11 +128,15 @@ child relation → **the FK filter is not auto-wired**. You must inject it by ha
 ```js
 const children = useListPage({
   entity: 'loans',
-  syncUrlParams: false,    // avoid fighting the host page over the URL
+  syncUrlParams: false,    // keep a contextual list out of the address bar
   persistFilters: false,
   onBeforeLoad: (params) => ({ ...params, book_id: route.params.bookId }),
 })
 ```
+
+`syncUrlParams: false` here is taste, not necessity: each list namespaces its
+query keys by entity (`loans.page`), so two lists on one route no longer
+collide. A "last 5 loans" panel simply has no business in a link people share.
 
 - Use when: a small contextual list (e.g. "last 5 loans") inside a detail view, where going
   through a child route would be overkill.
