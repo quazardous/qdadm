@@ -32,6 +32,18 @@ export interface UseListFiltersDeps {
   page: Ref<number>
   /** Rows per page — persisted alongside the rest (#2146). */
   pageSize: Ref<number>
+  /** Active sort field, persisted alongside the rest (#2146). */
+  sortField: Ref<string | null>
+  /** Active sort direction. */
+  sortOrder: Ref<number>
+  /**
+   * Whether the sort is remembered at all.
+   *
+   * Its own flag rather than folded into `routeStateWrites`, because it has
+   * always been separately switchable and a seam refactor must not quietly
+   * take an option away.
+   */
+  persistSort: boolean
   /** Search query ref (shared with the search subsystem). */
   searchQuery: Ref<string>
   /** Session-restored filter values (already stripped of _search). */
@@ -93,6 +105,9 @@ export function useListFilters(deps: UseListFiltersDeps): UseListFiltersReturn {
     routeStateScope,
     routeStateWrites,
     pageSize,
+    sortField,
+    sortOrder,
+    persistSort,
     autoLoadFilters,
     filterSessionKey,
     entityFilters,
@@ -226,6 +241,17 @@ export function useListFilters(deps: UseListFiltersDeps): UseListFiltersReturn {
       // they get back if we forget. The default composition routes it to a
       // cookie, so it does not land in a shareable link.
       pageSize: pageSize.value,
+      // Sort goes to the session under the default composition, so it does
+      // not reach a link either. `persistSort: false` writes null, which the
+      // persister removes — the option has always been able to turn this off
+      // and still can.
+      //
+      // The DIRECTION is stored only when there is a field to apply it to.
+      // An order on its own is not partial state, it is meaningless state,
+      // and storing it would leave `sortOrder: -1` sitting in every unsorted
+      // list's namespace.
+      sort: persistSort ? sortField.value : null,
+      sortOrder: persistSort && sortField.value ? sortOrder.value : null,
     })
   }
 

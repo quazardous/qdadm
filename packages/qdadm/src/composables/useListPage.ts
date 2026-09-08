@@ -96,8 +96,8 @@ import {
   PAGE_SIZE_OPTIONS,
   restorePageSize,
   getSessionFilters,
-  getSessionSort,
-  setSessionSort,
+  restoreSort,
+  clearSessionSort,
   retireLegacyPageSizeCookie,
 } from './useListPage.utils'
 import { useActionRegistry } from './useActionRegistry'
@@ -295,11 +295,19 @@ export function useListPage<T = unknown>(config: UseListPageOptions<T>): UseList
   const totalRecords = ref(0)
   const rowsPerPageOptions = PAGE_SIZE_OPTIONS
 
-  // Sorting — restored from the per-entity session (#1218), defaultSort as
-  // fallback; same persistence discipline as filters/pageSize.
-  const savedSort = persistSort ? getSessionSort(filterSessionKey) : null
-  const sortField = ref<string | null>(savedSort ? savedSort.field : defaultSort)
-  const sortOrder = ref(savedSort ? savedSort.order : defaultSortOrder)
+  // Sorting — through the seam now (#2146), and still landing in the session
+  // by default: the composition routes `sort` back to `sessionStorage` on
+  // purpose, so an ordering keeps surviving a clean `/offers` the way it
+  // always has. Only the key changed, which is why the legacy entry is read
+  // when the seam has nothing.
+  const savedSort = persistSort
+    ? restoreSort(storedRouteState, filterSessionKey, {
+        field: defaultSort,
+        order: defaultSortOrder as 1 | -1,
+      })
+    : { field: defaultSort, order: defaultSortOrder as 1 | -1 }
+  const sortField = ref<string | null>(savedSort.field)
+  const sortOrder = ref<number>(savedSort.order)
 
   // Search
   const searchQuery = ref(savedSearch)
@@ -663,6 +671,9 @@ export function useListPage<T = unknown>(config: UseListPageOptions<T>): UseList
     routeStateScope,
     routeStateWrites,
     pageSize,
+    sortField,
+    sortOrder,
+    persistSort,
     manager,
     orchestrator,
     items: items as Ref<unknown[]>,
@@ -890,11 +901,12 @@ export function useListPage<T = unknown>(config: UseListPageOptions<T>): UseList
       sortField.value = event.sortField
       sortOrder.value = event.sortOrder as 1 | -1
     }
+    // Written through the persister by writeStateToUrl(), not straight to
+    // the session from here (#2146). The legacy entry is retired at the same
+    // time, so it cannot shadow the seam on a later read.
     if (persistSort) {
-      setSessionSort(filterSessionKey, {
-        field: sortField.value,
-        order: sortOrder.value as 1 | -1,
-      })
+      writeStateToUrl()
+      clearSessionSort(filterSessionKey)
     }
     loadItems()
   }

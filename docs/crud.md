@@ -279,7 +279,9 @@ useListPage({
 
 Filters, search and the page go to the URL under the list's entity —
 `?offers.page=2` — so two lists on one route do not collide. The sort is
-remembered per entity in the session and never appears in the URL.
+remembered per entity in the session and never appears in the URL; rows per
+page is one app-wide setting in a cookie. All three go through the same seam
+— see [route-state.md](./route-state.md).
 
 The page is written only once it leaves 1, and removed again when it returns,
 so a pristine list leaves a clean link. Changing a filter resets it, since the

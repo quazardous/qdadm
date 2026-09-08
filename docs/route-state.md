@@ -48,14 +48,30 @@ on whoever opens it. Say `'default'` if you meant the default out loud.
 
 ## The default is composed
 
+Not everything belongs in the same place:
+
+| State | Medium | Scope |
+|---|---|---|
+| filters, search, page | query string | the list |
+| rows per page | cookie, a year | the **app** |
+| sort | `sessionStorage` | the list |
+
 Filters, search and the page belong in a link — that is the whole argument for
-the URL. Rows-per-page does not: it is a comfort setting somebody picked once,
-remembered for the whole app rather than per list.
+the URL. **Rows-per-page does not**: it is a comfort setting somebody picked
+once, and a link carrying it would impose the sender's row count on the
+reader. **Nor does the sort**, for a different reason: putting it in the URL
+would be a real gain — a link would finally carry its ordering — but the sort
+would then stop surviving a clean `/offers`, which it always has. That trade
+was weighed and declined; the seam is worth having without it.
 
 ```js
 new CompositePersister({
   fallback: new UrlPersister({ router, route }),
-  keys: { pageSize: { persister: new CookiePersister(), scope: 'app' } },
+  keys: {
+    pageSize: { persister: new CookiePersister(), scope: 'app' },
+    sort: { persister: sessionPersister },
+    sortOrder: { persister: sessionPersister },
+  },
 })
 ```
 

@@ -158,6 +158,35 @@ export function clearSessionSort(key: string): void {
   }
 }
 
+/**
+ * Settle the sort a list opens on (#2146).
+ *
+ * The seam owns this now. The medium has not changed — the default
+ * composition routes `sort` back to `sessionStorage`, deliberately, so that
+ * moving it behind an interface changes nothing anyone can observe. Only the
+ * KEY changed, from `qdadm_sort_offers` to `qdadm:offers:sort`.
+ *
+ * Which is why the legacy entry is still read when the seam has nothing: a
+ * sort somebody set five minutes ago must not vanish because the framework
+ * was upgraded under them.
+ */
+export function restoreSort(
+  stored: { sort?: unknown; sortOrder?: unknown } | null,
+  legacyKey: string,
+  defaults: SessionSort
+): SessionSort {
+  const field = stored?.sort
+  const order = Number(stored?.sortOrder)
+  if (typeof field === 'string' && field && (order === 1 || order === -1)) {
+    return { field, order }
+  }
+
+  const legacy = getSessionSort(legacyKey)
+  if (legacy) return legacy
+
+  return defaults
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Smart filter discovery
 // ─────────────────────────────────────────────────────────────────────────────
