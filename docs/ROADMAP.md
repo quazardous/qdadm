@@ -3,6 +3,18 @@
 Planned work, in rough priority order. Not a commitment — tickets drive the
 actual scheduling.
 
+## 3.0 — massive multi-agent
+
+The next major is reserved for it. Nothing else takes the number: 3.0 should
+mean the framework changed in kind, not that a declaration was corrected.
+
+That rule has already cost something, which is the point of writing it down.
+Two changes shipped in 2.x carried real upgrade notes — an optional peer that
+became genuinely optional, and Kernel properties whose types stopped promising
+a `null` that could no longer occur — and both were briefly marked as majors
+before being put back. Neither changed what qdadm *is*. Read their CHANGELOG
+entries before upgrading anyway; a minor is not a synonym for silent.
+
 ## File Upload Component
 
 Upload on select, return ID/URL for entity reference.

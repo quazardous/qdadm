@@ -1,5 +1,5 @@
 ---
-'@quazardous/qdadm': major
+'@quazardous/qdadm': minor
 ---
 
 `vanilla-jsoneditor` is a real optional peer now — installing qdadm no longer drags in svelte

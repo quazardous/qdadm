@@ -1,5 +1,5 @@
 ---
-'@quazardous/qdadm': major
+'@quazardous/qdadm': minor
 ---
 
 Five Kernel registries now exist the moment the Kernel does
