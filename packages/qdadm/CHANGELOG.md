@@ -1,5 +1,134 @@
 # Changelog
 
+## 2.18.0
+
+### Minor Changes
+
+- d2688d5: The debug bar can be switched off without a deploy, and can no longer take the app down
+
+  **`?qddebug=off`** removes the bar for this browser and remembers it across
+  reloads and redirects; `?qddebug=on` brings it back. It overrides even an
+  explicit `enabled: true`. This is the piece a consumer most needed and did not
+  have: when their bar took the admin down, the only way to stop it was to
+  rebuild and redeploy.
+
+  **An error boundary** now wraps whatever component `debugBar.component`
+  provides. A bar that throws during render is dropped and the application keeps
+  running, with the reason logged once. Until now the error propagated to the
+  root and killed the app — a diagnostic tool failing precisely when someone
+  needed it.
+
+  The boundary catches thrown errors only; a runaway render loop throws nothing
+  and is handled by the bar's own circuit breaker in `@quazardous/qddebug`, which
+  ships in lockstep.
+
+- a6ecd0a: List rows no longer wait behind filter dropdowns, and `filter:alter` moves ahead of them
+
+  `onMounted` interleaved two different kinds of work. Settling **what the query
+  asks for** — the filters, search and page restored from the URL, plus whatever
+  the alter hooks add — and **fetching things**, which meant the filter options
+  that populate dropdowns. The rows waited for both, though they depend only on
+  the first. A list whose filters pull their options from related entities
+  showed nothing until every one of those round trips had returned, for content
+  nobody needs in order to read the table.
+
+  The two are now separated. The query is settled first, the rows leave, and the
+  dropdowns fill in on their own:
+
+  ```
+  restoreFilters()          // filters, search, page — from the URL
+  await filter:alter        // whatever the hooks add
+  await list:alter
+  loadItems()               // the query is complete
+  loadFilterOptions()       // not awaited
+  ```
+
+  **BREAKING for `filter:alter` hooks.** The hook used to run at the end of
+  `loadFilterOptions()`, so it saw filters whose `options` were already
+  populated. It now runs before that fetch, and sees them unpopulated. A hook
+  that only adds, removes or reconfigures filters is unaffected; one that
+  inspects or rewrites a filter's loaded `options` needs revisiting.
+
+  `loadFilterOptions()` also fetches in parallel now rather than one filter at a
+  time — three remote filters cost the slowest instead of the sum. Filters
+  sharing one `optionsEntity` are still chained, so the second keeps reading the
+  cache the first filled instead of racing it.
+
+  Thanks to BookShepherd for the report, and for asking what `invokeListAlterHook`
+  could change before proposing the reorder — that question is what showed the
+  naive version was unsafe.
+
+- 384d49c: The list's current page now lives in the URL
+
+  It was the only piece of list state that survived nothing. Filters, search,
+  sort and rows-per-page were all remembered; the page was not. So list → detail
+  → back dropped the user on page 1 — on a large corpus that is not an
+  inconvenience, it is losing your place — and a shared list link never showed
+  what the sender was looking at.
+
+  With `syncUrlParams` on (the default), the page is written to the URL once it
+  leaves 1 and removed when it returns, so a pristine list still leaves a clean
+  link. It is restored before the first request, not after, so there is no
+  wasted round trip. Changing or clearing a filter resets it, since the results
+  are renumbered.
+
+  `page` and `search` are the URL sync's own keys. A filter named either now
+  raises a one-off dev warning naming what happens instead: the list's own state
+  wins and the filter will not survive a reload. The `search` collision has
+  existed for as long as the URL sync has, silently — this is the first time it
+  says anything.
+
+  Two lists synchronising on one route will fight over `page`; an embedded list
+  should set `syncUrlParams: false`, as `page-compositions.md` already advised
+  for filters.
+
+- 1fdf7c0: `ApiStorage` — the backend's pagination dialect is now configuration, not a subclass
+
+  `paramMapping` reached the **filters only**. You could rename `status` to
+  `state`, but not `page_size` to `limit`: `page`, `page_size`, `sort_by` and
+  `sort_order` went onto the wire hard-coded. Any backend speaking another
+  dialect — `_page`/`_limit`, `limit`/`offset` — had to override `list()` for
+  that reason alone. Our own demo had done exactly that, fetching whole
+  collections and slicing them client-side.
+
+  `paramMapping` now covers the entire outgoing query:
+
+  ```js
+  new ApiStorage({
+    endpoint: '/posts',
+    paramMapping: { page: '_page', page_size: '_limit', sort_by: '_sort', sort_order: '_order' },
+    responseTotalHeader: 'X-Total-Count',
+  })
+  ```
+
+  New `responseTotalHeader` reads the total from a response **header**, for APIs
+  that report it there rather than in the body (`responseTotalKey` still handles
+  the body, and remains the fallback). A genuine `0` from the header is kept; the
+  header must be CORS-exposed to be readable from a browser.
+
+  Filters keep precedence over the pagination keys, exactly as before: a filter
+  named `page` still wins.
+
+  **Worth checking before you upgrade:** if you already pass a `paramMapping`
+  whose keys happen to include `page`, `page_size`, `sort_by` or `sort_order`,
+  those entries did nothing until now and will start renaming your pagination
+  parameters.
+
+### Patch Changes
+
+- 1fdf7c0: Docs: `syncUrlParams` does not sync the sort, and the demo now paginates for real
+
+  `docs/crud.md` described `syncUrlParams` as "Sync filters/sort with URL". The
+  sort never reaches the URL — `onSort` writes to the session and nothing else.
+  The line described an intention rather than the code, and a consumer who
+  trusted it concluded the URL carried more state than it does.
+
+  The documentation now states where each piece of list state actually lives
+  (URL, session, or nowhere).
+
+- Updated dependencies [d2688d5]
+  - @quazardous/qddebug@1.2.0
+
 ## 2.17.4
 
 ### Patch Changes
