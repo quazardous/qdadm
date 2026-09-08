@@ -19,6 +19,7 @@
  */
 
 import type { SignalBus } from '../signal/SignalBus'
+import { EventSourceTransport, type StreamTransport, type StreamFrame } from './transport'
 
 export const SSE_SIGNALS = {
   CONNECTED: 'sse:connected',
@@ -63,6 +64,31 @@ export interface SSEBridgeOptions {
   getToken?: (() => string | null | Promise<string | null>) | null
   /** Enable debug logging */
   debug?: boolean
+  /**
+   * How the stream is actually opened (#2138). Defaults to the browser's
+   * `EventSource`, which is what qdadm has always used.
+   *
+   * Named so it can be replaced: EventSource cannot send headers, owns the
+   * read loop — a stream can die while it still reports OPEN — and reconnects
+   * on its own in a way a single-use token makes unusable.
+   */
+  transport?: StreamTransport
+  /**
+   * Treat silence longer than this as a dead stream (ms). Off by default.
+   *
+   * Measured in #2138: after a proxy cut the socket, NEITHER `EventSource`
+   * nor a `fetch` reader reported anything — `readyState` stayed OPEN, and
+   * `read()` never resolved. Time since the last sign of life was the only
+   * signal that did not lie, and it caught the death 10.1 s after the last
+   * frame with a 10 s budget.
+   *
+   * Off by default because the right budget depends on how often YOUR server
+   * speaks, and because what each transport can see differs: `FetchTransport`
+   * watches every byte including heartbeats, `EventSourceTransport` only sees
+   * data frames — the browser eats the comments. Set it against the interval
+   * of what the transport in use can actually observe.
+   */
+  idleTimeout?: number
 }
 
 export class SSEBridge {
@@ -87,7 +113,8 @@ export class SSEBridge {
    */
   private _registeredEvents = new Set<string>()
 
-  private _eventSource: EventSource | null = null
+  private _transport: StreamTransport
+  private _idleTimeout: number
   private _reconnectTimer: ReturnType<typeof setTimeout> | null = null
   private _connected = false
   private _reconnecting = false
@@ -125,6 +152,10 @@ export class SSEBridge {
     this._tokenParam = tokenParam
     this._getToken = getToken
     this._debug = debug
+    // The seam (#2138). EventSource is the default and the behaviour qdadm has
+    // always had; the point of naming it is that it can be replaced.
+    this._transport = options.transport ?? new EventSourceTransport()
+    this._idleTimeout = options.idleTimeout ?? 0
 
     if (autoConnect) {
       void this.connect()
@@ -194,10 +225,7 @@ export class SSEBridge {
   async connect(): Promise<void> {
     const generation = ++this._generation
 
-    if (this._eventSource) {
-      this._eventSource.close()
-      this._eventSource = null
-    }
+    this._transport.close()
 
     if (this._reconnectTimer) {
       clearTimeout(this._reconnectTimer)
@@ -216,36 +244,41 @@ export class SSEBridge {
 
       this._log('Connecting to', this._redactToken(url))
 
-      this._eventSource = new EventSource(url, { withCredentials: this._withCredentials })
+      this._transport.open(
+        url,
+        {
+          withCredentials: this._withCredentials,
+          eventNames: this._registeredEvents,
+          idleTimeout: this._idleTimeout,
+        },
+        {
+          onOpen: (): void => {
+            this._connected = true
+            this._reconnecting = false
+            this._log('Connected')
+            this._signals.emit(SSE_SIGNALS.CONNECTED, { timestamp: new Date() })
+          },
 
-      this._eventSource.onopen = (): void => {
-        this._connected = true
-        this._reconnecting = false
-        this._log('Connected')
-        this._signals.emit(SSE_SIGNALS.CONNECTED, { url: this._url, timestamp: new Date() })
-      }
+          onFrame: (frame): void => this._handleFrame(frame),
 
-      this._eventSource.onerror = (): void => {
-        this._connected = false
-        this._log('Connection error')
-        this._signals.emit(SSE_SIGNALS.ERROR, { error: 'Connection error', timestamp: new Date() })
+          onError: (): void => {
+            this._connected = false
+            this._log('Connection error')
+            this._signals.emit(SSE_SIGNALS.ERROR, {
+              error: 'Connection error',
+              timestamp: new Date(),
+            })
 
-        if (this._eventSource) {
-          this._eventSource.close()
-          this._eventSource = null
+            // Closing before reconnecting is not optional with a single-use
+            // token: the browser's own retry would replay a spent URL, and the
+            // 401 that follows closes an EventSource for good.
+            this._transport.close()
+
+            this._signals.emit(SSE_SIGNALS.DISCONNECTED, { timestamp: new Date() })
+            this._scheduleReconnect()
+          },
         }
-
-        this._signals.emit(SSE_SIGNALS.DISCONNECTED, { timestamp: new Date() })
-        this._scheduleReconnect()
-      }
-
-      this._eventSource.onmessage = (event: MessageEvent): void => {
-        this._handleEvent('message', event)
-      }
-
-      // Re-bind every remembered name: listeners belong to the instance we
-      // just replaced, so without this the named channel dies on reconnect.
-      this._attachEvents(this._registeredEvents)
+      )
     } catch (err) {
       const error = err as Error
       this._log('Connect error:', error.message)
@@ -270,42 +303,38 @@ export class SSEBridge {
     const fresh = eventNames.filter((name) => !this._registeredEvents.has(name))
     for (const name of eventNames) this._registeredEvents.add(name)
 
-    if (!this._eventSource) {
-      // Not a failure: they will be attached when the connection opens.
-      this._log('Registered for the next connection:', eventNames.join(', '))
-      return
-    }
-
+    // No guard on the connection state (#2138): the transport knows whether
+    // it can bind now, and every name is remembered either way — connect()
+    // re-attaches the whole set. Guarding on `_connected` here was wrong, and
+    // the reconnect tests caught it: a name registered after connect() but
+    // before the stream opened was silently dropped.
     this._attachEvents(fresh)
   }
 
   /** Bind the given names to the current EventSource. */
   private _attachEvents(eventNames: Iterable<string>): void {
-    if (!this._eventSource) return
     for (const eventName of eventNames) {
-      this._eventSource.addEventListener(eventName, (event) => {
-        this._handleEvent(eventName, event as MessageEvent)
-      })
+      this._transport.addEventName(eventName)
       this._log('Registered event:', eventName)
     }
   }
 
-  private _handleEvent(eventName: string, event: MessageEvent): void {
+  private _handleFrame(frame: StreamFrame): void {
     let data: unknown
     try {
-      data = JSON.parse(event.data as string)
+      data = JSON.parse(frame.data)
     } catch {
-      data = event.data
+      data = frame.data
     }
 
-    const signal = this._buildSignal(eventName)
+    const signal = this._buildSignal(frame.event)
     this._log(`Emitting ${signal}:`, data)
 
     this._signals.emit(signal, {
-      event: eventName,
+      event: frame.event,
       data,
       timestamp: new Date(),
-      lastEventId: event.lastEventId,
+      lastEventId: frame.lastEventId,
     })
   }
 
@@ -331,10 +360,7 @@ export class SSEBridge {
       this._reconnectTimer = null
     }
 
-    if (this._eventSource) {
-      this._eventSource.close()
-      this._eventSource = null
-    }
+    this._transport.close()
 
     if (this._connected) {
       this._connected = false

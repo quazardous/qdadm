@@ -1,2 +1,6 @@
 export { SSEBridge, createSSEBridge, SSE_SIGNALS } from './SSEBridge'
 export type { SSEBridgeOptions } from './SSEBridge'
+export { EventSourceTransport } from './transport'
+export type { StreamTransport, StreamFrame, StreamHandlers, StreamOpenOptions } from './transport'
+export { FetchTransport, parseFrame } from './FetchTransport'
+export type { FetchTransportOptions } from './FetchTransport'

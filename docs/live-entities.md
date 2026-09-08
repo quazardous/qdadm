@@ -162,8 +162,9 @@ the same token. If your ticket is single-use, that native retry can never
 succeed: the server is right to refuse a burned credential.
 
 It is not a failure mode you will see. The browser's attempt fails silently,
-qdadm's `onerror` handler picks it up, and the bridge reconnects on its own
-timer with a fresh ticket. What you lose is the seamless recovery: every
+qdadm's `onerror` handler usually picks it up, and the bridge reconnects on
+its own timer with a fresh ticket — *usually*, because that handler depends on
+an error the browser does not always deliver (see below). What you lose is the seamless recovery: every
 transient drop becomes a `reconnectDelay`-long gap instead of an invisible
 reconnect.
 
@@ -171,6 +172,43 @@ Nothing to fix if that trade is acceptable — a few seconds of gap for a
 credential that cannot be replayed is usually the right side of it. Just know
 which one you chose: shorten `reconnectDelay` if the gap matters, or issue a
 ticket that survives one retry if the gap matters more than the replay window.
+
+### A stream can die without anyone being told
+
+Do not assume an error will arrive. Measured against a proxy that cut the
+socket: `EventSource` went on reporting `readyState` OPEN with no `error`
+event, forever, while nothing arrived — and a `fetch` reader on the same URL
+never had `read()` resolve either. Both APIs simply waited. A bridge listening
+only for `onerror` waits with them.
+
+The one signal that did not lie is time since the last sign of life:
+
+```js
+sse: {
+  url: '/events',
+  idleTimeout: 45000,   // silence this long means the stream is gone
+}
+```
+
+Past the budget the bridge treats the stream as dead: it emits `sse:error` and
+`sse:disconnected`, drops the connection and reconnects on its usual timer,
+with a fresh ticket if you issue one.
+
+**Off by default, because the right budget is yours to know.** Set it against
+how often your server actually speaks, with room for one missed beat — too
+short and a quiet-but-healthy stream gets killed on a schedule.
+
+And what counts as a "sign of life" depends on the transport:
+
+| Transport | Sees | Set the budget against |
+|---|---|---|
+| `EventSource` (default) | data frames only | how often real events arrive |
+| `FetchTransport` | every byte, heartbeats included | the server's heartbeat interval |
+
+The asymmetry is the browser's, not ours: an SSE heartbeat is a comment line,
+and `EventSource` consumes it without surfacing anything. So on the default
+transport a heartbeat will **not** hold the watchdog off — budget for your
+data, not for your pings.
 
 ## Other transports
 
