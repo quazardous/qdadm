@@ -586,8 +586,8 @@ export function useListPage<T = unknown>(config: UseListPageOptions<T>): UseList
   const cards = computed(() => Array.from(cardsMap.value.values()))
 
   // ============ FILTERS (#1195 — extracted subsystem) ============
-  // invokeFilterAlterHook is a thunk: alterHooks is declared after the
-  // actions section (it needs the action registry) and only runs post-setup.
+  // loadItems and setSearch are passed as thunks: both are declared further
+  // down and only ever run post-setup.
   const listFilters = useListFilters({
     entityName,
     manager,
@@ -605,7 +605,6 @@ export function useListPage<T = unknown>(config: UseListPageOptions<T>): UseList
     entityFilters,
     loadItems: () => loadItems(),
     setSearch: (searchCfg) => setSearch(searchCfg),
-    invokeFilterAlterHook: () => alterHooks.invokeFilterAlterHook(),
   })
   const {
     filtersMap,
@@ -1023,7 +1022,7 @@ export function useListPage<T = unknown>(config: UseListPageOptions<T>): UseList
     headerActionsMap,
     actionRegistry,
   })
-  const { invokeListAlterHook } = alterHooks
+  const { invokeListAlterHook, invokeFilterAlterHook } = alterHooks
 
   // ============ LIFECYCLE ============
   initFromRegistry()
@@ -1035,17 +1034,34 @@ export function useListPage<T = unknown>(config: UseListPageOptions<T>): UseList
   onMounted(async () => {
     window.addEventListener('resize', handleResize)
 
+    // Two kinds of work, and they used to be interleaved (#1934).
+    //
+    // SETTLING THE QUERY comes first, and only this blocks the rows.
+    // `restoreFilters()` reads the filters, the search and the page out of
+    // the URL; the alter hooks may add filters and their default values, and
+    // may replace a filter's `toQuery`/`local_filter` — all of which
+    // `loadItems()` reads. Skipping ahead of them sends the wrong request,
+    // and nothing retries it.
+    //
+    // FETCHING comes second. Filter options populate dropdowns and have no
+    // bearing on what the rows request, so the rows no longer wait behind
+    // them: a page whose filters pull options from related entities used to
+    // show nothing until every one of those round trips had returned.
     restoreFilters()
 
-    if (!filterOptionsLoaded) {
-      filterOptionsLoaded = true
-      await loadFilterOptions()
-    }
-
+    await invokeFilterAlterHook()
     await invokeListAlterHook()
 
     if (loadOnMount && manager) {
       loadItems()
+    }
+
+    if (!filterOptionsLoaded) {
+      filterOptionsLoaded = true
+      // Deliberately not awaited: the dropdowns fill in when they fill in.
+      void loadFilterOptions().catch((error) => {
+        console.warn('[qdadm] Failed to load filter options:', error)
+      })
     }
   })
 

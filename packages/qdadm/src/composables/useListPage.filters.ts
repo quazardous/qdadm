@@ -44,7 +44,6 @@ export interface UseListFiltersDeps {
   /** Thunks — resolved lazily, the targets are declared later in useListPage. */
   loadItems: () => void
   setSearch: (searchCfg: Partial<SearchConfig>) => void
-  invokeFilterAlterHook: () => Promise<void>
 }
 
 export interface UseListFiltersReturn {
@@ -85,7 +84,6 @@ export function useListFilters(deps: UseListFiltersDeps): UseListFiltersReturn {
     entityFilters,
     loadItems,
     setSearch,
-    invokeFilterAlterHook,
   } = deps
 
   const filtersMap = ref<Map<string, FilterConfig>>(new Map())
@@ -279,12 +277,49 @@ export function useListFilters(deps: UseListFiltersDeps): UseListFiltersReturn {
     }
   }
 
+  /**
+   * Fetch the remote options that populate filter dropdowns (#1934 lot 1).
+   *
+   * The loop used to be sequential: three filters with remote options cost
+   * three round trips in a queue, and the rows waited behind the sum. They
+   * are independent, so they now go together and cost the slowest.
+   *
+   * Deduplicated by `optionsEntity` on purpose. Sequential execution had one
+   * accidental virtue — two filters on the same entity meant one fetch and
+   * one cache hit — and firing them in parallel would turn that into two
+   * concurrent fetches. Trading latency for duplicate requests is not a win,
+   * so filters sharing an entity are still chained behind one another while
+   * different entities run side by side.
+   *
+   * This no longer invokes `filter:alter`: that hook establishes what the
+   * query will ask for, so it belongs with the other query-settling work in
+   * `onMounted`, not behind the network (#1934 lot 2).
+   */
   async function loadFilterOptions(): Promise<void> {
-    // Process filters configured directly via addFilter() (smart filter modes)
-    for (const [filterName, filterDef] of filtersMap.value) {
-      if (filterDef.options && filterDef.options.length > 1) continue
-      if (filterDef.optionsFromCache) continue
+    const pending = Array.from(filtersMap.value).filter(([, filterDef]) => {
+      if (filterDef.options && filterDef.options.length > 1) return false
+      if (filterDef.optionsFromCache) return false
+      return true
+    })
 
+    // One chain per source entity; everything else is a chain of its own.
+    const chains = new Map<string, Promise<void>>()
+
+    await Promise.all(
+      pending.map(([filterName, filterDef]) => {
+        const key = filterDef.optionsEntity ? `entity:${filterDef.optionsEntity}` : `own:${filterName}`
+        const previous = chains.get(key) ?? Promise.resolve()
+        const next = previous.then(() => loadOneFilterOptions(filterName, filterDef))
+        chains.set(key, next)
+        return next
+      })
+    )
+
+    // Trigger Vue reactivity
+    filtersMap.value = new Map(filtersMap.value)
+  }
+
+  async function loadOneFilterOptions(filterName: string, filterDef: FilterConfig): Promise<void> {
       try {
         let rawOptions: Array<{ label: string; value: unknown }> | null = null
 
@@ -357,13 +392,6 @@ export function useListFilters(deps: UseListFiltersDeps): UseListFiltersReturn {
       } catch (error) {
         console.warn(`[qdadm] Failed to load options for filter "${filterName}":`, error)
       }
-    }
-
-    // Invoke filter:alter hooks after all options are loaded
-    await invokeFilterAlterHook()
-
-    // Trigger Vue reactivity
-    filtersMap.value = new Map(filtersMap.value)
   }
 
   async function updateCacheBasedFilters(): Promise<void> {

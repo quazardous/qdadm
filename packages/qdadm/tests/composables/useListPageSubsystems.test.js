@@ -33,7 +33,7 @@ function makeFilterDeps(overrides = {}) {
     entityFilters: {},
     loadItems: vi.fn(),
     setSearch: vi.fn(),
-    invokeFilterAlterHook: vi.fn().mockResolvedValue(undefined),
+    // No invokeFilterAlterHook: useListFilters stopped taking one in #1934.
     ...overrides,
   }
 }
@@ -112,7 +112,14 @@ describe('useListFilters (#1195)', () => {
     expect(deps.searchQuery.value).toBe('dune')
   })
 
-  it('loadFilterOptions maps optionsEndpoint responses and calls the alter hook', async () => {
+  // The `and calls the alter hook` half of this test was dropped in #1934.
+  // `loadFilterOptions` used to invoke `filter:alter` once its network work
+  // was done, which put a hook that DECIDES WHAT THE QUERY ASKS FOR behind
+  // the fetching of dropdown contents — and made the rows wait for both.
+  // The hook now runs in `onMounted`, ahead of the first `loadItems()`, and
+  // `loadFilterOptions` is no longer awaited at all. The mapping half of the
+  // test is unchanged and still the point.
+  it('loadFilterOptions maps optionsEndpoint responses', async () => {
     const deps = makeFilterDeps({
       manager: { request: vi.fn().mockResolvedValue(['draft', 'published']) },
     })
@@ -126,7 +133,6 @@ describe('useListFilters (#1195)', () => {
       { label: 'Draft', value: 'draft' },
       { label: 'Published', value: 'published' },
     ])
-    expect(deps.invokeFilterAlterHook).toHaveBeenCalledOnce()
   })
 
   it('updateCacheBasedFilters builds options from loaded items', async () => {
