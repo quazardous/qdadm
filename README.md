@@ -57,6 +57,7 @@ npm create vite@latest my-admin -- --template vue-ts
 cd my-admin
 npm install @quazardous/qdadm primevue @primeuix/themes primeicons vue-router pinia
 npm install -D sass-embedded   # compiles qdadm's shipped .scss styles (or `sass`)
+npm install -D vanilla-jsoneditor  # only if you import @quazardous/qdadm/editors
 ```
 
 > The package is **`@quazardous/qdadm`** (scoped) — plain `qdadm` on npm is a

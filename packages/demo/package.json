@@ -20,7 +20,7 @@
     "@primeuix/themes": "^1.0.0",
     "primeicons": "^7.0.0",
     "pinia": "^2.3.0",
-    "vanilla-jsoneditor": "^0.23.0"
+    "vanilla-jsoneditor": "^3.13.0"
   },
   "devDependencies": {
     "@vitejs/plugin-vue": "^5.2.1",

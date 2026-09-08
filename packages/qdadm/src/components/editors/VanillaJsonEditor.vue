@@ -15,7 +15,17 @@
  */
 
 import { ref, watch, onMounted, onUnmounted, nextTick } from 'vue'
-import { JSONEditor, type Content, type ContentErrors, type OnChangeStatus, type Mode } from 'vanilla-jsoneditor'
+// vanilla-jsoneditor 3.x (#1901): the `new JSONEditor(...)` constructor is
+// deprecated — `JSONEditor` is now the Svelte component itself, and the
+// instance type is exported as `JsonEditor`.
+import {
+  createJSONEditor,
+  type JsonEditor,
+  type Content,
+  type ContentErrors,
+  type OnChangeStatus,
+  type Mode,
+} from 'vanilla-jsoneditor'
 import { buildJsonValidator, type Validator, type JSONSchema, type JsonValidatorOptions } from './jsonValidator'
 
 type JsonValue = Record<string, unknown> | unknown[] | string | null
@@ -74,8 +84,8 @@ const emit = defineEmits<{
   'error': [errors: ContentErrors]
 }>()
 
-const containerRef = ref<HTMLElement | null>(null)
-let editor: JSONEditor | null = null
+const containerRef = ref<HTMLDivElement | null>(null)
+let editor: JsonEditor | null = null
 // Flag to prevent onChange from firing during programmatic updates (instance-specific)
 const updatingFromProp = ref<boolean>(false)
 
@@ -102,7 +112,7 @@ onMounted(() => {
     json: parseValue(props.modelValue)
   }
 
-  editor = new JSONEditor({
+  editor = createJSONEditor({
     target: containerRef.value,
     props: {
       content,
