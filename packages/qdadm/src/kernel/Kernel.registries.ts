@@ -52,9 +52,14 @@ export function applyRegistryMethods(KernelClass: { prototype: Kernel }): void {
    * Create hook registry for Drupal-inspired extensibility
    */
   proto._createHookRegistry = function (this: Self): void {
+    // Idempotent, and built in the constructor (#1906 lot B1): replacing it in
+    // createApp() would orphan every hook registered before then — silently,
+    // which is the failure this lot exists to remove.
+    if (this.hookRegistry) return
+
     const debug = this.options.debug ?? false
     this.hookRegistry = createHookRegistry({
-      kernel: this.signals!.getKernel(),
+      kernel: this.signals.getKernel(),
       debug,
     })
   }
@@ -94,6 +99,9 @@ export function applyRegistryMethods(KernelClass: { prototype: Kernel }): void {
    * Create PermissionRegistry early so modules can register permissions
    */
   proto._createPermissionRegistry = function (this: Self): void {
+    // Idempotent, built in the constructor (#1906 lot B1) — see _createHookRegistry.
+    if (this.permissionRegistry) return
+
     this.permissionRegistry = new PermissionRegistry()
     this._registerCorePermissions()
   }
@@ -102,12 +110,12 @@ export function applyRegistryMethods(KernelClass: { prototype: Kernel }): void {
    * Register core system permissions provided by the framework
    */
   proto._registerCorePermissions = function (this: Self): void {
-    this.permissionRegistry!.register('auth', {
+    this.permissionRegistry.register('auth', {
       impersonate: 'Impersonate other users',
       manage: 'Manage authentication settings',
     })
 
-    this.permissionRegistry!.register('admin', {
+    this.permissionRegistry.register('admin', {
       access: 'Access admin panel',
       config: 'Edit system configuration',
     })
@@ -118,10 +126,6 @@ export function applyRegistryMethods(KernelClass: { prototype: Kernel }): void {
    */
   proto._setupSecurity = function (this: Self): void {
     const { security, entityAuthAdapter } = this.options
-
-    if (!this.permissionRegistry) {
-      this.permissionRegistry = new PermissionRegistry()
-    }
 
     if (!security) return
 
@@ -173,6 +177,9 @@ export function applyRegistryMethods(KernelClass: { prototype: Kernel }): void {
    * Create zone registry for extensible UI composition
    */
   proto._createZoneRegistry = function (this: Self): void {
+    // Idempotent, built in the constructor (#1906 lot B1) — see _createHookRegistry.
+    if (this.zoneRegistry) return
+
     const debug = this.options.debug ?? false
     this.zoneRegistry = createZoneRegistry({ debug })
   }
@@ -199,9 +206,15 @@ export function applyRegistryMethods(KernelClass: { prototype: Kernel }): void {
    * Create deferred registry for async service loading
    */
   proto._createDeferredRegistry = function (this: Self): void {
+    // Idempotent, built in the constructor (#1906 lot B1) — see _createHookRegistry.
+    if (this.deferred) return
+
     const debug = this.options.debug ?? false
+    // `this.signals` is never null now, so the defensive `?.` this line used
+    // to carry is gone. Less guarding, not more: that is the point of closing
+    // the window rather than warning about it.
     this.deferred = createDeferredRegistry({
-      kernel: this.signals?.getKernel() || null,
+      kernel: this.signals.getKernel(),
       debug,
     })
   }

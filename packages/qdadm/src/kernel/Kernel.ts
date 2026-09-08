@@ -94,18 +94,18 @@ export class Kernel {
    * window existed for no reason. Removing it beats warning about it
    * (ADR 0011).
    */
-  signals: SignalBus | null = null
+  signals!: SignalBus
   orchestrator: Orchestrator | null = null
-  zoneRegistry: ZoneRegistry | null = null
-  hookRegistry: HookRegistry | null = null
-  deferred: DeferredRegistry | null = null
+  zoneRegistry!: ZoneRegistry
+  hookRegistry!: HookRegistry
+  deferred!: DeferredRegistry
   eventRouter: EventRouter | null = null
   sseBridge: SSEBridge | null = null
   /** Routes external entity changes to cache invalidation (#1888). */
   liveEntityRouter: LiveEntityRouter | null = null
   layoutComponents: InternalLayoutComponents | null = null
   securityChecker: SecurityChecker | null = null
-  permissionRegistry: PermissionRegistry | null = null
+  permissionRegistry!: PermissionRegistry
   moduleLoader: ModuleLoader | null = null
   activeStack: ActiveStack | null = null
   stackHydrator: StackHydrator | null = null
@@ -181,11 +181,23 @@ export class Kernel {
 
     this.options = options
 
-    // The bus exists from here on (#1905 lot B). It has no dependencies, and
-    // the natural place to wire it is right after `new Kernel()` — so it must
-    // be usable there. _createSignalBus() is idempotent, so the later call in
-    // createApp() keeps this instance rather than orphaning its listeners.
+    // Everything that CAN exist from here on, does (#1905 lot B, #1906 lot B1).
+    //
+    // These five have no dependency beyond `options` and each other, and the
+    // natural place to wire a kernel is right after `new Kernel()` — so they
+    // have to be usable there. Someone reached for `kernel.signals` before
+    // createApp(), got `null`, and `null?.emit?.()` swallowed it without a
+    // word; there were seventeen properties shaped like that, and these are
+    // the ones that need not have been.
+    //
+    // Every creator is idempotent, so the later calls in createApp() keep
+    // these instances rather than orphaning whatever was registered on them
+    // in between — which would be the same silent failure wearing a new hat.
     this._createSignalBus()
+    this._createHookRegistry()
+    this._createZoneRegistry()
+    this._createDeferredRegistry()
+    this._createPermissionRegistry()
   }
 
   /**
