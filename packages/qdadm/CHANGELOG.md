@@ -1,5 +1,189 @@
 # Changelog
 
+## 2.19.0
+
+### Minor Changes
+
+- c5765df: A misspelled config key now says so, starting where it costs most
+
+  `sse` was the only configuration whose keys were checked. Every other one
+  accepted anything in silence — including the top level, where the cost is
+  highest: a misspelled key there does not degrade a feature, it removes a whole
+  **section** of configuration. `securty:` means no security config at all, so
+  every check falls through to its default and the app is open where its author
+  believed it closed. TypeScript catches that; consumers whose module files are
+  plain JavaScript get nothing.
+
+  Unknown keys are now reported for `KernelOptions` and for `security`, in the
+  shape #1898 established: the warning names what happens **instead**, because
+  "ignored" reads as "no effect" rather than "falls back to something else".
+
+  Suggestions got better in the process, and `sse` inherits it: the old matcher
+  only caught case differences and prefixes, so `securty` suggested nothing at
+  all. It now tolerates a missing, inserted, substituted or transposed letter.
+
+  Deliberately **not** validated: `debugBar`, whose extra keys are forwarded to
+  the DebugModule on purpose. A warning that cries wolf is worse than none, and
+  this is not "validate everything" — see
+  [ADR 0011](docs/adr/0011-no-silent-no-ops.md).
+
+  The known-key list is compared against the `KernelOptions` interface by a
+  test, so it cannot quietly fall behind and start warning about options that do
+  work.
+
+- 0bb730c: `./gen`'s runtime factory is renamed `createGeneratedManagers` — it collided with the root's own `createManagers`
+
+  Two public entry points exported the same name for different functions. The
+  root's `createManagers` takes `(config, context)` and returns a plain object;
+  `./gen`'s took a single generated config and returned a `Map`. Whoever reached
+  for the wrong import got no warning at all — the mistake surfaced at the first
+  `.get()`, several frames from its cause.
+
+  The documentation had absorbed the confusion too: `docs/gen.md` showed the
+  ROOT's signature under the `./gen` import, and promised a `Record` where a
+  `Map` comes back. Corrected.
+
+  Nothing breaks: `createManagers` is still exported from `./gen` as a
+  deprecated alias. New code should use `createGeneratedManagers`.
+
+  This is the naming half of the problem only. `./gen` remains a source entry
+  that Node cannot load on its own — splitting the build-time codegen from the
+  runtime factory is a larger change with, so far, no one asking for it.
+
+- b05d52c: One singularizer instead of two, and a navigation to a missing route now says so
+
+  `crud()` NAMED routes with six hand-rolled lines while `EntityManager.routePrefix`
+  LOOKED THEM UP through the vendored `pluralize`. Two engines, and they
+  disagreed: `crud()` posted `people-show` while `useListPage` asked for
+  `person-show`, so `router.hasRoute()` was false everywhere. No error at boot,
+  nothing at all until someone clicked and the row simply did not open.
+
+  They agreed on every regular plural — `books`, `categories`, `statuses`,
+  `boxes`, `addresses` — which is precisely why it went unnoticed. `crud()` now
+  uses the same engine as everything else.
+
+  **Who this changes.** Only entities whose plural is irregular: `people`,
+  `children`, `analyses`, `criteria`, `indices`, `men`, `feet`. For those, three
+  derived values change, not one:
+
+  | Derived from the entity name | Before        | After         |
+  | ---------------------------- | ------------- | ------------- |
+  | Route prefix                 | `people-show` | `person-show` |
+  | Parent route param           | `peopleId`    | `personId`    |
+  | Child foreign key            | `people_id`   | `person_id`   |
+
+  The last one goes **on the wire** to your backend, so read it carefully if you
+  have such an entity. An explicit `foreignKey`, `parentParam` or `routePrefix`
+  still wins over the derived value, as before.
+
+  An app with an irregular-plural entity cannot have been working without
+  pinning something already — the two sides disagreed, so navigation was broken.
+  If you pinned `routePrefix` on the EntityManager to match the old hand-rolled
+  output, remove the pin or align both sides.
+
+  **And the class of failure is no longer silent.** `goToShow`, `goToEdit` and
+  `goToCreate` now warn, once per route name, when the name they are about to
+  push does not exist — naming the name, the fact that nothing will happen, and
+  the prefix they derived it from. The check sits at the moment of navigation
+  rather than auditing prefixes upfront, because an entity that only ever
+  appears as a child of another legitimately has no routes under its own prefix,
+  and a warning nobody trusts is worse than none.
+
+- ad6a6be: Five Kernel registries now exist the moment the Kernel does
+
+  Seventeen public `Kernel` properties were `null` until `createApp()`, through
+  a window nothing documented. Someone wired `kernel.signals` right after
+  `new Kernel()`, got `null`, and `null?.emit?.()` swallowed it without a word.
+
+  Five of them had no reason to wait — they depend on nothing but `options` and
+  each other — and are now built in the constructor: `signals`, `hookRegistry`,
+  `zoneRegistry`, `deferred`, `permissionRegistry`. Every creator is idempotent,
+  so the calls still made during `createApp()` keep these instances rather than
+  orphaning whatever was registered on them in between.
+
+  **Their types drop `| null`.** That is the breaking part, and it is the point:
+  the contract stops advertising a danger that no longer exists. Code written as
+  `kernel.signals?.emit(...)` keeps working — optional chaining on a non-null
+  value is merely redundant — but a consumer whose types said `SignalBus | null`
+  and who branched on it will find that branch unreachable. `strictNullChecks`
+  users may see narrowing they relied on disappear.
+
+  Closing the window beats warning about it: this removes defensive code rather
+  than adding any. `_setupSecurity` no longer rebuilds a registry that might be
+  missing, and `_createDeferredRegistry` no longer reaches through `?.` for a
+  bus that is always there.
+
+  The properties that genuinely cannot exist before the app is mounted —
+  `vueApp`, `router`, `moduleLoader`, `orchestrator` and the rest — are
+  untouched. They are a different problem: the answer there is to refuse the
+  read with a message naming the moment, not to fake a value.
+
+- fef45ca: `vanilla-jsoneditor` is a real optional peer now — installing qdadm no longer drags in svelte
+
+  Every consumer inherited three `npm audit` advisories they could not resolve,
+  with **our package named** in their output, for a JSON editor most consoles
+  never open. Measured on a clean install of the packed tarball: a consumer now
+  gets no `vanilla-jsoneditor`, no `svelte`, and `npm audit` reports **0
+  vulnerabilities**.
+
+  Two declarations were wrong, in opposite directions:
+  - `vanilla-jsoneditor` sat in `optionalDependencies`, which npm installs **by
+    default** — "optional" there only means "do not fail the install if it
+    cannot be fetched". Everyone got it.
+  - It also had a `peerDependenciesMeta.optional` entry while not being a peer
+    dependency at all, so the intent "optional peer" was written but never
+    implemented.
+
+  It is now an optional `peerDependency`, where that meta entry finally takes
+  effect, matching the `/editors` subpath that was always opt-in.
+
+  **BREAKING in practice.** An app that imports `@quazardous/qdadm/editors`
+  without declaring `vanilla-jsoneditor` will fail to build after this upgrade.
+  That is the correct behaviour — it was depending on something it never asked
+  for — but it will not fail quietly:
+
+  ```bash
+  npm install -D vanilla-jsoneditor
+  ```
+
+  **The pin moves from `^0.23.0` to `^3.13.0`**, three majors on. That is what
+  clears the advisories: 0.23 pulls svelte 4 and its six XSS notices, 3.13 pulls
+  svelte 5 and is clean. The editor's own API changed with it —
+  `new JSONEditor(...)` is deprecated in favour of `createJSONEditor(...)` — and
+  qdadm's wrapper is migrated, so consumers using `VanillaJsonEditor` or
+  `JsonStructuredField` see no difference. Consumers calling the library
+  directly should read its 1.x/2.x/3.x notes.
+
+  Also fixed while in there: `peerDependenciesMeta.sass-embedded.optional` was
+  the **string** `"true"` rather than the boolean, so that optionality had never
+  applied either.
+
+- 343e387: `show` is a real layout now, instead of a name nothing could honour
+
+  `crud({ show })` has always registered its detail route with
+  `meta: { layout: 'show' }` — for a layout that existed nowhere. `LAYOUT_TYPES`
+  knew four names and `show` was not among them; the Kernel built its layout map
+  as a closed four-key literal, so a `layouts: { show }` an app passed was
+  dropped without a word; and no name pattern could reach it either. The
+  resolver returned `'show'`, found no component under that key, and fell back
+  to `base` — gracefully, which is exactly what made it invisible. The only way
+  to dress a detail page was to lie and declare it a form.
+
+  `show` is now a layout like the others, reachable four ways: `meta.layout`, a
+  `layouts: { show }` (or `ShowLayout`) on the kernel, a `*-show` route name, or
+  a `*Show` component name. The last two matter more than they look: an app that
+  declares its detail route by hand rather than through `crud({ show })` has no
+  `meta.layout` to go on, and they are its only path.
+
+  **Inert unless you ask for it.** With no `show` layout supplied, resolution
+  reaches `'show'`, finds `null`, and falls back to `base` exactly as before. No
+  existing page changes appearance. To use it, pass `layouts: { show }`.
+
+### Patch Changes
+
+- Updated dependencies [05a334c]
+  - @quazardous/qdcore@1.2.0
+
 ## 2.18.0
 
 ### Minor Changes
