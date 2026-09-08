@@ -1229,6 +1229,10 @@ export function useListPage<T = unknown>(config: UseListPageOptions<T>): UseList
     lazy: true,
     totalRecords: totalRecords.value,
     rows: pageSize.value,
+    // Where the paginator sits (#2145). Derived from `page` rather than held
+    // separately, so the highlighted page and the rows on screen cannot
+    // disagree — which is exactly what they did while this was unbound.
+    first: (page.value - 1) * pageSize.value,
     rowsPerPageOptions,
     sortField: sortField.value,
     sortOrder: sortOrder.value,

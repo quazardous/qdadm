@@ -104,6 +104,12 @@ const props = defineProps({
   rows: { type: Number, default: 10 },
   rowsPerPageOptions: { type: Array as PropType<number[]>, default: () => [10, 50, 100] },
   totalRecords: { type: Number, default: 0 },
+  /**
+   * Row offset of the page being shown — what positions the paginator (#2145).
+   * Required in lazy mode: the table is handed one page of rows and cannot
+   * infer which page they are.
+   */
+  first: { type: Number, default: 0 },
   lazy: { type: Boolean, default: false },
 
   // Sorting
@@ -438,6 +444,7 @@ function getFilterClass(filter: FilterConfig): Record<string, boolean> {
         :rows="rows"
         :rowsPerPageOptions="rowsPerPageOptions"
         :totalRecords="totalRecords"
+        :first="first"
         :lazy="lazy"
         :sortField="sortField ?? undefined"
         :sortOrder="sortOrder"

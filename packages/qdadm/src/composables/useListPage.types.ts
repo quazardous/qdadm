@@ -290,6 +290,15 @@ export interface ListPageProps {
   lazy: boolean
   totalRecords: number
   rows: number
+  /**
+   * Row offset of the current page — what POSITIONS the paginator (#2145).
+   *
+   * In lazy mode the table renders exactly the rows it is handed and has no
+   * way to know which page they are; `first` is the only thing that tells it.
+   * Without it, a restored page 2 showed page 2's rows under a paginator
+   * highlighting 1.
+   */
+  first: number
   rowsPerPageOptions: number[]
   sortField: string | null
   sortOrder: number
