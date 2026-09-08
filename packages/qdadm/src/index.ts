@@ -322,6 +322,19 @@ export {
   type LayoutMeta,
 } from './composables/useLayoutResolver'
 export { useSSEBridge, type UseSSEBridgeReturn } from './composables/useSSEBridge'
+
+// Route-state persistence (#2146) — where a route remembers what it shows.
+export {
+  UrlPersister,
+  isRouteStatePersister,
+  resolveRouteStatePersister,
+  createRouteStatePersisterFactory,
+  type RouteStatePersister,
+  type RouteStateScope,
+  type RouteStatePersisterSpec,
+  type RouteStatePersisterFactory,
+  type UrlPersisterOptions,
+} from './routeState'
 export {
   useDeferred,
   useDeferredValue,
