@@ -151,7 +151,7 @@ export class MockApiStorage<T extends EntityRecord = EntityRecord> extends IStor
     }
 
     // Apply search (shared pipeline, #1192)
-    items = searchItems(items, search as string | undefined)
+    items = searchItems(items, search)
 
     const total = items.length
 

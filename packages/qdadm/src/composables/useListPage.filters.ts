@@ -485,8 +485,16 @@ export function useListFilters(deps: UseListFiltersDeps): UseListFiltersReturn {
       if (stored[key] !== undefined) filterValues.value[key] = stored[key]
     }
 
-    if (typeof stored.search === 'string' && stored.search) {
-      searchQuery.value = stored.search
+    // NOT `typeof === 'string'` (#2147). A term that survives a numeric round
+    // trip — an order id, an invoice, a reference — comes back from the URL
+    // as a number, and a string-only guard dropped it: the box came back
+    // empty and the list unfiltered, so a shared link showed the recipient
+    // something other than what the sender searched for.
+    //
+    // Safe to stringify because the persister no longer coerces lossily: a
+    // value that could not be written back as the same text was left as text.
+    if (stored.search !== null && stored.search !== undefined && stored.search !== '') {
+      searchQuery.value = String(stored.search)
     }
 
     // The page must be restored HERE, before the first loadItems(): restoring

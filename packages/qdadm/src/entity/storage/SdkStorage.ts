@@ -302,7 +302,7 @@ export class SdkStorage<T extends EntityRecord = EntityRecord> extends IStorage<
       // this branch would paginate it as if it had been searched.
       items = sortItems([...items], sort_by, sort_order)
       items = filterItems(items, filters, { stringMatch: 'includes' })
-      items = searchItems(items, search as string | undefined)
+      items = searchItems(items, search)
       total = items.length
       items = paginate(items, page, page_size)
     }

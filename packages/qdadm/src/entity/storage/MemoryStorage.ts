@@ -68,7 +68,7 @@ export class MemoryStorage<T extends EntityRecord = EntityRecord> extends IStora
     // Apply the search term (#2147). `searchItems` has existed since #1192
     // and LocalStorage and MockApiStorage both called it; this one never did,
     // so a search box over a MemoryStorage entity typed into the void.
-    items = searchItems(items, search as string | undefined)
+    items = searchItems(items, search)
 
     // Apply filters (shared pipeline, #1192 — legacy substring semantics)
     items = filterItems(items, filters, { stringMatch: 'includes' })

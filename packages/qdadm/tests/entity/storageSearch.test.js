@@ -108,3 +108,25 @@ describe('the two that already worked keep working', () => {
     expect(result.items.map((r) => r.id)).toEqual([1])
   })
 })
+
+describe('a term that survived a numeric round trip (#2147)', () => {
+  it('still filters', async () => {
+    // `searchItems` required a string and returned the list untouched for
+    // anything else — so a reference number restored from a URL as a number
+    // searched nothing, silently.
+    const storage = new MemoryStorage({
+      initialData: [{ id: 1, ref: '9876667194' }, { id: 2, ref: '1112223334' }],
+    })
+
+    const result = await storage.list({ search: 9876667194 })
+
+    expect(result.items.map((r) => r.id)).toEqual([1])
+  })
+
+  it('ignores a term there is no sensible text for', async () => {
+    const storage = new MemoryStorage({ initialData: ROWS })
+    for (const nonsense of [{}, [], true, null, undefined]) {
+      expect((await storage.list({ search: nonsense })).items).toHaveLength(3)
+    }
+  })
+})

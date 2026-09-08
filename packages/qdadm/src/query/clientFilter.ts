@@ -103,9 +103,20 @@ export function filterItems<T>(
 }
 
 /** Substring match on every string field (the adapters' full-text search). */
-export function searchItems<T>(items: T[], search?: string | null): T[] {
-  if (!search || typeof search !== 'string' || !search.trim()) return items
-  const query = search.toLowerCase().trim()
+export function searchItems<T>(items: T[], search?: unknown): T[] {
+  // A NUMBER is a search term too (#2147). This used to require a string and
+  // return the list untouched for anything else — so searching an order id
+  // that had been through a numeric round trip filtered nothing, silently,
+  // which is the failure ADR 0011 forbids. Objects and booleans are still
+  // ignored: there is no sensible text for them.
+  const term =
+    typeof search === 'string'
+      ? search
+      : typeof search === 'number' || typeof search === 'bigint'
+        ? String(search)
+        : ''
+  if (!term.trim()) return items
+  const query = term.toLowerCase().trim()
   return items.filter((item) => {
     for (const value of Object.values(item as Record<string, unknown>)) {
       if (typeof value === 'string' && value.toLowerCase().includes(query)) {

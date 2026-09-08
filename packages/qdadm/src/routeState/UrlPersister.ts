@@ -158,6 +158,13 @@ function encodeValue(value: unknown): string {
  * It follows that a filter whose value is the STRING `'42'` comes back as the
  * NUMBER 42. That was already true before this seam existed; it is written
  * down here rather than left to be rediscovered.
+ *
+ * BUT ONLY WHEN NOTHING IS LOST (#2147). `'007'` is not the number 7 and
+ * `'9876667194123456789'` is not the float it would become — those are text
+ * that merely looks numeric, and coercing them hands the app a value the user
+ * never typed. So the coercion happens only when it round-trips exactly, and
+ * anything else stays the string it was. Reference numbers, invoice ids and
+ * phone numbers all live in that gap, and a search box is full of them.
  */
 function decodeValue(raw: unknown): unknown {
   if (Array.isArray(raw)) return raw.map(decodeValue)
@@ -166,7 +173,13 @@ function decodeValue(raw: unknown): unknown {
   if (raw === 'true') return true
   if (raw === 'false') return false
   if (raw === 'null') return null
-  if (raw !== '' && !Number.isNaN(Number(raw))) return Number(raw)
+  if (raw !== '' && !Number.isNaN(Number(raw))) {
+    const asNumber = Number(raw)
+    // The round-trip test IS the rule: if the number cannot be written back
+    // as the exact same text, the text was never a number.
+    if (String(asNumber) === raw) return asNumber
+    return raw
+  }
 
   const first = raw[0]
   if (first === '{' || first === '[') {

@@ -67,7 +67,7 @@ export class LocalStorage<T extends EntityRecord = EntityRecord> extends IStorag
     items = filterItems(items, filters, { stringMatch: 'exact' })
 
     // Apply search (shared pipeline, #1192)
-    items = searchItems(items, search as string | undefined)
+    items = searchItems(items, search)
 
     const total = items.length
 
