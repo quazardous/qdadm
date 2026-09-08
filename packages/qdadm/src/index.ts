@@ -237,10 +237,13 @@ export * from './composables/useJsonSyntax'
 export {
   useListPage,
   PAGE_SIZE_OPTIONS,
+  FILTER_TYPES,
   type UseListPageOptions,
   type UseListPageReturn,
   type ColumnConfig,
   type FilterConfig,
+  type FilterOptions,
+  type FilterType,
   type ActionConfig as ListActionConfig,
   type ResolvedAction,
   type HeaderActionConfig,

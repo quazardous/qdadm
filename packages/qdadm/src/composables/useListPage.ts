@@ -74,6 +74,8 @@ import type {
 export type {
   ColumnConfig,
   FilterConfig,
+  FilterOptions,
+  FilterType,
   ActionConfig,
   ResolvedAction,
   HeaderActionConfig,
@@ -107,6 +109,9 @@ import { createOrchestratorToast } from './useOrchestratorToast'
 // Re-export PAGE_SIZE_OPTIONS so existing consumers (qdadm/index.ts,
 // composables/index.ts) keep their import path.
 export { PAGE_SIZE_OPTIONS } from './useListPage.utils'
+// A VALUE, not only a type: a consumer guard should read this list rather
+// than copy it, so adding a type here never turns correct code red (#2147).
+export { FILTER_TYPES } from './useListPage.types'
 
 
 /**

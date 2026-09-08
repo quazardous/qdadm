@@ -77,9 +77,45 @@ export interface ColumnConfig {
 /**
  * Filter configuration
  */
-export interface FilterConfig {
-  name: string
-  type?: 'select' | 'multiselect' | 'date' | 'checkbox' | 'dropdown' | 'autocomplete'
+/**
+ * The filter controls qdadm knows how to render.
+ *
+ * Exported as a VALUE, not only a type, so a consumer's own guard can read
+ * this list instead of copying it — a copy goes stale the day a type is
+ * added and starts rejecting correct code.
+ */
+export const FILTER_TYPES = [
+  'select',
+  'multiselect',
+  'date',
+  'checkbox',
+  'dropdown',
+  'autocomplete',
+] as const
+
+export type FilterType = (typeof FILTER_TYPES)[number]
+
+/**
+ * Everything a filter can be given EXCEPT its name (#2147).
+ *
+ * Split out rather than written as `Omit<FilterConfig, 'name'>`, and the
+ * reason is not style. `FilterConfig` carries an index signature, so
+ * `keyof` includes `string`; `Exclude<string, 'name'>` is still `string`, and
+ * the `Omit` therefore collapsed to a bare `{ [x: string]: unknown }` —
+ * ERASING every declared property.
+ *
+ * `addFilter` took that type, so **no filter option was checked at all**:
+ * not `type`, not `optionLabel`, not `local_filter`. A consumer declared
+ * `type: 'text'`, TypeScript accepted it, and the filter rendered as an empty
+ * dropdown saying "No available options". Nothing was wrong at any single
+ * step, which is why it survived.
+ *
+ * Declaring the properties here and having `FilterConfig` extend it keeps the
+ * index signature — apps do stash their own keys — while the declared ones
+ * are checked again.
+ */
+export interface FilterOptions {
+  type?: FilterType
   placeholder?: string
   options?: Array<{ label: string; value: unknown }>
   default?: unknown
@@ -100,6 +136,10 @@ export interface FilterConfig {
   _cacheOptions?: boolean
   _optionsLoaded?: boolean
   [key: string]: unknown
+}
+
+export interface FilterConfig extends FilterOptions {
+  name: string
 }
 
 /**
@@ -411,7 +451,7 @@ export interface UseListPageReturn<T = unknown> {
   filterValues: Ref<Record<string, unknown>>
   filteredItems: ComputedRef<T[]>
   fromCache: Ref<boolean>
-  addFilter: (name: string, config: Omit<FilterConfig, 'name'>) => void
+  addFilter: (name: string, config: FilterOptions) => void
   removeFilter: (name: string) => void
   setFilterValue: (name: string, value: unknown) => void
   updateFilters: (values: Record<string, unknown>) => void

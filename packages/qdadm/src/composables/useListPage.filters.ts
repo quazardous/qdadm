@@ -8,7 +8,8 @@
  */
 import { ref, computed, type Ref, type ComputedRef } from 'vue'
 import { FilterQuery, type QueryOrchestratorLike } from '../query/FilterQuery'
-import type { FilterConfig, SearchConfig } from './useListPage.types'
+import { FILTER_TYPES } from './useListPage.types'
+import type { FilterConfig, FilterOptions, SearchConfig } from './useListPage.types'
 import type { RouteStatePersister } from '../routeState'
 import {
   SMART_FILTER_THRESHOLD,
@@ -63,7 +64,7 @@ export interface UseListFiltersReturn {
   filterValues: Ref<Record<string, unknown>>
   filters: ComputedRef<FilterConfig[]>
   hasActiveFilters: ComputedRef<boolean>
-  addFilter: (name: string, filterConfig: Omit<FilterConfig, 'name'>) => void
+  addFilter: (name: string, filterConfig: FilterOptions) => void
   removeFilter: (name: string) => void
   setFilterValue: (name: string, value: unknown) => void
   updateFilters: (newValues: Record<string, unknown>) => void
@@ -138,8 +139,39 @@ export function useListFilters(deps: UseListFiltersDeps): UseListFiltersReturn {
     )
   }
 
-  function addFilter(name: string, filterConfig: Omit<FilterConfig, 'name'>): void {
+  const warnedTypes = new Set<string>()
+
+  /**
+   * A filter type qdadm cannot render (#2147).
+   *
+   * `ListPage` is binary — an autocomplete, or a `Select` for everything
+   * else, unknown types included. So an invented type does not fail; it
+   * renders as a dropdown with no options, reading "No available options",
+   * and the user concludes there is nothing to choose. Reported by a consumer
+   * whose two `type: 'text'` filters had never filtered anything.
+   *
+   * Warned HERE because this is the last place the filter's NAME is known.
+   * Three screens later there is only an empty control and no way back to
+   * the declaration that caused it.
+   */
+  function warnIfUnknownType(name: string, type: unknown): void {
+    if (type === undefined || type === null) return
+    if (FILTER_TYPES.includes(type as (typeof FILTER_TYPES)[number])) return
+    const key = `${name}:${String(type)}`
+    if (warnedTypes.has(key)) return
+    warnedTypes.add(key)
+    console.warn(
+      `[qdadm] Filter "${name}" on "${entityName}" has type "${String(type)}", ` +
+        `which qdadm cannot render. It will fall back to a dropdown, and ` +
+        `unless you also give it options that dropdown will be empty — ` +
+        `"No available options" — rather than the control you asked for. ` +
+        `Known types: ${FILTER_TYPES.join(', ')}.`
+    )
+  }
+
+  function addFilter(name: string, filterConfig: FilterOptions): void {
     warnIfReservedName(name)
+    warnIfUnknownType(name, filterConfig?.type)
     filtersMap.value.set(name, {
       name,
       type: 'select',

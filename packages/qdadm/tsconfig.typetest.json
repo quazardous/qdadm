@@ -1,0 +1,17 @@
+// Type-level tests (#2147).
+//
+// The main tsconfig includes src/** only, so a `@ts-expect-error` under
+// tests/ was never read by vue-tsc: the assertion compiled to nothing and
+// would have passed just as happily with the bug back in place. This config
+// puts those files in front of the checker, which is the only thing that can
+// judge them.
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "declaration": false,
+    "declarationDir": null,
+    "rootDir": "."
+  },
+  "include": ["tests/types/**/*.ts", "src/**/*.d.ts"]
+}
