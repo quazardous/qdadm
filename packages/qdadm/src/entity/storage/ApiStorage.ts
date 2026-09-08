@@ -151,7 +151,7 @@ export class ApiStorage<T extends EntityRecord = EntityRecord> extends IStorage<
   }
 
   async list(params: ListParams = {}, context: RoutingContext | null = null): Promise<ListResult<T>> {
-    const { page = 1, page_size = 20, sort_by, sort_order, filters = {} } = params
+    const { page = 1, page_size = 20, sort_by, sort_order, search, filters = {} } = params
 
     // `paramMapping` covers the WHOLE outgoing query, pagination included
     // (#2113). It used to be applied to the filters only, so `status` could
@@ -160,9 +160,23 @@ export class ApiStorage<T extends EntityRecord = EntityRecord> extends IStorage<
     // storage for that alone. The names qdadm uses internally are its own
     // business; what goes on the wire is the backend's.
     //
+    // `search` goes out too (#2147). It is part of `ListParams` and always
+    // has been, but this method never read it — a user typed in the search
+    // box, the list rebuilt its query, and the term was dropped here without
+    // a word. The rows came back unfiltered and nothing anywhere said why,
+    // which is the silent no-op ADR 0011 exists to forbid.
+    //
+    // It travels under whatever name your backend uses, like every other key:
+    // `paramMapping: { search: 'q' }`.
+    //
+    // `searchFields` deliberately stays behind. It says which fields the
+    // FRONT should look at when filtering a cached page locally; a backend
+    // that searches knows its own columns, and shipping an array parameter
+    // nobody asked for would be a new surprise in place of the old one.
+    //
     // Filters keep their precedence over the pagination keys, exactly as
     // before: a filter named `page` still wins, for better or worse.
-    const outgoing = { page, page_size, sort_by, sort_order, ...filters }
+    const outgoing = { page, page_size, sort_by, sort_order, search, ...filters }
 
     const response = await this.client.get<Record<string, unknown>>(this.endpoint, {
       params: this._applyParamMapping(outgoing),

@@ -29,9 +29,33 @@ const jpClient = axios.create({
 // right; the overlay wins here because it is what makes the demo honest
 // about an API that accepts writes and persists none.
 class JsonPlaceholderStorage extends ApiStorage {
-  async list({ page = 1, page_size = 20, sort_by, sort_order, filters = {} } = {}) {
+  /**
+   * Adjust the rows before ANYTHING filters, searches or sorts them.
+   *
+   * The extension point that stops a subclass having to reimplement the
+   * pipeline to change one step (#2147). The todos overlay below needs its
+   * patches applied first — it used to get that by copying this whole method,
+   * which is why `search` support reached the copy and not the original, and
+   * the todos search box did nothing.
+   */
+  _transformItems(items) {
+    return items
+  }
+
+  async list({ page = 1, page_size = 20, sort_by, sort_order, filters = {}, search } = {}) {
     const response = await this.client.get(this.endpoint)
-    let items = response.data
+    let items = this._transformItems(response.data)
+    // The search runs HERE rather than on the server, for the same reason
+    // the filters do (#2147): the overlay below patches rows the user edited,
+    // and asking the server to search would search its own unpatched copy.
+    if (search && String(search).trim()) {
+      const needle = String(search).toLowerCase().trim()
+      items = items.filter((it) =>
+        Object.values(it).some(
+          (v) => typeof v === 'string' && v.toLowerCase().includes(needle)
+        )
+      )
+    }
     for (const [k, v] of Object.entries(filters)) {
       if (v == null || v === '') continue
       items = items.filter((it) => String(it[k]) === String(v))
@@ -70,6 +94,10 @@ const JSON_SERVER_DIALECT = {
     page_size: '_limit',
     sort_by: '_sort',
     sort_order: '_order',
+    // json-server's full-text search (#2147). Without this line qdadm sends
+    // `search=`, json-server has never heard of it, and the rows come back
+    // unfiltered — which is exactly what the demo did.
+    search: 'q',
   },
   responseTotalHeader: 'X-Total-Count',
 }
@@ -122,29 +150,17 @@ class TodosLocalOverlayStorage extends JsonPlaceholderStorage {
     return patch ? { ...item, ...patch } : item
   }
 
-  async list(params = {}) {
+  /**
+   * Patches go on BEFORE filtering, searching and sorting, so a todo whose
+   * `completed` the user toggled lands in the right bucket.
+   *
+   * This used to be a copy of the parent's whole `list()`, taken to get this
+   * one line in the right place. The copy then drifted: `search` was added to
+   * the original and the todos list went on ignoring it (#2147).
+   */
+  _transformItems(items) {
     const patches = this._readPatches()
-    // Fetch + filter/sort/slice via parent. Patches must be applied BEFORE
-    // filtering & sorting so a user-toggled `completed` lands in the right
-    // bucket — so we shadow the parent and inline the same pipeline.
-    const { page = 1, page_size = 20, sort_by, sort_order, filters = {} } = params
-    const response = await this.client.get(this.endpoint)
-    let items = response.data.map((it) => this._applyPatches(it, patches))
-    for (const [k, v] of Object.entries(filters)) {
-      if (v == null || v === '') continue
-      items = items.filter((it) => String(it[k]) === String(v))
-    }
-    if (sort_by) {
-      const dir = sort_order === 'desc' ? -1 : 1
-      items = [...items].sort((a, b) => {
-        const av = a[sort_by], bv = b[sort_by]
-        if (av === bv) return 0
-        return av > bv ? dir : -dir
-      })
-    }
-    const total = items.length
-    const start = (page - 1) * page_size
-    return { items: items.slice(start, start + page_size), total }
+    return items.map((it) => this._applyPatches(it, patches))
   }
 
   async get(id, context = null) {

@@ -358,16 +358,20 @@ class TasksManager extends EntityManager {
 
 ### Speaking your API's dialect
 
-qdadm queries with `page`, `page_size`, `sort_by`, `sort_order` and your filter
-names. Those are internal names; what goes on the wire is your backend's call.
-`paramMapping` renames the whole outgoing query — pagination and sort included,
-not just filters:
+qdadm queries with `page`, `page_size`, `sort_by`, `sort_order`, `search` and
+your filter names. Those are internal names; what goes on the wire is your
+backend's call. `paramMapping` renames the whole outgoing query — pagination,
+sort and search included, not just filters:
 
 ```js
 new ApiStorage({
   endpoint: '/posts',
   // json-server / JSONPlaceholder
-  paramMapping: { page: '_page', page_size: '_limit', sort_by: '_sort', sort_order: '_order' },
+  paramMapping: {
+    page: '_page', page_size: '_limit',
+    sort_by: '_sort', sort_order: '_order',
+    search: 'q',
+  },
   responseTotalHeader: 'X-Total-Count',
 })
 
@@ -380,6 +384,13 @@ new ApiStorage({
 Reading the total: `responseTotalHeader` for APIs that report it in a response
 header (it must be CORS-exposed to be readable from a browser),
 `responseTotalKey` for one in the body. The header wins when both are present.
+
+**The search box sends `search`.** If your backend calls it something else,
+map it — an unmapped `search` reaches an API that has never heard of it, which
+answers with everything, so the list looks like the search did nothing.
+
+`searchFields` stays on the front. It tells qdadm which fields to look at when
+filtering a cached page locally; a backend that searches knows its own columns.
 
 Filters keep precedence over the pagination keys: a filter named `page`
 overwrites the page number. Rename one of the two.

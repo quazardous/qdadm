@@ -1,7 +1,7 @@
 import { IStorage } from './IStorage'
 import type { EntityRecord, ListParams, ListResult, StorageCapabilities } from '../../types'
 import { StorageError } from './errors'
-import { sortItems, filterItems, paginate, defaultGenerateId } from '../../query/clientFilter'
+import { sortItems, filterItems, paginate, defaultGenerateId, searchItems } from '../../query/clientFilter'
 
 /**
  * MemoryStorage options
@@ -61,9 +61,14 @@ export class MemoryStorage<T extends EntityRecord = EntityRecord> extends IStora
   }
 
   async list(params: ListParams = {}): Promise<ListResult<T>> {
-    const { page = 1, page_size = 20, sort_by, sort_order = 'asc', filters = {} } = params
+    const { page = 1, page_size = 20, sort_by, sort_order = 'asc', filters = {}, search } = params
 
     let items = this._getAll()
+
+    // Apply the search term (#2147). `searchItems` has existed since #1192
+    // and LocalStorage and MockApiStorage both called it; this one never did,
+    // so a search box over a MemoryStorage entity typed into the void.
+    items = searchItems(items, search as string | undefined)
 
     // Apply filters (shared pipeline, #1192 — legacy substring semantics)
     items = filterItems(items, filters, { stringMatch: 'includes' })

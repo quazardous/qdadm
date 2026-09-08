@@ -1,6 +1,6 @@
 import { IStorage } from './IStorage'
 import type { EntityRecord, ListParams, ListResult, StorageCapabilities } from '../../types'
-import { sortItems, filterItems, paginate } from '../../query/clientFilter'
+import { sortItems, filterItems, paginate, searchItems } from '../../query/clientFilter'
 
 /**
  * SDK method result with data property
@@ -275,9 +275,13 @@ export class SdkStorage<T extends EntityRecord = EntityRecord> extends IStorage<
   }
 
   async list(params: ListParams = {}): Promise<ListResult<T>> {
-    const { page = 1, page_size = 20, sort_by, sort_order = 'asc', filters = {} } = params
+    const { page = 1, page_size = 20, sort_by, sort_order = 'asc', filters = {}, search } = params
 
-    const queryParams = { query: { page, page_size, sort_by, sort_order, ...filters } }
+    // `search` goes to the SDK with everything else (#2147). It was dropped
+    // here, so a search box over an SDK-backed entity typed into the void:
+    // the call went out without the term and the rows came back unfiltered,
+    // with nothing anywhere saying why.
+    const queryParams = { query: { page, page_size, sort_by, sort_order, search, ...filters } }
     const data = (await this._execute('list', queryParams)) as ListResult<T>
 
     let { items, total } = data
@@ -292,8 +296,13 @@ export class SdkStorage<T extends EntityRecord = EntityRecord> extends IStorage<
 
       // Shared pipeline (#1192) — original order preserved: sort, then
       // filter (substring semantics), then paginate.
+      //
+      // The search is applied here TOO, not only sent (#2147). An SDK that
+      // ignores the term would otherwise hand back the whole collection and
+      // this branch would paginate it as if it had been searched.
       items = sortItems([...items], sort_by, sort_order)
       items = filterItems(items, filters, { stringMatch: 'includes' })
+      items = searchItems(items, search as string | undefined)
       total = items.length
       items = paginate(items, page, page_size)
     }
