@@ -277,9 +277,9 @@ useListPage({
 | Rows per page | no | yes (always) | no |
 | Current page | yes (`syncUrlParams`) | no | yes |
 
-`syncUrlParams` carries **filters, search and the current page** — not the
-sort, which is remembered per entity in the session and never appears in the
-URL.
+Filters, search and the page go to the URL under the list's entity —
+`?offers.page=2` — so two lists on one route do not collide. The sort is
+remembered per entity in the session and never appears in the URL.
 
 The page is written only once it leaves 1, and removed again when it returns,
 so a pristine list leaves a clean link. Changing a filter resets it, since the
@@ -287,13 +287,16 @@ results are renumbered. A list URL is therefore shareable as what the sender
 was actually looking at, and leaving a list for a detail view and coming back
 returns to the same page.
 
-`page` and `search` are the URL's own keys: a filter named either of them
-collides, the list's own state wins, and qdadm says so once at declaration
-time. Rename the filter, or set `syncUrlParams: false`.
+`page` and `search` are qdadm's own keys within a scope: a filter named either
+of them collides, the list's own state wins, and qdadm says so once at
+declaration time. Rename the filter.
 
-An embedded list on a page that already owns the URL should set
-`syncUrlParams: false` — two synchronised lists on one route fight over
-`page`. See [page-compositions.md](./page-compositions.md).
+`syncUrlParams` governs **writing** — it has never stopped a query string
+being read, so a hand-typed deep link still restores.
+
+**To remember this somewhere other than the URL** — web storage, a cookie,
+nowhere at all, or a persister you wrote — see
+[route-state.md](./route-state.md).
 
 ---
 

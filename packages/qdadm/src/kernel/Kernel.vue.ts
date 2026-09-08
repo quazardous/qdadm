@@ -323,6 +323,9 @@ export function applyVueMethods(KernelClass: { prototype: Kernel }): void {
     }
 
     app.provide('qdadmHooks', this.hookRegistry)
+    // The app-wide route-state default (#2146). Provided even when unset, so
+    // a list can tell "nobody chose" from "somebody chose and it was null".
+    app.provide('qdadmRouteState', this.options.routeState ?? null)
     app.provide('qdadmDeferred', this.deferred)
     app.provide('qdadmLayoutComponents', this.layoutComponents)
     // Surface PrimeVue presence so host-rendered <QdadmRoot /> can

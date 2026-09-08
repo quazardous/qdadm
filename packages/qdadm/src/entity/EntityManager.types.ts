@@ -16,6 +16,7 @@ import type { HookRegistry } from '../hooks/HookRegistry'
 
 // Circular type import — safe because `import type` is erased at runtime
 import type { EntityManager } from './EntityManager'
+import type { RouteStatePersister } from '../routeState'
 
 // ============ INTERNAL TYPES ============
 
@@ -235,6 +236,16 @@ export interface EntityManagerOptions<T extends EntityRecord = EntityRecord> {
   badges?: (entity: T) => EntityBadge[]
   fields?: Record<string, FieldConfig>
   localFilterThreshold?: number | null
+  /**
+   * Where lists of this entity remember their state (#2146): a slug the
+   * framework knows, or a persister instance.
+   *
+   * A property of the ENTITY, so every screen showing it agrees — a list of
+   * audit rows nobody links to can say `local_storage` once here rather than
+   * on each of the four pages that render it. A list's own `routeState`
+   * still wins; the kernel default applies when neither says anything.
+   */
+  routeState?: string | RouteStatePersister
   /** Default null placement for local sorts: 'first' | 'last' | 'low' | 'high' (default 'last', #1222). Field-level nullSort wins. */
   nullSort?: NullSortMode
   /** Cache TTL in milliseconds (0=disabled, -1=infinite, >0=TTL). Overrides global, overridden by storage. */

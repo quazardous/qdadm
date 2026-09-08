@@ -361,8 +361,8 @@ export function applyRegistryMethods(KernelClass: { prototype: Kernel }): void {
     'features', 'hashMode', 'homeRoute', 'i18n', 'layouts', 'managerRegistry',
     'managerResolver', 'managers', 'moduleDefs', 'modules', 'modulesOptions',
     'notifications', 'onAuthExpired', 'pages', 'parentParamMode', 'primevue',
-    'root', 'routeParamResolver', 'routePrefix', 'sectionOrder', 'security',
-    'sse', 'storageResolver', 'toast', 'warmup',
+    'root', 'routeParamResolver', 'routePrefix', 'routeState', 'sectionOrder',
+    'security', 'sse', 'storageResolver', 'toast', 'warmup',
   ])
 
   proto._validateKernelOptions = function (this: Self): void {

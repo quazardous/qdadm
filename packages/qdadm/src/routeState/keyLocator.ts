@@ -53,3 +53,32 @@ export const namespacedKeyLocator: RouteStateKeyLocator = {
   },
   looksScoped: (storedKey) => storedKey.startsWith('qdadm:'),
 }
+
+/**
+ * How a SCOPE becomes a stored name, for media that keep one entry per scope.
+ *
+ * The cookie jar is the case: a cookie rides on every request, so a scope
+ * gets one cookie holding a blob rather than one per key. There is no key
+ * half to encode, which is why this is its own small interface rather than
+ * `RouteStateKeyLocator` called with a key nobody uses.
+ */
+export interface RouteStateScopeLocator {
+  encode(scope: string): string
+  /** The bare scope, or null when this stored name belongs to someone else. */
+  decode(storedName: string): string | null
+  readonly name: string
+}
+
+/**
+ * `offers` → `qdadm_offers`. The default in a cookie jar.
+ *
+ * Underscores rather than the colons web storage uses: a cookie NAME is an
+ * RFC 6265 token, and `:` is a separator there. `qdadm:offers` is not a
+ * cookie name a server is obliged to accept.
+ */
+export const underscoreScopeLocator: RouteStateScopeLocator = {
+  name: 'underscore',
+  encode: (scope) => `qdadm_${scope}`,
+  decode: (storedName) =>
+    storedName.startsWith('qdadm_') ? storedName.slice('qdadm_'.length) : null,
+}

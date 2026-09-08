@@ -51,6 +51,7 @@ export type {
 } from './EntityManager.types'
 
 // Import concrete types needed in method signatures
+import type { RouteStatePersister } from '../routeState'
 import type {
   RoutingContext,
   PresaveContext,
@@ -88,6 +89,8 @@ export class EntityManager<T extends EntityRecord = EntityRecord> {
   protected _fields: Record<string, FieldConfig>
 
   localFilterThreshold: number | null
+  /** Where lists of this entity remember their state (#2146); null = inherit. */
+  routeState: string | RouteStatePersister | null
   /** Default null placement for local sorts (#1222); field-level nullSort wins. */
   nullSort?: NullSortMode
   protected _cacheTtlMs: number | null
@@ -163,6 +166,7 @@ export class EntityManager<T extends EntityRecord = EntityRecord> {
       badges = null,
       fields = {},
       localFilterThreshold = null,
+      routeState = null,
       nullSort,
       cacheTtlMs = null,
       asymmetric = false,
@@ -196,6 +200,7 @@ export class EntityManager<T extends EntityRecord = EntityRecord> {
     this._fields = fields
 
     this.localFilterThreshold = localFilterThreshold
+    this.routeState = routeState
     this.nullSort = nullSort
     this._cacheTtlMs = cacheTtlMs
     this._asymmetric = asymmetric

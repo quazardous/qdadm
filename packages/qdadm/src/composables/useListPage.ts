@@ -222,6 +222,10 @@ export function useListPage<T = unknown>(config: UseListPageOptions<T>): UseList
   // Session key for filter persistence (based on entity name)
   const filterSessionKey = entity || entityName
 
+  // App-wide route-state default (#2146). Null when the kernel said nothing,
+  // or when there is no kernel at all — which is the case in tests.
+  const kernelRouteState = inject<string | RouteStatePersister | null>('qdadmRouteState', null)
+
   // Entity filters registry (optional, provided by consuming app)
   const entityFilters = inject<Record<string, { search?: SearchConfig; filters?: FilterConfig[] }>>(
     'qdadmEntityFilters',
@@ -610,11 +614,21 @@ export function useListPage<T = unknown>(config: UseListPageOptions<T>): UseList
   // Naming a persister is a deliberate choice about a medium, so it answers
   // the URL flag rather than obeying it: `routeState` set means read AND
   // write, whatever `syncUrlParams` says about the query string.
+  //
+  // WHO DECIDES, most specific first: this list, then the entity (so every
+  // screen showing it agrees), then the kernel, then the URL. Each level
+  // exists because somebody has to be able to say it at that level — a list
+  // is a screen's decision, an entity's medium is a modelling one, and the
+  // app-wide floor belongs in the bootstrap.
   const routeStateScope = entity || entityName
-  const persister: RouteStatePersister = routeState
-    ? resolveRouteStatePersister(routeState, createRouteStatePersisterFactory({ router, route }))
+  const chosenRouteState = routeState ?? manager.routeState ?? kernelRouteState
+  const persister: RouteStatePersister = chosenRouteState
+    ? resolveRouteStatePersister(
+        chosenRouteState,
+        createRouteStatePersisterFactory({ router, route })
+      )
     : new UrlPersister({ router, route })
-  const routeStateWrites = routeState ? true : syncUrlParams
+  const routeStateWrites = chosenRouteState ? true : syncUrlParams
 
   const listFilters = useListFilters({
     entityName,

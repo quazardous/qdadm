@@ -27,6 +27,7 @@
 import type { EntityBadge } from './EntityManager.types'
 import type { SignalBus } from '../kernel/SignalBus'
 import type { EntityAuthAdapter } from './auth/EntityAuthAdapter'
+import type { RouteStatePersister } from '../routeState'
 
 // ─── Base ────────────────────────────────────────────────────────────────────
 
@@ -84,6 +85,16 @@ export interface EntityManagerRead<T = unknown> extends EntityManagerBase<T>, En
   getFieldConfig: (name: string) => unknown | null
   /** Config-carrying property: always present on the class, VALUE nullable */
   localFilterThreshold?: number | null
+  /**
+   * Where lists of this entity remember their state (#2146): a slug the
+   * framework knows, or a persister instance.
+   *
+   * A property of the ENTITY, so every screen showing it agrees — a list of
+   * audit rows nobody links to can say `local_storage` once here rather than
+   * on each of the four pages that render it. A list's own `routeState`
+   * still wins; the kernel default applies when neither says anything.
+   */
+  routeState?: string | RouteStatePersister
 }
 
 // ─── CRUD ────────────────────────────────────────────────────────────────────

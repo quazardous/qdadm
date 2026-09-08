@@ -12,6 +12,7 @@ import type { EntityAuthAdapter } from '../entity/auth/EntityAuthAdapter'
 import type { RoleProvider } from '../security/RolesProvider'
 import type { I18nOptions } from '../i18n/types'
 import type { ApiClientSource } from '../api/apiClient'
+import type { RouteStatePersister } from '../routeState'
 
 /**
  * Auth adapter interface (app-level authentication)
@@ -218,6 +219,21 @@ export interface KernelOptions {
   defaultEntityCacheTtlMs?: number
   eventRouter?: RoutesConfig
   sse?: SSEConfig
+  /**
+   * Where screens remember their route state by default (#2146): a slug the
+   * framework knows (`'url'`, `'local_storage'`, `'cookie'`, `'memory'`,
+   * `'none'`), or a persister instance.
+   *
+   * The app-wide floor. An entity overrides it for every screen showing that
+   * entity; a single list overrides it for itself. Unset means `'url'`, which
+   * is the only medium where what you are looking at is also what you can
+   * send someone.
+   *
+   * An unknown slug throws at list construction rather than falling back —
+   * a persistence choice that quietly does something else is the failure
+   * ADR 0011 forbids.
+   */
+  routeState?: string | RouteStatePersister
   debugBar?: DebugBarConfig
   notifications?: NotificationsConfig
   toast?: Record<string, unknown>
