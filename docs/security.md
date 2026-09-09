@@ -181,6 +181,42 @@ Signal-driven authentication events:
 | `auth:impersonate` | `{ target, original }` | Start impersonation |
 | `auth:impersonate:stop` | `{ original }` | End impersonation |
 
+`auth:login` is emitted by **`LoginPage`** — by the screen, not by the change
+of authentication state. If you replace that screen with your own, emit it
+yourself once the session is established:
+
+```js
+orchestrator.signals.emit('auth:login', { user })
+```
+
+Several things wait on it: the `auth:ready` deferred, the re-arming of the
+expired-session guard, role loading in a `PersistableRolesProvider`, and the
+live-entity stream ([live-entities.md](./live-entities.md)). None of them
+fails loudly when it never arrives — they simply never happen.
+
+### Restoring a session before the app mounts
+
+`isAuthenticated()` is **synchronous**. The route guard calls it and decides in
+the same breath, so there is no moment at which the framework can await a
+network round trip on your behalf.
+
+An app whose session lives in a refreshable token must therefore settle that
+question **before mounting**:
+
+```js
+authAdapter.revalidate().then(() => {
+  kernel.createApp().mount('#app')
+})
+```
+
+Mount first and the guard runs against a session that has not been restored
+yet: the user lands on `/login?session_lost=1` with a perfectly valid
+credential in storage, and nothing anywhere says why.
+
+The framework cannot do this for you, and deliberately does not try — only the
+app knows whether it would rather show a blank screen for 200 ms or a login
+form it will immediately replace.
+
 ### Login Error vs Session Expired
 
 **Important distinction:**

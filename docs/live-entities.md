@@ -30,6 +30,37 @@ An event arriving for an undeclared entity logs a one-off warning in debug mode
 rather than disappearing, because a silently dropped frame is the hardest kind
 of bug to find.
 
+## When the stream connects
+
+The bridge does not connect on its own. It waits for a **session**, by two
+routes, and knowing which one covers you is worth thirty seconds:
+
+| Entering a session | What connects the stream |
+|---|---|
+| A valid session at boot | the bridge connects directly, on startup |
+| A login through `LoginPage` | the `auth:login` signal |
+| A login through **your own** screen | **nothing — unless you emit `auth:login`** |
+
+The third row is the one that bites. `auth:login` is emitted by `LoginPage`
+and by nothing else, so an app with its own login screen connects the stream
+on a reload — where the first row catches it — and never after an interactive
+login. The symptom is that pushed updates simply do not arrive, for one
+session, with no error anywhere.
+
+If you replaced the login screen, emit the signal once the session is
+established (see [security.md](./security.md#auth-signals)):
+
+```js
+orchestrator.signals.emit('auth:login', { user })
+```
+
+`connectOnSignal` renames that trigger, and `connectOnSignal: null` says you
+drive `connect()` yourself:
+
+```js
+sse: { url: '/events', entities: ['runs'], connectOnSignal: 'session:ready' }
+```
+
 ## The backend contract
 
 ```
