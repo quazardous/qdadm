@@ -1,5 +1,383 @@
 # Changelog
 
+## 2.20.0
+
+### Minor Changes
+
+- c76b488: Route state: five media to choose from, and three levels to choose at
+
+  The seam had one persister. It now has the set, and somewhere to declare it
+  other than on every list.
+
+  ```js
+  new Kernel({ routeState: 'url' }) // the app-wide floor
+  ctx.entity('audit_rows', { routeState: 'local_storage' }) // every screen showing it
+  useListPage({ entity: 'offers', routeState: 'none' }) // this screen only
+  ```
+
+  Most specific wins: **the list → the entity → the kernel → the URL.** Each
+  level exists because somebody has to be able to say it there — a screen's
+  medium is a screen's decision, an entity's is a modelling one, and an app-wide
+  floor belongs in the bootstrap.
+
+  | Slug              | Medium               | Reach for it when                                |
+  | ----------------- | -------------------- | ------------------------------------------------ |
+  | `url`             | query string         | the state is worth sending someone — the default |
+  | `local_storage`   | `localStorage`       | worth keeping, not worth linking                 |
+  | `session_storage` | `sessionStorage`     | worth keeping until the tab closes               |
+  | `cookie`          | one cookie per scope | the **server** needs to read it                  |
+  | `memory`          | a shared map         | survives navigation, not a reload                |
+  | `none`            | nowhere              | this screen forgets, and says so                 |
+
+  Each medium keeps the same contract and differs only where the medium really
+  does:
+  - **The cookie stores one blob per scope**, not one entry per key, because
+    every cookie rides on every request to your origin — eight filters must not
+    become eight cookies on every image the page loads. It is also the only one
+    worth reaching for when the _server_ reads the state; otherwise it is wire
+    cost for nothing.
+  - **Memory outlives the persister that wrote it.** A list rebuilds its
+    persister on mount, so state held on the instance would die on exactly the
+    navigation this is meant to survive.
+  - **Web storage that throws does not take the screen down.** Private browsing,
+    blocked site data and a full quota all raise rather than return null; qdadm
+    warns once, naming the medium, and the list keeps working. Announced, so not
+    the silent no-op [ADR 0011](docs/adr/0011-no-silent-no-ops.md) forbids.
+  - **`none` is reached only by name.** Nothing falls back to it and an unknown
+    slug still throws — it does nothing because somebody wrote it down.
+
+  **Values keep their type outside the URL.** A query string coerces, because
+  people read it: `?level=42` returns the number 42. The other media store JSON,
+  so a filter holding the _string_ `'42'` stays a string there. It matters to
+  code comparing with `===`.
+
+  Key naming is overridable per medium, since the right scheme differs by
+  medium: dots in a query string, colons in web storage, and underscores in a
+  cookie — where a name is an RFC 6265 token that may contain neither.
+
+  New doc: [route-state.md](docs/route-state.md).
+
+- 911f150: The default is composed: the page in the link, the row count out of it
+
+  Lot C. The seam's signature was chosen so composition would be expressible
+  without changing it, and qdadm's own default turned out to be the case that
+  needed it.
+
+  Filters, search and the page belong in a link — that is the whole argument for
+  the URL being the default. **Rows-per-page does not.** It is a comfort setting
+  somebody picked once, and a link carrying it would impose the sender's row
+  count on whoever opens it. So the default routes by key:
+
+  ```js
+  new CompositePersister({
+    fallback: new UrlPersister({ router, route }),
+    keys: { pageSize: { persister: new CookiePersister(), scope: 'app' } },
+  })
+  ```
+
+  Which is what qdadm was already doing, by accident of where the code happened
+  to live. It is now a decision you can read, override, or copy.
+
+  **Your saved row count survives.** It moves from a bare `qdadm_pageSize`
+  cookie to a `qdadm_app` blob; the old cookie is read when the new store has
+  nothing, and retired on the first change. Verified in a browser both ways —
+  upgrade with only the legacy cookie present, and a reload after a change.
+
+  ⚠️ **`routeState: 'url'` is not "the default, stated out loud".** It is a pure
+  URL persister, so the row count joins the query string. Say `'default'` if you
+  meant the default.
+
+  Composing your own works the same way — route any key to any persister, and
+  pin it to a fixed `scope` when it is one setting across the app rather than one
+  per screen. Two behaviours worth knowing:
+  - **A routed key wins over the fallback.** A stale `?pageSize=50` somebody
+    left in a URL does not beat the cookie that owns the setting.
+  - **Clearing a list leaves pinned keys alone.** "Clear this list's filters" is
+    not a request to reset an app-wide row count — otherwise one list's clear
+    button would change every other list's.
+
+  An invalid stored size falls back to the default rather than being honoured:
+  the value arrives from a cookie or query string anyone can edit, and a row
+  count the paginator cannot offer would leave its dropdown blank.
+
+- 36c7bec: A seam for route-state persistence: `RouteStatePersister`
+
+  Where a route remembers what it is showing is now one interface with one rule,
+  instead of five unrelated sites that never met: filters in `sessionStorage`
+  AND the URL, sort in `sessionStorage` only, page size in a year-long global
+  cookie, the current page nowhere at all until recently. Each was invented
+  where it happened to be needed.
+
+  The list is one **consumer** of routing state, not the subject — a detail
+  page's active tab and a dashboard's date range are the same problem, and would
+  each invent their own answer without this.
+
+  ```js
+  import { UrlPersister, resolveRouteStatePersister } from '@quazardous/qdadm'
+  ```
+
+  A handler is a **slug or an instance**, the same convention `storage` already
+  follows, so consumers meet one shape rather than two. An unknown slug
+  **throws** rather than quietly falling back to the URL — a persistence choice
+  that silently does something else is the failure
+  [ADR 0011](docs/adr/0011-no-silent-no-ops.md) forbids, and the one this seam
+  exists to clean up after.
+
+  `UrlPersister` is the default medium, because it is the only one where "what I
+  am looking at" is also "what I can send you". It goes through the router the
+  app already has, with `replace`, and touches no route declaration. **Keys are
+  namespaced by scope** (`offers.page=2`), which is what will let two lists share
+  a route — the collision `page-compositions.md` currently tells people to avoid
+  by switching persistence off entirely.
+
+  **Nothing consumes it yet.** `useListPage` keeps its current behaviour
+  unchanged; wiring it up is the next step, deliberately separate so that the
+  seam can be judged before anything moves onto it.
+
+  Chrome preferences stay out by design: a collapsed sidebar belongs to the
+  person, not the route — sending someone a link must not fold their menu.
+
+- 4a96272: `useListPage` remembers its state through the seam — and its URL keys are now scoped
+
+  The list stops writing the query string by hand and goes through
+  `RouteStatePersister`. The default is still the URL and still `replace`, so
+  paging is still not a history step of its own.
+
+  **What you will see change: the keys carry the entity.** A list of offers
+  writes `?offers.page=2&offers.search=nginx`, not `?page=2&search=nginx`. That
+  is the point — it is what lets two lists live on one route without fighting
+  over a single `page` parameter, the collision `page-compositions.md` used to
+  tell people to dodge by turning persistence off.
+
+  **Links written before this keep working.** An unprefixed `?page=2` is still
+  read when the scope has nothing of its own, so bookmarks and links pasted into
+  tickets land where their sender was. The first write retires the flat key
+  rather than leaving two — and so does clearing the filters, which previously
+  would have left the address claiming a page the list was no longer showing.
+
+  **How to tell whether this reaches your code at all**, in one sweep — a
+  consumer who never reads the address bar for list state is entirely unaffected,
+  and most are:
+
+  ```
+  route.query / $route.query      any read of `page`, `search` or a filter name?
+  location.search / location.href same
+  searchParams                    same — ignore the ones BUILDING an API request
+  ```
+
+  Hits on a list key mean an assertion or a feature of yours expects the flat
+  shape and will now read `null`; no hits mean nothing to do. Worth two minutes
+  before upgrading rather than finding out from a test that looks like a
+  regression — a check for `page` returning `null` is indistinguishable from the
+  fix having failed. Read both forms if you need to straddle the versions:
+  `q.get('offers.page') ?? q.get('page')`.
+
+  (That sweep is BookShepherd's, from qdadm#2154, generalised here with thanks.)
+
+  Choose the medium per list:
+
+  ```js
+  useListPage({ entity: 'offers', routeState: 'url' }) // slug…
+  useListPage({ entity: 'offers', routeState: myPersister }) // …or instance
+  ```
+
+  `syncUrlParams` keeps the meaning it always had, which is narrower than its
+  name suggests: it governs **writing**. It has never stopped a query string
+  being read, and a hand-typed deep link still restores the list. Setting
+  `routeState` is a deliberate choice of medium, so it answers that flag rather
+  than obeying it.
+
+  A filter named `page` or `search` still warns. The scope separates this list
+  from _other_ lists, not from qdadm's own keys, so within one list the
+  collision is real and the warning still names what wins.
+
+- 7d45b6c: Route-state keys go through an overridable locator
+
+  Hard-coding `offers.page` inside `UrlPersister` would make the naming scheme a
+  property of qdadm rather than of the app. `RouteStateKeyLocator` — `encode`,
+  `decode`, `looksScoped` — moves that decision out, **one per persister type**,
+  because the right scheme differs by medium: dots read well in a query string,
+  colons are the convention in web storage.
+
+  ```js
+  new UrlPersister({ router, route, keyLocator: myScheme })
+  ```
+
+  `decode` returns null for a key belonging to somebody else. That is what lets
+  a persister pick its own entries out of a medium it shares with everything
+  else, and it is the whole reason scopes exist.
+
+  **Old flat links keep working.** qdadm wrote `?page=2` unprefixed before this
+  seam, and those links are in bookmarks and pasted into tickets. `UrlPersister`
+  reads unprefixed keys when its scope has none of its own, so such a link still
+  lands on the right page instead of silently showing page 1. Writes are always
+  prefixed, so a link refreshes itself the first time anyone touches the list,
+  and the legacy key is retired then rather than left to shadow its replacement.
+
+  The fallback reads only keys **nobody** has scoped: `jobs.page` belongs to the
+  jobs list, and handing it to another one would be worse than ignoring it. Set
+  `readFlatFallback: false` to drop the compatibility now; it goes away on its
+  own in a later version.
+
+  Still consumed by nothing — `useListPage` is unchanged.
+
+- ffc1579: The sort joins the seam — and stays exactly where it was
+
+  The last of the five persistence sites moves behind `RouteStatePersister`.
+  Nothing you can observe changes, and that is the decision, not an accident.
+
+  Moving the sort to the URL was the tempting option: a list link would finally
+  carry its ordering. It would also mean the sort no longer survives opening a
+  clean `/offers`, which it always has — a gain nobody asked for against a loss
+  every existing user would feel. So the default composition routes `sort` back
+  to `sessionStorage`, per list, and the seam is worth having without buying it
+  with that trade.
+
+  What actually changed is the key: `qdadm_sort_offers` becomes
+  `qdadm:offers:sort`. **A sort saved before the upgrade is still read** when
+  the seam has nothing, and retired once carried over — the same migration
+  rows-per-page got.
+
+  The direction is stored only when there is a field to apply it to. An order on
+  its own is not partial state, it is meaningless state, and it used to leave a
+  `sortOrder` sitting in every unsorted list's namespace.
+
+  `persistSort: false` still turns it all off.
+
+  With this the table in `crud.md` finally describes a design rather than an
+  accumulation: filters, search and page in the query string; rows-per-page in
+  an app-wide cookie; sort in the session. One interface, three media, each
+  chosen for a stated reason.
+
+### Patch Changes
+
+- a62e15c: A search term that looks like a number survives the round trip
+
+  Found while a consumer was wiring their search box: their offers list is
+  searched by **reference number**, and that turns out to be the case the URL
+  round trip destroyed.
+
+  Three parts, each silently dropping the term further along:
+
+  **The persister coerced too eagerly.** `?level=42` coming back as the number
+  42 is right — a query string is meant to be read by people. `'007'` coming
+  back as 7 is not, and neither is a 19-digit id coming back as a float. The
+  coercion now happens **only when it round-trips exactly**: if the number
+  cannot be written back as the same text, the text was never a number. Order
+  ids, invoices, phone numbers and reference prefixes all live in that gap.
+
+  **`restoreFilters` required a string.** A term that _did_ survive the numeric
+  round trip came back as a number and the guard dropped it, so the box
+  reopened empty and the list unfiltered — a shared link showed the recipient
+  something other than what the sender searched for.
+
+  **`searchItems` ignored anything but a string**, returning the whole list
+  untouched. So even a term that reached a storage as a number filtered nothing,
+  without a word. Numbers now search; objects and booleans are still ignored,
+  because there is no sensible text for them.
+
+  ⚠️ **Behaviour change worth knowing:** a query parameter whose text cannot be
+  reproduced from its number now stays a **string** where it used to become a
+  lossy number. `?ref=007` gives `'007'`, not `7`. If you were relying on that
+  coercion, you were relying on losing information — but check any `===`
+  comparison against a number.
+
+- 54d49ae: The search box actually searches
+
+  Reported against the demo's todos list; it was every list with a search box
+  over three of the five built-in storages.
+
+  `search` has been part of `ListParams` since the beginning. **Three storages
+  never read it.** `ApiStorage` dropped it before building the request,
+  `MemoryStorage` and `SdkStorage` dropped it before filtering. A user typed, the
+  list rebuilt its query, the term vanished, the rows came back unfiltered — and
+  nothing anywhere said why. `LocalStorage` and `MockApiStorage` had always
+  worked, which is what kept it hidden.
+
+  The helper they all needed, `searchItems`, had existed since #1192. Two
+  storages called it. This was not a missing capability; it was a missing call,
+  in the places nobody checked.
+
+  **`ApiStorage` now sends the term**, under whatever name your backend uses:
+
+  ```js
+  new ApiStorage({ endpoint: '/posts', paramMapping: { search: 'q' } })
+  ```
+
+  ⚠️ **Map it, or your backend gets a `search` parameter it has never heard
+  of** — and an API that ignores an unknown parameter answers with everything,
+  so the list looks exactly as broken as before. This is the one case where the
+  fix can still leave you with the same symptom, so it is worth checking.
+
+  `searchFields` deliberately stays on the front: it says which fields qdadm
+  should look at when filtering a cached page locally, and a backend that
+  searches knows its own columns. Shipping an array parameter nobody asked for
+  would be a new surprise in place of the old one.
+
+  `SdkStorage` both sends the term and applies it locally when
+  `clientSidePagination` is on — otherwise an SDK that ignored it would hand
+  back the whole collection and that branch would paginate it as though it had
+  been searched.
+
+- 40a7181: A filter type qdadm cannot render now says so — at compile time and at runtime
+
+  Reported by a consumer who declared `type: 'text'` on two filters. `ListPage`
+  is binary — an autocomplete, or a `Select` for everything else, unknown types
+  included — so both rendered as dropdowns with no options, read **"No available
+  options"**, and users concluded there was nothing to choose. They had never
+  filtered anything since the day they were written.
+
+  Two holes, and the second is larger than the report:
+
+  **Nothing warned.** `addFilter` now does, naming the filter, the type, and
+  what will happen _instead_ — because three screens later there is only an
+  empty control and no way back to the declaration that caused it.
+
+  **Nothing failed to compile either, and not just for `type`.** `addFilter`
+  took `Omit<FilterConfig, 'name'>`; `FilterConfig` carries an index signature,
+  so `keyof` includes `string`, `Exclude<string, 'name'>` is still `string`, and
+  the `Omit` collapsed to a bare `{ [x: string]: unknown }` — **erasing every
+  declared property**. No filter option was type-checked at all: not `type`, not
+  `optionLabel`, not a misspelled `local_filter`.
+
+  Fixed by splitting the interface — `FilterOptions` declares the properties,
+  `FilterConfig extends FilterOptions` adds `name` — so nothing needs `Omit` and
+  the index signature stops eating the declarations. Apps can still stash their
+  own keys.
+
+  **`FILTER_TYPES` is exported as a value**, so a guard on your side can read the
+  list rather than copy it; a copy goes stale the day a type is added and starts
+  rejecting correct code.
+
+  Also new: `tsconfig.typetest.json`, because the type-level test that asserts
+  all this sat under `tests/` and the type-check config included `src/**` only —
+  so its `@ts-expect-error` directives were never read and it would have passed
+  with the bug back in place. It is now in front of the checker and verified to
+  go red when the collapse returns.
+
+- 06565d3: The paginator shows the page the list is actually on
+
+  #2113 put the page number in the URL and it worked — coming back from a
+  detail view re-requested page 2, and page 2's rows appeared. **The paginator
+  still highlighted 1.** The screen said "page 1" over page 2's rows, and the
+  next click paged from the wrong place.
+
+  In lazy mode the table renders exactly the rows it is handed and cannot infer
+  which page they are; `first` — the row offset — is the only thing that tells
+  it, and qdadm never passed one. Clicking through worked because the click
+  moves the table's own internal offset. Nothing else could move it, so every
+  restored page landed under a paginator stuck on 1.
+
+  `ListPage` now takes a `first` prop and `useListPage` supplies it. **If you
+  render your own table** from `list.props`, bind `:first` — a lazy table
+  without it cannot position its paginator.
+
+  The tests drive a real PrimeVue paginator and assert which page button is
+  marked current, rather than checking `first === (page - 1) * pageSize`. That
+  arithmetic is the thing under test; asserting it against itself is how the
+  original defect got shipped — the rows were verified and the paginator was
+  never looked at.
+
 ## 2.19.0
 
 ### Minor Changes
