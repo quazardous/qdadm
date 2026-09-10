@@ -16,12 +16,51 @@ export interface RoleProvider {
 }
 
 /**
+ * What an application's judge receives at install time (#2225).
+ */
+export interface GrantJudgeContext {
+  orchestrator?: unknown
+  signals?: unknown
+  /**
+   * The live permission registry — a REFERENCE, not a snapshot.
+   *
+   * `install` runs while the Kernel is still being built, before modules
+   * register their entities, so `getKeys()` called here returns only the
+   * framework's own namespaces. Read the keys when you pre-warm (after login,
+   * before mount), not in `install`.
+   */
+  permissionRegistry?: { getKeys(): string[] }
+}
+
+/**
+ * An application-provided judgement of permissions (#2225).
+ *
+ * For apps whose backend decides who may do what: the judge answers from its
+ * own cache instead of qdadm's role matrix. It is consulted FIRST, for roles
+ * and permissions alike.
+ *
+ * - `true` / `false` is the verdict.
+ * - Anything else (`undefined`, `null`, a cache miss) falls through to the
+ *   built-in judgement, which stays the default.
+ * - A judge that THROWS denies — see `SecurityChecker._judge`.
+ *
+ * `isGranted` is called synchronously on every check, so answer from memory.
+ * Fetch in bulk beforehand and emit `security:changed` when answers change.
+ */
+export interface GrantJudge {
+  isGranted(attribute: string, subject: unknown, user: AuthUser): boolean | undefined
+  install?(ctx: GrantJudgeContext): void
+}
+
+/**
  * SecurityChecker constructor options
  */
 export interface SecurityCheckerOptions {
   rolesProvider?: RoleProvider
   roleHierarchy?: RoleHierarchy | RoleHierarchyConfig
   rolePermissions?: Record<string, string[]>
+  /** Application-provided judgement, consulted first (#2225). */
+  grant?: GrantJudge
   getCurrentUser: () => AuthUser | null
 }
 
@@ -32,6 +71,8 @@ export interface SecurityCheckerConfig {
   rolesProvider?: RoleProvider
   role_hierarchy?: RoleHierarchyConfig
   role_permissions?: Record<string, string[]>
+  /** Application-provided judgement, consulted first (#2225). */
+  grant?: GrantJudge
   getCurrentUser: () => AuthUser | null
 }
 
@@ -55,8 +96,12 @@ export class SecurityChecker {
   readonly getCurrentUser: () => AuthUser | null
   /** Roles already warned about (warn-once, #1388) */
   protected _warnedRoles = new Set<string>()
+  /** Application-provided judgement, consulted before the role matrix (#2225) */
+  protected _grant: GrantJudge | null
+  /** Attributes whose judge already threw (report-once) */
+  protected _judgeFailures = new Set<string>()
 
-  constructor({ rolesProvider, roleHierarchy, rolePermissions, getCurrentUser }: SecurityCheckerOptions) {
+  constructor({ rolesProvider, roleHierarchy, rolePermissions, grant, getCurrentUser }: SecurityCheckerOptions) {
     if (rolesProvider) {
       this._rolesProvider = rolesProvider
     } else {
@@ -75,6 +120,12 @@ export class SecurityChecker {
     }
 
     this.getCurrentUser = getCurrentUser
+    this._grant = grant ?? null
+  }
+
+  /** The application's judge, when one is configured (#2225). */
+  get grant(): GrantJudge | null {
+    return this._grant
   }
 
   /**
@@ -108,9 +159,14 @@ export class SecurityChecker {
    *
    * This is the main contract method, similar to Symfony's isGranted().
    */
-  isGranted(attribute: string, _subject: unknown = null): boolean {
+  isGranted(attribute: string, subject: unknown = null): boolean {
     const user = this.getCurrentUser()
     if (!user) return false
+
+    // 0. The application's own judgement comes first (#2225). A boolean is a
+    //    verdict; anything else falls through to the built-in matrix below.
+    const verdict = this._judge(attribute, subject, user)
+    if (verdict !== undefined) return verdict
 
     // 1. Check if it's a role (ROLE_*)
     if (attribute.startsWith('ROLE_')) {
@@ -120,6 +176,34 @@ export class SecurityChecker {
     // 2. Check if it's a permission (with wildcard support)
     const userPerms = this.getUserPermissions(user)
     return PermissionMatcher.any(userPerms, attribute)
+  }
+
+  /**
+   * Ask the application's judge, if any.
+   *
+   * A judge that THROWS denies. Falling through to the built-in matrix would
+   * quietly substitute a different authority for the one the app configured,
+   * and failing open would grant whatever the backend never got to answer —
+   * the worst direction a security check can fail in (the rule the route
+   * guard already follows, #1190). Reported once per attribute.
+   */
+  protected _judge(attribute: string, subject: unknown, user: AuthUser): boolean | undefined {
+    if (!this._grant) return undefined
+    let answer: unknown
+    try {
+      answer = this._grant.isGranted(attribute, subject, user)
+    } catch (error) {
+      if (!this._judgeFailures.has(attribute)) {
+        this._judgeFailures.add(attribute)
+        console.error(
+          `[qdadm] security.grant threw while judging "${attribute}" — DENIED. ` +
+            `A failing judge denies rather than falling back to the role matrix.`,
+          error
+        )
+      }
+      return false
+    }
+    return typeof answer === 'boolean' ? answer : undefined
   }
 
   /**
@@ -203,6 +287,7 @@ export function createSecurityChecker(config: SecurityCheckerConfig): SecurityCh
   if (config.rolesProvider) {
     return new SecurityChecker({
       rolesProvider: config.rolesProvider,
+      grant: config.grant,
       getCurrentUser: config.getCurrentUser,
     })
   }
@@ -213,6 +298,7 @@ export function createSecurityChecker(config: SecurityCheckerConfig): SecurityCh
       role_hierarchy: config.role_hierarchy || {},
       role_permissions: config.role_permissions || {},
     }),
+    grant: config.grant,
     getCurrentUser: config.getCurrentUser,
   })
 }

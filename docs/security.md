@@ -128,6 +128,75 @@ const kernel = new Kernel({
 ctx.security.isGranted('entity:books:delete')
 ```
 
+## Delegating the judgement to your backend
+
+When your backend is the authority on who may do what, give qdadm a judge
+instead of mirroring its rules in `role_permissions`:
+
+```js
+const answers = new Map() // attribute -> boolean, filled from your API
+let refresh // set in install(), awaited before mount
+
+const kernel = new Kernel({
+  authAdapter,
+  entityAuthAdapter,
+  security: {
+    grant: {
+      isGranted: (attribute, subject, user) => answers.get(attribute),
+
+      install({ signals, permissionRegistry }) {
+        refresh = async () => {
+          // Read the keys HERE, not in install(): modules register their
+          // entities after install() runs.
+          const keys = permissionRegistry.getKeys()
+          const next = await api.post('/me/permissions', { keys })
+          const changed = keys.some((k) => answers.get(k) !== next[k])
+          for (const k of keys) answers.set(k, next[k])
+          if (changed) signals.emit('security:changed')
+        }
+        signals.on('auth:login', () => refresh())
+      },
+    },
+  },
+})
+```
+
+The judge is consulted **first**, for roles (`ROLE_*`) and permissions alike:
+
+| The judge returns | qdadm does |
+|---|---|
+| `true` / `false` | uses it as the verdict |
+| anything else (`undefined`, a cache miss) | falls through to `role_hierarchy` / `role_permissions` |
+| throws | **denies**, and logs once per attribute |
+
+Nobody logged in is denied before the judge is asked.
+
+`isGranted` is called **synchronously**, on every check: menus, list actions,
+`canCreate`, the route guard. Answer from memory — fetch in bulk beforehand.
+Until the first answers land the judge abstains, so whatever the role matrix
+grants is what the user sees; with no matrix, that is nothing.
+
+Pre-warm before mounting, the same way a session is restored
+([Restoring a session before the app mounts](#restoring-a-session-before-the-app-mounts)):
+
+```js
+authAdapter.revalidate()
+  .then(() => refresh())
+  .then(() => kernel.createApp().mount('#app'))
+```
+
+### Re-evaluating: `security:changed`
+
+Nothing on screen reads permissions reactively, so new answers only show once
+the app re-evaluates. Emit `security:changed` and qdadm remounts the app,
+exactly as it does on `auth:login`.
+
+Emit it **only when an answer actually differs**. A remount discards unsaved
+form state; emitting on every refresh would wipe the user's edits on a timer.
+
+`install(ctx)` receives the same context as a `rolesProvider`'s: `signals`,
+`orchestrator`, and `permissionRegistry` — the live registry, not a snapshot.
+
 ## EntityManager Permissions
 
 EntityManager auto-registers CRUD permissions and provides can* methods:
@@ -180,6 +249,7 @@ Signal-driven authentication events:
 | `auth:expired` | `{ status, url }` | 401/403 from API (session expired) |
 | `auth:impersonate` | `{ target, original }` | Start impersonation |
 | `auth:impersonate:stop` | `{ original }` | End impersonation |
+| `security:changed` | - | The app's permission answers changed — the app remounts ([Delegating the judgement](#re-evaluating-securitychanged)) |
 
 `auth:login` is emitted by **`LoginPage`** — by the screen, not by the change
 of authentication state. If you replace that screen with your own, emit it
@@ -284,6 +354,7 @@ AuthCollector displays in debug panel:
 - Token info (expiry, claims)
 - Role hierarchy
 - Role permissions map
+- Delegated judgement: what the checker answers for every registered permission, when `security.grant` is set
 - Auth events (login/logout/impersonate) with auto-expiry
 
 ## Best Practices

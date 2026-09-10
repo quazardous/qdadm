@@ -157,6 +157,7 @@ function getIcon(type: string): string {
     permissions: 'pi-list',
     hierarchy: 'pi-sitemap',
     'role-permissions': 'pi-lock',
+    'delegated-verdicts': 'pi-server',
     adapter: 'pi-cog'
   }
   return icons[type] || 'pi-info-circle'

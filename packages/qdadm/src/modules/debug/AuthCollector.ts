@@ -41,7 +41,7 @@ export interface AuthEvent {
  * Auth entry types
  */
 export interface AuthEntry extends CollectorEntry {
-  type: 'status' | 'user' | 'impersonated' | 'token' | 'user-permissions' | 'hierarchy' | 'role-permissions' | 'permissions' | 'adapter' | 'error'
+  type: 'status' | 'user' | 'impersonated' | 'token' | 'user-permissions' | 'hierarchy' | 'role-permissions' | 'permissions' | 'delegated-verdicts' | 'adapter' | 'error'
   label?: string
   message?: string
   data?: unknown
@@ -372,6 +372,20 @@ export class AuthCollector extends Collector<AuthEntry> {
           label: 'Permissions',
           data: permissions
         })
+
+        // With a delegated judge (#2225) the role matrix above is not the
+        // authority, and showing it alone would mislead. Show what the
+        // checker actually answers for every registered key — the judge's
+        // verdicts, with the matrix only where the judge abstains.
+        const judged = (this._securityChecker ?? authCtx?.security) as SecurityChecker | null | undefined
+        if (judged?.grant) {
+          entries.push({
+            timestamp: Date.now(),
+            type: 'delegated-verdicts',
+            label: 'Delegated Judgement (security.grant)',
+            data: Object.fromEntries(permissions.map((key: string) => [key, judged.isGranted(key)]))
+          })
+        }
       }
     } catch (e) {
       console.warn('[AuthCollector] Error accessing permissionRegistry:', e)

@@ -23,6 +23,8 @@ export type {
   RoleProvider,
   SecurityCheckerOptions,
   SecurityCheckerConfig,
+  GrantJudge,
+  GrantJudgeContext,
 } from './SecurityChecker'
 
 // Implementations

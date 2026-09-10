@@ -70,6 +70,14 @@ export interface RoleProviderContext {
   orchestrator?: {
     get: (name: string) => unknown
   }
+  /**
+   * The live permission registry (#2225) — a reference, not a snapshot:
+   * `install` runs before modules register their entities, so read
+   * `getKeys()` later, when you actually fetch.
+   */
+  permissionRegistry?: {
+    getKeys: () => string[]
+  }
   [key: string]: unknown
 }
 

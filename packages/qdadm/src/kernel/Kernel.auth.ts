@@ -120,11 +120,15 @@ export function applyAuthMethods(KernelClass: { prototype: Kernel }): void {
    */
   proto._setupAuthInvalidation = function (this: Self): void {
     const debug = this.options.debug ?? false
+    // `security:changed` (#2225) rides the same path: nothing on screen reads
+    // permissions reactively (canCreate, menu filtering and the route guard
+    // all ask synchronously), so a remount is what makes new answers show.
     const authSignals = [
       'auth:login',
       'auth:logout',
       'auth:impersonate',
       'auth:impersonate:stop',
+      'security:changed',
     ]
 
     for (const signal of authSignals) {

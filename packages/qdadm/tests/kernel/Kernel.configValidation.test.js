@@ -62,7 +62,7 @@ describe('security config', () => {
 
     kernel._validateSecurityConfig({
       role_hierarchy: {}, role_permissions: {}, role_labels: {},
-      entity_permissions: true, rolesProvider: {},
+      entity_permissions: true, rolesProvider: {}, grant: {},
     })
 
     expect(ours(spy, 'is not a recognised option')).toHaveLength(0)

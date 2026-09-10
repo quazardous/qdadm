@@ -43,6 +43,12 @@ export const SIGNALS = {
   AUTH_LOGOUT: 'auth:logout',
   AUTH_EXPIRED: 'auth:expired', // Emitted on 401/403 API responses
 
+  // Security signals
+  // The application's permission answers changed — every screen re-evaluates
+  // (#2225). Emit it only when an answer actually differs: it remounts the app,
+  // which discards unsaved form state.
+  SECURITY_CHANGED: 'security:changed',
+
   // API error signals
   API_ERROR: 'api:error', // Emitted on any API error { status, message, url }
 } as const

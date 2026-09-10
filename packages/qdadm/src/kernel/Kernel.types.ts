@@ -10,6 +10,7 @@ import type { RoutesConfig } from './EventRouter'
 import type { EntityManager } from '../entity/EntityManager'
 import type { EntityAuthAdapter } from '../entity/auth/EntityAuthAdapter'
 import type { RoleProvider } from '../security/RolesProvider'
+import type { GrantJudge } from '../entity/auth/SecurityChecker'
 import type { I18nOptions } from '../i18n/types'
 import type { ApiClientSource } from '../api/apiClient'
 import type { RouteStatePersister } from '../routeState'
@@ -98,7 +99,12 @@ export interface SecurityConfig {
   role_permissions?: Record<string, string[]>
   role_labels?: Record<string, string>
   entity_permissions?: boolean | string[]
-  rolesProvider?: RoleProvider
+  rolesProvider?: RoleProvider  /**
+   * Application-provided judgement (#2225), consulted before the role matrix.
+   * `true`/`false` is the verdict, anything else falls through; a judge that
+   * throws denies. See docs/security.md.
+   */
+  grant?: GrantJudge
 }
 
 /**

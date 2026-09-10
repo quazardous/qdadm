@@ -3,7 +3,7 @@
  *
  * Run: npm test
  */
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import {
   SecurityChecker,
   createSecurityChecker,
@@ -217,5 +217,88 @@ describe('legacy options through the provider path (#1196)', () => {
     expect(checker.isGranted('entity:books:read')).toBe(true)
     // the provider now carries the hierarchy (was {} before the retirement)
     expect(checker.rolesProvider.getHierarchy()).toEqual({ ROLE_ADMIN: ['ROLE_USER'] })
+  })
+})
+
+describe('SecurityChecker — application-provided judgement (#2225)', () => {
+  const user = { id: 1, roles: ['ROLE_USER'] }
+  // The built-in matrix grants books:read and nothing else.
+  const make = (grant, currentUser = user) => new SecurityChecker({
+    rolePermissions: { ROLE_USER: ['entity:books:read'] },
+    grant,
+    getCurrentUser: () => currentUser,
+  })
+
+  it('the judge is consulted first, and its verdict overrides the matrix both ways', () => {
+    const checker = make({
+      isGranted: (attribute) => ({
+        'entity:books:read': false, // matrix says yes
+        'entity:books:delete': true, // matrix says no
+        ROLE_ADMIN: true, // roles go through the judge too
+      })[attribute],
+    })
+
+    expect(checker.isGranted('entity:books:read')).toBe(false)
+    expect(checker.isGranted('entity:books:delete')).toBe(true)
+    expect(checker.isGranted('ROLE_ADMIN')).toBe(true)
+  })
+
+  it('abstaining falls through to the built-in judgement', () => {
+    const checker = make({ isGranted: () => undefined })
+
+    expect(checker.isGranted('entity:books:read')).toBe(true)
+    expect(checker.isGranted('entity:books:delete')).toBe(false)
+    expect(checker.isGranted('ROLE_USER')).toBe(true)
+  })
+
+  it('only a boolean is a verdict — a truthy cache entry is not a grant', () => {
+    const checker = make({ isGranted: () => 'yes' })
+
+    expect(checker.isGranted('entity:books:delete')).toBe(false) // matrix decided
+  })
+
+  it('receives the attribute, the subject and the current user', () => {
+    const calls = []
+    const subject = { id: 42 }
+    const checker = make({ isGranted: (...args) => { calls.push(args); return true } })
+
+    checker.isGranted('entity:books:update', subject)
+
+    expect(calls).toEqual([['entity:books:update', subject, user]])
+  })
+
+  it('is not asked when nobody is logged in — anonymous is denied as before', () => {
+    const judge = { isGranted: vi.fn(() => true) }
+    const checker = make(judge, null)
+
+    expect(checker.isGranted('entity:books:read')).toBe(false)
+    expect(judge.isGranted).not.toHaveBeenCalled()
+  })
+
+  it('a judge that throws DENIES, even where the matrix would grant', () => {
+    const spy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const checker = make({ isGranted: () => { throw new Error('cache not warmed') } })
+
+    expect(checker.isGranted('entity:books:read')).toBe(false)
+    expect(checker.isGranted('entity:books:read')).toBe(false)
+
+    // reported once per attribute, naming the consequence
+    expect(spy).toHaveBeenCalledTimes(1)
+    expect(String(spy.mock.calls[0][0])).toContain('DENIED')
+    spy.mockRestore()
+  })
+
+  it('createSecurityChecker passes the judge through, with and without a provider', () => {
+    const grant = { isGranted: () => true }
+    const fromMatrix = createSecurityChecker({ role_permissions: {}, grant, getCurrentUser: () => user })
+    const fromProvider = createSecurityChecker({
+      rolesProvider: { getHierarchy: () => ({}), getPermissions: () => [], getRoles: () => [], getLabels: () => ({}) },
+      grant,
+      getCurrentUser: () => user,
+    })
+
+    expect(fromMatrix.isGranted('entity:anything:delete')).toBe(true)
+    expect(fromProvider.isGranted('entity:anything:delete')).toBe(true)
+    expect(fromMatrix.grant).toBe(grant)
   })
 })

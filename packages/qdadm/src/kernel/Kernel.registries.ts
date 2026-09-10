@@ -141,6 +141,15 @@ export function applyRegistryMethods(KernelClass: { prototype: Kernel }): void {
       )
     }
 
+    // A `grant` that cannot judge would be silently skipped, leaving the role
+    // matrix to decide alone while the app believes its backend does (#2225).
+    if (security.grant && typeof security.grant.isGranted !== 'function') {
+      throw new Error(
+        '[qdadm] security.grant must provide isGranted(attribute, subject, user). ' +
+          'Without it the application judgement would be skipped and the role matrix would decide alone.'
+      )
+    }
+
     let rolesProvider = security.rolesProvider
     if (!rolesProvider && (security.role_permissions || security.role_hierarchy)) {
       rolesProvider = new StaticRoleProvider({
@@ -152,6 +161,7 @@ export function applyRegistryMethods(KernelClass: { prototype: Kernel }): void {
 
     this.securityChecker = createSecurityChecker({
       rolesProvider: rolesProvider || undefined,
+      grant: security.grant,
       getCurrentUser: () =>
         (entityAuthAdapter as EntityAuthAdapter | null)?.getCurrentUser?.() || null,
     })
@@ -165,13 +175,21 @@ export function applyRegistryMethods(KernelClass: { prototype: Kernel }): void {
       adapter.setSecurityChecker(this.securityChecker)
     }
 
+    // One context for both installers. `permissionRegistry` lets a provider or
+    // a judge pre-warm in one batch (#2225) — but modules register their
+    // entities AFTER this point, so the keys must be read at fetch time, not
+    // inside install().
+    const ctx = {
+      orchestrator: this.orchestrator,
+      signals: this.signals,
+      permissionRegistry: this.permissionRegistry,
+    }
     if (rolesProvider?.install) {
-      const ctx = {
-        orchestrator: this.orchestrator,
-        signals: this.signals,
-      }
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       rolesProvider.install(ctx as any)
+    }
+    if (security.grant?.install) {
+      security.grant.install(ctx)
     }
   }
 
@@ -388,12 +406,13 @@ export function applyRegistryMethods(KernelClass: { prototype: Kernel }): void {
     this._warnUnknownKeys(
       'security.',
       security,
-      new Set(['role_hierarchy', 'role_permissions', 'role_labels', 'entity_permissions', 'rolesProvider']),
+      new Set(['role_hierarchy', 'role_permissions', 'role_labels', 'entity_permissions', 'rolesProvider', 'grant']),
       {
         role_hierarchy: 'roles will not inherit from one another',
         role_permissions: 'no role will carry any permission',
         entity_permissions: 'per-entity permissions will not be generated',
         rolesProvider: "the current user's roles will not be resolved",
+        grant: "the application's judgement will not be consulted — the role matrix decides alone",
       }
     )
   }
