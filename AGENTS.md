@@ -26,17 +26,20 @@ remote actions. An agent can introspect the app without touching the source.
 ## MCP — one connection (recommended)
 
 [`@quazardous/qdadm-mcp`](packages/qdadm-mcp) fronts the debug bridge as an
-MCP server with a curated 13-tool arsenal (`session_info`, `boot_errors`,
+MCP server with a curated tool arsenal (`session_info`, `boot_errors`,
 `entity_*`, `storage_dump`, …) and actionable errors — no curl plumbing:
 
 ```bash
 npm install -D @quazardous/qdadm-mcp
-# vite.config: plugins [vue(), qdadmVitePlugin(), qdadmDebugPlugin(), qdadmMcpPlugin()]
-claude mcp add --transport http qdadm http://localhost:5174/__qdadm/mcp
+# main.ts, first import: installQdadmRelayConnector() from '@quazardous/qdadm-mcp/connector'
+claude mcp add qdadm -- npx qdadm-mcp-relay --stdio
 ```
 
-Static site / no dev server? The same package ships `npx qdadm-mcp-relay`
-(the page dials out, token pairing). Full setup guide + agent playbook:
+Then in the app: debug bar → **MCP** → give the agent the code it shows →
+`pair_accept`. The relay belongs to the agent session, so app restarts do not
+break it. Dev-server-only alternative: `qdadmMcpPlugin()` and
+`claude mcp add --transport http qdadm http://localhost:5174/__qdadm/mcp`.
+Full setup guide + agent playbook:
 [`packages/qdadm-mcp/README.md`](packages/qdadm-mcp/README.md).
 
 The raw surfaces below remain available and are what the MCP is built on.

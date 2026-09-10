@@ -21,6 +21,7 @@ import { createRenderLoopDetector } from './renderLoopDetector'
 import EntriesPanel from './panels/EntriesPanel.vue'
 import SignalsPanel from './panels/SignalsPanel.vue'
 import ToastsPanel from './panels/ToastsPanel.vue'
+import RelayPairControl from './RelayPairControl.vue'
 
 // Layout/theming CSS + PrimeIcons font are shipped with qddebug so consumers
 // don't have to supply their own. Side-effect imports = registered once
@@ -710,6 +711,7 @@ const currentPanel = computed<Component | null>(() => panelFor(currentCollector.
         </div>
 
         <div class="debug-actions">
+          <RelayPairControl />
           <button type="button" class="qd-btn" :class="{ 'qd-btn-active': isEnabled }" :title="isEnabled ? 'Pause' : 'Resume'" @click="toggleEnabled">
             <i :class="['pi', isEnabled ? 'pi-pause' : 'pi-play']" />
           </button>

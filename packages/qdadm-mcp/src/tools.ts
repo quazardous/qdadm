@@ -27,6 +27,14 @@ export interface DebugBrokerApi {
   ) => { id: string; lastSeenAt: number; meta: Record<string, unknown> } | null
   listSessions: () => Array<Record<string, unknown>>
   prefix: string
+  /**
+   * Pairing (#2231) — the relay only. The dev-server broker has none: vite
+   * serves the page it talks to.
+   */
+  pairing?: {
+    status: () => unknown
+    accept: (code: string) => unknown
+  }
 }
 
 export interface ToolsetOptions {
@@ -59,7 +67,8 @@ export interface ToolDef {
 
 const session: ToolArg = {
   kind: 'string',
-  description: "Target session id (default 'latest' — the most recently active tab)",
+  description:
+    "Target session id (default 'latest' — the paired tab when one is paired, otherwise the most recently active tab)",
 }
 
 const entity: ToolArg = {
@@ -87,9 +96,13 @@ export class NoSessionError extends Error {
   }
 }
 
+const pairHint =
+  'No tab is paired with this relay. Ask the user to open the app, click "Pair MCP" in its debug bar, ' +
+  'and read you the code it shows; then call pair_accept with it.'
+
 function resolveSession(api: DebugBrokerApi, args: Record<string, unknown>, hint?: string) {
   const s = api.pickSession((args.session as string) ?? 'latest')
-  if (!s) throw new NoSessionError(api.listSessions(), hint)
+  if (!s) throw new NoSessionError(api.listSessions(), hint ?? (api.pairing ? pairHint : undefined))
   return s
 }
 
@@ -129,10 +142,12 @@ export function buildToolset(api: DebugBrokerApi, options: ToolsetOptions = {}):
     }
   const ask = makeAsk()
 
-  const bootErrorsHint =
-    'boot_errors needs an open tab: the pre-boot buffer lives in the page. ' +
-    'Open the app URL in a browser — even if it renders a blank page, the capture ' +
-    'script loads before the app and holds everything it threw while dying. Then retry.'
+  const bootErrorsHint = api.pairing
+    ? pairHint +
+      ' A tab paired once re-pairs on reload before the app runs, so boot_errors sees a blank-page crash too.'
+    : 'boot_errors needs an open tab: the pre-boot buffer lives in the page. ' +
+      'Open the app URL in a browser — even if it renders a blank page, the capture ' +
+      'script loads before the app and holds everything it threw while dying. Then retry.'
   const askBootErrors = makeAsk(bootErrorsHint)
 
   const tools: ToolDef[] = [
@@ -143,7 +158,10 @@ export function buildToolset(api: DebugBrokerApi, options: ToolsetOptions = {}):
         'bridge readiness, buffered-error counts. Call this FIRST — it detects zombie tabs ' +
         '(stale HMR chunks) and tells you which session you are talking to.',
       args: { session },
-      handler: (a) => ask(a, 'sessionInfo'),
+      handler: async (a) => {
+        const info = (await ask(a, 'sessionInfo')) as Record<string, unknown>
+        return api.pairing ? { ...info, pairing: api.pairing.status() } : info
+      },
     },
     {
       name: 'boot_errors',
@@ -275,6 +293,32 @@ export function buildToolset(api: DebugBrokerApi, options: ToolsetOptions = {}):
       handler: (a) => ask(a, 'entityCall', { entity: a.entity, op: 'delete', id: a.id }),
     },
   ]
+
+  if (api.pairing) {
+    const pairing = api.pairing
+    tools.push(
+      {
+        name: 'pairing_status',
+        description:
+          'Which browser tab this relay is paired with (origin, page, connected or reloading) and which tabs ' +
+          'are waiting to pair. Codes are never shown here: they appear only in the tab, so a pairing always ' +
+          'goes through the human.',
+        args: {},
+        handler: async () => pairing.status(),
+      },
+      {
+        name: 'pair_accept',
+        description:
+          'Complete a pairing: the user clicked "Pair MCP" in the app\'s debug bar and read you the code it ' +
+          'shows. Pass exactly that code — never guess or reuse one. Replaces any previously paired tab; every ' +
+          'tool then targets the newly paired tab.',
+        args: {
+          code: { kind: 'string', required: true, description: 'The code shown in the debug bar' },
+        },
+        handler: async (a) => pairing.accept(String(a.code)),
+      }
+    )
+  }
 
   return readOnly ? tools : [...tools, ...writes]
 }

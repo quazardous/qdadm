@@ -1,41 +1,50 @@
 /**
- * qdadm-mcp-relay (#1400) — MCP access to a STATIC qdadm site.
+ * qdadm-mcp-relay (#1400, #2231) — MCP access to a qdadm app through the tab you pair.
  *
- * The page dials out (ws) to this relay; agents connect to the relay's MCP
- * front (Streamable HTTP, or stdio with --stdio). Same 13 curated tools as
- * the dev-mode plugin.
+ * The relay is the AGENT's tool. Spawned by the agent over stdio, it lives
+ * exactly as long as the agent session, so restarting the app never takes
+ * the MCP server away — Claude Code does not retry an HTTP server that was
+ * down when the session started (measured in #2231).
  *
- *   npx qdadm-mcp-relay [--port 7777] [--mcp-port 7778] [--stdio]
- *                       [--token <fixed>] [--read-only]
+ *   claude mcp add qdadm -- npx qdadm-mcp-relay --stdio
  *
- * Then open the site with the pairing fragment printed at startup:
- *   https://your-site/#qdadm-relay=ws://localhost:7777/<token>
- * and hook the agent:
- *   claude mcp add --transport http qdadm-relay http://localhost:7778/mcp
+ * Then in the app: debug bar → "Pair MCP" → read the code to the agent,
+ * which calls `pair_accept`.
+ *
+ *   npx qdadm-mcp-relay [--stdio] [--port <p>] [--origin <origin>]...
+ *                       [--mcp-port 7778] [--token <fixed>] [--read-only]
+ *
+ * The token fragment of #1400 still works:
+ *   https://your-site/#qdadm-relay=ws://localhost:<port>/<token>
  */
 import { randomUUID } from 'node:crypto'
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http'
-import { WebSocketServer } from 'ws'
+import { basename } from 'node:path'
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js'
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
 import { createQdadmMcpServer } from '../server.ts'
+import { RELAY_PORTS, RELAY_PROTOCOL, type RelayIdentity } from '../protocol.ts'
 import { RelayBroker } from './broker.ts'
+import { AllPortsBusyError, listenOnFirstFreePort, openWebSocketServer } from './ports.ts'
 
 interface CliOptions {
-  port: number
+  /** One explicit port; null walks RELAY_PORTS. */
+  port: number | null
   mcpPort: number
   stdio: boolean
   token: string
   readOnly: boolean
+  origins: string[]
 }
 
 function parseArgs(argv: string[]): CliOptions {
   const opts: CliOptions = {
-    port: 7777,
+    port: null,
     mcpPort: 7778,
     stdio: false,
     token: randomUUID().slice(0, 8),
     readOnly: false,
+    origins: [],
   }
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i]
@@ -44,6 +53,7 @@ function parseArgs(argv: string[]): CliOptions {
     else if (a === '--stdio') opts.stdio = true
     else if (a === '--token') opts.token = String(argv[++i])
     else if (a === '--read-only') opts.readOnly = true
+    else if (a === '--origin') opts.origins.push(String(argv[++i]))
   }
   return opts
 }
@@ -53,20 +63,52 @@ const buildServer = (broker: RelayBroker, readOnly: boolean) =>
 
 export async function main(argv = process.argv.slice(2)): Promise<void> {
   const opts = parseArgs(argv)
+  // Under --stdio, stdout IS the MCP channel: every human line goes to stderr.
   const log = opts.stdio ? console.error : console.log
 
+  const ports = opts.port ? [opts.port] : RELAY_PORTS
+  let listening: Awaited<ReturnType<typeof listenOnFirstFreePort<Awaited<ReturnType<typeof openWebSocketServer>>>>>
+  try {
+    listening = await listenOnFirstFreePort(ports, (p) => openWebSocketServer(p))
+  } catch (e) {
+    if (!(e instanceof AllPortsBusyError)) throw e
+    log(
+      opts.port
+        ? `[qdadm-mcp-relay] port ${opts.port} is already in use. Pick another with --port.`
+        : `[qdadm-mcp-relay] every relay port is in use (${ports.join(', ')}). Pass --port <free port>, ` +
+            'and give the app the same one: installQdadmRelayConnector({ ports: [<port>] }).'
+    )
+    process.exitCode = 1
+    return
+  }
+  const { port, value: wss, busy } = listening
+  if (busy.length > 0) log(`[qdadm-mcp-relay] in use, skipped: ${busy.join(', ')}`)
+  if (opts.port && !RELAY_PORTS.includes(port)) {
+    log(`[qdadm-mcp-relay] ${port} is not a default port: the app needs installQdadmRelayConnector({ ports: [${port}] })`)
+  }
+
+  const identity: RelayIdentity = {
+    name: 'qdadm-mcp-relay',
+    protocol: RELAY_PROTOCOL,
+    project: basename(process.cwd()),
+    cwd: process.cwd(),
+    port,
+    pid: process.pid,
+    startedAt: Date.now(),
+  }
   const broker = new RelayBroker({
     token: opts.token,
-    onSession: (event, id) => log(`[qdadm-mcp-relay] page ${event}: ${id.slice(0, 8)}`),
+    identity,
+    allowedOrigins: opts.origins.length > 0 ? opts.origins : undefined,
+    onSession: (event, id, detail) =>
+      log(`[qdadm-mcp-relay] tab ${event}: ${id.slice(0, 8)}${detail ? ` (${detail})` : ''}`),
   })
+  wss.on('connection', (socket, req) => broker.attach(socket, { origin: req.headers.origin }))
+  wss.on('error', (e) => log(`[qdadm-mcp-relay] listener error: ${e.message}`))
 
-  const wss = new WebSocketServer({ port: opts.port })
-  wss.on('connection', (socket) => broker.attach(socket))
-
-  log(`[qdadm-mcp-relay] page listener  ws://localhost:${opts.port}`)
-  log(`[qdadm-mcp-relay] pairing token  ${opts.token}`)
-  log(`[qdadm-mcp-relay] open your site with:`)
-  log(`  #qdadm-relay=ws://localhost:${opts.port}/${opts.token}`)
+  log(`[qdadm-mcp-relay] listening       ws://localhost:${port}  (${identity.project})`)
+  log('[qdadm-mcp-relay] pair a tab:     debug bar → "Pair MCP", then give the agent the code')
+  log(`[qdadm-mcp-relay] token fragment  #qdadm-relay=ws://localhost:${port}/${opts.token}`)
 
   if (opts.stdio) {
     const server = buildServer(broker, opts.readOnly)
@@ -104,8 +146,15 @@ export async function main(argv = process.argv.slice(2)): Promise<void> {
       }
     }
   })
-  http.listen(opts.mcpPort, () => {
-    log(`[qdadm-mcp-relay] MCP endpoint   http://localhost:${opts.mcpPort}/mcp`)
+  http.on('error', (e: NodeJS.ErrnoException) => {
+    log(
+      `[qdadm-mcp-relay] the MCP endpoint cannot listen on ${opts.mcpPort} (${e.code ?? e.message}). ` +
+        'Pass --mcp-port <free port>, or let the agent spawn the relay with --stdio.'
+    )
+    process.exit(1)
+  })
+  http.listen(opts.mcpPort, '127.0.0.1', () => {
+    log(`[qdadm-mcp-relay] MCP endpoint    http://localhost:${opts.mcpPort}/mcp`)
     log(`  claude mcp add --transport http qdadm-relay http://localhost:${opts.mcpPort}/mcp`)
   })
 }

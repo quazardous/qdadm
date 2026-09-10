@@ -101,3 +101,40 @@ describe('qdadm-mcp toolset', () => {
     expect(api.pickSession).toHaveBeenCalledWith('abc')
   })
 })
+
+describe('qdadm-mcp toolset — relay pairing (#2231)', () => {
+  const withPairing = (overrides = {}) => ({
+    ...makeApi(overrides),
+    pairing: {
+      status: vi.fn(() => ({ paired: { instanceId: 's1', origin: 'http://localhost:5174' }, waiting: [] })),
+      accept: vi.fn((code) => ({ paired: { instanceId: 's1' }, code })),
+    },
+  })
+
+  it('pairing tools exist on the relay only', () => {
+    expect(buildToolset(makeApi()).map((t) => t.name)).not.toContain('pair_accept')
+    const names = buildToolset(withPairing(), { readOnly: true }).map((t) => t.name)
+    expect(names).toContain('pairing_status')
+    expect(names).toContain('pair_accept')
+  })
+
+  it('pair_accept passes the code through; its description sends the agent to the human', async () => {
+    const api = withPairing()
+    const tool = byName(buildToolset(api), 'pair_accept')
+    expect(tool.args.code.required).toBe(true)
+    expect(tool.description).toMatch(/never guess/)
+    await tool.handler({ code: '424 242' })
+    expect(api.pairing.accept).toHaveBeenCalledWith('424 242')
+  })
+
+  it('session_info reports the pairing', async () => {
+    const res = await byName(buildToolset(withPairing()), 'session_info').handler({})
+    expect(res.pairing.paired.origin).toBe('http://localhost:5174')
+    expect(res.session.id).toBe('s1')
+  })
+
+  it('no paired tab → the hint explains Pair MCP, not "open a browser"', async () => {
+    const api = withPairing({ session: null })
+    await expect(byName(buildToolset(api), 'routes').handler({})).rejects.toThrow(/click "Pair MCP"/)
+  })
+})

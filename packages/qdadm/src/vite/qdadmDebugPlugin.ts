@@ -8,10 +8,12 @@
  *   GET  /__qdadm/snapshot.json       — bridge.dump() (live state)
  *   POST /__qdadm/call                — body {collector, action, args?}
  *
- * Session selection: every browser tab that loads the app gets a fresh
- * session id (uuid in the injected client). All endpoints accept a
- * `?session=<id|latest>` query param. Default is `latest` (the most recently
- * active session).
+ * Session selection: every browser tab gets a session id (uuid in the
+ * injected client), kept in sessionStorage so a reload is the SAME session
+ * (#2231). A tab that says bye stays known through a short grace window: a
+ * request to it answers "reloading" instead of timing out. All endpoints
+ * accept a `?session=<id|latest>` query param. Default is `latest` (the most
+ * recently active connected session).
  *
  * Wire-up: the plugin injects a small ESM script via `transformIndexHtml`.
  * That inline script lives in Vite's HMR pipeline (so `import.meta.hot`
@@ -78,6 +80,8 @@ interface SessionState {
   describe: { data: unknown; at: number } | null
   snapshot: { data: unknown; at: number } | null
   meta: Record<string, unknown>
+  /** Set by bye; cleared by the next push from the same tab. */
+  disconnectedAt: number | null
 }
 
 /** Broker surface exposed to sibling plugins via `plugin.api` (#1398). */
@@ -95,6 +99,7 @@ export interface QdadmDebugPluginApi {
     ageMs: number
     hasDescribe: boolean
     hasSnapshot: boolean
+    connected: boolean
     meta: Record<string, unknown>
   }>
   prefix: string
@@ -107,12 +112,15 @@ export interface QdadmDebugPluginOptions {
   timeoutMs?: number
   /** Drop sessions inactive for this many ms (default 10 min) */
   sessionTtlMs?: number
+  /** Keep a tab that said bye this long, so its reload keeps it (default 30 s) */
+  reloadGraceMs?: number
 }
 
 export function qdadmDebugPlugin(options: QdadmDebugPluginOptions = {}): Plugin {
   const prefix = options.prefix ?? '/__qdadm'
   const timeoutMs = options.timeoutMs ?? 3000
   const sessionTtlMs = options.sessionTtlMs ?? 10 * 60 * 1000
+  const reloadGraceMs = options.reloadGraceMs ?? 30 * 1000
 
   const sessions = new Map<string, SessionState>()
   const pending = new Map<string, PendingRequest>()
@@ -120,18 +128,25 @@ export function qdadmDebugPlugin(options: QdadmDebugPluginOptions = {}): Plugin 
   let nextId = 1
 
   function pruneStaleSessions(): void {
-    const cutoff = Date.now() - sessionTtlMs
+    const now = Date.now()
     for (const [id, s] of sessions) {
-      if (s.lastSeenAt < cutoff) sessions.delete(id)
+      if (s.lastSeenAt < now - sessionTtlMs) sessions.delete(id)
+      else if (s.disconnectedAt !== null && s.disconnectedAt < now - reloadGraceMs) sessions.delete(id)
     }
   }
 
   function pickSession(sessionParam: string | null): SessionState | null {
     pruneStaleSessions()
     if (!sessionParam || sessionParam === 'latest') {
+      // A connected tab wins; a reloading one only when nothing else is up,
+      // so the caller hears "reloading" rather than "no session".
       let best: SessionState | null = null
       for (const s of sessions.values()) {
-        if (!best || s.lastSeenAt > best.lastSeenAt) best = s
+        const better =
+          !best ||
+          (best.disconnectedAt !== null && s.disconnectedAt === null) ||
+          ((best.disconnectedAt === null) === (s.disconnectedAt === null) && s.lastSeenAt > best.lastSeenAt)
+        if (better) best = s
       }
       return best
     }
@@ -144,6 +159,15 @@ export function qdadmDebugPlugin(options: QdadmDebugPluginOptions = {}): Plugin 
     sessionId?: string
   ): Promise<unknown> {
     if (!server) return Promise.reject(new Error('[qdadm-debug] vite server not ready'))
+    const target = sessionId ? sessions.get(sessionId) : undefined
+    if (target?.disconnectedAt) {
+      const away = Math.round((Date.now() - target.disconnectedAt) / 1000)
+      return Promise.reject(
+        new Error(
+          `[qdadm-debug] session ${target.id.slice(0, 8)} left ${away}s ago — the tab is most likely reloading; retry in a few seconds`
+        )
+      )
+    }
     const id = String(nextId++)
     return new Promise((resolve, reject) => {
       const timeout = setTimeout(() => {
@@ -200,6 +224,7 @@ export function qdadmDebugPlugin(options: QdadmDebugPluginOptions = {}): Plugin 
     ageMs: number
     hasDescribe: boolean
     hasSnapshot: boolean
+    connected: boolean
     meta: Record<string, unknown>
   }> {
     pruneStaleSessions()
@@ -213,6 +238,7 @@ export function qdadmDebugPlugin(options: QdadmDebugPluginOptions = {}): Plugin 
         ageMs: now - s.lastSeenAt,
         hasDescribe: !!s.describe,
         hasSnapshot: !!s.snapshot,
+        connected: s.disconnectedAt === null,
         meta: s.meta,
       }))
   }
@@ -227,10 +253,12 @@ export function qdadmDebugPlugin(options: QdadmDebugPluginOptions = {}): Plugin 
         describe: null,
         snapshot: null,
         meta: meta ?? {},
+        disconnectedAt: null,
       }
       sessions.set(id, s)
     } else {
       s.lastSeenAt = Date.now()
+      s.disconnectedAt = null
       if (meta) s.meta = { ...s.meta, ...meta }
     }
     return s
@@ -287,7 +315,7 @@ export function qdadmDebugPlugin(options: QdadmDebugPluginOptions = {}): Plugin 
         } else if (msg.type === 'snapshot' && msg.data !== undefined) {
           session.snapshot = { data: msg.data, at }
         } else if (msg.type === 'bye') {
-          sessions.delete(msg.sessionId)
+          session.disconnectedAt = at
         }
       })
 
@@ -376,7 +404,8 @@ function readBody(req: IncomingMessage): Promise<string> {
  * Client-side bridge — injected verbatim into index.html as an ES module.
  * Lives in Vite's HMR pipeline (so `import.meta.hot` works here).
  *
- * Each tab gets its own session id (random uuid). Pushes describe + snapshot
+ * Each tab gets its own session id (random uuid, kept across reloads in
+ * sessionStorage — #2231). Pushes describe + snapshot
  * on every reactive tick of the bridge so the plugin's per-session cache
  * stays fresh. Listens for ad-hoc requests targeted at this session.
  */
@@ -413,7 +442,14 @@ const hot = import.meta.hot
 if (!hot) {
   console.warn('[qdadm-debug] import.meta.hot unavailable in injected script')
 } else {
-  const sessionId = crypto.randomUUID()
+  // Same tab, same session across reloads (#2231): an agent's target survives F5.
+  const sessionId = (() => {
+    try {
+      let v = sessionStorage.getItem('qdadm-debug:session')
+      if (!v) { v = crypto.randomUUID(); sessionStorage.setItem('qdadm-debug:session', v) }
+      return v
+    } catch (e) { return crypto.randomUUID() }
+  })()
   const meta = { userAgent: navigator.userAgent, location: location.pathname }
   let bridge = null
   let lastTick = -1
