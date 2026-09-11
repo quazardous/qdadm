@@ -41,8 +41,9 @@ every dev tab to it; the agent attaches to the same relay. Call `instances`
 first, and pass `instance` when several tabs are connected. Drive the app with
 `navigate` and `wait_for`: a navigation or a write returns a `feedback` block
 with what the tab went through meanwhile (console errors, toasts, missing i18n
-keys, failed API calls). `chat_send` / `chat_read` talk with whoever looks at
-the tab.
+keys, failed API calls). See the page with `page_snapshot` (an accessibility
+tree, a ref per element), `find` and `page_text`. `chat_send` / `chat_read`
+talk with whoever looks at the tab.
 Full setup guide + agent playbook:
 [`packages/qdadm-mcp/README.md`](packages/qdadm-mcp/README.md).
 

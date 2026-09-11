@@ -30,6 +30,7 @@
  * acts within THIS browser session: manager permissions apply.
  */
 import { RELAY_AUTO_GLOBAL, RELAY_PORTS, RELAY_PROTOCOL, type RelayAutoConfig, type RelayIdentity } from './protocol.ts'
+import { createRefs } from './page/refs.ts'
 
 interface BootEntry {
   at: number
@@ -171,6 +172,11 @@ function describeRequest(type: string, payload?: Record<string, unknown>): { too
     return { tool: 'bridge_call', detail: `${String(payload?.collector)}.${String(payload?.action)}${withArgs}` }
   }
   if (type === 'navigate') return { tool: 'navigate', detail: String(payload?.path ?? payload?.route ?? '') }
+  if (type === 'pageSnapshot') {
+    return { tool: 'page_snapshot', detail: [payload?.ref, payload?.filter].filter(Boolean).map(String).join(' ') }
+  }
+  if (type === 'find') return { tool: 'find', detail: [payload?.role, payload?.text && brief(payload.text)].filter(Boolean).map(String).join(' ') }
+  if (type === 'pageText') return { tool: 'page_text', detail: payload?.ref ? String(payload.ref) : '' }
   if (type === 'waitFor') return { tool: 'wait_for', detail: String(payload?.route ?? payload?.signal ?? '') }
   if (type === 'chatPost') return { tool: 'chat_send', detail: brief(payload?.message) }
   if (type === 'entityState' || type === 'storageDump') {
@@ -874,7 +880,30 @@ function createPageAgent(sessionId: string, q: () => QdadmGlobal) {
     }
   }
 
+  // ── reading the page (#2247) ───────────────────────────────────────────
+  // Loaded on first use: a tab no agent inspects never downloads it.
+  const aria = () => import('./page/aria.ts')
+  const refs = createRefs()
+  const rootOf = (payload?: Record<string, unknown>) => (payload?.ref ? refs.resolve(String(payload.ref)) : null)
+  const pageLine = () => {
+    const route = currentRoute()
+    return `Page: ${JSON.stringify(document.title)} — route ${String(route?.name ?? '?')} (${route?.fullPath ?? window.location.pathname})`
+  }
+
   const handlers: Record<string, (payload?: Record<string, unknown>) => unknown | Promise<unknown>> = {
+    pageSnapshot: async (payload) => {
+      const { snapshot } = await aria()
+      const text = snapshot(refs, { filter: payload?.filter as string, root: rootOf(payload), maxRows: payload?.maxRows as number, maxChars: payload?.maxChars as number })
+      return { text: `${pageLine()}\n\n${text}` }
+    },
+    find: async (payload) => {
+      const { find } = await aria()
+      return { text: find(refs, { text: payload?.text as string, role: payload?.role as string, root: rootOf(payload), limit: payload?.limit as number }) }
+    },
+    pageText: async (payload) => {
+      const { pageText } = await aria()
+      return { text: `${pageLine()}\n\n${pageText(rootOf(payload), payload?.maxChars as number)}` }
+    },
     feedbackMark: (): FeedbackMark => {
       armSignals()
       return { log: logSeq, signal: signalSeq, route: currentRoute()?.fullPath ?? null, at: Date.now() }

@@ -517,3 +517,121 @@ describe('relay connector — navigation, feedback and waiting (#2247)', () => {
     expect(controller.activity.entries.map(({ tool, detail }) => ({ tool, detail }))).toEqual([{ tool: 'navigate', detail: '/books' }])
   })
 })
+
+describe('relay connector — reading the page (#2247)', () => {
+  const PAGE = `
+    <nav aria-label="Breadcrumb"><ol><li><a href="/">Home</a></li><li><span>Books</span></li></ol></nav>
+    <main>
+      <h1>Books</h1>
+      <button><span>Add Book</span></button>
+      <table>
+        <thead><tr><th>Title</th><th>Author</th><th>Actions</th></tr></thead>
+        <tbody>
+          <tr><td>Dune</td><td>Frank Herbert</td><td><button><span class="pi pi-pencil"></span></button></td></tr>
+          <tr><td>Hyperion</td><td>Dan Simmons</td><td></td></tr>
+          <tr><td>Ilium</td><td>Dan Simmons</td><td></td></tr>
+        </tbody>
+      </table>
+      <div class="form-field field-invalid"><label for="title">Title *</label><input id="title" class="p-inputtext p-invalid" required /><small class="field-error">Title is required</small></div>
+      <div class="form-field"><label for="year">Year</label><input id="year" value="1965" disabled /></div>
+      <div class="form-field"><label for="author">Author</label><input role="combobox" aria-expanded="false" value="Frank Herbert" /><button class="p-autocomplete-dropdown p-button" aria-expanded="false"><svg></svg></button></div>
+      <label><input type="checkbox" checked /> Available</label>
+      <select aria-label="Genre"><option>sci-fi</option><option selected>fantasy</option></select>
+      <button aria-expanded="false">Details</button>
+      <p style="display: none">Hidden text</p>
+      <button disabled>Save</button>
+    </main>
+    <div class="qd-debug" style="display: contents"><button>Pause</button></div>
+    <div role="dialog" aria-label="Delete book?"><p>This cannot be undone.</p><button>Cancel</button></div>`
+
+  afterEach(() => {
+    document.body.innerHTML = ''
+    delete window.__qdadmRelayAuto
+    vi.unstubAllGlobals()
+  })
+
+  const connected = async () => {
+    document.body.innerHTML = PAGE
+    window.__qdadmRelayAuto = '/__qdadm/relay.json'
+    vi.stubGlobal('fetch', async () => ({ ok: true, status: 200, json: async () => ({ port: 47761, token: 'dev-token' }) }))
+    const broker = new RelayBroker({ token: 'dev-token', identity: identity(47761) })
+    const { controller } = install({ 47761: broker })
+    await vi.waitFor(() => expect(controller.state.status).toBe('connected'))
+    return { broker, controller }
+  }
+  const refIn = (text, line) => text.split('\n').find((l) => l.includes(line))?.match(/\[ref=(e\d+)\]/)?.[1]
+
+  it('page_snapshot: an accessibility tree with roles, names, states, values and refs — never the debug bar', async () => {
+    const { broker, controller } = await connected()
+    const { text } = await broker.ask('pageSnapshot', { maxRows: 2 })
+
+    for (const line of [
+      '- navigation "Breadcrumb" [ref=',
+      '- link "Home" [ref=',
+      '- /url: /',
+      '- heading "Books" [level=1] [ref=',
+      '- button "Add Book" [ref=',
+      '- columnheader "Title" [ref=',
+      ']: Dune',
+      '- button [icon=pencil] [ref=',
+      '(1 more rows — maxRows to see them)',
+      '- textbox "Title *" [required] [invalid] [ref=',
+      '- text: Title is required',
+      '- textbox "Year" [disabled] [value="1965"] [ref=',
+      '- combobox "Author" [collapsed] [value="Frank Herbert"] [ref=',
+      '- button [kind=autocomplete-dropdown] [collapsed] [ref=',
+      '- checkbox "Available" [checked] [ref=',
+      '- combobox "Genre" [value="fantasy"] [ref=',
+      '- button "Details" [collapsed] [ref=',
+      '- button "Save" [disabled] [ref=',
+      '- dialog "Delete book?" [ref=',
+      'Form errors:',
+      '- Title: Title is required',
+    ]) {
+      expect(text).toContain(line)
+    }
+    expect(text).not.toContain('Ilium')
+    expect(text).not.toContain('Hidden text')
+    expect(text).not.toContain('Pause')
+    expect(controller.activity.entries.at(-1).tool).toBe('page_snapshot')
+  })
+
+  it('refs are stable across reads; "interactive" lists only what can be acted on; a ref reads one part', async () => {
+    const { broker } = await connected()
+    const tree = (await broker.ask('pageSnapshot', {})).text
+    const interactive = (await broker.ask('pageSnapshot', { filter: 'interactive' })).text
+
+    expect(refIn(interactive, 'button "Save"')).toBe(refIn(tree, 'button "Save"'))
+    expect(interactive).not.toContain('heading')
+    expect(interactive).not.toContain('- text:')
+
+    const dialog = (await broker.ask('pageSnapshot', { ref: refIn(tree, 'dialog "Delete book?"') })).text
+    expect(dialog).toContain('- button "Cancel"')
+    expect(dialog).not.toContain('Add Book')
+  })
+
+  it('a ref whose element is gone fails loudly and says to take a new snapshot', async () => {
+    const { broker } = await connected()
+    const ref = refIn((await broker.ask('pageSnapshot', {})).text, 'dialog "Delete book?"')
+    document.querySelector('[role=dialog]').remove()
+    await expect(broker.ask('pageSnapshot', { ref })).rejects.toThrow(/no longer in the page .* take a new page_snapshot/)
+  })
+
+  it('find: by role and text, with where each match sits', async () => {
+    const { broker } = await connected()
+    const { text } = await broker.ask('find', { text: 'dan simmons' })
+    expect(text.split('\n')).toHaveLength(2)
+    expect(text).toContain(' — in row "Hyperion Dan Simmons"')
+
+    expect((await broker.ask('find', { role: 'button', text: 'cancel' })).text).toMatch(/^- button "Cancel" \[ref=e\d+\] — in dialog "Delete book\?"$/)
+    expect((await broker.ask('find', { role: 'slider' })).text).toBe('Nothing visible matches role "slider".')
+  })
+
+  it('page_text: what the user reads, debug bar left out', async () => {
+    const { broker } = await connected()
+    const { text } = await broker.ask('pageText', {})
+    expect(text).toContain('Frank Herbert')
+    expect(text).not.toContain('Pause')
+    expect(document.querySelector('.qd-debug').style.display).toBe('contents')
+  })
+})

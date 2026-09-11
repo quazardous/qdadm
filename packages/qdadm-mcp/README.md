@@ -182,6 +182,9 @@ Only what happened is listed: an empty category is left out.
 | `instances` | Which tabs you can target |
 | `navigate` | Relay: open a path or a route like a user, wait for the page to settle, get route, title, breadcrumb and feedback |
 | `wait_for` | Relay: wait for a route or a signal, with a timeout that says where the tab is |
+| `page_snapshot` | Relay: what the user sees, as an accessibility tree — role, name, states, value and a **ref** per element; `filter: "interactive"`, or one part by `ref` |
+| `find` | Relay: elements by role and/or text, with their ref and where they sit (row, dialog, form) |
+| `page_text` | Relay: the visible text of the tab, or of one element |
 | `session_info` | Which app/instance am I talking to? (zombie-tab detector) |
 | `boot_errors` | What broke — **including before the app booted** |
 | `routes` | Route names/paths/meta |
@@ -210,6 +213,10 @@ Typical debugging moves, grounded in real sessions:
 - **Drive the app** → `navigate`, then read its `feedback`: a missing i18n
   key, a console error or a failed API call on the way shows up right there.
   `wait_for` when something happens later (a save, a redirect).
+- **What does the page show?** → `page_snapshot`: the tree the user sees,
+  with a ref on every element. `filter: "interactive"` for just the
+  controls, `find` to locate one ("the Save button", "the row of Dune"),
+  `page_text` for the prose.
 - **Blank page / app won't boot** → `boot_errors`. Capture starts before
   the app entry runs, so crashes during boot are recorded even though the
   bridge never came up.

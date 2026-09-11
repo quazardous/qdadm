@@ -107,6 +107,18 @@ export interface RelayBrokerOptions {
   generateKey?: () => string
 }
 
+/**
+ * Requests that legitimately outlast a read, in ms: wait_for waits up to 30 s,
+ * a navigation settles, a snapshot of a large page takes a moment.
+ */
+const SLOW_REQUESTS: Record<string, number> = {
+  waitFor: 35_000,
+  navigate: 15_000,
+  pageSnapshot: 15_000,
+  find: 15_000,
+  pageText: 10_000,
+}
+
 const isRecord = (v: unknown): v is Record<string, unknown> =>
   typeof v === 'object' && v !== null && !Array.isArray(v)
 
@@ -457,9 +469,7 @@ export class RelayBroker implements DebugBrokerApi {
       )
     }
     const id = String(this.nextId++)
-    // wait_for may legitimately take up to 30 s, a navigation a few; everything else is a read.
-    const limit =
-      type === 'waitFor' ? Math.max(this.timeoutMs, 35_000) : type === 'navigate' ? Math.max(this.timeoutMs, 15_000) : this.timeoutMs
+    const limit = Math.max(this.timeoutMs, SLOW_REQUESTS[type] ?? 0)
     return new Promise((resolve, reject) => {
       const timeout = setTimeout(() => {
         this.pending.delete(id)

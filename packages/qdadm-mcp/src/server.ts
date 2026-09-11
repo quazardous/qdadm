@@ -17,6 +17,7 @@ import { CallToolRequestSchema, ListToolsRequestSchema } from '@modelcontextprot
 import {
   buildToolset,
   listRegisteredEntities,
+  ToolContent,
   type DebugBrokerApi,
   type ToolArg,
   type ToolDef,
@@ -146,6 +147,7 @@ export function createQdadmMcpServer(api: DebugBrokerApi, options: McpServerOpti
 
     try {
       const result = await tool.handler(args)
+      if (result instanceof ToolContent) return { content: result.content }
       return { content: [{ type: 'text' as const, text: JSON.stringify(result, null, 2) }] }
     } catch (e) {
       return errorResult((e as Error).message)

@@ -6,7 +6,7 @@
  * Run: npm test
  */
 import { describe, it, expect, vi } from 'vitest'
-import { buildToolset } from '../src/tools.ts'
+import { buildToolset, ToolContent } from '../src/tools.ts'
 
 function makeApi({ session = { id: 's1', lastSeenAt: Date.now(), meta: {} } } = {}) {
   return {
@@ -235,5 +235,31 @@ describe('qdadm-mcp toolset — navigation and action feedback (#2247)', () => {
     const api = makeApi()
     await byName(buildToolset(api), 'entity_create').handler({ entity: 'books', data: { title: 'X' } })
     expect(api.ask.mock.calls.map((c) => c[0])).toEqual(['entityCall'])
+  })
+})
+
+describe('qdadm-mcp toolset — reading the page (#2247)', () => {
+  const relayApi = () => {
+    const api = { ...makeApi(), pairing: { status: vi.fn(() => ({ waiting: [] })), accept: vi.fn() } }
+    api.ask = vi.fn(async () => ({ text: '- button "Save" [ref=e3]' }))
+    return api
+  }
+
+  it('page_snapshot, find and page_text exist on the relay only', () => {
+    expect(buildToolset(makeApi()).map((t) => t.name)).not.toContain('page_snapshot')
+    expect(buildToolset(relayApi(), { readOnly: true }).map((t) => t.name)).toEqual(
+      expect.arrayContaining(['page_snapshot', 'find', 'page_text'])
+    )
+  })
+
+  it('answers with the text the tab wrote, headed by the instance, not a JSON dump', async () => {
+    const api = relayApi()
+    const res = await byName(buildToolset(api), 'page_snapshot').handler({ filter: 'interactive', ref: 'e2' })
+    expect(api.ask).toHaveBeenLastCalledWith('pageSnapshot', { filter: 'interactive', ref: 'e2', maxRows: undefined, maxChars: undefined }, 's1')
+    expect(res).toBeInstanceOf(ToolContent)
+    expect(res.content).toEqual([{ type: 'text', text: 'Instance s1. - button "Save" [ref=e3]' }])
+
+    await byName(buildToolset(api), 'find').handler({ role: 'button', text: 'save' })
+    expect(api.ask).toHaveBeenLastCalledWith('find', { role: 'button', text: 'save', ref: undefined, limit: undefined }, 's1')
   })
 })

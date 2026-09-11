@@ -66,6 +66,17 @@ export function qdadmMcpPlugin(options: QdadmMcpPluginOptions = {}): Plugin {
     name: 'qdadm-mcp',
     apply: 'serve',
 
+    config() {
+      // The connector loads its page tools on first use. Pre-bundled now, their
+      // dependencies cannot make vite reload the page in the middle of an
+      // agent's call.
+      return {
+        optimizeDeps: {
+          include: ['@quazardous/qdadm-mcp > dom-accessibility-api'],
+        },
+      }
+    },
+
     configResolved(config) {
       const debug = config.plugins.find((p) => p.name === 'qdadm-debug')
       const api = (debug as { api?: DebugBrokerApi } | undefined)?.api

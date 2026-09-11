@@ -65,6 +65,16 @@ export interface ToolDef {
   handler: (args: Record<string, unknown>) => Promise<unknown>
 }
 
+/** An answer that is not JSON (#2247): text written for an agent to read, or an image. */
+export class ToolContent {
+  // A plain field, not a parameter property: the relay also runs from source, under Node's type stripping.
+  readonly content: Array<{ type: 'text'; text: string } | { type: 'image'; data: string; mimeType: string }>
+
+  constructor(content: ToolContent['content']) {
+    this.content = content
+  }
+}
+
 const instance: ToolArg = {
   kind: 'string',
   description:
@@ -167,6 +177,13 @@ export function buildToolset(api: DebugBrokerApi, options: ToolsetOptions = {}):
     }
     const feedback = await api.ask('feedbackSince', { mark }, s.id).catch(() => null)
     return { ...stamped(s, data), feedback }
+  }
+
+  /** Page reads come back as text to read, headed by the instance they came from. */
+  const readText = async (args: Record<string, unknown>, type: string, payload: Record<string, unknown>) => {
+    const s = resolveSession(api, args)
+    const { text } = (await api.ask(type, payload, s.id)) as { text: string }
+    return new ToolContent([{ type: 'text', text: `Instance ${s.id.slice(0, 8)}. ${text}` }])
   }
 
   const bootErrorsHint = api.pairing
@@ -347,6 +364,48 @@ export function buildToolset(api: DebugBrokerApi, options: ToolsetOptions = {}):
           query: { kind: 'object', description: 'Query string, with route' },
         },
         handler: (a) => act(a, 'navigate', { path: a.path, route: a.route, params: a.params, query: a.query }),
+      },
+      {
+        name: 'page_snapshot',
+        description:
+          'What the user sees in the tab, as an accessibility tree: one line per element with its role, name, ' +
+          'states and value — `- textbox "Title" [required] [invalid] [value="Dune"] [ref=e9]` — and the text ' +
+          'around it. Every element carries a ref that find and the action tools take. Refs stay valid while the ' +
+          'element lives; a re-rendered one says so. The debug bar is left out; fields in error are listed at the ' +
+          'end. Far cheaper than a screenshot.',
+        args: {
+          instance,
+          filter: { kind: 'string', description: '"interactive": only what can be acted on, as a flat list. Default: the whole tree' },
+          ref: { kind: 'string', description: 'Snapshot only this element, e.g. a dialog or a table ("e42")' },
+          maxRows: { kind: 'number', description: 'Rows kept per table (default 20)' },
+          maxChars: { kind: 'number', description: 'Cut the snapshot past this many characters (default 30000)' },
+        },
+        handler: (a) => readText(a, 'pageSnapshot', { filter: a.filter, ref: a.ref, maxRows: a.maxRows, maxChars: a.maxChars }),
+      },
+      {
+        name: 'find',
+        description:
+          'Find elements in the tab by role and/or text (case-insensitive, in their name, value or text). Each ' +
+          'result gives its ref and where it sits: its row, dialog, form. E.g. role "button" text "save", or text ' +
+          '"Dune" to find its table row.',
+        args: {
+          instance,
+          text: { kind: 'string', description: 'Text to look for' },
+          role: { kind: 'string', description: 'ARIA role: button, link, textbox, combobox, checkbox, row, dialog…' },
+          ref: { kind: 'string', description: 'Search inside this element only' },
+          limit: { kind: 'number', description: 'Results returned (default 30)' },
+        },
+        handler: (a) => readText(a, 'find', { text: a.text, role: a.role, ref: a.ref, limit: a.limit }),
+      },
+      {
+        name: 'page_text',
+        description: 'The visible text of the tab (or of one element), as the user reads it — the debug bar left out.',
+        args: {
+          instance,
+          ref: { kind: 'string', description: 'Only this element\'s text' },
+          maxChars: { kind: 'number', description: 'Cut past this many characters (default 30000)' },
+        },
+        handler: (a) => readText(a, 'pageText', { ref: a.ref, maxChars: a.maxChars }),
       },
       {
         name: 'wait_for',

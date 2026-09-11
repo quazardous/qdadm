@@ -90,7 +90,8 @@ tab → **Pair** → give the agent the code, which it passes to `pair_accept`.
 
 Tools: `instances`, `session_info` (zombie-tab detector), `navigate` (a
 path or a route, like a user, waits for the page to settle), `wait_for` (a
-route or a signal), `boot_errors` (captures failures from BEFORE the app
+route or a signal), `page_snapshot` (the page as an accessibility tree, with a
+ref per element), `find` (elements by role or text), `page_text`, `boot_errors` (captures failures from BEFORE the app
 booted), `routes`, `entity_state`, `entity_list/get/create/update/delete`
 (through the manager — permissions, cache and signals apply; `readOnly: true`
 to disable writes), `storage_dump` (raw localStorage view to diff against the

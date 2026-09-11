@@ -55,6 +55,17 @@ describe('createQdadmMcpServer', () => {
     expect(names).not.toContain('entity_create')
   })
 
+  it('a page read reaches the agent as the text the tab wrote, not wrapped in JSON (#2247)', async () => {
+    const api = {
+      ...makeApi(),
+      pairing: { status: () => ({ waiting: [] }), accept: vi.fn() },
+      ask: vi.fn(async () => ({ text: '- button "Save" [ref=e3]' })),
+    }
+    const res = await (await connect(api)).callTool({ name: 'page_snapshot', arguments: {} })
+    expect(res.isError).toBeFalsy()
+    expect(res.content).toEqual([{ type: 'text', text: 'Instance s1. - button "Save" [ref=e3]' }])
+  })
+
   it('missing required arg → one actionable sentence + registered entities', async () => {
     const client = await connect(makeApi())
     const res = await client.callTool({ name: 'entity_list', arguments: {} })
