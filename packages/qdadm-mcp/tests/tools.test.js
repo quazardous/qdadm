@@ -163,3 +163,22 @@ describe('qdadm-mcp toolset — instances (#2231)', () => {
     )
   })
 })
+
+describe('qdadm-mcp toolset — chat (#2231)', () => {
+  const relayApi = () => ({ ...makeApi(), pairing: { status: vi.fn(() => ({ waiting: [] })), accept: vi.fn() } })
+
+  it('chat_send and chat_read exist on the relay only', () => {
+    expect(buildToolset(makeApi()).map((t) => t.name)).not.toContain('chat_send')
+    const names = buildToolset(relayApi(), { readOnly: true }).map((t) => t.name)
+    expect(names).toEqual(expect.arrayContaining(['chat_send', 'chat_read']))
+  })
+
+  it('chat_send posts the message to the targeted instance', async () => {
+    const api = relayApi()
+    const tools = buildToolset(api)
+    await byName(tools, 'chat_send').handler({ instance: 's1', message: 'hello' })
+    expect(api.ask).toHaveBeenLastCalledWith('chatPost', { message: 'hello' }, 's1')
+    await byName(tools, 'chat_read').handler({})
+    expect(api.ask).toHaveBeenLastCalledWith('chatRead', undefined, 's1')
+  })
+})

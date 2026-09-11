@@ -37,6 +37,23 @@ export interface RelayStateLike {
   retryInMs?: number
 }
 
+export interface RelayChatMessageLike {
+  id: number
+  from: 'agent' | 'user'
+  text: string
+  at: number
+}
+
+export interface RelayActivityLike {
+  id: number
+  at: number
+  tool: string
+  detail: string
+  ok: boolean
+  error?: string
+  ms: number
+}
+
 export interface RelayControllerLike {
   readonly mode?: 'auto' | 'pairing' | 'token'
   readonly instanceId?: string
@@ -44,6 +61,15 @@ export interface RelayControllerLike {
   subscribe(listener: (state: RelayStateLike) => void): () => void
   pair(port?: number): Promise<void>
   unpair(): void
+  readonly chat?: {
+    readonly messages: readonly RelayChatMessageLike[]
+    send(text: string): void
+    subscribe(listener: (messages: readonly RelayChatMessageLike[]) => void): () => void
+  }
+  readonly activity?: {
+    readonly entries: readonly RelayActivityLike[]
+    subscribe(listener: (entries: readonly RelayActivityLike[]) => void): () => void
+  }
 }
 
 /** The controller the relay connector installed, if any. */
@@ -65,6 +91,10 @@ export class RelayCollector extends Collector {
   private _controller: RelayControllerLike | null = null
   private _state: RelayStateLike = { status: 'unavailable' }
   private _unsubscribe: (() => void) | null = null
+  private _chat: readonly RelayChatMessageLike[] = []
+  private _unsubscribeChat: (() => void) | null = null
+  private _activity: readonly RelayActivityLike[] = []
+  private _unsubscribeActivity: (() => void) | null = null
 
   constructor(options: CollectorOptions = {}) {
     super(options)
@@ -98,6 +128,28 @@ export class RelayCollector extends Collector {
     return this._controller?.instanceId ?? null
   }
 
+  /** The chat with the agent (#2231): its `chat_send`, the user's replies it reads with `chat_read`. */
+  get chat(): readonly RelayChatMessageLike[] {
+    return this._chat
+  }
+
+  get canChat(): boolean {
+    return !!this._controller?.chat
+  }
+
+  /** What agents did in this tab through the MCP, newest last. */
+  get activity(): readonly RelayActivityLike[] {
+    return this._activity
+  }
+
+  get hasActivity(): boolean {
+    return !!this._controller?.activity
+  }
+
+  sendChat(text: string): void {
+    this._controller?.chat?.send(text)
+  }
+
   pair(port?: number): Promise<void> {
     return this._controller ? this._controller.pair(port) : Promise.resolve()
   }
@@ -126,11 +178,25 @@ export class RelayCollector extends Collector {
       this._state = next
       this.notifyChange()
     })
+    this._unsubscribeChat =
+      this._controller.chat?.subscribe((messages) => {
+        this._chat = [...messages]
+        this.notifyChange()
+      }) ?? null
+    this._unsubscribeActivity =
+      this._controller.activity?.subscribe((entries) => {
+        this._activity = [...entries]
+        this.notifyChange()
+      }) ?? null
   }
 
   protected override _doUninstall(): void {
     this._unsubscribe?.()
     this._unsubscribe = null
+    this._unsubscribeChat?.()
+    this._unsubscribeChat = null
+    this._unsubscribeActivity?.()
+    this._unsubscribeActivity = null
   }
 
   override snapshot(): CollectorSnapshot {

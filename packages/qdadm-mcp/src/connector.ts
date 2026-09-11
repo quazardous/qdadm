@@ -103,6 +103,69 @@ export type RelayPairingState =
   | { status: 'paired'; relay: RelayIdentity; instanceId: string }
   | { status: 'error'; message: string }
 
+/** One line of the MCP tab's chat (#2231). */
+export interface RelayChatMessage {
+  id: number
+  from: 'agent' | 'user'
+  text: string
+  at: number
+}
+
+/** One MCP request this tab served (#2231) — a line of the MCP tab's history. */
+export interface RelayActivityEntry {
+  id: number
+  at: number
+  /** The MCP tool the request came from, as the agent called it. */
+  tool: string
+  detail: string
+  ok: boolean
+  error?: string
+  ms: number
+}
+
+const TOOL_OF_REQUEST: Record<string, string> = {
+  sessionInfo: 'session_info',
+  bootlog: 'boot_errors',
+  routes: 'routes',
+  entityState: 'entity_state',
+  storageDump: 'storage_dump',
+  recentSignals: 'recent_signals',
+  describe: 'describe',
+  dump: 'dump',
+  chatPost: 'chat_send',
+  chatRead: 'chat_read',
+}
+
+const brief = (value: unknown, max = 160): string => {
+  try {
+    const text = typeof value === 'string' ? value : JSON.stringify(value)
+    return text.length > max ? `${text.slice(0, max - 1)}…` : text
+  } catch {
+    return ''
+  }
+}
+
+/** Name a request the way the agent thinks of it: the tool, and what it was about. */
+function describeRequest(type: string, payload?: Record<string, unknown>): { tool: string; detail: string } {
+  if (type === 'entityCall') {
+    const parts = [String(payload?.entity ?? '?')]
+    if (payload?.id !== undefined) parts.push(`#${String(payload.id)}`)
+    if (payload?.params) parts.push(brief(payload.params))
+    if (payload?.data) parts.push(brief(payload.data))
+    return { tool: `entity_${String(payload?.op ?? '?')}`, detail: parts.join(' ') }
+  }
+  if (type === 'call') {
+    const args = payload?.args as Record<string, unknown> | undefined
+    const withArgs = args && Object.keys(args).length > 0 ? ` ${brief(args)}` : ''
+    return { tool: 'bridge_call', detail: `${String(payload?.collector)}.${String(payload?.action)}${withArgs}` }
+  }
+  if (type === 'chatPost') return { tool: 'chat_send', detail: brief(payload?.message) }
+  if (type === 'entityState' || type === 'storageDump') {
+    return { tool: TOOL_OF_REQUEST[type], detail: payload?.entity ? String(payload.entity) : '' }
+  }
+  return { tool: TOOL_OF_REQUEST[type] ?? type, detail: '' }
+}
+
 /** What `window.__qdadmRelay` offers — the debug bar drives pairing through it. */
 export interface QdadmRelayController {
   /** Stable for the life of the tab, reloads included. */
@@ -115,11 +178,27 @@ export interface QdadmRelayController {
   /** Scan (or try one port) and ask the relay found to pair. */
   pair(port?: number): Promise<void>
   unpair(): void
+  /** A small chat between the agent (`chat_send` / `chat_read`) and whoever looks at the tab. */
+  readonly chat: {
+    readonly messages: readonly RelayChatMessage[]
+    /** From the person at the tab. */
+    send(text: string): void
+    /** Called at once with the messages, then on every new one. */
+    subscribe(listener: (messages: readonly RelayChatMessage[]) => void): () => void
+  }
+  /** Every MCP request this tab served, newest last (100 kept). */
+  readonly activity: {
+    readonly entries: readonly RelayActivityEntry[]
+    /** Called at once with the entries, then on every new one. */
+    subscribe(listener: (entries: readonly RelayActivityEntry[]) => void): () => void
+  }
 }
 
 const FRAGMENT_RE = /#qdadm-relay=(wss?:\/\/[^/]+)\/([\w-]+)/
 const PAIRING_KEY = 'qdadm-relay:pairing'
 const INSTANCE_KEY = 'qdadm-relay:instance'
+const CHAT_KEY = 'qdadm-relay:chat'
+const ACTIVITY_KEY = 'qdadm-relay:activity'
 const HELLO_TIMEOUT_MS = 1000
 /** Retries after a live paired connection drops; a page load gets one attempt. */
 const RECONNECT_DELAYS_MS = [1000, 2000, 4000]
@@ -184,6 +263,46 @@ export function installQdadmRelayConnector(options: QdadmRelayConnectorOptions =
 
   const page = createPageAgent(id, () => w.__qdadm ?? {})
 
+  // ── chat (#2231) ───────────────────────────────────────────────────────
+  // Kept for the tab in sessionStorage: a reload (HMR included) must not eat a
+  // message the agent has not read yet.
+  const savedChat = parse(tabStore.getItem(CHAT_KEY)) as { seq?: number; readUpTo?: number; messages?: RelayChatMessage[] } | null
+  const chatMessages: RelayChatMessage[] = Array.isArray(savedChat?.messages) ? savedChat.messages : []
+  const chatListeners = new Set<(messages: readonly RelayChatMessage[]) => void>()
+  let chatSeq = typeof savedChat?.seq === 'number' ? savedChat.seq : 0
+  let agentReadUpTo = typeof savedChat?.readUpTo === 'number' ? savedChat.readUpTo : 0
+  const saveChat = () =>
+    tabStore.setItem(CHAT_KEY, JSON.stringify({ seq: chatSeq, readUpTo: agentReadUpTo, messages: chatMessages }))
+  const pushChat = (from: RelayChatMessage['from'], text: string) => {
+    chatMessages.push({ id: ++chatSeq, from, text: text.slice(0, 4000), at: Date.now() })
+    if (chatMessages.length > 100) chatMessages.shift()
+    saveChat()
+    for (const listener of chatListeners) {
+      try {
+        listener(chatMessages)
+      } catch {
+        /* a broken listener must not break the chat */
+      }
+    }
+  }
+  const unreadFromUser = () => chatMessages.filter((m) => m.from === 'user' && m.id > agentReadUpTo)
+  const chatHandlers: Record<string, (payload?: Record<string, unknown>) => unknown> = {
+    chatPost: (payload) => {
+      const text = String(payload?.message ?? '').trim()
+      if (!text) throw new Error('chat_send needs a non-empty message')
+      pushChat('agent', text)
+      return { shown: true, unreadFromUser: unreadFromUser().length }
+    },
+    chatRead: () => {
+      const unread = unreadFromUser()
+      agentReadUpTo = chatSeq
+      saveChat()
+      return unread.length > 0
+        ? { messages: unread.map(({ text, at }) => ({ text, at })) }
+        : { messages: [], note: 'Nothing new from the user.' }
+    },
+  }
+
   const pageMeta = () => {
     let app: string | undefined
     try {
@@ -205,13 +324,37 @@ export function installQdadmRelayConnector(options: QdadmRelayConnectorOptions =
     }, 250)
   }
 
+  // ── history (#2231): what agents did in this tab ─────────────────────
+  const savedActivity = parse(tabStore.getItem(ACTIVITY_KEY)) as { seq?: number; entries?: RelayActivityEntry[] } | null
+  const activityEntries: RelayActivityEntry[] = Array.isArray(savedActivity?.entries) ? savedActivity.entries : []
+  const activityListeners = new Set<(entries: readonly RelayActivityEntry[]) => void>()
+  let activitySeq = typeof savedActivity?.seq === 'number' ? savedActivity.seq : 0
+  const recordActivity = (entry: Omit<RelayActivityEntry, 'id'>) => {
+    activityEntries.push({ id: ++activitySeq, ...entry })
+    if (activityEntries.length > 100) activityEntries.shift()
+    tabStore.setItem(ACTIVITY_KEY, JSON.stringify({ seq: activitySeq, entries: activityEntries }))
+    for (const listener of activityListeners) {
+      try {
+        listener(activityEntries)
+      } catch {
+        /* a broken listener must not break the history */
+      }
+    }
+  }
+
   const answer = async (ws: WebSocket, msg: Record<string, unknown>) => {
     let reply: Record<string, unknown>
+    const type = String(msg.type)
+    const payload = msg.payload as Record<string, unknown> | undefined
+    const { tool, detail } = describeRequest(type, payload)
+    const at = Date.now()
     try {
-      const data = await page.handle(String(msg.type), msg.payload as Record<string, unknown> | undefined)
+      const data = chatHandlers[type] ? chatHandlers[type](payload) : await page.handle(type, payload)
       reply = { kind: 'reply', id: msg.id, ok: true, data }
+      recordActivity({ at, tool, detail, ok: true, ms: Date.now() - at })
     } catch (e) {
       reply = { kind: 'reply', id: msg.id, ok: false, error: (e as Error).message }
+      recordActivity({ at, tool, detail, ok: false, error: (e as Error).message, ms: Date.now() - at })
     }
     try {
       ws.send(JSON.stringify(reply))
@@ -501,6 +644,30 @@ export function installQdadmRelayConnector(options: QdadmRelayConnectorOptions =
     },
     pair,
     unpair,
+    chat: {
+      get messages() {
+        return chatMessages
+      },
+      send(text: string) {
+        const trimmed = String(text ?? '').trim()
+        if (trimmed) pushChat('user', trimmed)
+      },
+      subscribe(listener) {
+        chatListeners.add(listener)
+        listener(chatMessages)
+        return () => chatListeners.delete(listener)
+      },
+    },
+    activity: {
+      get entries() {
+        return activityEntries
+      },
+      subscribe(listener) {
+        activityListeners.add(listener)
+        listener(activityEntries)
+        return () => activityListeners.delete(listener)
+      },
+    },
   }
   w.__qdadmRelay = controller
 

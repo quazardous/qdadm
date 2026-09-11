@@ -104,6 +104,20 @@ To run it in a terminal and watch it: `npx qdadm-mcp-relay`.
 | `--token <t>` | A fixed page token instead of a random one |
 | `--background` | How the plugin and the agent start it: idle stop after 30 minutes |
 
+## The MCP tab
+
+With the connector installed, the debug bar gets an **MCP** tab. The tab's
+instance id sits at the top — click it to copy it, and give it to your agent
+when several tabs are open. Three sub-tabs:
+
+- **Status**: how this tab reaches the relay (connected, offline, or Pair).
+- **Chat**: the agent writes with `chat_send`; what you type, it reads with
+  `chat_read`.
+- **History**: every MCP request this tab served — tool, detail, success or
+  error, duration.
+
+Chat and history are kept for the browser tab, across reloads.
+
 ## Outside dev: pairing
 
 A tab not served by the dev server — a static build, `vite preview`, GitHub
@@ -161,6 +175,7 @@ Every response carries a session stamp.
 | `storage_dump` | RAW localStorage view — diff against `entity_list` to catch seed/cache bugs |
 | `recent_signals` | Last signal names on the bus |
 | `describe` / `bridge_call` | Collector discovery + escape hatch |
+| `chat_send` / `chat_read` | Relay only: talk with whoever looks at the tab, in its MCP tab's chat |
 | `pair_accept` | Relay only: complete a pairing with the code the user reads out |
 
 ## Agent playbook

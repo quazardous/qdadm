@@ -22,4 +22,6 @@ One relay per machine between your app's tabs and your agents (#2231).
 - Started in the background, it stops after 30 idle minutes.
 - The launcher runs the built relay when installed, so it no longer needs Node ≥ 22.18.
 
+**Chat.** `chat_send` shows a message in the tab's MCP panel, and `chat_read` returns what the user typed there since the last read. Every request a tab serves is also kept in its MCP history. Both survive reloads.
+
 **Outside dev** (static build, preview), a tab pairs from the debug bar's MCP tab: **Pair** shows a code, the user reads it to the agent, the agent calls `pair_accept`. The code never reaches the agent. `--origin` restricts who may pair. The `#qdadm-relay=…/<token>` fragment still connects a tab directly.

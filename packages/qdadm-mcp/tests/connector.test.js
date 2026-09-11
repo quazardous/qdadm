@@ -285,3 +285,104 @@ describe('relay connector — dev pages connect on their own (#2231)', () => {
     expect(controller.state.retryInMs).toBeGreaterThan(0)
   })
 })
+
+describe('relay connector — the MCP tab chat (#2231)', () => {
+  afterEach(() => {
+    delete window.__qdadmRelayAuto
+    vi.unstubAllGlobals()
+  })
+
+  const connected = async () => {
+    window.__qdadmRelayAuto = '/__qdadm/relay.json'
+    vi.stubGlobal('fetch', async () => ({ ok: true, status: 200, json: async () => ({ port: 47761, token: 'dev-token' }) }))
+    const broker = new RelayBroker({ token: 'dev-token', identity: identity(47761) })
+    const { controller } = install({ 47761: broker })
+    await vi.waitFor(() => expect(controller.state.status).toBe('connected'))
+    return { broker, controller }
+  }
+
+  it('the agent writes into the tab; the tab sees it at once', async () => {
+    const { broker, controller } = await connected()
+    const seen = []
+    controller.chat.subscribe((messages) => seen.push(messages.length))
+
+    const res = await broker.ask('chatPost', { message: 'Hello from the agent' })
+
+    expect(res).toEqual({ shown: true, unreadFromUser: 0 })
+    expect(controller.chat.messages).toEqual([expect.objectContaining({ from: 'agent', text: 'Hello from the agent' })])
+    expect(seen.at(-1)).toBe(1)
+  })
+
+  it('what the user types, the agent reads once', async () => {
+    const { broker, controller } = await connected()
+    controller.chat.send('  hi agent  ')
+    controller.chat.send('')
+
+    expect((await broker.ask('chatPost', { message: 'ping' })).unreadFromUser).toBe(1)
+    const first = await broker.ask('chatRead')
+    expect(first.messages.map((m) => m.text)).toEqual(['hi agent'])
+    expect((await broker.ask('chatRead')).messages).toEqual([])
+  })
+
+  it('an empty message from the agent is refused with a reason', async () => {
+    const { broker } = await connected()
+    await expect(broker.ask('chatPost', { message: '   ' })).rejects.toThrow(/non-empty message/)
+  })
+})
+
+describe('relay connector — the MCP history (#2231)', () => {
+  afterEach(() => {
+    delete window.__qdadmRelayAuto
+    vi.unstubAllGlobals()
+  })
+
+  it('logs every request the tab serves, named after the tool, failures included', async () => {
+    window.__qdadmRelayAuto = '/__qdadm/relay.json'
+    vi.stubGlobal('fetch', async () => ({ ok: true, status: 200, json: async () => ({ port: 47761, token: 'dev-token' }) }))
+    const broker = new RelayBroker({ token: 'dev-token', identity: identity(47761) })
+    const { controller } = install({ 47761: broker })
+    await vi.waitFor(() => expect(controller.state.status).toBe('connected'))
+
+    await broker.ask('sessionInfo')
+    await broker.ask('chatPost', { message: 'hello' })
+    await expect(broker.ask('entityCall', { entity: 'books', op: 'get', id: 7 })).rejects.toThrow()
+
+    expect(controller.activity.entries.map(({ tool, detail, ok }) => ({ tool, detail, ok }))).toEqual([
+      { tool: 'session_info', detail: '', ok: true },
+      { tool: 'chat_send', detail: 'hello', ok: true },
+      { tool: 'entity_get', detail: 'books #7', ok: false },
+    ])
+    expect(controller.activity.entries[2].error).toMatch(/orchestrator not ready/)
+  })
+})
+
+describe('relay connector — chat and history survive a reload (#2231)', () => {
+  afterEach(() => {
+    delete window.__qdadmRelayAuto
+    vi.unstubAllGlobals()
+  })
+
+  it('a message the agent has not read yet is still there after the tab reloads', async () => {
+    window.__qdadmRelayAuto = '/__qdadm/relay.json'
+    vi.stubGlobal('fetch', async () => ({ ok: true, status: 200, json: async () => ({ port: 47761, token: 'dev-token' }) }))
+    const broker = new RelayBroker({ token: 'dev-token', identity: identity(47761) })
+    const first = install({ 47761: broker })
+    await vi.waitFor(() => expect(first.controller.state.status).toBe('connected'))
+    await broker.ask('chatPost', { message: 'hello' })
+    first.controller.chat.send('typed just before a reload')
+
+    // The page reloads: same tab storage, a fresh connector.
+    const live = first.sockets.find((s) => s.readyState === 1)
+    live.onclose = live.onmessage = null
+    live.close()
+    delete window.__qdadmRelayAuto
+    delete window.__qdadmRelay
+    window.__qdadmRelayAuto = '/__qdadm/relay.json'
+    const second = install({ 47761: broker })
+    await vi.waitFor(() => expect(second.controller.state.status).toBe('connected'))
+
+    expect(second.controller.chat.messages.map((m) => m.text)).toEqual(['hello', 'typed just before a reload'])
+    expect((await broker.ask('chatRead')).messages.map((m) => m.text)).toEqual(['typed just before a reload'])
+    expect(second.controller.activity.entries.map((e) => e.tool)).toEqual(['chat_send', 'chat_read'])
+  })
+})

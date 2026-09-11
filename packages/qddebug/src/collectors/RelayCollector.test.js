@@ -99,3 +99,73 @@ describe('RelayCollector — the MCP tab (#2231)', () => {
     expect(controller.listeners.size).toBe(0)
   })
 })
+
+describe('RelayCollector — the chat (#2231)', () => {
+  it('follows the controller chat and sends what the panel types', () => {
+    let messages = []
+    const listeners = new Set()
+    const controller = {
+      ...fakeController(),
+      chat: {
+        get messages() {
+          return messages
+        },
+        send: vi.fn((text) => {
+          messages = [...messages, { id: messages.length + 1, from: 'user', text, at: 0 }]
+          for (const l of listeners) l(messages)
+        }),
+        subscribe(listener) {
+          listeners.add(listener)
+          listener(messages)
+          return () => listeners.delete(listener)
+        },
+      },
+    }
+    globalThis.__qdadmRelay = controller
+    const collector = new RelayCollector()
+    const notified = vi.fn()
+    collector.onNotify(notified)
+    collector.install({})
+
+    expect(collector.canChat).toBe(true)
+    collector.sendChat('hello')
+
+    expect(controller.chat.send).toHaveBeenCalledWith('hello')
+    expect(collector.chat.map((m) => m.text)).toEqual(['hello'])
+    expect(notified).toHaveBeenCalled()
+
+    collector.uninstall()
+    expect(listeners.size).toBe(0)
+  })
+})
+
+describe('RelayCollector — the MCP history (#2231)', () => {
+  it('follows what agents did in the tab', () => {
+    let entries = []
+    const listeners = new Set()
+    const controller = {
+      ...fakeController(),
+      activity: {
+        get entries() {
+          return entries
+        },
+        subscribe(listener) {
+          listeners.add(listener)
+          listener(entries)
+          return () => listeners.delete(listener)
+        },
+      },
+    }
+    globalThis.__qdadmRelay = controller
+    const collector = new RelayCollector()
+    collector.install({})
+    expect(collector.hasActivity).toBe(true)
+
+    entries = [{ id: 1, at: 0, tool: 'routes', detail: '', ok: true, ms: 3 }]
+    for (const l of listeners) l(entries)
+
+    expect(collector.activity.map((e) => e.tool)).toEqual(['routes'])
+    collector.uninstall()
+    expect(listeners.size).toBe(0)
+  })
+})

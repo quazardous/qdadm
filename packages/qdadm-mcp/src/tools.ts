@@ -311,6 +311,25 @@ export function buildToolset(api: DebugBrokerApi, options: ToolsetOptions = {}):
     const pairing = api.pairing
     tools.push(
       {
+        name: 'chat_send',
+        description:
+          'Show a message in the chat of the MCP tab of the app\'s debug bar — to whoever is looking at that ' +
+          'browser tab. Returns how many of their messages you have not read yet (chat_read).',
+        args: {
+          instance,
+          message: { kind: 'string', required: true, description: 'The message to show' },
+        },
+        handler: (a) => ask(a, 'chatPost', { message: a.message }),
+      },
+      {
+        name: 'chat_read',
+        description:
+          'What the user typed in the chat of the MCP tab since your last chat_read. The chat lives in the ' +
+          'tab: a reload starts it afresh.',
+        args: { instance },
+        handler: (a) => ask(a, 'chatRead'),
+      },
+      {
         name: 'pair_accept',
         description:
           'Complete a pairing: the user clicked Pair in the MCP tab of the app\'s debug bar and read you the code it ' +

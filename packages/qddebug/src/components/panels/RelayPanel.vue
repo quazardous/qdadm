@@ -3,7 +3,7 @@
  * RelayPanel — the MCP tab (#2231): pair this browser tab with a local
  * qdadm-mcp-relay, so an agent can debug the live app.
  */
-import { computed, onUnmounted, ref } from 'vue'
+import { computed, nextTick, onUnmounted, ref, watch } from 'vue'
 import type { RelayCollector, RelayIdentityLike } from '../../collectors/RelayCollector'
 
 const props = defineProps<{
@@ -57,6 +57,67 @@ const pair = (port?: number) => {
 }
 const unpair = () => props.collector.unpair()
 
+/** Status / Chat / History — remembered for the browser tab. */
+type SubTab = 'status' | 'chat' | 'history'
+const SUBTAB_KEY = 'qdadm-debug:mcp-subtab'
+const readSubTab = (): SubTab => {
+  try {
+    const v = sessionStorage.getItem(SUBTAB_KEY)
+    return v === 'chat' || v === 'history' ? v : 'status'
+  } catch {
+    return 'status'
+  }
+}
+const subTab = ref<SubTab>(readSubTab())
+const openSubTab = (tab: SubTab) => {
+  subTab.value = tab
+  try {
+    sessionStorage.setItem(SUBTAB_KEY, tab)
+  } catch {
+    /* storage refused: the choice just does not survive a reload */
+  }
+}
+
+/** The chat with the agent: it writes with chat_send, reads what you type with chat_read. */
+const chat = computed(() => {
+  void tick.value
+  return props.collector.chat
+})
+/** Agent messages that arrived while the Chat sub-tab was not open. */
+const chatSeenUpTo = ref(0)
+const unreadChat = computed(() => chat.value.filter((m) => m.from === 'agent' && m.id > chatSeenUpTo.value).length)
+watch(
+  [subTab, () => chat.value.length],
+  () => {
+    if (subTab.value === 'chat') chatSeenUpTo.value = chat.value.at(-1)?.id ?? chatSeenUpTo.value
+  },
+  { immediate: true }
+)
+const draft = ref('')
+const chatLog = ref<HTMLElement | null>(null)
+const sendChat = () => {
+  const text = draft.value.trim()
+  if (!text) return
+  props.collector.sendChat(text)
+  draft.value = ''
+}
+const clock = (at: number) => new Date(at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+watch(
+  [() => chat.value.length, subTab],
+  async () => {
+    await nextTick()
+    if (chatLog.value) chatLog.value.scrollTop = chatLog.value.scrollHeight
+  }
+)
+
+/** What agents did in this tab through the MCP — newest first. */
+const history = computed(() => {
+  void tick.value
+  return [...props.collector.activity].reverse().slice(0, 50)
+})
+const clockSeconds = (at: number) =>
+  new Date(at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+
 /** What any MCP client runs — no particular agent assumed. */
 const SETUP = 'npx qdadm-mcp-relay --stdio'
 </script>
@@ -76,6 +137,32 @@ const SETUP = 'npx qdadm-mcp-relay --stdio'
       </button>
       <span v-if="copied" class="mcp-copied">copied</span>
     </div>
+
+    <nav v-if="state.status !== 'unavailable'" class="mcp-subtabs">
+      <button type="button" class="mcp-subtab" :class="{ 'mcp-subtab-active': subTab === 'status' }" @click="openSubTab('status')">
+        Status
+      </button>
+      <button
+        v-if="collector.canChat"
+        type="button"
+        class="mcp-subtab"
+        :class="{ 'mcp-subtab-active': subTab === 'chat' }"
+        @click="openSubTab('chat')"
+      >
+        Chat<span v-if="unreadChat > 0" class="mcp-subtab-badge">{{ unreadChat }}</span>
+      </button>
+      <button
+        v-if="collector.hasActivity"
+        type="button"
+        class="mcp-subtab"
+        :class="{ 'mcp-subtab-active': subTab === 'history' }"
+        @click="openSubTab('history')"
+      >
+        History<span class="mcp-subtab-count">{{ collector.activity.length }}</span>
+      </button>
+    </nav>
+
+    <div v-if="subTab === 'status' || state.status === 'unavailable'" class="mcp-subpanel">
 
     <template v-if="state.status === 'unavailable'">
       <p class="mcp-lead">The MCP connector is not installed in this app.</p>
@@ -166,6 +253,39 @@ const SETUP = 'npx qdadm-mcp-relay --stdio'
         </button>
       </div>
     </template>
+
+    </div>
+
+    <section v-if="subTab === 'chat' && collector.canChat && state.status !== 'unavailable'" class="mcp-chat">
+      <div ref="chatLog" class="mcp-chat-log">
+        <p v-if="chat.length === 0" class="mcp-hint">
+          Chat with the agent: it writes here with <code>chat_send</code>, and reads what you type with
+          <code>chat_read</code>.
+        </p>
+        <div v-for="m in chat" :key="m.id" class="mcp-msg" :class="`mcp-msg-${m.from}`">
+          <span class="mcp-msg-who">{{ m.from === 'agent' ? 'Agent' : 'You' }} · {{ clock(m.at) }}</span>
+          <span class="mcp-msg-text">{{ m.text }}</span>
+        </div>
+      </div>
+      <form class="mcp-chat-form" @submit.prevent="sendChat">
+        <input v-model="draft" class="mcp-chat-input" maxlength="2000" placeholder="Message the agent…" @keydown.stop />
+        <button type="submit" class="mcp-btn mcp-btn-primary" :disabled="!draft.trim()" title="Send">
+          <i class="pi pi-send" />
+        </button>
+      </form>
+    </section>
+
+    <section v-if="subTab === 'history' && collector.hasActivity && state.status !== 'unavailable'" class="mcp-history">
+      <p v-if="history.length === 0" class="mcp-hint">What agents do in this tab through the MCP shows up here.</p>
+      <ol v-else class="mcp-history-list">
+        <li v-for="e in history" :key="e.id" class="mcp-history-item" :class="{ 'mcp-history-failed': !e.ok }">
+          <span class="mcp-history-time">{{ clockSeconds(e.at) }}</span>
+          <code class="mcp-history-tool">{{ e.tool }}</code>
+          <span class="mcp-history-detail" :title="e.ok ? e.detail : e.error">{{ e.ok ? e.detail : e.error }}</span>
+          <span class="mcp-history-ms">{{ e.ms }} ms</span>
+        </li>
+      </ol>
+    </section>
   </div>
 </template>
 
@@ -267,6 +387,149 @@ const SETUP = 'npx qdadm-mcp-relay --stdio'
 .mcp-facts dd {
   margin: 0;
   min-width: 0;
+}
+.mcp-subtabs {
+  display: flex;
+  gap: 0.15rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+}
+.mcp-subtab {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin-bottom: -1px;
+  padding: 0.3rem 0.75rem;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-weight: 600;
+  opacity: 0.65;
+  cursor: pointer;
+}
+.mcp-subtab:hover {
+  opacity: 1;
+}
+.mcp-subtab:focus-visible {
+  outline: 2px solid #60a5fa;
+  outline-offset: -2px;
+}
+.mcp-subtab-active {
+  border-bottom-color: #22c55e;
+  opacity: 1;
+}
+.mcp-subtab-badge {
+  padding: 0 0.35rem;
+  border-radius: 999px;
+  background: #2563eb;
+  color: #fff;
+  font-size: 0.68rem;
+}
+.mcp-subtab-count {
+  padding: 0 0.35rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.1);
+  font-size: 0.68rem;
+  font-weight: 500;
+}
+.mcp-subpanel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+.mcp-chat {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+.mcp-chat-log {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  max-height: 14rem;
+  overflow-y: auto;
+}
+.mcp-msg {
+  display: flex;
+  flex-direction: column;
+  max-width: 85%;
+  padding: 0.3rem 0.6rem;
+  border-radius: 10px;
+  word-break: break-word;
+  white-space: pre-wrap;
+}
+.mcp-msg-agent {
+  align-self: flex-start;
+  background: rgba(255, 255, 255, 0.08);
+  border-bottom-left-radius: 3px;
+}
+.mcp-msg-user {
+  align-self: flex-end;
+  background: #2563eb;
+  color: #fff;
+  border-bottom-right-radius: 3px;
+}
+.mcp-msg-who {
+  font-size: 0.65rem;
+  opacity: 0.65;
+}
+.mcp-chat-form {
+  display: flex;
+  gap: 0.4rem;
+}
+.mcp-chat-input {
+  flex: 1;
+  min-width: 0;
+  padding: 0.35rem 0.6rem;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.25);
+  color: inherit;
+  font: inherit;
+}
+.mcp-chat-input:focus {
+  outline: 2px solid #60a5fa;
+  outline-offset: 0;
+}
+.mcp-history {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+.mcp-history-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  max-height: 14rem;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  list-style: none;
+}
+.mcp-history-item {
+  display: grid;
+  grid-template-columns: max-content max-content 1fr max-content;
+  align-items: baseline;
+  gap: 0.5rem;
+  padding: 0.1rem 0;
+  font-size: 0.75rem;
+}
+.mcp-history-time,
+.mcp-history-ms {
+  opacity: 0.55;
+  font-variant-numeric: tabular-nums;
+}
+.mcp-history-detail {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  opacity: 0.85;
+}
+.mcp-history-failed .mcp-history-tool,
+.mcp-history-failed .mcp-history-detail {
+  color: #f87171;
 }
 .mcp-actions {
   display: flex;
