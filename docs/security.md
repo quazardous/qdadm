@@ -342,8 +342,12 @@ authAdapter.revalidate().then(() => {
 ```
 
 Mount first and the guard runs against a session that has not been restored
-yet: the user lands on `/login?session_lost=1` with a perfectly valid
-credential in storage, and nothing anywhere says why.
+yet: the user lands on `/login` with a perfectly valid credential in storage,
+and nothing anywhere says why.
+
+`session_lost=1` is added to that redirect only when a session this tab had
+is gone. A first visit goes to `/login` without it, so an app can read the
+flag to say "your session expired".
 
 The framework cannot do this for you, and deliberately does not try — only the
 app knows whether it would rather show a blank screen for 200 ms or a login

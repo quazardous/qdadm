@@ -205,7 +205,9 @@ export function applyRoutingMethods(KernelClass: { prototype: Kernel }): void {
       )
 
       if (requiresAuth && !authAdapter.isAuthenticated()) {
-        if (wasEverAuthenticated) {
+        // Only a session this tab had can be lost: a first visit goes to login without the flag (#2292).
+        const sessionLost = wasEverAuthenticated
+        if (sessionLost) {
           const debug = this.options.debug ?? false
           if (debug) {
             console.warn(
@@ -219,9 +221,8 @@ export function applyRoutingMethods(KernelClass: { prototype: Kernel }): void {
           wasEverAuthenticated = false
         }
 
-        return this.router!.hasRoute('login')
-          ? { name: 'login', query: { session_lost: '1' } }
-          : '/'
+        if (!this.router!.hasRoute('login')) return '/'
+        return sessionLost ? { name: 'login', query: { session_lost: '1' } } : { name: 'login' }
       }
 
       const entity = to.meta?.entity as string | undefined

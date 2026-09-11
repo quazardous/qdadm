@@ -84,11 +84,15 @@ describe('auth guard entity access check (#1190)', () => {
     expect(result).toBeUndefined()
   })
 
-  it('redirects to login when auth is required and the session is missing', () => {
+})
+
+describe('auth guard redirect to login (#2292)', () => {
+  const withLogin = (authenticated) => {
     let guard = null
+    const auth = { authenticated }
     const kernel = {
       options: {
-        authAdapter: { isAuthenticated: () => false },
+        authAdapter: { isAuthenticated: () => auth.authenticated },
         debug: false,
       },
       signals: { on: vi.fn(), emit: vi.fn() },
@@ -99,11 +103,27 @@ describe('auth guard entity access check (#1190)', () => {
       },
     }
     Kernel.prototype._setupAuthGuard.call(kernel)
-    const result = guard(
-      { path: '/books', matched: [{ meta: { requiresAuth: true } }], meta: {} },
-      {},
-    )
+    return { kernel, auth, guard: (...args) => guard(...args) }
+  }
+  const privateRoute = { path: '/books', matched: [{ meta: { requiresAuth: true } }], meta: {} }
 
-    expect(result).toEqual({ name: 'login', query: { session_lost: '1' } })
+  it('a first visit goes to login without session_lost, and signals no lost session', () => {
+    const { kernel, guard } = withLogin(false)
+
+    expect(guard(privateRoute, {})).toEqual({ name: 'login' })
+    expect(kernel.signals.emit).not.toHaveBeenCalledWith('auth:session-lost', expect.anything())
+  })
+
+  it('a session this tab had and lost goes to login with session_lost=1, signalled once', () => {
+    const { kernel, auth, guard } = withLogin(true)
+    auth.authenticated = false
+
+    expect(guard(privateRoute, {})).toEqual({ name: 'login', query: { session_lost: '1' } })
+    expect(kernel.signals.emit).toHaveBeenCalledWith(
+      'auth:session-lost',
+      expect.objectContaining({ reason: 'token_missing' }),
+    )
+    // Already told: the next redirect is a plain one.
+    expect(guard(privateRoute, {})).toEqual({ name: 'login' })
   })
 })
