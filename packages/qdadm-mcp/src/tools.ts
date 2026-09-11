@@ -47,7 +47,7 @@ export interface ToolsetOptions {
  * `string` / `id` (string|number) / `object` (free-form record).
  */
 export interface ToolArg {
-  kind: 'string' | 'id' | 'object'
+  kind: 'string' | 'id' | 'object' | 'number'
   required?: boolean
   description: string
 }
@@ -146,6 +146,28 @@ export function buildToolset(api: DebugBrokerApi, options: ToolsetOptions = {}):
       return stamped(s, data)
     }
   const ask = makeAsk()
+
+  /**
+   * On the relay, a call that acts on the tab also returns what happened in it
+   * while the call ran (#2247): route change, console errors and warnings,
+   * toasts, missing i18n keys, failed API calls, signals.
+   */
+  const relay = !!api.pairing
+  const act = async (args: Record<string, unknown>, type: string, payload?: unknown): Promise<unknown> => {
+    if (!relay) return ask(args, type, payload)
+    const s = resolveSession(api, args)
+    const mark = await api.ask('feedbackMark', undefined, s.id).catch(() => null)
+    if (!mark) return ask(args, type, payload) // a connector without feedback support
+    let data: unknown
+    try {
+      data = await api.ask(type, payload, s.id)
+    } catch (e) {
+      const feedback = await api.ask('feedbackSince', { mark }, s.id).catch(() => null)
+      throw new Error(`${(e as Error).message}${feedback ? ` — meanwhile in the tab: ${JSON.stringify(feedback)}` : ''}`)
+    }
+    const feedback = await api.ask('feedbackSince', { mark }, s.id).catch(() => null)
+    return { ...stamped(s, data), feedback }
+  }
 
   const bootErrorsHint = api.pairing
     ? pairHint +
@@ -259,7 +281,7 @@ export function buildToolset(api: DebugBrokerApi, options: ToolsetOptions = {}):
         args: { kind: 'object', description: 'Action arguments' },
       },
       handler: (a) =>
-        ask(a, 'call', { collector: a.collector, action: a.action, args: a.args ?? {} }),
+        act(a, 'call', { collector: a.collector, action: a.action, args: a.args ?? {} }),
     },
     {
       name: 'instances',
@@ -285,7 +307,7 @@ export function buildToolset(api: DebugBrokerApi, options: ToolsetOptions = {}):
         entity,
         data: { kind: 'object', required: true, description: 'Record fields' },
       },
-      handler: (a) => ask(a, 'entityCall', { entity: a.entity, op: 'create', data: a.data }),
+      handler: (a) => act(a, 'entityCall', { entity: a.entity, op: 'create', data: a.data }),
     },
     {
       name: 'entity_update',
@@ -297,19 +319,49 @@ export function buildToolset(api: DebugBrokerApi, options: ToolsetOptions = {}):
         data: { kind: 'object', required: true, description: 'Fields to update' },
       },
       handler: (a) =>
-        ask(a, 'entityCall', { entity: a.entity, op: 'update', id: a.id, data: a.data }),
+        act(a, 'entityCall', { entity: a.entity, op: 'update', id: a.id, data: a.data }),
     },
     {
       name: 'entity_delete',
       description: 'Delete a record by id through the EntityManager.',
       args: { instance, entity, id },
-      handler: (a) => ask(a, 'entityCall', { entity: a.entity, op: 'delete', id: a.id }),
+      handler: (a) => act(a, 'entityCall', { entity: a.entity, op: 'delete', id: a.id }),
     },
   ]
 
   if (api.pairing) {
     const pairing = api.pairing
     tools.push(
+      {
+        name: 'navigate',
+        description:
+          'Navigate the tab like a user would (router push), then wait for the page to settle. Pass a path ' +
+          '("/books/12/edit") or a route name with params (route "book-edit", params {"bookId": 12}; names come from ' +
+          'routes). Returns the route reached, the page title and breadcrumb, and a feedback block: what happened in ' +
+          'the tab meanwhile (console errors, toasts, missing i18n keys, failed API calls, signals).',
+        args: {
+          instance,
+          path: { kind: 'string', description: 'Path to open, e.g. "/books"' },
+          route: { kind: 'string', description: 'A route name instead of a path, e.g. "book-edit"' },
+          params: { kind: 'object', description: 'Route params, with route' },
+          query: { kind: 'object', description: 'Query string, with route' },
+        },
+        handler: (a) => act(a, 'navigate', { path: a.path, route: a.route, params: a.params, query: a.query }),
+      },
+      {
+        name: 'wait_for',
+        description:
+          'Wait until the tab reaches a route (a name, or a path prefix starting with "/") or emits a signal whose ' +
+          'name matches a pattern (a regex, e.g. "^entity:books:"). On timeout, says where the tab is and which ' +
+          'signals it saw meanwhile.',
+        args: {
+          instance,
+          route: { kind: 'string', description: 'Route name, or a path prefix starting with "/"' },
+          signal: { kind: 'string', description: 'Regex on signal names' },
+          timeoutMs: { kind: 'number', description: 'Give up after this many milliseconds (default 5000, max 30000)' },
+        },
+        handler: (a) => ask(a, 'waitFor', { route: a.route, signal: a.signal, timeoutMs: a.timeoutMs }),
+      },
       {
         name: 'chat_send',
         description:

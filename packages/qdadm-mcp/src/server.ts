@@ -33,12 +33,14 @@ const JSON_TYPES: Record<ToolArg['kind'], unknown> = {
   string: 'string',
   id: ['string', 'number'],
   object: 'object',
+  number: 'number',
 }
 
 const KIND_LABEL: Record<ToolArg['kind'], string> = {
   string: 'a string',
   id: 'a string or number',
   object: 'an object',
+  number: 'a number',
 }
 
 function toInputSchema(tool: ToolDef): Record<string, unknown> {
@@ -58,6 +60,7 @@ function toInputSchema(tool: ToolDef): Record<string, unknown> {
 function matchesKind(value: unknown, kind: ToolArg['kind']): boolean {
   if (kind === 'string') return typeof value === 'string'
   if (kind === 'id') return typeof value === 'string' || typeof value === 'number'
+  if (kind === 'number') return typeof value === 'number' && Number.isFinite(value)
   return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
 

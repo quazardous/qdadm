@@ -35,6 +35,16 @@ interface BootEntry {
   at: number
   msg: string
   source?: string
+  /** Global order of log entries, so a feedback window can tell what is new. */
+  seq?: number
+}
+
+/** Where the tab stood when an action started (#2247). */
+interface FeedbackMark {
+  log: number
+  signal: number
+  route: string | null
+  at: number
 }
 
 interface QdadmGlobal {
@@ -51,10 +61,11 @@ interface QdadmGlobal {
     }
   }
   router?: {
-    currentRoute: { value: { name?: unknown; fullPath?: string } }
+    currentRoute: { value: { name?: unknown; fullPath?: string; params?: Record<string, unknown> } }
     getRoutes(): Array<{ name?: unknown; path: string; meta?: Record<string, unknown> }>
+    push?(to: unknown): Promise<unknown>
   }
-  signals?: { on(pattern: string, cb: (event: { name?: string }) => void): unknown }
+  signals?: { on(pattern: string, cb: (event: { name?: string; data?: unknown }) => void): unknown }
   debug?: { bridge?: { describe(): unknown; dump(): unknown; call(c: string, a: string, args: unknown): Promise<unknown> } }
 }
 
@@ -159,6 +170,8 @@ function describeRequest(type: string, payload?: Record<string, unknown>): { too
     const withArgs = args && Object.keys(args).length > 0 ? ` ${brief(args)}` : ''
     return { tool: 'bridge_call', detail: `${String(payload?.collector)}.${String(payload?.action)}${withArgs}` }
   }
+  if (type === 'navigate') return { tool: 'navigate', detail: String(payload?.path ?? payload?.route ?? '') }
+  if (type === 'waitFor') return { tool: 'wait_for', detail: String(payload?.route ?? payload?.signal ?? '') }
   if (type === 'chatPost') return { tool: 'chat_send', detail: brief(payload?.message) }
   if (type === 'entityState' || type === 'storageDump') {
     return { tool: TOOL_OF_REQUEST[type], detail: payload?.entity ? String(payload.entity) : '' }
@@ -352,14 +365,16 @@ export function installQdadmRelayConnector(options: QdadmRelayConnectorOptions =
     const type = String(msg.type)
     const payload = msg.payload as Record<string, unknown> | undefined
     const { tool, detail } = describeRequest(type, payload)
+    // The feedback window around an action is plumbing, not something an agent did.
+    const logged = !type.startsWith('feedback')
     const at = Date.now()
     try {
       const data = chatHandlers[type] ? chatHandlers[type](payload) : await page.handle(type, payload)
       reply = { kind: 'reply', id: msg.id, ok: true, data }
-      recordActivity({ at, tool, detail, ok: true, ms: Date.now() - at })
+      if (logged) recordActivity({ at, tool, detail, ok: true, ms: Date.now() - at })
     } catch (e) {
       reply = { kind: 'reply', id: msg.id, ok: false, error: (e as Error).message }
-      recordActivity({ at, tool, detail, ok: false, error: (e as Error).message, ms: Date.now() - at })
+      if (logged) recordActivity({ at, tool, detail, ok: false, error: (e as Error).message, ms: Date.now() - at })
     }
     try {
       ws.send(JSON.stringify(reply))
@@ -705,8 +720,9 @@ export function installQdadmRelayConnector(options: QdadmRelayConnectorOptions =
 function createPageAgent(sessionId: string, q: () => QdadmGlobal) {
   const bootAt = Date.now()
   const bootlog = { errors: [] as BootEntry[], warns: [] as BootEntry[], pageErrors: [] as BootEntry[], rejections: [] as BootEntry[] }
+  let logSeq = 0
   const cap = (arr: BootEntry[], entry: BootEntry) => {
-    arr.push(entry)
+    arr.push({ ...entry, seq: ++logSeq })
     if (arr.length > 200) arr.shift()
   }
   const fmt = (args: unknown[]): string => {
@@ -763,7 +779,18 @@ function createPageAgent(sessionId: string, q: () => QdadmGlobal) {
     })
   }
 
-  const signalBuffer: Array<{ at: number; name?: string }> = []
+  /** Signal data kept small and JSON-safe: an agent reads it, a page may emit anything. */
+  const compact = (data: unknown): unknown => {
+    if (data === undefined) return undefined
+    try {
+      const text = JSON.stringify(data)
+      return text.length <= 600 ? JSON.parse(text) : `${text.slice(0, 599)}…`
+    } catch {
+      return '[unserializable]'
+    }
+  }
+  const signalBuffer: Array<{ seq: number; at: number; name?: string; data?: unknown }> = []
+  let signalSeq = 0
   let signalsArmed = false
   const armSignals = () => {
     if (signalsArmed) return
@@ -771,8 +798,8 @@ function createPageAgent(sessionId: string, q: () => QdadmGlobal) {
     if (!signals) return
     try {
       signals.on('**', (event) => {
-        signalBuffer.push({ at: Date.now(), name: event?.name })
-        if (signalBuffer.length > 100) signalBuffer.shift()
+        signalBuffer.push({ seq: ++signalSeq, at: Date.now(), name: event?.name, data: compact(event?.data) })
+        if (signalBuffer.length > 200) signalBuffer.shift()
       })
       signalsArmed = true
     } catch {
@@ -789,7 +816,126 @@ function createPageAgent(sessionId: string, q: () => QdadmGlobal) {
     return orch.get(entity)
   }
 
+  // ── what happened during an action (#2247) ─────────────────────────────
+  const currentRoute = () => {
+    try {
+      const r = q().router?.currentRoute?.value
+      return r ? { name: r.name ?? null, fullPath: r.fullPath ?? null, params: r.params ?? {} } : null
+    } catch {
+      return null
+    }
+  }
+
+  const feedbackSince = (mark: FeedbackMark) => {
+    const newLogs = (arr: BootEntry[]) => arr.filter((e) => (e.seq ?? 0) > mark.log).map((e) => e.msg)
+    const signals = signalBuffer.filter((e) => e.seq > mark.signal)
+    const route = currentRoute()
+    const feedback: Record<string, unknown> = { ms: Date.now() - mark.at }
+    const add = (key: string, list: unknown[]) => {
+      if (list.length > 0) feedback[key] = list
+    }
+    if ((route?.fullPath ?? null) !== mark.route) {
+      feedback.route = { from: mark.route, to: route?.fullPath ?? null, name: route?.name ?? null }
+    }
+    add('errors', newLogs(bootlog.errors))
+    add('pageErrors', newLogs(bootlog.pageErrors))
+    add('rejections', newLogs(bootlog.rejections))
+    add('warnings', newLogs(bootlog.warns))
+    add(
+      'toasts',
+      signals
+        .filter((e) => e.name?.startsWith('toast:'))
+        .map((e) => ({ severity: e.name!.slice('toast:'.length), ...(typeof e.data === 'object' && e.data ? e.data : {}) }))
+    )
+    const missing = new Map<string, unknown>()
+    for (const e of signals) {
+      if (e.name !== 'i18n:missing') continue
+      missing.set(JSON.stringify(e.data), e.data)
+    }
+    add('i18nMissing', [...missing.values()])
+    add('apiErrors', signals.filter((e) => e.name === 'api:error').map((e) => e.data))
+    add('signals', signals.map((e) => e.name))
+    return feedback
+  }
+
+  /** Resolve once no signal arrived for `quietMs` — the page has settled — or after `maxMs`. */
+  const settle = async (quietMs = 250, maxMs = 3000) => {
+    const started = Date.now()
+    let lastSeq = signalSeq
+    let quietSince = Date.now()
+    while (Date.now() - started < maxMs) {
+      await new Promise((r) => setTimeout(r, 50))
+      if (signalSeq !== lastSeq) {
+        lastSeq = signalSeq
+        quietSince = Date.now()
+      } else if (Date.now() - quietSince >= quietMs) {
+        return
+      }
+    }
+  }
+
   const handlers: Record<string, (payload?: Record<string, unknown>) => unknown | Promise<unknown>> = {
+    feedbackMark: (): FeedbackMark => {
+      armSignals()
+      return { log: logSeq, signal: signalSeq, route: currentRoute()?.fullPath ?? null, at: Date.now() }
+    },
+    feedbackSince: (payload) => {
+      const mark = payload?.mark as FeedbackMark | undefined
+      if (!mark || typeof mark.log !== 'number') throw new Error('feedbackSince requires { mark }')
+      return feedbackSince(mark)
+    },
+    navigate: async (payload) => {
+      const router = q().router
+      if (!router?.push) throw new Error('router not ready')
+      armSignals()
+      const target = payload?.path
+        ? String(payload.path)
+        : payload?.route
+          ? { name: String(payload.route), params: payload.params ?? {}, query: payload.query ?? {} }
+          : null
+      if (!target) throw new Error('navigate needs a path ("/books") or a route name ("book-edit", with params)')
+      // vue-router resolves (does not throw) when a guard blocks the navigation.
+      const failure = await router.push(target)
+      await settle()
+      let breadcrumb: unknown = null
+      try {
+        breadcrumb = await q().debug?.bridge?.call('router', 'getBreadcrumb', {})
+      } catch {
+        /* no router collector */
+      }
+      return { route: currentRoute(), title: document.title, breadcrumb, ...(failure ? { blocked: String(failure) } : {}) }
+    },
+    waitFor: async (payload) => {
+      armSignals()
+      const timeoutMs = Math.min(Number(payload?.timeoutMs) || 5000, 30000)
+      const wantedRoute = payload?.route ? String(payload.route) : null
+      const signalPattern = payload?.signal ? new RegExp(String(payload.signal)) : null
+      if (!wantedRoute && !signalPattern) {
+        throw new Error('wait_for needs a route (a name, or a path prefix starting with "/") or a signal pattern')
+      }
+      const fromSeq = signalSeq
+      const started = Date.now()
+      const routeReached = () => {
+        const r = currentRoute()
+        if (!r || !wantedRoute) return false
+        return r.name === wantedRoute || (wantedRoute.startsWith('/') && String(r.fullPath ?? '').startsWith(wantedRoute))
+      }
+      while (Date.now() - started < timeoutMs) {
+        if (routeReached()) return { matched: 'route', route: currentRoute(), waitedMs: Date.now() - started }
+        if (signalPattern) {
+          const hit = signalBuffer.find((e) => e.seq > fromSeq && e.name && signalPattern.test(e.name))
+          if (hit) {
+            return { matched: 'signal', signal: { name: hit.name, data: hit.data }, route: currentRoute(), waitedMs: Date.now() - started }
+          }
+        }
+        await new Promise((r) => setTimeout(r, 50))
+      }
+      const seen = signalBuffer.filter((e) => e.seq > fromSeq).map((e) => e.name).slice(-10)
+      throw new Error(
+        `wait_for timed out after ${timeoutMs} ms — route is ${currentRoute()?.fullPath ?? 'unknown'}; ` +
+          `signals meanwhile: ${seen.length > 0 ? seen.join(', ') : 'none'}`
+      )
+    },
     bootlog: () => bootlog,
     sessionInfo: () => {
       const app = q().kernel?.options?.app ?? {}

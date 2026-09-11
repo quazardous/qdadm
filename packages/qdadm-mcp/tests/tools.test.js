@@ -182,3 +182,58 @@ describe('qdadm-mcp toolset — chat (#2231)', () => {
     expect(api.ask).toHaveBeenLastCalledWith('chatRead', undefined, 's1')
   })
 })
+
+describe('qdadm-mcp toolset — navigation and action feedback (#2247)', () => {
+  const FEEDBACK = { ms: 5, i18nMissing: [{ key: 'books.fields.isbn', locale: 'en' }] }
+  const relayApi = (overrides = {}) => {
+    const api = { ...makeApi(), pairing: { status: vi.fn(() => ({ waiting: [] })), accept: vi.fn() } }
+    api.ask = vi.fn(async (type, payload) => {
+      if (type === 'feedbackMark') return { log: 0, signal: 0, route: '/', at: 0 }
+      if (type === 'feedbackSince') return FEEDBACK
+      if (overrides[type]) return overrides[type](payload)
+      return { ok: true, type }
+    })
+    return api
+  }
+
+  it('navigate and wait_for exist on the relay only', () => {
+    expect(buildToolset(makeApi()).map((t) => t.name)).not.toContain('navigate')
+    expect(buildToolset(relayApi()).map((t) => t.name)).toEqual(expect.arrayContaining(['navigate', 'wait_for']))
+  })
+
+  it('a write on the relay returns what happened in the tab while it ran', async () => {
+    const api = relayApi()
+    const res = await byName(buildToolset(api), 'entity_update').handler({ entity: 'books', id: 1, data: { title: 'X' } })
+
+    expect(api.ask.mock.calls.map((c) => c[0])).toEqual(['feedbackMark', 'entityCall', 'feedbackSince'])
+    expect(res.data).toEqual({ ok: true, type: 'entityCall' })
+    expect(res.feedback).toEqual(FEEDBACK)
+    expect(res.session.id).toBe('s1')
+  })
+
+  it('a failing action still says what happened meanwhile', async () => {
+    const api = relayApi({
+      entityCall: () => {
+        throw new Error('Unauthorized')
+      },
+    })
+    await expect(byName(buildToolset(api), 'entity_delete').handler({ entity: 'books', id: 1 })).rejects.toThrow(
+      /Unauthorized — meanwhile in the tab: .*books\.fields\.isbn/
+    )
+  })
+
+  it('navigate passes a path, or a route name with params', async () => {
+    const api = relayApi()
+    const navigate = byName(buildToolset(api), 'navigate')
+    await navigate.handler({ path: '/books' })
+    expect(api.ask).toHaveBeenCalledWith('navigate', { path: '/books', route: undefined, params: undefined, query: undefined }, 's1')
+    await navigate.handler({ route: 'book-edit', params: { bookId: 7 } })
+    expect(api.ask).toHaveBeenCalledWith('navigate', { path: undefined, route: 'book-edit', params: { bookId: 7 }, query: undefined }, 's1')
+  })
+
+  it('without the relay, writes stay plain — no feedback round-trips', async () => {
+    const api = makeApi()
+    await byName(buildToolset(api), 'entity_create').handler({ entity: 'books', data: { title: 'X' } })
+    expect(api.ask.mock.calls.map((c) => c[0])).toEqual(['entityCall'])
+  })
+})

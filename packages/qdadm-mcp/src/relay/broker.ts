@@ -457,11 +457,14 @@ export class RelayBroker implements DebugBrokerApi {
       )
     }
     const id = String(this.nextId++)
+    // wait_for may legitimately take up to 30 s, a navigation a few; everything else is a read.
+    const limit =
+      type === 'waitFor' ? Math.max(this.timeoutMs, 35_000) : type === 'navigate' ? Math.max(this.timeoutMs, 15_000) : this.timeoutMs
     return new Promise((resolve, reject) => {
       const timeout = setTimeout(() => {
         this.pending.delete(id)
         reject(new Error(`relay: timeout waiting for ${type} from instance ${session.id.slice(0, 8)}`))
-      }, this.timeoutMs)
+      }, limit)
       this.pending.set(id, { resolve, reject, timeout })
       socket.send(JSON.stringify({ kind: 'request', id, type, payload }))
     })

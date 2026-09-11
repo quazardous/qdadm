@@ -161,11 +161,27 @@ a production build.
 
 ## Tools
 
-Every response carries a session stamp.
+Every response carries a session stamp. On the relay, `navigate`,
+`bridge_call` and the entity writes also carry a **`feedback`** block: what
+happened in the tab while the call ran.
+
+```json
+{ "ms": 412,
+  "route": { "from": "/books", "to": "/books/7/edit", "name": "book-edit" },
+  "i18nMissing": [{ "key": "books.fields.isbn", "locale": "en" }],
+  "errors": ["…console.error text…"],
+  "toasts": [{ "severity": "success", "summary": "Saved" }],
+  "apiErrors": [{ "status": 422, "message": "…", "url": "…" }],
+  "signals": ["stack:change", "i18n:missing", "entity:books:updated"] }
+```
+
+Only what happened is listed: an empty category is left out.
 
 | Tool | What it answers |
 |---|---|
 | `instances` | Which tabs you can target |
+| `navigate` | Relay: open a path or a route like a user, wait for the page to settle, get route, title, breadcrumb and feedback |
+| `wait_for` | Relay: wait for a route or a signal, with a timeout that says where the tab is |
 | `session_info` | Which app/instance am I talking to? (zombie-tab detector) |
 | `boot_errors` | What broke — **including before the app booted** |
 | `routes` | Route names/paths/meta |
@@ -191,6 +207,9 @@ Typical debugging moves, grounded in real sessions:
   the tab is not paired: ask the user to open the **MCP** tab of the debug
   bar, click **Pair**, and read you the code, then `pair_accept`. Never
   guess a code.
+- **Drive the app** → `navigate`, then read its `feedback`: a missing i18n
+  key, a console error or a failed API call on the way shows up right there.
+  `wait_for` when something happens later (a save, a redirect).
 - **Blank page / app won't boot** → `boot_errors`. Capture starts before
   the app entry runs, so crashes during boot are recorded even though the
   bridge never came up.

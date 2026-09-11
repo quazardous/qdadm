@@ -124,3 +124,13 @@ describe('createQdadmMcpServer', () => {
     expect(res.content[0].text).toMatch(/Unknown tool 'nope'\. Available tools: session_info/)
   })
 })
+
+describe('createQdadmMcpServer — number arguments (#2247)', () => {
+  it('a number argument given as text → one actionable sentence', async () => {
+    const api = { ...makeApi(), pairing: { status: () => ({ waiting: [] }), accept: vi.fn() } }
+    const client = await connect(api)
+    const res = await client.callTool({ name: 'wait_for', arguments: { route: 'book', timeoutMs: 'soon' } })
+    expect(res.isError).toBe(true)
+    expect(res.content[0].text).toBe("Invalid argument 'timeoutMs': expected a number, got string.")
+  })
+})

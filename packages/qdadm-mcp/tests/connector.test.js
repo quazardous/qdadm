@@ -415,3 +415,105 @@ describe('relay connector — clearing the chat (#2231)', () => {
     expect((await broker.ask('chatRead')).messages.map((m) => m.text)).toEqual(['after the clear'])
   })
 })
+
+describe('relay connector — navigation, feedback and waiting (#2247)', () => {
+  let emit
+  const fakeApp = () => {
+    const listeners = []
+    const route = { value: { name: 'home', fullPath: '/', params: {} } }
+    const known = {
+      '/books': { name: 'book', fullPath: '/books', params: {} },
+      '/books/7/edit': { name: 'book-edit', fullPath: '/books/7/edit', params: { bookId: '7' } },
+    }
+    emit = (name, data) => listeners.forEach((cb) => cb({ name, data }))
+    window.__qdadm = {
+      router: {
+        currentRoute: route,
+        getRoutes: () => [],
+        push: async (to) => {
+          const path = typeof to === 'string' ? to : to.name === 'book-edit' ? `/books/${to.params.bookId}/edit` : null
+          if (!known[path]) throw new Error(`No match for ${JSON.stringify(to)}`)
+          route.value = known[path]
+          emit('stack:change')
+          if (path.endsWith('/edit')) {
+            emit('i18n:missing', { key: 'books.fields.isbn', locale: 'en' })
+            emit('i18n:missing', { key: 'books.fields.isbn', locale: 'en' })
+            console.error('boom in the edit page')
+          }
+        },
+      },
+      signals: {
+        on: (_pattern, cb) => {
+          listeners.push(cb)
+          return () => {}
+        },
+      },
+    }
+  }
+
+  const connected = async () => {
+    fakeApp()
+    window.__qdadmRelayAuto = '/__qdadm/relay.json'
+    vi.stubGlobal('fetch', async () => ({ ok: true, status: 200, json: async () => ({ port: 47761, token: 'dev-token' }) }))
+    const broker = new RelayBroker({ token: 'dev-token', identity: identity(47761) })
+    const { controller } = install({ 47761: broker })
+    await vi.waitFor(() => expect(controller.state.status).toBe('connected'))
+    return { broker, controller }
+  }
+
+  afterEach(() => {
+    delete window.__qdadm
+    delete window.__qdadmRelayAuto
+    vi.unstubAllGlobals()
+  })
+
+  it('navigate settles, and the feedback names the route, the missing key and the console error', async () => {
+    // No console spy here: restoring one would also remove the connector's capture wrapper.
+    const { broker } = await connected()
+    const mark = await broker.ask('feedbackMark')
+
+    const res = await broker.ask('navigate', { path: '/books/7/edit' })
+    expect(res.route).toMatchObject({ name: 'book-edit', fullPath: '/books/7/edit', params: { bookId: '7' } })
+
+    const feedback = await broker.ask('feedbackSince', { mark })
+    expect(feedback.route).toEqual({ from: '/', to: '/books/7/edit', name: 'book-edit' })
+    expect(feedback.i18nMissing).toEqual([{ key: 'books.fields.isbn', locale: 'en' }])
+    expect(feedback.errors).toEqual([expect.stringContaining('boom in the edit page')])
+    expect(feedback.signals).toEqual(['stack:change', 'i18n:missing', 'i18n:missing'])
+  })
+
+  it('navigate by route name and params; an unknown target fails with the router reason', async () => {
+    const { broker } = await connected()
+    expect((await broker.ask('navigate', { route: 'book-edit', params: { bookId: '7' } })).route.fullPath).toBe('/books/7/edit')
+    await expect(broker.ask('navigate', { path: '/nowhere' })).rejects.toThrow(/No match/)
+  })
+
+  it('wait_for resolves on a signal emitted after the call, and on a route reached', async () => {
+    const { broker } = await connected()
+
+    setTimeout(() => emit('entity:books:updated', { id: 7 }), 50)
+    expect(await broker.ask('waitFor', { signal: '^entity:books:' })).toMatchObject({
+      matched: 'signal',
+      signal: { name: 'entity:books:updated', data: { id: 7 } },
+    })
+
+    setTimeout(() => window.__qdadm.router.push('/books'), 50)
+    expect(await broker.ask('waitFor', { route: 'book' })).toMatchObject({ matched: 'route', route: { fullPath: '/books' } })
+  })
+
+  it('wait_for times out saying where the tab is', async () => {
+    const { broker } = await connected()
+    await expect(broker.ask('waitFor', { route: 'nowhere', timeoutMs: 200 })).rejects.toThrow(
+      /timed out after 200 ms — route is \/; signals meanwhile: none/
+    )
+  })
+
+  it('the MCP history names the navigation and hides the feedback plumbing', async () => {
+    const { broker, controller } = await connected()
+    const mark = await broker.ask('feedbackMark')
+    await broker.ask('navigate', { path: '/books' })
+    await broker.ask('feedbackSince', { mark })
+
+    expect(controller.activity.entries.map(({ tool, detail }) => ({ tool, detail }))).toEqual([{ tool: 'navigate', detail: '/books' }])
+  })
+})
