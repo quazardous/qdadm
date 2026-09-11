@@ -624,6 +624,34 @@ describe('relay connector — reading the page (#2247)', () => {
     expect(controller.activity.entries.at(-1).tool).toBe('page_snapshot')
   })
 
+  it('inputs with no ARIA role are listed, with their type: a password never shows its value (#2291)', async () => {
+    const { broker } = await connected()
+    document.body.innerHTML = `
+      <form>
+        <label for="user">Username</label><input id="user" value="admin" />
+        <label for="pass">Password</label><input id="pass" type="password" value="secret" required />
+        <label for="due">Due</label><input id="due" type="date" value="2026-09-11" />
+        <label for="tint">Tint</label><input id="tint" type="color" value="#ff0000" />
+        <label for="cover">Cover</label><input id="cover" type="file" />
+        <input type="hidden" name="csrf" value="t0k3n" />
+        <button>Sign In</button>
+      </form>`
+    const { text } = await broker.ask('pageSnapshot', {})
+
+    for (const line of [
+      '- textbox "Username" [value="admin"] [ref=',
+      '- textbox "Password" [type=password] [required] [value="••••••"] [ref=',
+      '- textbox "Due" [type=date] [value="2026-09-11"] [ref=',
+      '- textbox "Tint" [type=color] [value="#ff0000"] [ref=',
+      '- button "Cover" [type=file] [ref=',
+    ]) {
+      expect(text).toContain(line)
+    }
+    expect(text).not.toContain('secret')
+    expect(text).not.toContain('t0k3n')
+    expect((await broker.ask('find', { role: 'textbox', text: 'password' })).text).toMatch(/^- textbox "Password" \[type=password\]/)
+  })
+
   it('refs are stable across reads; "interactive" lists only what can be acted on; a ref reads one part', async () => {
     const { broker } = await connected()
     const tree = (await broker.ask('pageSnapshot', {})).text

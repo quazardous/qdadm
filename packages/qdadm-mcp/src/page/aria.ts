@@ -79,6 +79,29 @@ export interface AxNode {
 }
 export type AxItem = AxNode | string
 
+/**
+ * Inputs the ARIA spec gives no role (#2291), with the role Playwright's snapshot shows them under: without one,
+ * the walk would drop them. Their type goes with them as a state.
+ */
+const UNROLED_INPUTS = new Map([
+  ['password', 'textbox'],
+  ['date', 'textbox'],
+  ['time', 'textbox'],
+  ['datetime-local', 'textbox'],
+  ['month', 'textbox'],
+  ['week', 'textbox'],
+  ['color', 'textbox'],
+  ['file', 'button'],
+])
+
+const unroledType = (element: Element) =>
+  element instanceof HTMLInputElement && !element.hasAttribute('role') && UNROLED_INPUTS.has(element.type) ? element.type : null
+
+function roleOf(element: Element): string | null {
+  const type = unroledType(element)
+  return type ? UNROLED_INPUTS.get(type)! : getRole(element)
+}
+
 const collapse = (text: string | null | undefined) => (text ?? '').replace(/\s+/g, ' ').trim()
 const clip = (text: string, max: number) => (text.length > max ? `${text.slice(0, max - 1)}…` : text)
 
@@ -114,10 +137,16 @@ function fieldLabel(element: Element): string {
   return label ? collapse(label.textContent) : ''
 }
 
-/** `textbox "Title"`, `button [icon=pencil]` — one element, named the way the snapshot names it. */
+/** `textbox "Title"`, `button [icon=pencil]`, `textbox "Due" [type=date]` — one element, named the way the snapshot names it. */
 export function describeElement(element: Element): string {
-  // Inputs with no ARIA role (date, time, color) are named by their type.
-  const role = getRole(element) ?? (element instanceof HTMLInputElement ? `${element.type} input` : element.localName)
+  const type = unroledType(element)
+  const described = describeRole(element)
+  return type ? `${described} [type=${type}]` : described
+}
+
+function describeRole(element: Element): string {
+  // A hidden input has no role at all.
+  const role = roleOf(element) ?? (element instanceof HTMLInputElement ? `${element.type} input` : element.localName)
   let name = ''
   try {
     name = collapse(computeAccessibleName(element, { computedStyleSupportsPseudoElements: false }))
@@ -151,6 +180,8 @@ function kindOf(element: Element): string | null {
 function statesOf(element: Element, role: string): string[] {
   const states: string[] = []
   const attr = (name: string) => element.getAttribute(name)
+  const type = unroledType(element)
+  if (type) states.push(`type=${type}`)
   if (role === 'heading') {
     const level = attr('aria-level') ?? /^h([1-6])$/.exec(element.localName)?.[1]
     if (level) states.push(`level=${level}`)
@@ -229,7 +260,7 @@ function walk(node: Node, w: Walk, out: AxItem[]): void {
     return
   }
 
-  const role = getRole(element)
+  const role = roleOf(element)
   const labelled = element.hasAttribute('aria-label') || element.hasAttribute('aria-labelledby') || element.hasAttribute('title')
   const children: AxItem[] = []
   const walkChildren = () => {

@@ -246,6 +246,6 @@ describe('fill', () => {
 
   it('a date input is set whole', async () => {
     const $ = page('<input type="date" id="d" aria-label="Due" />')
-    expect(await fill($('#d'), '2026-09-11')).toBe('set date input "Due" to "2026-09-11"')
+    expect(await fill($('#d'), '2026-09-11')).toBe('set textbox "Due" [type=date] to "2026-09-11"')
   })
 })
