@@ -741,6 +741,9 @@ ctx.entity('books', new EntityManager({
 | `placeholder` | `string` | Input placeholder |
 | `disabled` | `boolean` | Disable input |
 | `readonly` | `boolean` | Read-only input |
+| `fractionDigits` | `number \| { min?, max? }` | Number fields: digits the input takes after the decimal point (`2` = always two). Without it, whole numbers only |
+| `min` / `max` | `number` | Number fields: bounds of the input |
+| `step` | `number` | Number fields: increment of the input |
 | `validate` | `(value, formData) => string \| null` | Custom validator |
 | `nullSort` | `'first' \| 'last' \| 'low' \| 'high'` | Null placement when locally sorted (default `'last'`; `'low'` = null behaves as the smallest value — right for "last seen" dates). Manager-level `nullSort` option sets the default for all fields |
 

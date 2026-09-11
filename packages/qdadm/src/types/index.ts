@@ -86,6 +86,16 @@ export interface FieldConfig {
   required?: boolean
   /** number fields: false → no locale digit grouping in displays (#1388) */
   useGrouping?: boolean
+  /**
+   * number fields: digits the form input takes after the decimal point (#2316) — `2` for always two, or
+   * `{ min, max }`. Without it the input takes whole numbers only.
+   */
+  fractionDigits?: number | { min?: number; max?: number }
+  /** number fields: bounds of the form input (#2316) */
+  min?: number
+  max?: number
+  /** number fields: increment of the form input (#2316) */
+  step?: number
   default?: unknown | (() => unknown)
   options?: Array<{ label: string; value: unknown }>
   reference?: {

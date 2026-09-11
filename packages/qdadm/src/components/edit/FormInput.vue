@@ -37,6 +37,12 @@ interface FieldConfig {
   options?: SelectOption[] | unknown[]
   optionLabel?: string
   optionValue?: string
+  /** number: digits after the decimal point — `2`, or `{ min, max }` (#2316) */
+  fractionDigits?: number | { min?: number; max?: number }
+  /** number: bounds and increment (#2316) */
+  min?: number
+  max?: number
+  step?: number
 }
 
 const props = defineProps({
@@ -71,6 +77,20 @@ const numberValue = computed<number | null>({
 const booleanValue = computed<boolean>({
   get: (): boolean => (props.modelValue as boolean | null | undefined) ?? false,
   set: (v: boolean): void => emit('update:modelValue', v)
+})
+
+/**
+ * Digits after the decimal point in a number field (#2316): `fractionDigits: 2`, or `{ min, max }`. Without it
+ * InputNumber refuses the decimal key, so none is set by default: whole numbers, as before.
+ */
+const fraction = computed<{ min?: number; max?: number }>(() => {
+  const digits = props.field?.fractionDigits as number | { min?: number; max?: number } | undefined
+  if (typeof digits === 'number') return { min: digits, max: digits }
+  if (digits && typeof digits === 'object') {
+    const min = digits.min ?? 0
+    return { min, max: Math.max(min, digits.max ?? min) }
+  }
+  return {}
 })
 
 // Resolve component type: field.type > hint > 'text'
@@ -117,6 +137,11 @@ const dateValue = computed<Date | null>({
     :disabled="field.disabled"
     :readonly="field.readonly"
     :useGrouping="false"
+    :minFractionDigits="fraction.min"
+    :maxFractionDigits="fraction.max"
+    :min="field.min"
+    :max="field.max"
+    :step="field.step"
     class="w-full"
   />
   <Textarea
