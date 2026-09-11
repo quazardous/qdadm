@@ -6,7 +6,8 @@
   "description": "The docs/tutorial-mini-admin.md app, verbatim: 5 steps from hello world to parent-child entities (~310 LOC), plus the optional step 6 that lets an agent drive it. Strict vue-ts template build — no shims, no casts.",
   "scripts": {
     "dev": "vite",
-    "build": "vue-tsc -b && vite build"
+    "build": "vue-tsc -b && vite build",
+    "test": "vitest run"
   },
   "dependencies": {
     "@primeuix/themes": "^1.0.0",
@@ -21,8 +22,10 @@
     "@quazardous/qdadm-mcp": "*",
     "@vitejs/plugin-vue": "^5.2.0",
     "@vue/tsconfig": "^0.9.0",
+    "jsdom": "^25.0.1",
     "typescript": "^5.9.3",
     "vite": "^6.0.0",
+    "vitest": "^2.1.8",
     "vue-tsc": "^3.2.2"
   }
 }

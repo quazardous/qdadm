@@ -67,6 +67,15 @@ jobs:
       - name: Consumer smoke test (packed tarball)
         run: bash tools/consumer-smoke/run.sh
 
+      # Bundle size, report only (#2265): the figures docs/production.md keeps, printed on every train and in the
+      # job summary. It never fails the release — a size is a fact to watch, not a gate.
+      - name: Bundle size (report only)
+        continue-on-error: true
+        run: |
+          npm run build -w examples/hello-world
+          npm run build -w examples/tutorial-mini-admin
+          node tools/bundle-size/measure.mjs examples/hello-world/dist examples/tutorial-mini-admin/dist | tee -a "$GITHUB_STEP_SUMMARY"
+
       # Versioning happens LOCALLY in this repo (npm run release:version →
       # chore(release) commit). A push that still carries pending changesets
       # is an intermediate push: the changesets action would try to open a

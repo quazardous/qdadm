@@ -49,6 +49,8 @@ ctx.crud('books', {
 (log in with `admin` / `admin`), [hello-world](https://quazardous.github.io/qdadm/hello-world/)
 and the [full demo](https://quazardous.github.io/qdadm/demo/).
 
+qdadm is a client-side SPA admin: server-side rendering and Nuxt are not supported.
+
 **Start fresh:**
 
 ```bash
@@ -248,6 +250,8 @@ ctx.block('books-list-header', { id: 'export-btn', component: ExportButton, weig
 
 - [Tutorial: Mini Admin](docs/tutorial-mini-admin.md) - **Start here** — verified 5-step walkthrough (bootstrap → CRUD → auth → nav → children)
 - [Debug bridge (for AI agents)](docs/DEBUG.md) - Introspect and drive any qdadm app at runtime
+- [Production facts](docs/production.md) - Bundle size, client-side SPA (no SSR)
+- [Testing](docs/testing.md) - Test an entity and a page with Vitest
 - [QDADM_CREDO](docs/QDADM_CREDO.md) - Philosophy & patterns
 - [Contributing](CONTRIBUTING.md) - Setup, quality gates, release flow
 
