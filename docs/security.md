@@ -130,6 +130,25 @@ A group's "All" box is `<namespace>:*`. Like every wildcard, `*` is one segment,
 
 Keys the registry does not know stay in the role, listed under "Other grants". `composeGrants()` (from `@quazardous/qdadm/security`) returns the model the widget draws, for a view of your own.
 
+### Why a permission is granted: `explainGrant`
+
+`explainGrant(checker, attribute, subject?)` (from `@quazardous/qdadm/security`) takes the path
+`isGranted` takes and says what decided, without granting anything:
+
+1. the app's `security.grant` function, when it answers true or false (one that throws denies);
+2. the role hierarchy, for a `ROLE_*` attribute;
+3. the nearest role whose grant covers the key, its exact key before a wildcard;
+4. the user's own `permissions`;
+5. otherwise nothing: the answer lists the roles that were looked at.
+
+```js
+explainGrant(checker, 'entity:books:update')
+// { granted: true, decidedBy: 'grant', role: 'ROLE_USER', grant: 'entity:*:update', roles: ['ROLE_USER'] }
+```
+
+In debug mode `window.__qdadm.security.explain(key)` calls it with the kernel's checker, and
+the MCP's `page_snapshot` prints it as the `Why:` lines under an entity.
+
 ## Permission Flow
 
 ```

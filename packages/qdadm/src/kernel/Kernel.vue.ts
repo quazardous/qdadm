@@ -19,6 +19,7 @@ import { createNotificationStore, NOTIFICATION_KEY } from '../notifications/Noti
 import { I18N_INJECTION_KEY } from '../i18n/useI18n'
 import { warnWithoutQdadmVitePlugin } from './vitePluginCheck'
 import { currentPageState } from '../composables/usePageState'
+import { explainGrant } from '../security/explainGrant'
 import type { Kernel } from './Kernel'
 // #1196 Phase B — this-typing against the real Kernel shape (was Self = any)
 type Self = Kernel
@@ -304,6 +305,10 @@ export function applyVueMethods(KernelClass: { prototype: Kernel }): void {
         activeStack: this.activeStack,
         // What the page on screen is doing — list, form or show (#2363)
         pageState: { current: currentPageState },
+        // Why a permission is granted or denied, told the way isGranted decides it (#2363)
+        security: this.securityChecker
+          ? { explain: (attribute: string, subject: unknown = null) => explainGrant(this.securityChecker!, attribute, subject) }
+          : null,
         stackHydrator: this.stackHydrator,
         deferred: this.deferred,
         router: this.router,

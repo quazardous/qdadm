@@ -25,6 +25,7 @@
  */
 
 export { PermissionMatcher } from './PermissionMatcher'
+export { explainGrant, type GrantExplanation } from './explainGrant'
 export {
   PermissionRegistry,
   type PermissionDefinition,

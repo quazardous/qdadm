@@ -1232,4 +1232,27 @@ describe('relay connector — page_snapshot says what the page is made of (#2342
     state = null
     expect((await head()).some((line) => line.startsWith('State:'))).toBe(false)
   })
+
+  it('the header says why each action is allowed or not (#2363)', async () => {
+    const app = booksApp()
+    app.security = {
+      explain: (key) =>
+        key === 'entity:books:delete'
+          ? { granted: false, decidedBy: 'grant', roles: ['ROLE_USER'] }
+          : key === 'entity:books:create'
+            ? { granted: true, decidedBy: 'app' }
+            : { granted: true, decidedBy: 'grant', role: 'ROLE_USER', grant: `entity:*:${key.split(':')[2]}`, roles: ['ROLE_USER'] },
+    }
+    const broker = await connectedTo(app)
+    const head = (await broker.ask('pageSnapshot', {})).text.split('\n\n')[0].split('\n')
+    const at = head.findIndex((line) => line.startsWith('Why: '))
+
+    expect(head[at - 1]).toMatch(/^Entity: books — /)
+    expect(head.slice(at, at + 4)).toEqual([
+      'Why: list ✓ via ROLE_USER → entity:*:list',
+      "     create ✓ — decided by the app's grant function",
+      '     update ✓ via ROLE_USER → entity:*:update',
+      '     delete ✗ — no grant covers entity:books:delete (roles: ROLE_USER)',
+    ])
+  })
 })

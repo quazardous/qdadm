@@ -230,7 +230,7 @@ Only what happened is listed: an empty category is left out.
 | `instances` | Which tabs you can target |
 | `navigate` | Relay: open a path or a route like a user, wait for the page to settle, get route, title, breadcrumb and feedback |
 | `wait_for` | Relay: wait for a route or a signal, with a timeout that says where the tab is |
-| `page_snapshot` | Relay: what the user sees, as an accessibility tree — role, name, states, value and a **ref** per element; `filter: "interactive"`, or one part by `ref`. It opens with the layout, the page component, the entity permissions and the page's state (rows, filters, dirty fields), and shows qdadm zones and their blocks as lines (`meta: false` for the bare tree) |
+| `page_snapshot` | Relay: what the user sees, as an accessibility tree — role, name, states, value and a **ref** per element; `filter: "interactive"`, or one part by `ref`. It opens with the layout, the page component, the entity permissions and why, and the page's state (rows, filters, dirty fields), and shows qdadm zones and their blocks as lines (`meta: false` for the bare tree) |
 | `find` | Relay: elements by role and/or text, with their ref and where they sit (row, dialog, form) |
 | `page_text` | Relay: the visible text of the tab, or of one element |
 | `click` / `type_text` / `press_key` | Relay: act on a ref like a user — real event order, focus, browser defaults (Enter submits, Tab moves focus); refused on a disabled or covered element, unless `force: true`, and the answer then lists what was skipped |

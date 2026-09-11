@@ -80,7 +80,7 @@ change gets a minor and a CHANGELOG entry rather than silence.
 | Signals | [signals.md](signals.md) |
 | Hooks | [hooks.md](hooks.md) |
 | Zones (`ctx.zone()`, `ctx.block()`, `Zone`) | [zones.md](zones.md) |
-| Security beyond the bootstrap helper — `SecurityChecker`, roles, wildcard permissions, `RoleGrantsEditor`, `composeGrants` / `inheritedGrants` | [security.md](security.md) |
+| Security beyond the bootstrap helper — `SecurityChecker`, roles, wildcard permissions, `RoleGrantsEditor`, `composeGrants` / `inheritedGrants`, `explainGrant` | [security.md](security.md) |
 | i18n — providers, strategies, `useI18n` | [i18n.md](i18n.md) |
 | Field widgets — `LookupField`, `KeyValueEditor`, `ScopeEditor`, `PermissionEditor`, … | [forms.md](forms.md) |
 | Non-entity forms — `useBareForm` | [forms.md](forms.md) |

@@ -119,6 +119,8 @@ interface QdadmGlobal {
   activeStack?: { getLevels?(): Array<{ entity?: string; id?: string | null }> }
   /** What the page on screen is doing (#2363): a list, a form or a show page. */
   pageState?: { current?(): Record<string, unknown> | null }
+  /** Why a permission is granted or denied (#2363), the way isGranted decides it. */
+  security?: { explain?(attribute: string, subject?: unknown): Record<string, unknown> | null } | null
   debug?: { bridge?: { describe(): unknown; dump(): unknown; call(c: string, a: string, args: unknown): Promise<unknown> } }
 }
 
@@ -1256,6 +1258,7 @@ function createPageAgent(sessionId: string, q: () => QdadmGlobal) {
     const entity = (route?.meta?.entity as string | undefined) ?? levels[levels.length - 1]?.entity
     if (entity) {
       let line = `Entity: ${entity}`
+      const why: string[] = []
       try {
         const orch = q().orchestrator
         if (orch?.isRegistered(entity)) {
@@ -1274,12 +1277,30 @@ function createPageAgent(sessionId: string, q: () => QdadmGlobal) {
           const keyOf = m._getPermissionString as ((action: string) => string) | undefined
           if (typeof hasChecker === 'function' && hasChecker.call(m) && typeof keyOf === 'function') {
             line += ` (checks ${keyOf.call(m, '<action>')})`
+            // Why each action is allowed or not (#2363): the app's explanation of its own security checker.
+            const explain = q().security?.explain
+            if (typeof explain === 'function') {
+              for (const action of ['list', 'create', 'update', 'delete']) {
+                const check = m[`can${action[0].toUpperCase()}${action.slice(1)}`]
+                if (typeof check !== 'function') continue
+                const key = keyOf.call(m, action)
+                let allowed: boolean | null = null
+                try {
+                  allowed = Boolean(check.call(m))
+                } catch {
+                  /* said as unknown */
+                }
+                const told = whyLine(action, key, allowed, explain(key))
+                if (told) why.push(told)
+              }
+            }
           }
         }
       } catch {
         /* the entity line without its permissions */
       }
       lines.push(line)
+      why.forEach((told, i) => lines.push(`${i === 0 ? 'Why:' : '    '} ${told}`))
     }
     if (levels.some((level) => level.id)) {
       lines.push(`Stack: ${levels.map((level) => (level.id ? `${level.entity} #${level.id}` : level.entity)).join(' › ')}`)
@@ -1291,6 +1312,18 @@ function createPageAgent(sessionId: string, q: () => QdadmGlobal) {
       /* no page state */
     }
     return lines
+  }
+  /** One action's permission, explained (#2363): the role and grant that allow it, or the key nothing covers. */
+  const whyLine = (action: string, key: string, allowed: boolean | null, told: Record<string, unknown> | null | undefined): string | null => {
+    if (!told) return null
+    const t = told as Record<string, any> // eslint-disable-line @typescript-eslint/no-explicit-any
+    // canX() said no although the grant check says yes: something before it refused (a read-only entity).
+    if (allowed === false && t.granted) return `${action} ✗ — refused before the grant check (read-only entity?)`
+    if (t.decidedBy === 'no-user') return `${action} ✗ — no user`
+    if (t.decidedBy === 'app') return `${action} ${t.granted ? '✓' : '✗'} — decided by the app's grant function`
+    if (t.granted) return `${action} ✓ via ${t.role ?? "the user's own permissions"} → ${t.grant}`
+    const roles = Array.isArray(t.roles) && t.roles.length > 0 ? t.roles.join(', ') : 'none'
+    return `${action} ✗ — no grant covers ${key} (roles: ${roles})`
   }
   /** The page's state as one line (#2363): counts and names, never row contents. */
   const stateLine = (state: Record<string, unknown> | null): string | null => {
