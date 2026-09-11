@@ -92,6 +92,32 @@ export function findRelayController(): RelayControllerLike | null {
 
 const REDACTED = '[shown in the browser tab only]'
 
+/**
+ * What the MCP tab has shown (#2285), kept for the browser tab like the chat: a reload must not bring old messages
+ * back as new. Chat and history ids keep counting across a clear and a reload, so "seen up to id" holds.
+ */
+const SEEN_KEY = 'qdadm-debug:mcp-seen'
+
+interface SeenMarks {
+  chat: number
+  history: number
+}
+
+type TabStorage = Pick<Storage, 'getItem' | 'setItem'>
+
+function tabStorage(): TabStorage | null {
+  try {
+    return (globalThis as { sessionStorage?: TabStorage }).sessionStorage ?? null
+  } catch {
+    return null
+  }
+}
+
+const lastId = (items: readonly { id: number }[]) => items.at(-1)?.id ?? 0
+
+/** Statuses the Status sub-tab flags: something to read or to fix. */
+const STATUS_ALERTS = new Set(['offline', 'error', 'awaiting-code'])
+
 export class RelayCollector extends Collector {
   static override collectorName = 'mcp'
   static override records = false
@@ -105,6 +131,7 @@ export class RelayCollector extends Collector {
   private _unsubscribeActivity: (() => void) | null = null
   private _captureActive = false
   private _unsubscribeCapture: (() => void) | null = null
+  private _seen: SeenMarks | null = null
 
   constructor(options: CollectorOptions = {}) {
     super(options)
@@ -195,8 +222,68 @@ export class RelayCollector extends Collector {
     return this._state.code ? { ...this._state, code: REDACTED } : { ...this._state }
   }
 
-  /** The tab asks for attention while a code waits to be read, or something failed. */
-  override getBadge(_countAll = false): number {
+  /** Agent chat messages the Chat sub-tab has not shown yet. */
+  get unseenChat(): number {
+    const seen = this._seen
+    return seen ? this._chat.filter((m) => m.from === 'agent' && m.id > seen.chat).length : 0
+  }
+
+  /** Agent requests the History sub-tab has not shown yet. */
+  get unseenHistory(): number {
+    const seen = this._seen
+    return seen ? this._activity.filter((e) => e.id > seen.history).length : 0
+  }
+
+  /** The Status sub-tab has something to say: the relay is offline, something failed, or a code waits. */
+  get statusAlert(): boolean {
+    return STATUS_ALERTS.has(this._state.status)
+  }
+
+  /** The Chat sub-tab is on screen: what it shows is seen. */
+  markChatSeen(): void {
+    this._markSeen('chat', lastId(this._chat))
+  }
+
+  /** The History sub-tab is on screen: what it shows is seen. */
+  markHistorySeen(): void {
+    this._markSeen('history', lastId(this._activity))
+  }
+
+  private _markSeen(kind: keyof SeenMarks, id: number): void {
+    if (!this._seen || id <= this._seen[kind]) return
+    this._seen = { ...this._seen, [kind]: id }
+    this._saveSeen()
+    this.notifyChange()
+  }
+
+  private _saveSeen(): void {
+    try {
+      tabStorage()?.setItem(SEEN_KEY, JSON.stringify(this._seen))
+    } catch {
+      /* storage refused: the marks last for the page only */
+    }
+  }
+
+  private _readSeen(): SeenMarks | null {
+    try {
+      const saved = JSON.parse(tabStorage()?.getItem(SEEN_KEY) ?? 'null') as Partial<SeenMarks> | null
+      return saved && typeof saved.chat === 'number' && typeof saved.history === 'number'
+        ? { chat: saved.chat, history: saved.history }
+        : null
+    } catch {
+      return null
+    }
+  }
+
+  /**
+   * The MCP tab icon (#2285): what agents said and did that the tab has not shown yet. While a code waits or
+   * something failed, it asks for attention even with nothing new.
+   */
+  override getBadge(countAll = false): number {
+    const count = countAll
+      ? this._chat.filter((m) => m.from === 'agent').length + this._activity.length
+      : this.unseenChat + this.unseenHistory
+    if (count > 0) return count
     return this._state.status === 'awaiting-code' || this._state.status === 'error' ? 1 : 0
   }
 
@@ -206,6 +293,7 @@ export class RelayCollector extends Collector {
       this._state = { status: 'unavailable' }
       return
     }
+    const saved = this._readSeen()
     this._unsubscribe = this._controller.subscribe((next) => {
       this._state = next
       this.notifyChange()
@@ -225,6 +313,10 @@ export class RelayCollector extends Collector {
         this._captureActive = active
         this.notifyChange()
       }) ?? null
+    // No marks yet: what the tab already held is not news.
+    this._seen = saved ?? { chat: lastId(this._chat), history: lastId(this._activity) }
+    if (!saved) this._saveSeen()
+    this.notifyChange()
   }
 
   protected override _doUninstall(): void {
@@ -239,7 +331,12 @@ export class RelayCollector extends Collector {
   }
 
   override snapshot(): CollectorSnapshot {
-    return { ...super.snapshot(), state: this.publicState() as unknown as Record<string, unknown> }
+    return {
+      ...super.snapshot(),
+      state: this.publicState() as unknown as Record<string, unknown>,
+      unseen: this.unseenChat + this.unseenHistory,
+      unseenBy: { chat: this.unseenChat, history: this.unseenHistory },
+    }
   }
 
   override describe(): CollectorManifest {
@@ -251,6 +348,7 @@ export class RelayCollector extends Collector {
           'unavailable | connecting | connected | offline | idle | scanning | none-found | choose | awaiting-code | reconnecting | paired | error',
         relay: '{ project, cwd, port }?',
         message: 'string?',
+        unseenBy: '{ chat, history }: agent messages and requests the MCP tab has not shown yet (snapshot)',
       },
     }
   }

@@ -99,13 +99,32 @@ const chat = computed(() => {
   void tick.value
   return props.collector.chat
 })
-/** Agent messages that arrived while the Chat sub-tab was not open. */
-const chatSeenUpTo = ref(0)
-const unreadChat = computed(() => chat.value.filter((m) => m.from === 'agent' && m.id > chatSeenUpTo.value).length)
+/** What agents said and did that a sub-tab has not shown yet (#2285); the tab icon counts the same. */
+const unseenChat = computed(() => {
+  void tick.value
+  return props.collector.unseenChat
+})
+const unseenHistory = computed(() => {
+  void tick.value
+  return props.collector.unseenHistory
+})
+const statusAlert = computed(() => {
+  void tick.value
+  return props.collector.statusAlert
+})
+// This panel exists only while the MCP tab is open: the sub-tab on screen is what the user sees.
 watch(
-  [subTab, () => chat.value.length],
+  [
+    subTab,
+    () => chat.value.at(-1)?.id,
+    () => {
+      void tick.value
+      return props.collector.activity.at(-1)?.id
+    },
+  ],
   () => {
-    if (subTab.value === 'chat') chatSeenUpTo.value = chat.value.at(-1)?.id ?? chatSeenUpTo.value
+    if (subTab.value === 'chat') props.collector.markChatSeen()
+    else if (subTab.value === 'history') props.collector.markHistorySeen()
   },
   { immediate: true }
 )
@@ -157,11 +176,11 @@ const SETUP = 'npx qdadm-mcp-relay --stdio'
 
     <nav v-if="state.status !== 'unavailable'" class="mcp-subtabs">
       <button type="button" class="mcp-subtab" :class="{ 'mcp-subtab-active': subTab === 'status' }" @click="openSubTab('status')">
-        Status
+        Status<span v-if="statusAlert" class="mcp-subtab-dot" role="img" aria-label="needs attention" />
       </button>
       <span v-if="collector.canChat" class="mcp-subtab-group" :class="{ 'mcp-subtab-active': subTab === 'chat' }">
         <button type="button" class="mcp-subtab mcp-subtab-inner" @click="openSubTab('chat')">
-          Chat<span v-if="unreadChat > 0" class="mcp-subtab-badge">{{ unreadChat }}</span>
+          Chat<span v-if="unseenChat > 0" class="mcp-subtab-badge">{{ unseenChat }}</span>
         </button>
         <button
           v-if="chat.length > 0"
@@ -181,7 +200,7 @@ const SETUP = 'npx qdadm-mcp-relay --stdio'
         :class="{ 'mcp-subtab-active': subTab === 'history' }"
         @click="openSubTab('history')"
       >
-        History<span class="mcp-subtab-count">{{ collector.activity.length }}</span>
+        History<span v-if="unseenHistory > 0" class="mcp-subtab-badge">{{ unseenHistory }}</span>
       </button>
     </nav>
 
@@ -508,12 +527,11 @@ const SETUP = 'npx qdadm-mcp-relay --stdio'
   color: #fff;
   font-size: 0.68rem;
 }
-.mcp-subtab-count {
-  padding: 0 0.35rem;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.1);
-  font-size: 0.68rem;
-  font-weight: 500;
+.mcp-subtab-dot {
+  width: 0.45rem;
+  height: 0.45rem;
+  border-radius: 50%;
+  background: #fbbf24;
 }
 .mcp-subpanel {
   display: flex;

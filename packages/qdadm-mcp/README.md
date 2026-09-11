@@ -116,7 +116,10 @@ when several tabs are open. Three sub-tabs:
 - **History**: every MCP request this tab served — tool, detail, success or
   error, duration.
 
-Chat and history are kept for the browser tab, across reloads.
+Chat and history are kept for the browser tab, across reloads. The tab icon,
+**Chat** and **History** count what the agent said and did since that sub-tab
+was last on screen; **Status** shows a dot while the relay is offline,
+something failed, or a code waits.
 
 **Status** also offers **Allow real screenshots**. Agent screenshots are
 rendered from the page's DOM by default. Once you share the tab there, they

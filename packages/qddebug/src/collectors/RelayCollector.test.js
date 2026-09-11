@@ -207,6 +207,148 @@ describe('RelayCollector — real screenshots (#2247)', () => {
   })
 })
 
+describe('RelayCollector — what is new in the MCP tab (#2285)', () => {
+  function relay(status = 'connected', { messages = [], entries = [] } = {}) {
+    const chatListeners = new Set()
+    const activityListeners = new Set()
+    const controller = {
+      ...fakeController({ status }),
+      chat: {
+        get messages() {
+          return messages
+        },
+        send: vi.fn(),
+        subscribe(l) {
+          chatListeners.add(l)
+          l(messages)
+          return () => chatListeners.delete(l)
+        },
+      },
+      activity: {
+        get entries() {
+          return entries
+        },
+        subscribe(l) {
+          activityListeners.add(l)
+          l(entries)
+          return () => activityListeners.delete(l)
+        },
+      },
+      say(from, text) {
+        messages = [...messages, { id: (messages.at(-1)?.id ?? 0) + 1, from, text, at: 0 }]
+        for (const l of chatListeners) l(messages)
+      },
+      request(tool) {
+        entries = [...entries, { id: (entries.at(-1)?.id ?? 0) + 1, at: 0, tool, detail: '', ok: true, ms: 1 }]
+        for (const l of activityListeners) l(entries)
+      },
+    }
+    return controller
+  }
+  const installed = (controller) => {
+    globalThis.__qdadmRelay = controller
+    const collector = new RelayCollector()
+    collector.install({})
+    return collector
+  }
+  const memoryStorage = () => {
+    const data = new Map()
+    return { getItem: (k) => (data.has(k) ? data.get(k) : null), setItem: (k, v) => data.set(k, String(v)) }
+  }
+
+  afterEach(() => vi.unstubAllGlobals())
+
+  it('counts agent messages and requests the tab has not shown; the user\'s own messages are not news', () => {
+    vi.stubGlobal('sessionStorage', memoryStorage())
+    const controller = relay()
+    const collector = installed(controller)
+
+    controller.say('agent', 'hello')
+    controller.say('user', 'hi')
+    controller.say('agent', 'done')
+    controller.request('navigate')
+    controller.request('page_snapshot')
+
+    expect(collector.unseenChat).toBe(2)
+    expect(collector.unseenHistory).toBe(2)
+    expect(collector.getBadge()).toBe(4)
+    expect(collector.snapshot().unseen).toBe(4)
+    expect(collector.snapshot().unseenBy).toEqual({ chat: 2, history: 2 })
+  })
+
+  it('a sub-tab on screen marks only what it shows as seen', () => {
+    vi.stubGlobal('sessionStorage', memoryStorage())
+    const controller = relay()
+    const collector = installed(controller)
+    controller.say('agent', 'hello')
+    controller.request('navigate')
+
+    collector.markChatSeen()
+    expect(collector.unseenChat).toBe(0)
+    expect(collector.getBadge()).toBe(1)
+
+    collector.markHistorySeen()
+    expect(collector.getBadge()).toBe(0)
+
+    controller.say('agent', 'again')
+    expect(collector.getBadge()).toBe(1)
+  })
+
+  it('the marks survive a reload of the tab', () => {
+    const storage = memoryStorage()
+    vi.stubGlobal('sessionStorage', storage)
+    const controller = relay()
+    const before = installed(controller)
+    controller.say('agent', 'hello')
+    controller.request('navigate')
+    before.markChatSeen()
+    before.uninstall()
+
+    const after = installed(controller)
+
+    expect(after.unseenChat).toBe(0)
+    expect(after.unseenHistory).toBe(1)
+  })
+
+  it('what the tab already held before any mark is not counted as new', () => {
+    vi.stubGlobal('sessionStorage', memoryStorage())
+    const collector = installed(
+      relay('connected', {
+        messages: [{ id: 7, from: 'agent', text: 'old', at: 0 }],
+        entries: [{ id: 40, at: 0, tool: 'routes', detail: '', ok: true, ms: 1 }],
+      })
+    )
+
+    expect(collector.getBadge()).toBe(0)
+  })
+
+  it('a waiting code or an error still asks for attention; the Status sub-tab also flags offline', () => {
+    vi.stubGlobal('sessionStorage', memoryStorage())
+    const controller = relay('connected')
+    const collector = installed(controller)
+    expect(collector.statusAlert).toBe(false)
+
+    controller.emit(awaitingCode)
+    expect(collector.getBadge()).toBe(1)
+    expect(collector.statusAlert).toBe(true)
+
+    controller.emit({ status: 'offline', message: 'relay gone', retryInMs: 1000 })
+    expect(collector.getBadge()).toBe(0)
+    expect(collector.statusAlert).toBe(true)
+  })
+
+  it('without sessionStorage the counts still work, for the page only', () => {
+    vi.stubGlobal('sessionStorage', undefined)
+    const controller = relay()
+    const collector = installed(controller)
+
+    controller.say('agent', 'hello')
+    expect(collector.unseenChat).toBe(1)
+    collector.markChatSeen()
+    expect(collector.unseenChat).toBe(0)
+  })
+})
+
 describe('RelayCollector — clearing the chat (#2231)', () => {
   it('asks the controller to clear', () => {
     const controller = {
