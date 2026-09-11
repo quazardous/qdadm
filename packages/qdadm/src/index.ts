@@ -262,6 +262,7 @@ export {
 } from './composables/usePageTitle'
 export { useApp, type UseAppReturn } from './composables/useApp'
 export { useAuth, type UseAuthReturn } from './composables/useAuth'
+export { useSecurity, type UseSecurityReturn } from './composables/useSecurity'
 export {
   useEntityItemPage,
   type UseEntityItemPageOptions,

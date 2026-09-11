@@ -197,6 +197,32 @@ form state; emitting on every refresh would wipe the user's edits on a timer.
 `install(ctx)` receives the same context as a `rolesProvider`'s: `signals`,
 `orchestrator`, and `permissionRegistry` — the live registry, not a snapshot.
 
+### In a component: `useSecurity()`
+
+A page asks `useSecurity()`, which returns the managers' own verdict — the
+`security.grant` judge first, then the role matrix:
+
+```vue
+<script setup>
+import { useSecurity } from '@quazardous/qdadm'
+const { isGranted } = useSecurity()
+</script>
+
+<template>
+  <ReplyBox v-if="isGranted('offers:debug:write')" />
+</template>
+```
+
+- `isGranted(attribute, subject?)` takes a permission or a `ROLE_*`, and the
+  record the answer is about when that matters.
+- Nothing is cached: the remount on `security:changed` (and on login and
+  logout) is what makes new answers show.
+- With no security configured it grants, as the managers do, so a page never
+  disagrees with the list actions next to it.
+- Call it in a component's `setup()`; a module asks `ctx.security.isGranted()`.
+
+Hiding is a convenience: the server still has to refuse.
+
 ## EntityManager Permissions
 
 EntityManager auto-registers CRUD permissions and provides can* methods:

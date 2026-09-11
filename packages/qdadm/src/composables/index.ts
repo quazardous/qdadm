@@ -50,6 +50,7 @@ export {
 export { usePageTitle, type UsePageTitleReturn, type TitleParts, type TitleInput } from './usePageTitle'
 export { useApp, type UseAppReturn } from './useApp'
 export { useAuth, type UseAuthReturn } from './useAuth'
+export { useSecurity, type UseSecurityReturn } from './useSecurity'
 export {
   useEntityItemPage,
   type UseEntityItemPageOptions,
