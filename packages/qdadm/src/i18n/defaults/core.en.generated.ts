@@ -55,6 +55,22 @@ export default `core:
     invalid: Invalid value
     notFound: Not found
     unknown: An unknown error occurred
+  # RoleGrantsEditor (#2313)
+  roles:
+    inherits: Inherits from
+    inheritsHint: A role gets every grant of the roles it inherits from.
+    noRoles: No other role to inherit from
+    brings: "brings {count}"
+    entities: Entities
+    entity: Entity
+    all: All
+    ownRecords: own records
+    others: Other grants
+    othersHint: Wildcards and keys the registry does not know
+    covers: "covers {count}"
+    notRegistered: not registered
+    remove: Remove
+    via: "via {origin}"
 # The breadcrumb's View↔Edit toggle (useNavContext).
 breadcrumb:
   view: View

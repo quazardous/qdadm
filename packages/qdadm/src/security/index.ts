@@ -69,6 +69,23 @@ export {
   type RoleListResult,
   type RoleInput,
 } from './RolesProviderStorage'
+export {
+  composeGrants,
+  inheritedGrants,
+  originOf,
+  setGrant,
+  type GrantDefinition,
+  type InheritedGrant,
+  type RoleComposition,
+  type InheritableRole,
+  type GrantOrigin,
+  type GrantCell,
+  type GrantRow,
+  type GrantGroup,
+  type OtherGrant,
+  type GrantsModel,
+  type RoleHierarchySource,
+} from './roleGrants'
 
 /**
  * Standard entity actions for CRUD operations

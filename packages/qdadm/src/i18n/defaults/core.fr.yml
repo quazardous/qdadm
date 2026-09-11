@@ -53,6 +53,22 @@ core:
     invalid: Valeur invalide
     notFound: Introuvable
     unknown: Une erreur inconnue est survenue
+  # RoleGrantsEditor (#2313)
+  roles:
+    inherits: Hérite de
+    inheritsHint: Un rôle reçoit toutes les permissions des rôles dont il hérite.
+    noRoles: Aucun autre rôle dont hériter
+    brings: "apporte {count}"
+    entities: Entités
+    entity: Entité
+    all: Tout
+    ownRecords: ses propres enregistrements
+    others: Autres permissions
+    othersHint: Jokers et clés que le registre ne connaît pas
+    covers: "couvre {count}"
+    notRegistered: non enregistrée
+    remove: Retirer
+    via: "via {origin}"
 # The breadcrumb's View↔Edit toggle (useNavContext).
 breadcrumb:
   view: Voir

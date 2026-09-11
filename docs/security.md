@@ -94,6 +94,42 @@ PermissionMatcher.matches('entity:*:read', 'entity:books:read')      // true
 PermissionMatcher.matches('*', 'anything')                           // true
 ```
 
+### RoleGrantsEditor
+
+A role's composition, made readable:
+- the roles it inherits;
+- an entity × action matrix of the registry's entity grants;
+- the named grants, grouped by namespace.
+
+Every checked grant says where it comes from: the role's own key, one of its wildcards (`via entity:*:read`), or an inherited role (`via ROLE_USER`).
+
+```vue
+<RoleGrantsEditor
+  v-model="composition"
+  :roles="roles"
+  :inherited="inherited"
+  :self="role.name"
+/>
+```
+
+| Prop | |
+|------|---|
+| `v-model` | `{ inherits: string[], permissions: string[] }` — the role's own composition, never what it inherits |
+| `roles` | `[{ name, label?, description? }]` — the roles it can inherit from |
+| `inherited` | `[{ permission, via }]` — what the inherited roles bring, and the role that declares each grant |
+| `grants` | the grants to compose from; default: the kernel's `PermissionRegistry` |
+| `self` | this role's name, left out of `roles` |
+| `readonly` | for roles that cannot change |
+
+The widget judges nothing: it resolves no hierarchy and refuses no key.
+
+- **When the front knows the roles**, `inheritedGrants(rolesProvider, composition.inherits)` computes `inherited`. SecurityModule's role form does exactly that.
+- **When a server judges**, the server sends `inherited`, and the app shows its refusals as form errors.
+
+A group's "All" box is `<namespace>:*`. Like every wildcard, `*` is one segment, so `offers:*` does not cover `offers:debug:read`.
+
+Keys the registry does not know stay in the role, listed under "Other grants". `composeGrants()` (from `@quazardous/qdadm/security`) returns the model the widget draws, for a view of your own.
+
 ## Permission Flow
 
 ```
