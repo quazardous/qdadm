@@ -33,9 +33,13 @@ export interface RelayStateLike {
   ports?: readonly number[]
   relay?: RelayIdentityLike
   relays?: RelayIdentityLike[]
+  instanceId?: string
+  retryInMs?: number
 }
 
 export interface RelayControllerLike {
+  readonly mode?: 'auto' | 'pairing' | 'token'
+  readonly instanceId?: string
   readonly state: RelayStateLike
   subscribe(listener: (state: RelayStateLike) => void): () => void
   pair(port?: number): Promise<void>
@@ -85,6 +89,15 @@ export class RelayCollector extends Collector {
     return this._state
   }
 
+  /** How this tab reaches the relay: `auto` on a dev page, `pairing` elsewhere. */
+  get mode(): 'auto' | 'pairing' | 'token' | null {
+    return this._controller?.mode ?? null
+  }
+
+  get instanceId(): string | null {
+    return this._controller?.instanceId ?? null
+  }
+
   pair(port?: number): Promise<void> {
     return this._controller ? this._controller.pair(port) : Promise.resolve()
   }
@@ -129,7 +142,8 @@ export class RelayCollector extends Collector {
       ...super.describe(),
       summary: 'Pairing of this browser tab with a local MCP relay (qdadm-mcp-relay). The pairing code is never exposed here.',
       stateShape: {
-        status: 'unavailable | idle | scanning | none-found | choose | awaiting-code | reconnecting | paired | error',
+        status:
+          'unavailable | connecting | connected | offline | idle | scanning | none-found | choose | awaiting-code | reconnecting | paired | error',
         relay: '{ project, cwd, port }?',
         message: 'string?',
       },

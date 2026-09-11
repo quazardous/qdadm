@@ -2,19 +2,15 @@
 
 **MCP server for qdadm apps — an agent debugs your live app in one connection.**
 
-Two setups, same tools:
-
-- **Relay (recommended)** — the agent spawns a small relay, and you pair ONE
-  browser tab with it from the debug bar. Works on the dev server and on any
-  static hosting, and survives app restarts.
-- **Dev server** — a Vite plugin serves the MCP on the dev server itself.
-  One line, but the MCP server lives and dies with the dev server.
+One **relay** per machine sits between your app's browser tabs and your
+agents. `npm run dev` starts it and connects every tab to it; the agent
+attaches to it. Each tab is an **instance** the tools can target.
 
 ```bash
 npm install -D @quazardous/qdadm-mcp
 ```
 
-## Setup A — the relay (recommended)
+## Setup
 
 **1. Wire the connector** — FIRST import of your entry (that is what
 enables pre-boot error capture):
@@ -25,81 +21,10 @@ import { installQdadmRelayConnector } from '@quazardous/qdadm-mcp/connector'
 installQdadmRelayConnector()
 ```
 
-It exposes the pairing controller the debug bar drives, and nothing else: a
-tab that never pairs opens no socket and wraps nothing. Safe to ship.
+On its own it does nothing: a page that is neither served by the dev server
+nor paired opens no socket and wraps nothing. Safe to ship.
 
-**2. Let the agent spawn the relay** (Node ≥ 22.18, no build step):
-
-```bash
-claude mcp add qdadm -- npx qdadm-mcp-relay --stdio
-```
-
-The relay lives exactly as long as the agent session. Restarting the app does
-not touch it.
-
-**3. Pair a tab.** In the app's debug bar, open the **MCP** tab and click
-**Pair**. It shows a code — `958 975`. Give the code to your agent; it calls
-`pair_accept`. The panel says *Paired*, and every tool now targets that
-browser tab.
-
-After that:
-
-| When | What happens |
-|---|---|
-| The tab reloads, or the app restarts | The tab re-pairs on load, same instance, before the app runs — boot capture still sees a crash. A tool called meanwhile answers "reloading — retry". |
-| Another tab is paired | It replaces this one: one paired tab at a time. This tab's MCP panel says so. |
-| The relay restarts (new agent session) | The new relay does not know the pairing; the MCP panel says so. Pair again. |
-| You click **Unpair** | Unpaired on both sides. |
-
-**Why a code.** The relay shows it in the tab only — `pairing_status` lists
-waiting tabs without their codes. The agent cannot pair a tab you did not
-point at, and a local process posing as a relay would show a code your
-agent's relay never issued.
-
-### Flags
-
-| Flag | Default | |
-|---|---|---|
-| `--stdio` | off | MCP over stdio — the agent spawns the relay |
-| `--port` | first free of 47761–47765 | WebSocket listener the tab connects to |
-| `--origin` | any | Only pages from this origin may pair (repeatable) |
-| `--mcp-port` | 7778 | Streamable HTTP endpoint (`/mcp`), without `--stdio` |
-| `--token` | random | Token of the URL fragment flow |
-| `--read-only` | off | Drop the three write tools |
-
-**Pair** scans 47761–47765, and the relay skips any of them already
-in use. A relay pinned elsewhere with `--port` needs the app to scan it:
-`installQdadmRelayConnector({ ports: [<port>] })`. Both listeners bind to
-`127.0.0.1`.
-
-**Public https origins** (GitHub Pages, any hosted site). Chrome holds
-connections to `localhost` until the user allows local network access for the
-site, and nothing reaches the relay meanwhile. The MCP panel says the browser
-is holding the connection: allow it in the prompt by the address bar, then
-click **Pair** again. Pages served from `http://localhost` get no prompt.
-
-**No debug bar?** Drive the controller from the console:
-`window.__qdadmRelay.pair()`, `.state`, `.unpair()`.
-
-### Over HTTP instead of stdio
-
-```bash
-npx qdadm-mcp-relay
-claude mcp add --transport http qdadm-relay http://localhost:7778/mcp
-```
-
-The relay must then be running before the agent session starts — see the
-restart caveat in Setup B, which applies to any HTTP MCP server.
-
-### URL fragment
-
-The startup log prints `#qdadm-relay=ws://localhost:<port>/<token>`. Opening
-the site with it connects that tab directly, with no code. The fragment is
-read at load only.
-
-## Setup B — dev server
-
-Requires `qdadmDebugPlugin` (the broker) before it in the plugin list:
+**2. Add the vite plugins** (qdadm's debug broker first):
 
 ```ts
 // vite.config.ts
@@ -112,35 +37,123 @@ export default defineConfig({
 })
 ```
 
-Hook an agent up (adjust the port to your dev server):
+`npm run dev` now starts the relay if none is running, and every page the
+dev server serves connects to it at startup — no click, no code.
+
+**3. Attach the agent:**
+
+```bash
+claude mcp add qdadm -- npx qdadm-mcp-relay --stdio
+```
+
+The stdio server attaches to the running relay, or starts one. It never
+fails at startup: while no relay can be reached, its tools answer with an
+error to act on, and the next call tries again.
+
+## Instances
+
+Every connected tab is an instance: one id per tab, kept across reloads.
+
+- `instances` lists them: id, app, page, origin, how each connected, and
+  whether it is connected or reloading.
+- Every tool takes `instance`: an id, or its first 8 characters. While a
+  single instance is connected, leave it out.
+- Several connected and no `instance` → the error lists them.
+- A tab that reloads stays known for 30 s; a tool called meanwhile answers
+  "reloading — retry".
+
+## The relay
+
+One relay serves every app and tab of the user. It outlives whoever started
+it: restarting the dev server, or ending an agent session, leaves it serving
+the others. Started in the background, it stops after 30 minutes with no tab
+connected and no MCP call.
+
+It listens on the first free port of **47761–47765**, on `127.0.0.1` only.
+That one port carries:
+
+- app tabs, over WebSocket;
+- `GET /identity`: who answers there;
+- `POST /mcp`: the agents' endpoint. It refuses any request carrying an
+  `Origin` header, so no web page can drive it.
+
+**`~/.qdadm_relay.run`** tells everyone where it is (override the path with
+`QDADM_RELAY_RUN`):
+
+```json
+{ "pid": 189379, "port": 47761, "token": "…", "startedAt": 1789103000791,
+  "cwd": "/path/where/it/started", "log": "/tmp/qdadm-mcp-relay.log" }
+```
+
+It is written once the relay listens and removed when it stops. Mode 0600:
+the token is what lets a dev page connect without a code. A stale file (dead
+process, or its port answering for something else) is ignored, and a new
+relay is started. A lock keeps a single relay even when the dev server and
+an agent start one at the same time.
+
+To run it in a terminal and watch it: `npx qdadm-mcp-relay`.
+
+| Flag | |
+|---|---|
+| `--stdio` | Be the agent's MCP server, attached to the machine relay |
+| `--read-only` | Drop the three write tools |
+| `--origin <origin>` | Only pages from this origin may pair (repeatable) |
+| `--port <p>` | A private relay on that port: no run file, not shared |
+| `--token <t>` | A fixed page token instead of a random one |
+| `--background` | How the plugin and the agent start it: idle stop after 30 minutes |
+
+## Outside dev: pairing
+
+A tab not served by the dev server — a static build, `vite preview`, GitHub
+Pages — has no token. Pair it from the debug bar:
+
+1. Make sure a relay runs: the agent's `--stdio` server starts one.
+2. Open the **MCP** tab of the debug bar and click **Pair**. It shows a code
+   such as `958 975`.
+3. Give the code to your agent; it calls `pair_accept`.
+
+The code is shown in the tab only, never to the agent: an agent cannot pair a
+tab you did not point at, and a process posing as a relay would show a code
+your relay never issued. A paired tab re-pairs on reload. **Unpair** forgets
+it on both sides.
+
+**Public https origins.** Chrome holds connections to `localhost` until the
+user allows local network access for the site. Until then nothing reaches
+the relay, and the MCP tab says so: allow it in the prompt by the address
+bar, then click **Pair** again.
+
+**No debug bar?** Drive the controller from the console:
+`window.__qdadmRelay.pair()`, `.state`, `.unpair()`.
+
+The `#qdadm-relay=ws://localhost:<port>/<token>` URL fragment, printed when
+the relay runs in a terminal, connects a tab directly, with no code.
+
+## The dev-server endpoint
+
+`qdadmMcpPlugin()` also serves an MCP endpoint on the dev server itself,
+targeting that server's tabs:
 
 ```bash
 claude mcp add --transport http qdadm http://localhost:5174/__qdadm/mcp
 ```
 
-Options: `qdadmMcpPlugin({ readOnly: true })` drops the three write tools.
-The endpoint is dev-only by construction (`apply: 'serve'`) — it cannot
-exist in a production build. Stateless Streamable HTTP: works behind an
-HTTPS vhost/proxy as long as `/__qdadm/*` is forwarded.
+It lives and dies with the dev server. An agent session that starts while
+the dev server is down marks it failed and does not retry — `/mcp` ›
+Reconnect. The relay has no such window.
 
-**Restarts.** The endpoint lives inside vite. Restarting vite mid-session is
-survivable: calls fail while it is down and work again once it is back. But
-an agent session that STARTS while the dev server is down marks the server
-failed and never retries it — run `/mcp` › Reconnect. Setup A has no such
-window.
-
-Each tab keeps its session id across reloads, so `session: <id>` stays valid
-through F5; tools default to the most recently active connected tab.
+Options: `qdadmMcpPlugin({ readOnly: true })` drops the write tools;
+`relay: false` neither starts the relay nor connects the pages to it. The
+plugin is dev-only by construction (`apply: 'serve'`): none of it exists in
+a production build.
 
 ## Tools
 
-Curated debugging arsenal. Every response carries a session stamp; `session`
-defaults to the paired tab (relay) or the most recently active tab (dev
-server).
+Every response carries a session stamp.
 
 | Tool | What it answers |
 |---|---|
-| `session_info` | Which app/session am I talking to? (zombie-tab detector; pairing state on the relay) |
+| `instances` | Which tabs you can target |
+| `session_info` | Which app/instance am I talking to? (zombie-tab detector) |
 | `boot_errors` | What broke — **including before the app booted** |
 | `routes` | Route names/paths/meta |
 | `entity_state` | Entities, idField, field schema, current-user permissions, storage key |
@@ -149,18 +162,21 @@ server).
 | `storage_dump` | RAW localStorage view — diff against `entity_list` to catch seed/cache bugs |
 | `recent_signals` | Last signal names on the bus |
 | `describe` / `bridge_call` | Collector discovery + escape hatch |
-| `pairing_status` / `pair_accept` | Relay only: which tab is paired or waiting; complete a pairing with the code the user reads out |
+| `pair_accept` | Relay only: complete a pairing with the code the user reads out |
 
 ## Agent playbook
 
 Typical debugging moves, grounded in real sessions:
 
-- **Always start with `session_info`** — it tells you which tab you're
-  driving (app name/version, current route, session age). A stale
-  `ageMs` means you're talking to a zombie tab: have the page reloaded.
-- **Relay says no tab is paired** → ask the user to open the **MCP** tab of
-  the debug bar, click **Pair**, and read you the code, then `pair_accept`.
-  Never guess a code.
+- **Start with `instances`, then `session_info`** — which tabs are there,
+  and which app, route and age the one you drive has. A stale `ageMs` means
+  a zombie tab: have the page reloaded.
+- **"Several instances are connected"** → pick one from the list and pass
+  `instance`.
+- **No instance at all** → the app is not running under its dev server, or
+  the tab is not paired: ask the user to open the **MCP** tab of the debug
+  bar, click **Pair**, and read you the code, then `pair_accept`. Never
+  guess a code.
 - **Blank page / app won't boot** → `boot_errors`. Capture starts before
   the app entry runs, so crashes during boot are recorded even though the
   bridge never came up.
@@ -177,20 +193,21 @@ Typical debugging moves, grounded in real sessions:
 - **Anything else** → `describe` lists the debug collectors, then
   `bridge_call {collector, action, args}` invokes one.
 
-Error messages are actionable on purpose: nothing paired → how to pair;
-tab reloading → retry; unknown entity → the list of registered names.
+Error messages are actionable on purpose: several instances → the list; tab
+reloading → retry; nothing connected → how to connect; unknown entity → the
+registered names.
 
 ## Scope & security
 
 The MCP acts **within the browser session of whoever has the tab open** —
 manager permissions apply; it can do what that user can do, nothing more.
 
-- Dev plugin: the endpoint exists only on the dev server.
-- Relay: listens on `127.0.0.1` only. A tab is served only once paired —
-  by a code the human carries from the tab to the agent, bound to the tab's
-  origin — or when opened with the token fragment. `--origin` narrows who
-  may pair.
-- `readOnly` drops the write tools on either setup.
+- The relay listens on `127.0.0.1` only, and its MCP endpoint refuses web
+  pages.
+- A tab is served only once it presents the page token — which only the dev
+  server hands out, to its own pages, read from a 0600 file — or once paired
+  with a code a human carried from the tab to the agent.
+- `--origin` narrows who may pair; `readOnly` drops the write tools.
 
 Full documentation: [DEBUG.md](https://github.com/quazardous/qdadm/blob/main/docs/DEBUG.md)
 

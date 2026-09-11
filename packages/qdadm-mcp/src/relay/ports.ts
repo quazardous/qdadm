@@ -5,6 +5,7 @@
  * port was held by something else. It now walks a list, and says plainly
  * when the whole list is taken.
  */
+import { createServer, type RequestListener, type Server } from 'node:http'
 import { WebSocketServer } from 'ws'
 
 /** Errors meaning "this port is not ours to use" — try the next one. */
@@ -58,6 +59,25 @@ export function openWebSocketServer(port: number, host = '127.0.0.1'): Promise<W
     wss.once('listening', () => {
       wss.off('error', onError)
       resolve(wss)
+    })
+  })
+}
+
+/**
+ * An HTTP server on the loopback interface — the relay's single port:
+ * WebSockets for tabs upgrade from it, agents POST /mcp to it.
+ */
+export function openHttpServer(port: number, handler: RequestListener, host = '127.0.0.1'): Promise<Server> {
+  return new Promise((resolve, reject) => {
+    const server = createServer(handler)
+    const onError = (e: Error) => {
+      server.close()
+      reject(e)
+    }
+    server.once('error', onError)
+    server.listen(port, host, () => {
+      server.off('error', onError)
+      resolve(server)
     })
   })
 }

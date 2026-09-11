@@ -7,9 +7,9 @@
  * storage, routes, and navigation.
  */
 
-// FIRST import: MCP relay connector (#1400, #2231) — does nothing until this
-// tab is paired from the debug bar's MCP tab; imported first so that, once
-// paired, its boot capture sees everything.
+// FIRST import: MCP relay connector (#1400, #2231). Under `npm run dev` this
+// tab connects to the machine relay on its own; elsewhere it pairs from the
+// debug bar's MCP tab. Imported first so its boot capture sees everything.
 import { installQdadmRelayConnector } from '@quazardous/qdadm-mcp/connector'
 installQdadmRelayConnector()
 

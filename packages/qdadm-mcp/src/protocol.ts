@@ -28,3 +28,15 @@ export interface RelayIdentity {
   pid: number
   startedAt: number
 }
+
+/**
+ * Set by qdadmMcpPlugin in dev pages only (#2231): the dev-server path that
+ * returns `{ port, token }`. Its presence is what lets a tab connect to the
+ * relay without a pairing code — it never exists in a production build.
+ */
+export const RELAY_AUTO_GLOBAL = '__qdadmRelayAuto'
+
+export interface RelayAutoConfig {
+  port: number
+  token: string
+}

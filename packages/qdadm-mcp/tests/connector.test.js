@@ -6,7 +6,7 @@
  *
  * Run: npm test
  */
-import { describe, it, expect, beforeEach, vi } from 'vitest'
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { EventEmitter } from 'node:events'
 import { installQdadmRelayConnector } from '../src/connector.ts'
 import { RelayBroker } from '../src/relay/broker.ts'
@@ -147,7 +147,7 @@ describe('relay connector — pairing (#2231)', () => {
     const live = first.sockets.find((s) => s.readyState === 1)
     live.onclose = live.onmessage = null
     live.close()
-    await vi.waitFor(() => expect(broker.pairing.status().paired.connected).toBe(false))
+    await vi.waitFor(() => expect(broker.listSessions()[0].connected).toBe(false))
     await expect(broker.ask('routes')).rejects.toThrow(/most likely reloading/)
 
     delete window.__qdadmRelay
@@ -200,26 +200,88 @@ describe('relay connector — pairing (#2231)', () => {
 
     expect(controller.state).toEqual({ status: 'idle' })
     expect(store.getItem('qdadm-relay:pairing')).toBeNull()
-    await vi.waitFor(() => expect(broker.pairing.status().paired).toBeNull())
+    await vi.waitFor(() => expect(broker.listSessions()).toEqual([]))
   })
 
-  it('pairing another tab tells this one it was replaced', async () => {
+  it('pairing another tab leaves this one paired — the relay serves both', async () => {
     const broker = makeBroker()
     const { controller } = install({ 47761: broker })
     await pairWith(controller, broker)
 
-    const intruder = new EventEmitter()
-    intruder.send = (data) => {
+    const other = new EventEmitter()
+    other.send = (data) => {
       const msg = JSON.parse(data)
       if (msg.kind === 'pair-pending') setTimeout(() => broker.pairing.accept(msg.code), 0)
     }
-    intruder.close = () => {}
-    broker.attach(intruder, { origin: ORIGIN })
-    intruder.emit('message', JSON.stringify({ kind: 'pair', instanceId: 'tab-2', meta: {} }))
+    other.close = () => {}
+    broker.attach(other, { origin: ORIGIN })
+    other.emit('message', JSON.stringify({ kind: 'pair', instanceId: 'tab-2', meta: {} }))
 
+    await vi.waitFor(() => expect(broker.listSessions().map((s) => s.instance).sort()).toEqual(['tab-1', 'tab-2']))
+    expect(controller.state.status).toBe('paired')
+  })
+})
+
+describe('relay connector — dev pages connect on their own (#2231)', () => {
+  const autoInstall = (net, config) => {
+    window.__qdadmRelayAuto = '/__qdadm/relay.json'
+    const fetchMock = vi.fn(config)
+    vi.stubGlobal('fetch', fetchMock)
+    return { ...install(net), fetchMock }
+  }
+  const answering = (body) => async () => ({ ok: true, status: 200, json: async () => body() })
+
+  afterEach(() => {
+    delete window.__qdadmRelayAuto
+    vi.unstubAllGlobals()
+  })
+
+  it('connects at startup with the page token — no code, no click', async () => {
+    const broker = new RelayBroker({ token: 'dev-token', identity: identity(47761) })
+    const { controller, fetchMock } = autoInstall({ 47761: broker }, answering(() => ({ port: 47761, token: 'dev-token' })))
+
+    expect(controller.mode).toBe('auto')
+    await vi.waitFor(() => expect(controller.state.status).toBe('connected'))
+    expect(fetchMock).toHaveBeenCalledWith('/__qdadm/relay.json', { cache: 'no-store' })
+    expect(broker.listSessions()).toEqual([expect.objectContaining({ instance: 'tab-1', via: 'token', connected: true })])
+    expect((await broker.ask('sessionInfo')).sessionId).toBe('tab-1')
+  })
+
+  it('a relay restart: the tab asks the dev server again and rejoins with the new token', async () => {
+    let token = 'first'
+    const net = { 47761: new RelayBroker({ token: 'first', identity: identity(47761) }) }
+    const { controller, sockets } = autoInstall(net, answering(() => ({ port: 47761, token })))
+    await vi.waitFor(() => expect(controller.state.status).toBe('connected'))
+
+    // The relay dies — its connections close — and a new one takes the port, with a new token.
+    const replacement = new RelayBroker({ token: 'second', identity: identity(47761) })
+    net[47761] = replacement
+    token = 'second'
+    sockets.find((s) => s.readyState === 1).close()
+
+    await vi.waitFor(() => expect(replacement.listSessions().map((s) => s.instance)).toEqual(['tab-1']), { timeout: 4000 })
+    expect(controller.state.status).toBe('connected')
+  })
+
+  it('pair() does nothing on a dev page — it is already connected', async () => {
+    const broker = new RelayBroker({ token: 'dev-token', identity: identity(47761) })
+    const { controller, created } = autoInstall({ 47761: broker }, answering(() => ({ port: 47761, token: 'dev-token' })))
+    await vi.waitFor(() => expect(controller.state.status).toBe('connected'))
+    const sockets = created.length
+
+    await controller.pair()
+
+    expect(controller.state.status).toBe('connected')
+    expect(created.length).toBe(sockets)
+  })
+
+  it('the dev server not answering → offline, and it keeps trying', async () => {
+    const { controller } = autoInstall({}, async () => {
+      throw new Error('ECONNREFUSED')
+    })
     await vi.waitFor(() =>
-      expect(controller.state).toMatchObject({ status: 'error', message: expect.stringMatching(/Another tab was paired/) })
+      expect(controller.state).toMatchObject({ status: 'offline', message: expect.stringMatching(/dev server could not provide the relay/) })
     )
-    expect(store.getItem('qdadm-relay:pairing')).toBeNull()
+    expect(controller.state.retryInMs).toBeGreaterThan(0)
   })
 })

@@ -65,11 +65,15 @@ export interface ToolDef {
   handler: (args: Record<string, unknown>) => Promise<unknown>
 }
 
-const session: ToolArg = {
+const instance: ToolArg = {
   kind: 'string',
   description:
-    "Target session id (default 'latest' — the paired tab when one is paired, otherwise the most recently active tab)",
+    'Which app instance (browser tab) to target — an id from `instances`, or its first 8 characters. ' +
+    'May be omitted while a single instance is connected.',
 }
+
+/** The target an agent named — `session` is the pre-#2231 name, still honoured. */
+const targetOf = (args: Record<string, unknown>) => ((args.instance ?? args.session) as string | undefined) ?? 'latest'
 
 const entity: ToolArg = {
   kind: 'string',
@@ -97,11 +101,12 @@ export class NoSessionError extends Error {
 }
 
 const pairHint =
-  'No tab is paired with this relay. Ask the user to open the MCP tab of the app\'s debug bar, click Pair, ' +
-  'and read you the code it shows; then call pair_accept with it.'
+  'No app instance is connected to the relay. Start the app with its dev server — its tabs connect on their own ' +
+  '— or ask the user to open the MCP tab of the app\'s debug bar, click Pair, and read you the code it shows; ' +
+  'then call pair_accept with it.'
 
 function resolveSession(api: DebugBrokerApi, args: Record<string, unknown>, hint?: string) {
-  const s = api.pickSession((args.session as string) ?? 'latest')
+  const s = api.pickSession(targetOf(args))
   if (!s) throw new NoSessionError(api.listSessions(), hint ?? (api.pairing ? pairHint : undefined))
   return s
 }
@@ -121,7 +126,7 @@ export async function listRegisteredEntities(
   args: Record<string, unknown>
 ): Promise<string[] | null> {
   try {
-    const s = api.pickSession((args.session as string) ?? 'latest')
+    const s = api.pickSession(targetOf(args))
     if (!s) return null
     const data = (await api.ask('entityState', {}, s.id)) as { entities?: unknown }
     return Array.isArray(data?.entities) ? (data.entities as string[]) : null
@@ -157,11 +162,8 @@ export function buildToolset(api: DebugBrokerApi, options: ToolsetOptions = {}):
         'Identity card of the live app session: app name/version, boot time, current route, ' +
         'bridge readiness, buffered-error counts. Call this FIRST — it detects zombie tabs ' +
         '(stale HMR chunks) and tells you which session you are talking to.',
-      args: { session },
-      handler: async (a) => {
-        const info = (await ask(a, 'sessionInfo')) as Record<string, unknown>
-        return api.pairing ? { ...info, pairing: api.pairing.status() } : info
-      },
+      args: { instance },
+      handler: (a) => ask(a, 'sessionInfo'),
     },
     {
       name: 'boot_errors',
@@ -170,7 +172,7 @@ export function buildToolset(api: DebugBrokerApi, options: ToolsetOptions = {}):
         'pre-boot capture script, which loads BEFORE the app bundle — so it holds everything ' +
         'the app threw while dying (blank-page class of failures). Needs a connected tab: the ' +
         'buffer lives in the page, so open the app URL even if it renders blank.',
-      args: { session },
+      args: { instance },
       noSessionHint: bootErrorsHint,
       handler: (a) => askBootErrors(a, 'bootlog'),
     },
@@ -179,7 +181,7 @@ export function buildToolset(api: DebugBrokerApi, options: ToolsetOptions = {}):
       description:
         'All registered routes: name, path, and meta (entity, layout, auth flags). Route NAMES ' +
         'are singularized (entity "tasks" → route "task") while paths stay plural.',
-      args: { session },
+      args: { instance },
       handler: (a) => ask(a, 'routes'),
     },
     {
@@ -188,7 +190,7 @@ export function buildToolset(api: DebugBrokerApi, options: ToolsetOptions = {}):
         'Without `entity`: the list of registered entities. With `entity`: its manager state — ' +
         'idField (beware: often not "id"), labelField, field schema, CURRENT-USER permissions ' +
         '(canCreate/read/update/delete), and the storage kind + localStorage key.',
-      args: { session, entity: { ...entity, required: false } },
+      args: { instance, entity: { ...entity, required: false } },
       handler: (a) => ask(a, 'entityState', { entity: a.entity }),
     },
     {
@@ -197,7 +199,7 @@ export function buildToolset(api: DebugBrokerApi, options: ToolsetOptions = {}):
         'List records through the EntityManager (permissions, cache and signals apply — the ' +
         'same path the UI uses). params supports page/page_size/search/filters/sort_by.',
       args: {
-        session,
+        instance,
         entity,
         params: {
           kind: 'object',
@@ -209,7 +211,7 @@ export function buildToolset(api: DebugBrokerApi, options: ToolsetOptions = {}):
     {
       name: 'entity_get',
       description: 'Fetch one record by id through the EntityManager.',
-      args: { session, entity, id },
+      args: { instance, entity, id },
       handler: (a) => ask(a, 'entityCall', { entity: a.entity, op: 'get', id: a.id }),
     },
     {
@@ -218,7 +220,7 @@ export function buildToolset(api: DebugBrokerApi, options: ToolsetOptions = {}):
         'RAW storage view for an entity (localStorage-backed storages): the key and its parsed ' +
         'content, bypassing the manager. Diff against entity_list to catch seed/cache/collision ' +
         'bugs — the manager view and the raw view disagreeing IS the finding.',
-      args: { session, entity },
+      args: { instance, entity },
       handler: (a) => ask(a, 'storageDump', { entity: a.entity }),
     },
     {
@@ -226,7 +228,7 @@ export function buildToolset(api: DebugBrokerApi, options: ToolsetOptions = {}):
       description:
         'Ring buffer of the last signal names emitted on the bus (auth:login, entity:*:created…). ' +
         'Arms on first call if the app is up.',
-      args: { session },
+      args: { instance },
       handler: (a) => ask(a, 'recentSignals'),
     },
     {
@@ -234,7 +236,7 @@ export function buildToolset(api: DebugBrokerApi, options: ToolsetOptions = {}):
       description:
         'Discovery: the self-describing manifests of every debug collector (entry shapes + ' +
         'available actions). Use it to find collector actions callable via bridge_call.',
-      args: { session },
+      args: { instance },
       handler: (a) => ask(a, 'describe'),
     },
     {
@@ -243,7 +245,7 @@ export function buildToolset(api: DebugBrokerApi, options: ToolsetOptions = {}):
         'Escape hatch: invoke any collector action exposed by describe — ' +
         '{ collector, action, args }.',
       args: {
-        session,
+        instance,
         collector: {
           kind: 'string',
           required: true,
@@ -259,6 +261,17 @@ export function buildToolset(api: DebugBrokerApi, options: ToolsetOptions = {}):
       handler: (a) =>
         ask(a, 'call', { collector: a.collector, action: a.action, args: a.args ?? {} }),
     },
+    {
+      name: 'instances',
+      description:
+        'The app instances (browser tabs) you can target: id, app, page, origin, how each connected, and ' +
+        'whether it is connected or reloading. Pass an id as `instance` to the other tools when several are connected.',
+      args: {},
+      handler: async () => ({
+        instances: api.listSessions(),
+        ...(api.pairing ? { waitingToPair: (api.pairing.status() as { waiting?: unknown }).waiting ?? [] } : {}),
+      }),
+    },
   ]
 
   const writes: ToolDef[] = [
@@ -268,7 +281,7 @@ export function buildToolset(api: DebugBrokerApi, options: ToolsetOptions = {}):
         'Create a record through the EntityManager (permissions checked, signals emitted, ' +
         'caches invalidated — exactly like the UI).',
       args: {
-        session,
+        instance,
         entity,
         data: { kind: 'object', required: true, description: 'Record fields' },
       },
@@ -278,7 +291,7 @@ export function buildToolset(api: DebugBrokerApi, options: ToolsetOptions = {}):
       name: 'entity_update',
       description: 'Update a record by id through the EntityManager.',
       args: {
-        session,
+        instance,
         entity,
         id,
         data: { kind: 'object', required: true, description: 'Fields to update' },
@@ -289,7 +302,7 @@ export function buildToolset(api: DebugBrokerApi, options: ToolsetOptions = {}):
     {
       name: 'entity_delete',
       description: 'Delete a record by id through the EntityManager.',
-      args: { session, entity, id },
+      args: { instance, entity, id },
       handler: (a) => ask(a, 'entityCall', { entity: a.entity, op: 'delete', id: a.id }),
     },
   ]
@@ -298,20 +311,11 @@ export function buildToolset(api: DebugBrokerApi, options: ToolsetOptions = {}):
     const pairing = api.pairing
     tools.push(
       {
-        name: 'pairing_status',
-        description:
-          'Which browser tab this relay is paired with (origin, page, connected or reloading) and which tabs ' +
-          'are waiting to pair. Codes are never shown here: they appear only in the tab, so a pairing always ' +
-          'goes through the human.',
-        args: {},
-        handler: async () => pairing.status(),
-      },
-      {
         name: 'pair_accept',
         description:
           'Complete a pairing: the user clicked Pair in the MCP tab of the app\'s debug bar and read you the code it ' +
-          'shows. Pass exactly that code — never guess or reuse one. Replaces any previously paired tab; every ' +
-          'tool then targets the newly paired tab.',
+          'shows. Pass exactly that code — never guess or reuse one. The tab becomes an instance next to the ' +
+          'others (see instances).',
         args: {
           code: { kind: 'string', required: true, description: 'The code shown in the debug bar' },
         },

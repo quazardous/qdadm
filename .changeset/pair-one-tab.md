@@ -2,23 +2,24 @@
 "@quazardous/qdadm-mcp": minor
 ---
 
-Pair the agent with ONE browser tab, from the debug bar (#2231).
+One relay per machine between your app's tabs and your agents (#2231).
 
-**The relay is now the agent's tool.** `claude mcp add qdadm -- npx qdadm-mcp-relay --stdio`: the relay lives as long as the agent session, so restarting the app no longer takes the MCP server away. Claude Code does not retry an HTTP MCP server that was down when the session started; only `/mcp › Reconnect` brings it back.
+**`npm run dev` starts it, and connects the app to it.** `qdadmMcpPlugin()` starts the relay if none is running, detached, so it outlives dev-server restarts. Every page the dev server serves connects at startup, with no click and no code. `relay: false` opts out.
 
-**Pairing.**
-- In the app, the debug bar's **MCP** tab scans the relay ports and shows a code. The user reads it to the agent, which calls the new `pair_accept` tool.
-- The relay never gives codes to the agent (`pairing_status` lists waiting tabs without them), so every pairing goes through the human.
-- One paired tab at a time. It is the default target of every tool, and it survives reloads: the tab re-presents its pairing key, and tools answer "reloading — retry" meanwhile instead of "no session".
-- `session_info` reports the pairing.
+**Agents attach with `claude mcp add qdadm -- npx qdadm-mcp-relay --stdio`.** The stdio server attaches to the running relay, or starts one, and never fails at startup. Claude Code does not retry an MCP server that failed when the session started; only `/mcp › Reconnect` brings it back.
 
-**Relay CLI.**
-- The WebSocket listener walks `47761–47765` instead of one fixed port, and never crashes on `EADDRINUSE`. `--port` still pins one port; a non-default port needs `installQdadmRelayConnector({ ports: [...] })`.
-- Both listeners bind to `127.0.0.1` only.
-- `--origin <origin>` (repeatable) restricts which pages may pair. A connection without an `Origin` header cannot pair.
+**Instances.**
+- Every connected tab is an instance, with an id kept across reloads.
+- New `instances` tool: id, app, page, origin, how each connected, connected or reloading.
+- Every tool takes `instance` (an id, or its first 8 characters). Leave it out while a single instance is connected; with several, the error lists them.
+- `session` is still accepted as a synonym.
+- A reloading tab stays known for 30 s, and tools answer "reloading — retry" meanwhile.
 
-**Connector.**
-- `installQdadmRelayConnector()` exposes `window.__qdadmRelay` and does nothing else until a pairing exists: no socket, no console wrapper.
-- A tab paired before re-pairs on load, before the app runs, so boot capture still sees a crash during boot.
-- The tab's instance id is kept in `sessionStorage`.
-- The `#qdadm-relay=…/<token>` fragment still works. Its default port moved with the relay; the startup log prints the fragment to use.
+**The relay.**
+- Listens on the first free port of `47761–47765`, `127.0.0.1` only, and never crashes on a port in use.
+- That single port carries tab WebSockets, `GET /identity`, and `POST /mcp`, which refuses any request with an `Origin` header. `--mcp-port` is gone.
+- It writes `~/.qdadm_relay.run` (pid, port, page token, log; mode 0600; `QDADM_RELAY_RUN` to move it) and removes it on exit. A lock keeps a single relay.
+- Started in the background, it stops after 30 idle minutes.
+- The launcher runs the built relay when installed, so it no longer needs Node ≥ 22.18.
+
+**Outside dev** (static build, preview), a tab pairs from the debug bar's MCP tab: **Pair** shows a code, the user reads it to the agent, the agent calls `pair_accept`. The code never reaches the agent. `--origin` restricts who may pair. The `#qdadm-relay=…/<token>` fragment still connects a tab directly.

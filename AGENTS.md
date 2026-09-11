@@ -32,13 +32,13 @@ MCP server with a curated tool arsenal (`session_info`, `boot_errors`,
 ```bash
 npm install -D @quazardous/qdadm-mcp
 # main.ts, first import: installQdadmRelayConnector() from '@quazardous/qdadm-mcp/connector'
+# vite.config: plugins [vue(), qdadmVitePlugin(), qdadmDebugPlugin(), qdadmMcpPlugin()]
 claude mcp add qdadm -- npx qdadm-mcp-relay --stdio
 ```
 
-Then in the app: debug bar → **MCP** tab → **Pair** → give the agent the code →
-`pair_accept`. The relay belongs to the agent session, so app restarts do not
-break it. Dev-server-only alternative: `qdadmMcpPlugin()` and
-`claude mcp add --transport http qdadm http://localhost:5174/__qdadm/mcp`.
+`npm run dev` starts the machine relay (`~/.qdadm_relay.run`) and connects
+every dev tab to it; the agent attaches to the same relay. Call `instances`
+first, and pass `instance` when several tabs are connected.
 Full setup guide + agent playbook:
 [`packages/qdadm-mcp/README.md`](packages/qdadm-mcp/README.md).
 

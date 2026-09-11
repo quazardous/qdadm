@@ -4,6 +4,9 @@
  * Install it FIRST in your entry (for boot capture). It never connects on
  * its own:
  *
+ * - on a page served by the dev server (qdadmMcpPlugin marks it), it
+ *   connects to the machine's relay at startup, with no pairing code, and
+ *   reconnects after a reload or a relay restart;
  * - it exposes `window.__qdadmRelay`, the pairing controller behind the
  *   debug bar's MCP tab: scan the relay ports, show the code the
  *   agent needs, keep the pairing across reloads;
@@ -26,7 +29,7 @@
  * storageDump, bootlog, recentSignals, plus describe/dump/call). The MCP
  * acts within THIS browser session: manager permissions apply.
  */
-import { RELAY_PORTS, RELAY_PROTOCOL, type RelayIdentity } from './protocol.ts'
+import { RELAY_AUTO_GLOBAL, RELAY_PORTS, RELAY_PROTOCOL, type RelayAutoConfig, type RelayIdentity } from './protocol.ts'
 
 interface BootEntry {
   at: number
@@ -89,6 +92,9 @@ export interface QdadmRelayConnectorOptions {
 
 export type RelayPairingState =
   | { status: 'idle' }
+  | { status: 'connecting' }
+  | { status: 'connected'; relay: RelayIdentity; instanceId: string }
+  | { status: 'offline'; message: string; retryInMs: number }
   | { status: 'scanning'; ports: readonly number[] }
   | { status: 'none-found'; ports: readonly number[]; permissionPending: boolean }
   | { status: 'choose'; relays: RelayIdentity[] }
@@ -101,6 +107,8 @@ export type RelayPairingState =
 export interface QdadmRelayController {
   /** Stable for the life of the tab, reloads included. */
   readonly instanceId: string
+  /** `auto`: a dev page, connected without a code. `pairing`: Pair + code. `token`: the URL fragment. */
+  readonly mode: 'auto' | 'pairing' | 'token'
   readonly state: RelayPairingState
   /** Called at once with the current state, then on every change. */
   subscribe(listener: (state: RelayPairingState) => void): () => void
@@ -115,6 +123,8 @@ const INSTANCE_KEY = 'qdadm-relay:instance'
 const HELLO_TIMEOUT_MS = 1000
 /** Retries after a live paired connection drops; a page load gets one attempt. */
 const RECONNECT_DELAYS_MS = [1000, 2000, 4000]
+/** Dev pages keep trying: the dev server restarts the relay when it is gone. */
+const AUTO_DELAYS_MS = [1000, 2000, 5000, 10000]
 
 interface SavedPairing {
   port: number
@@ -174,6 +184,27 @@ export function installQdadmRelayConnector(options: QdadmRelayConnectorOptions =
 
   const page = createPageAgent(id, () => w.__qdadm ?? {})
 
+  const pageMeta = () => {
+    let app: string | undefined
+    try {
+      app = w.__qdadm?.kernel?.options?.app?.name
+    } catch {
+      /* not booted yet */
+    }
+    return { app, title: document.title, location: window.location.pathname, userAgent: navigator.userAgent, transport: 'relay' }
+  }
+
+  /** The app's name exists only once the kernel is up — tell the relay when it is. */
+  const announceApp = (ws: WebSocket) => {
+    let tries = 0
+    const timer = setInterval(() => {
+      const meta = pageMeta()
+      if (!meta.app && ++tries < 40 && ws.readyState === 1) return
+      clearInterval(timer)
+      if (meta.app && ws.readyState === 1) ws.send(JSON.stringify({ kind: 'meta', meta }))
+    }, 250)
+  }
+
   const answer = async (ws: WebSocket, msg: Record<string, unknown>) => {
     let reply: Record<string, unknown>
     try {
@@ -212,7 +243,7 @@ export function installQdadmRelayConnector(options: QdadmRelayConnectorOptions =
             kind: 'hello',
             token,
             sessionId: id,
-            meta: { userAgent: navigator.userAgent, location: window.location.pathname, transport: 'relay' },
+            meta: pageMeta(),
           })
         )
         page.armSignals()
@@ -308,6 +339,7 @@ export function installQdadmRelayConnector(options: QdadmRelayConnectorOptions =
       } else if (msg.kind === 'paired') {
         store.setItem(PAIRING_KEY, JSON.stringify({ port, key: String(msg.pairingKey), relay } satisfies SavedPairing))
         page.armSignals()
+        announceApp(ws)
         setState({ status: 'paired', relay, instanceId: id })
       } else if (msg.kind === 'pair-refused') {
         if (msg.reason === 'unknown-pairing') store.removeItem(PAIRING_KEY)
@@ -337,7 +369,7 @@ export function installQdadmRelayConnector(options: QdadmRelayConnectorOptions =
         kind: 'pair',
         instanceId: id,
         pairingKey,
-        meta: { userAgent: navigator.userAgent, location: window.location.pathname, title: document.title },
+        meta: pageMeta(),
       })
     )
   }
@@ -375,6 +407,8 @@ export function installQdadmRelayConnector(options: QdadmRelayConnectorOptions =
   }
 
   const pair = async (port?: number): Promise<void> => {
+    // A dev page is already connected, with no code to exchange.
+    if (mode === 'auto') return
     if (state.status === 'scanning' || state.status === 'reconnecting') return
     page.arm()
     dropSocket()
@@ -402,8 +436,61 @@ export function installQdadmRelayConnector(options: QdadmRelayConnectorOptions =
     setState({ status: 'idle' })
   }
 
+  // ── dev auto-connect (#2231) ─────────────────────────────────────────
+  const autoPath = (w as unknown as Record<string, unknown>)[RELAY_AUTO_GLOBAL]
+  const mode: QdadmRelayController['mode'] = url && token ? 'token' : typeof autoPath === 'string' ? 'auto' : 'pairing'
+  let autoAttempt = 0
+
+  const retryAuto = (message: string) => {
+    const retryInMs = AUTO_DELAYS_MS[Math.min(autoAttempt++, AUTO_DELAYS_MS.length - 1)]
+    setState({ status: 'offline', message, retryInMs })
+    setTimeout(() => void autoConnect(), retryInMs)
+  }
+
+  const autoConnect = async (): Promise<void> => {
+    if (state.status !== 'offline') setState({ status: 'connecting' })
+    let config: RelayAutoConfig
+    try {
+      // Asked every time: a restarted relay has a new port or token, and the
+      // dev server starts one when there is none.
+      const res = await fetch(String(autoPath), { cache: 'no-store' })
+      const body = (await res.json().catch(() => ({}))) as Partial<RelayAutoConfig> & { error?: string }
+      if (!res.ok || typeof body.port !== 'number' || typeof body.token !== 'string') {
+        throw new Error(body.error ?? `HTTP ${res.status}`)
+      }
+      config = body as RelayAutoConfig
+    } catch (e) {
+      return retryAuto(`The dev server could not provide the relay (${(e as Error).message}).`)
+    }
+    const result = await probe(config.port)
+    if (result.outcome !== 'relay') return retryAuto(`No relay answered on port ${config.port}.`)
+
+    const ws = result.ws
+    socket = ws
+    ws.onmessage = (event) => {
+      const msg = parse(event.data)
+      if (!msg) return
+      if (msg.kind === 'request' && msg.type) {
+        void answer(ws, msg)
+      } else if (msg.kind === 'welcome') {
+        autoAttempt = 0
+        page.armSignals()
+        announceApp(ws)
+        setState({ status: 'connected', relay: result.relay, instanceId: id })
+      }
+    }
+    ws.onerror = null
+    ws.onclose = () => {
+      if (socket !== ws) return
+      socket = null
+      retryAuto('The connection to the relay dropped.')
+    }
+    ws.send(JSON.stringify({ kind: 'hello', token: config.token, sessionId: id, meta: pageMeta() }))
+  }
+
   const controller: QdadmRelayController = {
     instanceId: id,
+    mode,
     get state() {
       return state
     },
@@ -417,9 +504,14 @@ export function installQdadmRelayConnector(options: QdadmRelayConnectorOptions =
   }
   w.__qdadmRelay = controller
 
-  // A tab paired before re-pairs now, before the app runs: boot capture sees
-  // a crash during boot, and the agent keeps its target across the reload.
-  if (!(url && token) && readSaved()) {
+  if (mode === 'auto') {
+    // A dev page: connect before the app runs, so boot capture sees a crash
+    // during boot.
+    page.arm()
+    void autoConnect()
+  } else if (mode === 'pairing' && readSaved()) {
+    // A tab paired before re-pairs now, for the same reason, and the agent
+    // keeps its target across the reload.
     page.arm()
     void reconnect(0, false)
   }

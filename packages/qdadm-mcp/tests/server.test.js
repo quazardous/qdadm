@@ -32,16 +32,16 @@ async function connect(api, options = {}) {
 }
 
 describe('createQdadmMcpServer', () => {
-  it('advertises the 13 tools with JSON Schema, required fields declared', async () => {
+  it('advertises the 14 tools with JSON Schema, required fields declared', async () => {
     const client = await connect(makeApi())
     const { tools } = await client.listTools()
 
-    expect(tools).toHaveLength(13)
+    expect(tools).toHaveLength(14)
     const entityList = tools.find((t) => t.name === 'entity_list')
     expect(entityList.inputSchema.type).toBe('object')
     expect(entityList.inputSchema.required).toEqual(['entity'])
     expect(entityList.inputSchema.properties.entity.type).toBe('string')
-    expect(entityList.inputSchema.properties.session.description).toMatch(/latest/)
+    expect(entityList.inputSchema.properties.instance.description).toMatch(/instances/)
 
     const entityGet = tools.find((t) => t.name === 'entity_get')
     expect(entityGet.inputSchema.required).toEqual(['entity', 'id'])
@@ -51,7 +51,7 @@ describe('createQdadmMcpServer', () => {
   it('readOnly server does not advertise the write tools', async () => {
     const client = await connect(makeApi(), { readOnly: true })
     const names = (await client.listTools()).tools.map((t) => t.name)
-    expect(names).toHaveLength(10)
+    expect(names).toHaveLength(11)
     expect(names).not.toContain('entity_create')
   })
 

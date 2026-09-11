@@ -45,6 +45,28 @@ const SETUP = 'claude mcp add qdadm -- npx qdadm-mcp-relay --stdio'
       </p>
     </template>
 
+    <template v-else-if="state.status === 'connecting'">
+      <p class="mcp-lead"><i class="pi pi-spin pi-spinner" /> Connecting to the relay…</p>
+    </template>
+
+    <template v-else-if="state.status === 'connected'">
+      <p class="mcp-lead mcp-ok"><i class="pi pi-check-circle" /> Connected — agents reach this tab through the relay.</p>
+      <dl class="mcp-facts">
+        <dt>Instance</dt>
+        <dd><code>{{ (state.instanceId ?? '').slice(0, 8) }}</code></dd>
+        <dt>Relay</dt>
+        <dd>{{ relayName(state.relay) }}</dd>
+        <dt>Started in</dt>
+        <dd><code>{{ state.relay?.cwd }}</code></dd>
+      </dl>
+      <p class="mcp-hint">Connected by the dev server, no code needed. Agents attach with <code>{{ SETUP }}</code></p>
+    </template>
+
+    <template v-else-if="state.status === 'offline'">
+      <p class="mcp-lead mcp-warn">{{ state.message }}</p>
+      <p class="mcp-hint">Trying again in {{ Math.round((state.retryInMs ?? 0) / 1000) }} s.</p>
+    </template>
+
     <template v-else-if="state.status === 'awaiting-code'">
       <p class="mcp-lead">Give this code to your agent:</p>
       <div class="mcp-code">{{ spaced(state.code) }}</div>

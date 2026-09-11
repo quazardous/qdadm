@@ -33,6 +33,7 @@ describe('qdadm-mcp toolset', () => {
       'recent_signals',
       'describe',
       'bridge_call',
+      'instances',
       'entity_create',
       'entity_update',
       'entity_delete',
@@ -102,20 +103,48 @@ describe('qdadm-mcp toolset', () => {
   })
 })
 
-describe('qdadm-mcp toolset — relay pairing (#2231)', () => {
+describe('qdadm-mcp toolset — instances (#2231)', () => {
   const withPairing = (overrides = {}) => ({
     ...makeApi(overrides),
     pairing: {
-      status: vi.fn(() => ({ paired: { instanceId: 's1', origin: 'http://localhost:5174' }, waiting: [] })),
-      accept: vi.fn((code) => ({ paired: { instanceId: 's1' }, code })),
+      status: vi.fn(() => ({ waiting: [{ instance: 'w1', origin: 'http://localhost:5174' }] })),
+      accept: vi.fn((code) => ({ paired: { instance: 's1' }, code })),
     },
   })
 
-  it('pairing tools exist on the relay only', () => {
-    expect(buildToolset(makeApi()).map((t) => t.name)).not.toContain('pair_accept')
-    const names = buildToolset(withPairing(), { readOnly: true }).map((t) => t.name)
-    expect(names).toContain('pairing_status')
-    expect(names).toContain('pair_accept')
+  it('instances exists everywhere; pair_accept on the relay only', () => {
+    const plain = buildToolset(makeApi()).map((t) => t.name)
+    expect(plain).toContain('instances')
+    expect(plain).not.toContain('pair_accept')
+    expect(buildToolset(withPairing(), { readOnly: true }).map((t) => t.name)).toContain('pair_accept')
+  })
+
+  it('`instance` picks the target; the pre-#2231 `session` name still works; omitted means the default', async () => {
+    const api = makeApi()
+    const routes = byName(buildToolset(api), 'routes')
+
+    await routes.handler({ instance: 'abc' })
+    expect(api.pickSession).toHaveBeenLastCalledWith('abc')
+    await routes.handler({ session: 'def' })
+    expect(api.pickSession).toHaveBeenLastCalledWith('def')
+    await routes.handler({})
+    expect(api.pickSession).toHaveBeenLastCalledWith('latest')
+  })
+
+  it('instances lists them — with the tabs waiting to pair, on the relay', async () => {
+    const plain = await byName(buildToolset(makeApi()), 'instances').handler({})
+    expect(plain).toEqual({ instances: [{ id: 's1' }] })
+
+    const relay = await byName(buildToolset(withPairing()), 'instances').handler({})
+    expect(relay.waitingToPair).toEqual([{ instance: 'w1', origin: 'http://localhost:5174' }])
+  })
+
+  it('an ambiguous target reaches the agent as the broker worded it', async () => {
+    const api = makeApi()
+    api.pickSession = vi.fn(() => {
+      throw new Error('relay: 2 instances are connected — pass instance')
+    })
+    await expect(byName(buildToolset(api), 'routes').handler({})).rejects.toThrow(/2 instances are connected/)
   })
 
   it('pair_accept passes the code through; its description sends the agent to the human', async () => {
@@ -127,14 +156,10 @@ describe('qdadm-mcp toolset — relay pairing (#2231)', () => {
     expect(api.pairing.accept).toHaveBeenCalledWith('424 242')
   })
 
-  it('session_info reports the pairing', async () => {
-    const res = await byName(buildToolset(withPairing()), 'session_info').handler({})
-    expect(res.pairing.paired.origin).toBe('http://localhost:5174')
-    expect(res.session.id).toBe('s1')
-  })
-
-  it('no paired tab → the hint points at the MCP tab, not "open a browser"', async () => {
+  it('nothing connected on the relay → the hint names the dev server and the MCP tab', async () => {
     const api = withPairing({ session: null })
-    await expect(byName(buildToolset(api), 'routes').handler({})).rejects.toThrow(/MCP tab of the app's debug bar, click Pair/)
+    await expect(byName(buildToolset(api), 'routes').handler({})).rejects.toThrow(
+      /dev server.*MCP tab of the app's debug bar, click Pair/
+    )
   })
 })

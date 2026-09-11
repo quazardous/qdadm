@@ -59,28 +59,13 @@ qdadm codebase; this page is about driving a qdadm APP from the outside.
 ## MCP server — one connection, full arsenal
 
 [`@quazardous/qdadm-mcp`](https://github.com/quazardous/qdadm/tree/main/packages/qdadm-mcp)
-lets any MCP-capable agent debug the live app directly. Two setups:
-
-**Relay (recommended)** — the agent owns the MCP server, and you pair one tab
-with it:
+lets any MCP-capable agent debug the live app directly.
 
 ```ts
-// main.ts — FIRST import (boot capture); does nothing until a tab pairs
+// main.ts — FIRST import (boot capture)
 import { installQdadmRelayConnector } from '@quazardous/qdadm-mcp/connector'
 installQdadmRelayConnector()
 ```
-
-```bash
-claude mcp add qdadm -- npx qdadm-mcp-relay --stdio
-```
-
-In the app, open the **MCP** tab of the debug bar, click **Pair**, and give
-the agent the code it shows; the agent calls `pair_accept`. The paired tab is what every tool
-targets. It stays paired across reloads and app restarts, and the relay
-lives as long as the agent session. Works on static hosting too. On a public
-https origin, Chrome first asks the user to allow local network access.
-
-**Dev server** — one line, tied to the dev server's lifetime:
 
 ```ts
 // vite.config.ts
@@ -89,21 +74,27 @@ plugins: [vue(), qdadmVitePlugin(), qdadmDebugPlugin(), qdadmMcpPlugin()]
 ```
 
 ```bash
-claude mcp add --transport http qdadm http://localhost:5174/__qdadm/mcp
+claude mcp add qdadm -- npx qdadm-mcp-relay --stdio
 ```
 
-An agent session started while the dev server is down marks this server
-failed and does not retry it: `/mcp` › Reconnect.
+`npm run dev` starts the machine's relay (found through
+`~/.qdadm_relay.run`), and every page the dev server serves connects to it
+on its own. The agent attaches to the same relay. Each tab is an instance:
+`instances` lists them, and every tool takes `instance`, which may be left
+out while a single one is connected. The relay outlives dev-server restarts.
 
-Tools: `session_info` (zombie-tab detector), `boot_errors` (captures
-failures from BEFORE the app booted), `routes`, `entity_state`,
+A tab outside dev (static build, preview) pairs instead: debug bar → **MCP**
+tab → **Pair** → give the agent the code, which it passes to `pair_accept`.
+
+Tools: `instances`, `session_info` (zombie-tab detector), `boot_errors`
+(captures failures from BEFORE the app booted), `routes`, `entity_state`,
 `entity_list/get/create/update/delete` (through the manager — permissions,
 cache and signals apply; `readOnly: true` to disable writes),
 `storage_dump` (raw localStorage view to diff against the manager),
-`recent_signals`, `describe`/`bridge_call` for collector discovery, and on
-the relay `pairing_status`/`pair_accept`. Every response carries a session
-stamp. The MCP acts within that browser session — manager permissions apply.
-Flags, pairing details and security: the package README.
+`recent_signals`, `describe`/`bridge_call` for collector discovery, and
+`pair_accept`. Every response carries a session stamp. The MCP acts within
+that browser session — manager permissions apply. Relay, run file, pairing
+and security: the package README.
 
 ## Dev-server HTTP endpoints
 
@@ -132,8 +123,8 @@ Every browser tab gets a session id, kept across reloads; endpoints accept
 The optional in-app debug bar (`debugBar` kernel option, see the demo)
 surfaces the same collectors visually: entities, routes, signals timeline,
 auth state, i18n domains.
-With the relay connector installed, an **MCP** tab pairs the browser tab
-with an agent (see above).
+With the relay connector installed, an **MCP** tab shows how the tab reaches
+the relay — connected by the dev server, or paired (see above).
 
 `debugBar: { enabled: false }` turns it off — both the bar and the debug mode
 it would otherwise switch on.
