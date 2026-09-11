@@ -1,5 +1,88 @@
 # Changelog
 
+## 2.22.0
+
+### Minor Changes
+
+- 73dc5fd: Form labels name their field (#2268).
+  - **`FormField`'s label now points at the control inside it.** Clicking the label focuses the field, and screen readers and agents read the field by its label (`textbox "Title"`, `combobox "Genre"`).
+  - **The ids are unique per field instance,** so two forms on one page do not collide.
+  - **`FormInput` binds the id with each PrimeVue control's own prop.** A widget put directly in the slot takes it after render, or keeps its own id and the label follows. The slot also receives `inputId` and `labelId`.
+
+- 4002c6a: A `number` field can hold decimals (#2316). Its form input accepted whole numbers only, so typing `12.5` saved `125` without any error.
+  - `fractionDigits: 2` (always two decimals) or `fractionDigits: { min: 0, max: 2 }` sets how many digits the input accepts after the decimal point.
+  - `min`, `max` and `step` bound the input and set its increment.
+  - A field without these options renders as before, and a stored value that already has decimals still shows them.
+
+- 557fc86: The debug bar gets an **MCP** tab (#2231), after i18n, where the app installed `@quazardous/qdadm-mcp/connector`. No connector, no tab.
+
+  It shows how this browser tab reaches the relay:
+  - **Dev page:** connected, with its instance id and the relay; or offline and retrying.
+  - **Other pages:** **Pair**, then the code to give the agent, then **Unpair**. It also says when no relay answered, or when the browser holds the connection back: on a public https origin, Chrome waits for the user to allow local network access.
+
+  The tab's **instance id** sits at the top of the panel: click it to copy it, and give it to your agent when several tabs are open. Three sub-tabs sit under it:
+  - **Status**: the connection;
+  - **Chat**: with the agent, badged while its messages are unread;
+  - **History**: every MCP request the tab served, with tool, detail, success or error, and duration. Its badge lights while a code waits or on an error.
+
+  `RelayCollector` and `RelayPanel` are exported from qddebug. The collector redacts the code from `snapshot()` and its actions: the debug bridge is readable over HTTP and MCP, and a code must reach the agent through a human. `debugBar({ relayCollector: false })` hides the tab.
+
+- b7e072a: `import '@quazardous/qdadm/styles'` now loads a stylesheet compiled at publish time, so an app no longer needs sass (#2260). The import is the same, and so is the result.
+  - The raw SCSS stays available as `@quazardous/qdadm/styles/scss`, for whoever compiles it with their own settings. `@quazardous/qdadm/styles/variables` is unchanged, and both still need sass.
+  - Theming is unaffected: qdadm's colours are CSS custom properties, set at runtime.
+
+- d613838: `RoleGrantsEditor`: a role's composition, made readable (#2313).
+  - **What it shows:** the roles a role inherits, an entity × action matrix of the registry's entity grants, and the named grants grouped by namespace.
+  - **Every checked grant says where it comes from:** the role's own key, one of its wildcards (`via entity:*:read`), or an inherited role (`via ROLE_USER`). Inherited and covered grants are greyed and can't be unchecked there.
+  - **`v-model`** is `{ inherits, permissions }`, the role's own composition only. Keys the registry does not know are kept and listed.
+  - **It judges nothing.** The roles to inherit from and what they bring (`inherited: [{ permission, via }]`) come from the app. qdadm's roles provider computes them with the new `inheritedGrants()`; an app whose server judges sends them.
+  - **`SecurityModule`'s role form** now uses it, instead of the role-name autocomplete and the raw-key `PermissionEditor`. `PermissionEditor` is still there for raw keys.
+  - **New from `@quazardous/qdadm/security`:** `composeGrants`, `inheritedGrants`, `originOf`, `setGrant` and their types.
+  - **Wording:** new `core.roles.*` keys in the en and fr defaults.
+
+- 557fc86: The vite debug bridge keeps a tab's session id across reloads (#2231).
+
+  The id now lives in `sessionStorage`, so an agent targeting `?session=<id>` keeps its target through F5. A tab that says bye stays known for `reloadGraceMs` (default 30 s): a request sent to it meanwhile fails at once with "reloading — retry" instead of waiting out its timeout. `latest` prefers a connected tab over one still reloading, and `/__qdadm/sessions` entries carry `connected`.
+
+- 9d94fd4: `useSecurity()`: ask for a permission from a component (#2242).
+
+  `const { isGranted } = useSecurity()` returns the same verdict as the entity managers — the app's `security.grant` judge first, then the role matrix — for a permission or a `ROLE_*`, optionally about a subject.
+  - **No cache:** the remount on `security:changed`, login and logout is what makes a `v-if="isGranted('…')"` show new answers.
+  - **No security configured:** it grants, like the managers.
+
+  See docs/security.md, "In a component: `useSecurity()`".
+
+### Patch Changes
+
+- fd12d50: qdadm's default translations now include `breadcrumb.view` / `breadcrumb.edit` (en: View / Edit, fr: Voir / Modifier), the labels of the breadcrumb's View↔Edit toggle (#2270). Every app with `breadcrumbModeToggle` used to report both keys as missing on item pages, and a French UI showed the English fallbacks. An app that defines these keys itself keeps its own translation.
+- e606b89: A lazy page whose chunk fails to load no longer leaves a blank screen (#2295). This typically happens in a tab left open across a deploy: the old build asks for chunks that no longer exist.
+  - qdadm reloads the page once, at the page the user was going to, which loads the new build.
+  - If that page fails again, it does not reload a second time. It shows an error toast that stays until dismissed: "A new version is available — This page could not be loaded. Reload the page to get the new version."
+  - The guard is a sessionStorage flag, cleared by the next navigation that succeeds. Without sessionStorage, it only shows the toast.
+  - Vite's `vite:preloadError` is handled the same way. Other navigation errors are left alone.
+
+- 0792db3: Escape closes the delete confirmations (#2269).
+
+  The list row delete, the bulk delete, and the delete of the form and show pages now close on Escape. Nothing is deleted: Escape hides the dialog without accepting. PrimeVue's ConfirmDialog closes on Escape only when the confirmation asks for it, and none of qdadm's did.
+
+- 750d244: A native checkbox, radio, range or colour input inside a `FormField` keeps its own size (#2319). qdadm's form styles forced every `input` in a `.form-field` to `width: 100% !important`, so a native checkbox was stretched across the whole row. A checkbox or radio placed directly in the field is no longer stretched by its flex column either. Text-like inputs and PrimeVue's own controls still take the full width; PrimeVue's Checkbox, RadioButton and ToggleSwitch look as before.
+- b471072: An app without `qdadmVitePlugin()` in its vite config now says so (#2259). Until now it died at boot on PrimeVue's `No PrimeVue Toast provided!`, which never named qdadm.
+  - In dev, the kernel logs one error, before installing PrimeVue, naming the plugin and how to add it.
+  - The toast listeners add the same hint to PrimeVue's error.
+  - The plugin defines `__QDADM_VITE_PLUGIN__` for the check.
+
+- b8ca627: A first visit no longer lands on `/login?session_lost=1` (#2292).
+
+  The auth guard added `session_lost=1` to every redirect to login. It now adds it only when a session this tab had is gone, the same case that emits `auth:session-lost`. A first visit goes to `/login`, so an app can read the flag to tell a returning user their session expired.
+
+- a25a3bb: ShowPage with a `#media` slot: the fields column no longer grows to its longest unbreakable content (a URL, a `<pre>`) and pushes the card past its container. Both grid tracks — desktop and below 768px — are `minmax(0, 1fr)`, so such content scrolls or wraps inside the column.
+- Updated dependencies [d031db8]
+- Updated dependencies [ffe9cd0]
+- Updated dependencies [8324553]
+- Updated dependencies [61ca221]
+- Updated dependencies [557fc86]
+  - @quazardous/qddebug@1.3.0
+
 ## 2.21.0
 
 ### Minor Changes

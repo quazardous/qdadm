@@ -1,5 +1,48 @@
 # Changelog
 
+## 1.3.0
+
+### Minor Changes
+
+- d031db8: The MCP tab's chat can send the agent an annotated screenshot (#2309).
+  - A 📷 button takes a picture of the page without the debug bar, then opens an overlay: a pen in six colours, Undo, Clear, an optional note, Cancel and Send (Escape cancels, Ctrl+Z undoes).
+  - Send posts the picture with the strokes as a chat message. The chat shows it as a thumbnail that opens full size.
+  - The overlay and the zoom are part of the debug bar, so no screenshot or page tool ever sees them.
+  - `RelayCollector` gains `canShoot`, `shoot()` and `sendChat(text, image?)`. A connector older than this offers no button.
+
+- ffe9cd0: A 📷 among the debug bar's own buttons, and a prompt for real screenshots (#2318).
+  - **📷 Screenshot** sits between Pause and Clear all, whatever tab is open, when an MCP connector can take pictures. Circle what you mean, add a note, Send: the picture goes to the agent's chat, and the bar opens on MCP → Chat. The 📷 in the chat input row is gone.
+  - **Without a real capture, it asks first.** Allow real screenshots opens the browser's share prompt, and the prompt stays open until the tab is shared: a refused share says so. Continue without takes a picture rendered from the page, and is remembered for the browser tab.
+  - **When an agent's screenshot is rendered from the page,** the same offer shows in a corner. It blocks nothing, goes away after 10 s, and comes back at most once a minute.
+
+- 8324553: The MCP tab now counts what is new (#2285).
+  - **The tab icon** shows the agent messages and agent requests the tab has not shown yet. It still asks for attention while a pairing code waits or something failed.
+  - **Sub-tabs:**
+    - Chat counts the unseen agent messages;
+    - History counts the unseen requests, instead of showing the total;
+    - Status shows a dot while the relay is offline, something failed, or a code waits.
+  - Opening a sub-tab marks what it shows as seen. The marks are kept for the browser tab, so a reload does not bring old messages back as new, and what the tab held before this version is not counted.
+  - `RelayCollector` exposes `unseenChat`, `unseenHistory`, `statusAlert`, `markChatSeen()` and `markHistorySeen()`. Its snapshot carries `unseen: { chat, history }`.
+
+- 61ca221: `screenshot`, on the relay (#2247): a picture of the tab that the agent receives as an MCP image. It covers the viewport by default, one element with `ref`, or the whole page with `fullPage`.
+  - By default the picture is rendered from the page's DOM by snapdom, loaded on the first screenshot. It needs no permission, and the debug bar is left out.
+  - For the real pixels, the user clicks **Allow real screenshots** in the MCP tab of the debug bar. The browser asks them to share the tab, and screenshots use that capture until they click **Stop sharing**.
+  - `source` forces either kind (`dom` or `tab`); `format` and `quality` set the encoding.
+  - Pictures are kept to 1600 px on their longest edge.
+
+- 557fc86: The debug bar gets an **MCP** tab (#2231), after i18n, where the app installed `@quazardous/qdadm-mcp/connector`. No connector, no tab.
+
+  It shows how this browser tab reaches the relay:
+  - **Dev page:** connected, with its instance id and the relay; or offline and retrying.
+  - **Other pages:** **Pair**, then the code to give the agent, then **Unpair**. It also says when no relay answered, or when the browser holds the connection back: on a public https origin, Chrome waits for the user to allow local network access.
+
+  The tab's **instance id** sits at the top of the panel: click it to copy it, and give it to your agent when several tabs are open. Three sub-tabs sit under it:
+  - **Status**: the connection;
+  - **Chat**: with the agent, badged while its messages are unread;
+  - **History**: every MCP request the tab served, with tool, detail, success or error, and duration. Its badge lights while a code waits or on an error.
+
+  `RelayCollector` and `RelayPanel` are exported from qddebug. The collector redacts the code from `snapshot()` and its actions: the debug bridge is readable over HTTP and MCP, and a code must reach the agent through a human. `debugBar({ relayCollector: false })` hides the tab.
+
 ## 1.2.0
 
 ### Minor Changes
