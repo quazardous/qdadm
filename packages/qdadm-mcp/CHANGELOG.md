@@ -1,5 +1,40 @@
 # @quazardous/qdadm-mcp
 
+## 0.5.0
+
+### Minor Changes
+
+- 945990d: `qdadm-mcp-relay --call <tool> '<json args>'` makes one MCP tool call from a shell, then exits (#2263).
+
+  It takes the agent's own path: the machine relay is found or started, and a screenshot is kept under `.aiball/screenshots/`. It prints the tool's text answer and exits 0, or 1 when the tool answered with an error, or 2 on a wrong command (the arguments are not a JSON object, or the tool name is unknown, with the known ones listed). Useful for scripts, demos and CI checks.
+
+- 89d4c59: `page_snapshot` shows which block of a zone rendered what (#2363).
+  - Under a `zone` line, each block marked by qdadm's `Zone` becomes `block "export-btn" [ExportButton (src/…/ExportButton.vue)]`, with what it renders below it. An async block is named once it has loaded.
+  - The zone line drops its `[blocks: …]` summary when its blocks are marked. Zones rendered by an older qdadm keep it.
+  - The `interactive` list says `— in zone "…", block "…"`, and `find` gives the block as context.
+
+- eecb12b: `page_snapshot`'s header says what the page is doing (#2363), from qdadm's page state:
+
+  ```
+  State: list — 8 of 12 rows, page 1 (8/page), sort title asc, search "dune", filters genre=sci-fi, 2 selected
+  State: edit form — dirty: title, year; errors: author (Author is required)
+  State: show — loaded
+  ```
+
+  The line is left out when the app exposes no page state.
+
+- 2cf6382: `page_snapshot` says why each entity action is allowed or not (#2363), from qdadm's `security.explain`:
+
+  ```
+  Entity: books — list ✓, create ✓, update ✓, delete ✗ (checks entity:books:<action>)
+  Why: list ✓ via ROLE_USER → entity:*:list
+       create ✓ — decided by the app's grant function
+       update ✓ via ROLE_USER → entity:*:update
+       delete ✗ — no grant covers entity:books:delete (roles: ROLE_USER)
+  ```
+
+  When the entity refuses an action before the grant check, such as a read-only entity, the line says so.
+
 ## 0.4.0
 
 ### Minor Changes

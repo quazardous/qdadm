@@ -1,5 +1,42 @@
 # Changelog
 
+## 2.23.0
+
+### Minor Changes
+
+- 2cf6382: `explainGrant(checker, attribute, subject?)` says why a permission is granted or denied (#2363).
+
+  It takes `SecurityChecker.isGranted`'s own path and says what it found, without granting anything:
+  - the app's `security.grant` function, when it answers;
+  - the role hierarchy, for a `ROLE_*` attribute;
+  - the nearest role whose grant covers the key, its exact key before a wildcard;
+  - the user's own permissions;
+  - otherwise, the roles that were looked at.
+
+  It is exported from `@quazardous/qdadm/security`. In debug mode, `window.__qdadm.security.explain(key)` calls it with the kernel's checker.
+
+- 7f91335: `OAuthCodeAdapter` signs in with any OAuth 2 / OIDC provider: Keycloak, Auth0, Okta, Entra ID (#2264).
+
+  It is the authorization code + PKCE flow `GoogleOAuthAdapter` already had, without Google in it:
+  - `authorizeEndpoint` is required: the provider's authorization URL;
+  - `authorizeParams` adds provider parameters (`audience`, `kc_idp_hint`, `prompt`…), and refuses the ones the flow sets itself;
+  - the default redirect is `/auth/callback`.
+
+  Your backend still redeems the code, with the same `{ code, codeVerifier, redirectUri }` → `{ token, user }` contract. `GoogleOAuthAdapter` now extends it and behaves as before; it accepts `authorizeParams` too.
+
+  New guide: docs/auth-oidc.md, with the backend steps and Keycloak and Auth0 settings.
+
+- eecb12b: The page on screen says what it is doing, for the debug tools and the MCP (#2363).
+  - `useListPage`, `useEntityItemFormPage` and `useEntityItemShowPage` register their state while their page lives, as counts and names only, never row contents:
+    - list: rows shown, total, page, page size, sort, search, active filters, selection;
+    - form: mode, dirty fields, errors, saving;
+    - show: loaded, loading, error.
+  - In debug mode, `window.__qdadm.pageState.current()` returns the innermost page's state. A list inside a show page answers first, and the show page answers again once the list is gone.
+
+- 89d4c59: Each block of a `Zone` renders inside a marker, `<div data-zone-block="<id>" style="display: contents">` (#2363).
+
+  The marker adds no box, so the layout is unchanged. It lets the debug tools and the MCP's `page_snapshot` tell which block rendered what, including blocks with several root elements. A CSS child selector aimed at a block's root, like `.qdadm-zone > .my-block`, now goes through the marker: `.qdadm-zone > [data-zone-block] > .my-block`.
+
 ## 2.22.1
 
 ### Patch Changes
