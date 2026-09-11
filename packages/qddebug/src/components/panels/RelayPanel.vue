@@ -93,6 +93,7 @@ watch(
   },
   { immediate: true }
 )
+const clearChat = () => props.collector.clearChat()
 const draft = ref('')
 const chatLog = ref<HTMLElement | null>(null)
 const sendChat = () => {
@@ -142,15 +143,21 @@ const SETUP = 'npx qdadm-mcp-relay --stdio'
       <button type="button" class="mcp-subtab" :class="{ 'mcp-subtab-active': subTab === 'status' }" @click="openSubTab('status')">
         Status
       </button>
-      <button
-        v-if="collector.canChat"
-        type="button"
-        class="mcp-subtab"
-        :class="{ 'mcp-subtab-active': subTab === 'chat' }"
-        @click="openSubTab('chat')"
-      >
-        Chat<span v-if="unreadChat > 0" class="mcp-subtab-badge">{{ unreadChat }}</span>
-      </button>
+      <span v-if="collector.canChat" class="mcp-subtab-group" :class="{ 'mcp-subtab-active': subTab === 'chat' }">
+        <button type="button" class="mcp-subtab mcp-subtab-inner" @click="openSubTab('chat')">
+          Chat<span v-if="unreadChat > 0" class="mcp-subtab-badge">{{ unreadChat }}</span>
+        </button>
+        <button
+          v-if="chat.length > 0"
+          type="button"
+          class="mcp-subtab-clear"
+          title="Clear the conversation"
+          aria-label="Clear the conversation"
+          @click="clearChat"
+        >
+          <i class="pi pi-trash" />
+        </button>
+      </span>
       <button
         v-if="collector.hasActivity"
         type="button"
@@ -257,11 +264,6 @@ const SETUP = 'npx qdadm-mcp-relay --stdio'
     </div>
 
     <section v-if="subTab === 'chat' && collector.canChat && state.status !== 'unavailable'" class="mcp-chat">
-      <div v-if="chat.length > 0" class="mcp-chat-toolbar">
-        <button type="button" class="mcp-btn mcp-btn-small" title="Clear the conversation" @click="collector.clearChat()">
-          <i class="pi pi-trash" /> Clear
-        </button>
-      </div>
       <div ref="chatLog" class="mcp-chat-log">
         <p v-if="chat.length === 0" class="mcp-hint">
           Chat with the agent: it writes here with <code>chat_send</code>, and reads what you type with
@@ -295,10 +297,14 @@ const SETUP = 'npx qdadm-mcp-relay --stdio'
 </template>
 
 <style scoped>
+/* Fill the debug bar's content area: the sub-tab below takes whatever height is left. */
 .mcp-panel {
+  box-sizing: border-box;
   display: flex;
   flex-direction: column;
   gap: 0.6rem;
+  height: 100%;
+  min-height: 0;
   padding: 0.75rem 1rem;
   font-size: 0.8rem;
   line-height: 1.45;
@@ -424,6 +430,45 @@ const SETUP = 'npx qdadm-mcp-relay --stdio'
   border-bottom-color: #22c55e;
   opacity: 1;
 }
+/* Chat tab + its trash: one tab, two buttons (a button cannot sit inside a button). */
+.mcp-subtab-group {
+  display: inline-flex;
+  align-items: center;
+  margin-bottom: -1px;
+  border-bottom: 2px solid transparent;
+}
+.mcp-subtab-group.mcp-subtab-active {
+  border-bottom-color: #22c55e;
+}
+.mcp-subtab-group .mcp-subtab-inner {
+  margin-bottom: 0;
+  border-bottom: 0;
+}
+.mcp-subtab-group.mcp-subtab-active .mcp-subtab-inner {
+  opacity: 1;
+}
+.mcp-subtab-clear {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.2rem 0.4rem;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: inherit;
+  opacity: 0.55;
+  cursor: pointer;
+}
+.mcp-subtab-clear:hover {
+  opacity: 1;
+  color: #f87171;
+}
+.mcp-subtab-clear:focus-visible {
+  outline: 2px solid #60a5fa;
+  outline-offset: -2px;
+}
+.mcp-subtab-clear .pi {
+  font-size: 0.75rem;
+}
 .mcp-subtab-badge {
   padding: 0 0.35rem;
   border-radius: 999px;
@@ -440,27 +485,25 @@ const SETUP = 'npx qdadm-mcp-relay --stdio'
 }
 .mcp-subpanel {
   display: flex;
+  flex: 1;
   flex-direction: column;
   gap: 0.6rem;
+  min-height: 0;
+  overflow-y: auto;
 }
 .mcp-chat {
   display: flex;
+  flex: 1;
   flex-direction: column;
   gap: 0.4rem;
-}
-.mcp-chat-toolbar {
-  display: flex;
-  justify-content: flex-end;
-}
-.mcp-btn-small {
-  padding: 0.15rem 0.5rem;
-  font-size: 0.72rem;
+  min-height: 0;
 }
 .mcp-chat-log {
   display: flex;
+  flex: 1;
   flex-direction: column;
   gap: 0.35rem;
-  max-height: 14rem;
+  min-height: 3rem;
   overflow-y: auto;
 }
 .mcp-msg {
@@ -507,14 +550,17 @@ const SETUP = 'npx qdadm-mcp-relay --stdio'
 }
 .mcp-history {
   display: flex;
+  flex: 1;
   flex-direction: column;
   gap: 0.35rem;
+  min-height: 0;
 }
 .mcp-history-list {
   display: flex;
+  flex: 1;
   flex-direction: column;
   gap: 0.15rem;
-  max-height: 14rem;
+  min-height: 3rem;
   margin: 0;
   padding: 0;
   overflow-y: auto;
