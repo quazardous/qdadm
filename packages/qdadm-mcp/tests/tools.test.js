@@ -258,6 +258,15 @@ describe('qdadm-mcp toolset — acting in the page (#2247)', () => {
     expect(readOnly).toEqual(expect.arrayContaining(['hover', 'scroll', 'console_messages', 'network_requests', 'page_snapshot']))
   })
 
+  it('force (#2274) is offered on the tools that can be refused, and passed through', async () => {
+    const api = relayApi()
+    const tools = buildToolset(api)
+    for (const name of ['click', 'hover', 'drag', 'type_text', 'fill']) expect(byName(tools, name).args.force.kind).toBe('boolean')
+    for (const name of ['press_key', 'scroll', 'upload_file']) expect(byName(tools, name).args.force).toBeUndefined()
+    await byName(tools, 'fill').handler({ ref: 'e9', value: 'X', force: true })
+    expect(api.ask).toHaveBeenCalledWith('fill', { ref: 'e9', value: 'X', force: true }, 's1')
+  })
+
   it('an action runs inside the feedback window', async () => {
     const api = relayApi()
     const res = await byName(buildToolset(api), 'click').handler({ ref: 'e4', clickCount: 2 })

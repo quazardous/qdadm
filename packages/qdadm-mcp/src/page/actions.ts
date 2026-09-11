@@ -51,6 +51,22 @@ export function useRefs(namer: (element: Element) => string): void {
 
 const withRef = (element: Element) => `${describeElement(element)}${refFor ? ` [ref=${refFor(element)}]` : ''}`
 
+/**
+ * `force` (#2274): act even though a check refuses — covered, not visible, disabled, read-only. Each check
+ * overruled is written to `forced`, so the answer says what was skipped. The debug bar and a stale ref are
+ * not checks: they stay refused.
+ */
+export interface ForceOptions {
+  force?: boolean
+  forced?: string[]
+}
+
+/** A refusal, unless `force` overrules it — then its reason is recorded, once. */
+function overrule(options: ForceOptions, reason: string, refusal: string): void {
+  if (!options.force) throw new Error(refusal)
+  if (options.forced && !options.forced.includes(reason)) options.forced.push(reason)
+}
+
 /** The dialogs on screen: one an action opened, or closed, is what the agent needs to know next. */
 export function visibleDialogs(): Element[] {
   return Array.from(document.querySelectorAll('[role="dialog"], [role="alertdialog"], dialog[open]')).filter(
@@ -68,16 +84,19 @@ function modifiersOf(names: string[]): Modifiers {
   }
 }
 
-function assertEnabled(element: Element): void {
+function assertEnabled(element: Element, options: ForceOptions = {}): void {
   if ((element as HTMLButtonElement).disabled === true || element.closest('[aria-disabled="true"], fieldset:disabled, [inert]')) {
-    throw new Error(`${briefOf(element)} is disabled`)
+    overrule(options, 'disabled', `${briefOf(element)} is disabled (force: true acts anyway)`)
   }
 }
 
 /** Scroll the element into view if needed, and tell where a pointer would land and what it would hit. */
-async function aim(element: Element, hitTest = true): Promise<{ x: number; y: number; target: Element }> {
+async function aim(element: Element, hitTest = true, options: ForceOptions = {}): Promise<{ x: number; y: number; target: Element }> {
   if (element.closest(DEBUG_BAR)) throw new Error('that element belongs to the debug bar, not to the app')
-  if (!isShown(element)) throw new Error(`${briefOf(element)} is not visible — take a new page_snapshot`)
+  if (!isShown(element)) {
+    overrule(options, 'not visible', `${briefOf(element)} is not visible — take a new page_snapshot (force: true acts anyway)`)
+    return { x: 0, y: 0, target: element }
+  }
   let box = element.getBoundingClientRect()
   const inView = box.top >= 0 && box.left >= 0 && box.bottom <= window.innerHeight && box.right <= window.innerWidth
   if (!inView && typeof element.scrollIntoView === 'function') {
@@ -97,10 +116,15 @@ async function aim(element: Element, hitTest = true): Promise<{ x: number; y: nu
   // Name what covers it the way the agent can act on it: the control hit, and the dialog it sits in.
   const control = hit.closest('button, a[href], input, select, textarea, [role="button"], [role="link"], [role="option"], [role="menuitem"]') ?? hit
   const layer = hit.closest('[role="dialog"], [role="alertdialog"], dialog')
-  throw new Error(
-    `${briefOf(element)} is covered by ${withRef(control)}${layer && layer !== control ? ` in ${withRef(layer)}` : ''} — ` +
-      'close what is over it (a dialog, an overlay, a menu) first, or scroll'
+  const cover = `${withRef(control)}${layer && layer !== control ? ` in ${withRef(layer)}` : ''}`
+  overrule(
+    options,
+    `was covered by ${cover}`,
+    `${briefOf(element)} is covered by ${cover} — close what is over it (a dialog, an overlay, a menu) first, or scroll ` +
+      '(force: true acts anyway)'
   )
+  // Forced: the events go straight to the element, as if nothing covered it.
+  return { x, y, target: element }
 }
 
 function fire(target: Element, type: string, init: PointerEventInit, pointer = false): boolean {
@@ -145,15 +169,22 @@ function focusFrom(target: Element): void {
   else (document.activeElement as HTMLElement | null)?.blur?.()
 }
 
-export interface ClickOptions {
+export interface ClickOptions extends ForceOptions {
   button?: string
   clickCount?: number
   modifiers?: string[]
 }
 
 export async function click(element: Element, options: ClickOptions = {}): Promise<string> {
-  const { x, y, target } = await aim(element)
-  assertEnabled(element)
+  const { x, y, target } = await aim(element, true, options)
+  assertEnabled(element, options)
+  // Whether the click reached the element: a listener stopping it on the way means nothing happened there.
+  // (Measured in Chrome: a script-dispatched click does reach a disabled native button's listeners.)
+  let delivered = false
+  const reached = () => {
+    delivered = true
+  }
+  target.addEventListener('click', reached, { capture: true })
   const button = options.button === 'right' ? 2 : options.button === 'middle' ? 1 : 0
   const count = Math.min(Math.max(Number(options.clickCount) || 1, 1), 3)
   const base = { clientX: x, clientY: y, screenX: x, screenY: y, button, ...modifiersOf(options.modifiers ?? []) }
@@ -172,12 +203,14 @@ export async function click(element: Element, options: ClickOptions = {}): Promi
   }
   if (button === 2) fire(target, 'contextmenu', { ...base, buttons: 0, detail: 0 })
   if (button === 0 && count === 2) fire(target, 'dblclick', { ...base, detail: 2 })
+  target.removeEventListener('click', reached, { capture: true })
   const verb = button === 2 ? 'right-clicked' : count === 2 ? 'double-clicked' : count === 3 ? 'triple-clicked' : 'clicked'
-  return `${verb} ${briefOf(element)}`
+  const lost = button !== 0 || delivered ? '' : ' — but the click never reached it: something stopped it on the way'
+  return `${verb} ${briefOf(element)}${lost}`
 }
 
-export async function hover(element: Element): Promise<string> {
-  const { x, y, target } = await aim(element, false)
+export async function hover(element: Element, options: ForceOptions = {}): Promise<string> {
+  const { x, y, target } = await aim(element, false, options)
   const hit = x || y ? (appElementAt(x, y) ?? target) : target
   pointTo(element.contains(hit) ? hit : target, { clientX: x, clientY: y, screenX: x, screenY: y, buttons: 0 })
   return `hovering ${briefOf(element)}`
@@ -202,11 +235,18 @@ function editableIn(element: Element): Editable {
   )
 }
 
-function assertWritable(element: Editable): void {
-  assertEnabled(element)
+function assertWritable(element: Editable, options: ForceOptions = {}): void {
+  assertEnabled(element, options)
   if ((element as HTMLInputElement).readOnly === true || element.getAttribute('aria-readonly') === 'true') {
-    throw new Error(`${briefOf(element)} is read-only`)
+    overrule(options, 'read-only', `${briefOf(element)} is read-only (force: true types anyway)`)
   }
+}
+
+/** After a forced edit of a read-only field, what the field actually holds: the browser, or the app, decides. */
+function keptValue(element: Editable, options: ForceOptions): string {
+  if (!options.forced?.includes('read-only')) return ''
+  const value = element instanceof HTMLInputElement || element instanceof HTMLTextAreaElement ? element.value : (element.textContent ?? '')
+  return ` — the field holds ${JSON.stringify(value)}`
 }
 
 function setNativeValue(element: HTMLInputElement | HTMLTextAreaElement, value: string): void {
@@ -421,7 +461,7 @@ export async function pressKeys(element: Element | null, keys: string): Promise<
   return `pressed ${combos.join(' ')} on ${briefOf(first)}`
 }
 
-export interface TypeOptions {
+export interface TypeOptions extends ForceOptions {
   clear?: boolean
   submit?: boolean
 }
@@ -439,8 +479,8 @@ export async function typeText(element: Element | null, text: string, options: T
   const start = element ?? focused()
   if (!element && start === document.body) throw new Error('nothing is focused — pass the ref of the field to type into')
   const target = editableIn(start)
-  await aim(target, false)
-  assertWritable(target)
+  await aim(target, false, options)
+  assertWritable(target, options)
   target.focus({ preventScroll: true })
   if (options.clear) clearText(target)
   else if (target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement) {
@@ -452,7 +492,7 @@ export async function typeText(element: Element | null, text: string, options: T
   }
   await typeInto(target, String(text))
   if (options.submit) pressOne(target, 'Enter')
-  return `typed into ${briefOf(target)}${options.submit ? ', then Enter' : ''}`
+  return `typed into ${briefOf(target)}${options.submit ? ', then Enter' : ''}${keptValue(target, options)}`
 }
 
 // ── fill ────────────────────────────────────────────────────────────────
@@ -497,7 +537,7 @@ const truthy = (value: unknown) => value === true || ['true', 'on', 'yes', '1', 
  * typed into; a checkbox or switch clicked if its state differs; a select or a
  * PrimeVue dropdown opened and the option clicked; a date input set whole.
  */
-export async function fill(element: Element, value: unknown): Promise<string> {
+export async function fill(element: Element, value: unknown, force: ForceOptions = {}): Promise<string> {
   if (element.closest(DEBUG_BAR)) throw new Error('that element belongs to the debug bar, not to the app')
   const role = getRole(element)
   const input = element instanceof HTMLInputElement ? element : null
@@ -510,13 +550,14 @@ export async function fill(element: Element, value: unknown): Promise<string> {
     const checked = checkable ? checkable.checked : element.getAttribute('aria-checked') === 'true'
     if (checked === wanted) return `${briefOf(element)} was already ${wanted ? 'checked' : 'unchecked'}`
     if (!wanted && (checkable?.type === 'radio' || role === 'radio')) throw new Error('a radio button is unchecked by checking another one')
-    await click(element)
-    return `${wanted ? 'checked' : 'unchecked'} ${briefOf(element)}`
+    const clicked = await click(element, force)
+    const lost = clicked.includes(' — but ') ? clicked.slice(clicked.indexOf(' — but ')) : ''
+    return `${wanted ? 'checked' : 'unchecked'} ${briefOf(element)}${lost}`
   }
 
   if (element instanceof HTMLSelectElement) {
-    await aim(element, false)
-    assertEnabled(element)
+    await aim(element, false, force)
+    assertEnabled(element, force)
     const wanted = (Array.isArray(value) ? value : [value]).map(String)
     const options = Array.from(element.options)
     const chosen = wanted.map((w) => options.find((o) => o.value === w) ?? pickOption(options, w) as HTMLOptionElement | null)
@@ -530,8 +571,8 @@ export async function fill(element: Element, value: unknown): Promise<string> {
   }
 
   if (input && SET_TYPES.has(input.type)) {
-    await aim(input, false)
-    assertWritable(input)
+    await aim(input, false, force)
+    assertWritable(input, force)
     input.focus({ preventScroll: true })
     setNativeValue(input, String(value))
     input.dispatchEvent(new InputEvent('input', { inputType: 'insertReplacementText', bubbles: true, composed: true }))
@@ -543,9 +584,9 @@ export async function fill(element: Element, value: unknown): Promise<string> {
   const typable = isEditable(element) ? element : null
   if ((role === 'combobox' || role === 'listbox') && !typable) {
     // A PrimeVue Select: open it, click the option.
-    await aim(element)
-    assertEnabled(element)
-    if (role === 'combobox' && element.getAttribute('aria-expanded') !== 'true') await click(element)
+    await aim(element, true, force)
+    assertEnabled(element, force)
+    if (role === 'combobox' && element.getAttribute('aria-expanded') !== 'true') await click(element, force)
     const options = role === 'listbox' ? Array.from(element.querySelectorAll('[role="option"]')).filter(isShown) : await until(() => {
       const shown = visibleOptions(element)
       return shown.length > 0 ? shown : null
@@ -556,13 +597,13 @@ export async function fill(element: Element, value: unknown): Promise<string> {
       throw new Error(`no option ${JSON.stringify(text)} in ${briefOf(element)} — options: ${listOf(options)}`)
     }
     const name = optionName(option)
-    await click(option)
+    await click(option, force)
     return `picked ${JSON.stringify(name)} in ${briefOf(element)}`
   }
 
   const target = typable ?? editableIn(element)
-  await aim(target, false)
-  assertWritable(target)
+  await aim(target, false, force)
+  assertWritable(target, force)
   target.focus({ preventScroll: true })
   clearText(target)
   await typeInto(target, text)
@@ -574,12 +615,12 @@ export async function fill(element: Element, value: unknown): Promise<string> {
       return match ?? null
     }, 1500)
     if (option) {
-      await click(option)
+      await click(option, force)
       return `typed ${JSON.stringify(text)} in ${briefOf(target)} and picked the suggestion`
     }
   }
   target.dispatchEvent(new Event('change', { bubbles: true }))
-  return `filled ${briefOf(target)}`
+  return `filled ${briefOf(target)}${keptValue(target, force)}`
 }
 
 // ── scroll, drag, upload ────────────────────────────────────────────────
@@ -621,10 +662,10 @@ export async function scroll(element: Element | null, direction?: string, amount
   return `scrolled ${which} ${dir} by ${Math.abs(after - before)}px (${Math.round(after)} of ${Math.round(max)})`
 }
 
-export async function drag(source: Element, destination: Element): Promise<string> {
-  const to = await aim(destination, false)
-  const from = await aim(source)
-  assertEnabled(source)
+export async function drag(source: Element, destination: Element, options: ForceOptions = {}): Promise<string> {
+  const to = await aim(destination, false, options)
+  const from = await aim(source, true, options)
+  assertEnabled(source, options)
   const draggable = source.closest('[draggable="true"]')
   const start = { clientX: from.x, clientY: from.y, screenX: from.x, screenY: from.y, button: 0 }
   pointTo(from.target, { ...start, buttons: 0 })

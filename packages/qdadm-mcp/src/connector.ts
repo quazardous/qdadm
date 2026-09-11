@@ -222,7 +222,7 @@ function describeRequest(type: string, payload?: Record<string, unknown>): { too
     // What was typed stays out of the history: it may be a password.
     const typed = type === 'typeText' || type === 'fill' ? String(payload?.text ?? payload?.value ?? '') : null
     const said = typed !== null ? `(${typed.length} characters)` : (payload?.keys ?? payload?.code ?? payload?.direction ?? payload?.pattern ?? payload?.urlPattern)
-    const parts = [payload?.ref, payload?.to ? `→ ${String(payload.to)}` : null, said]
+    const parts = [payload?.ref, payload?.to ? `→ ${String(payload.to)}` : null, said, payload?.force === true ? 'force' : null]
     return { tool: PAGE_TOOLS[type], detail: parts.filter((p) => p !== undefined && p !== null && p !== '').map((p) => brief(p, 80)).join(' ') }
   }
   if (type === 'waitFor') return { tool: 'wait_for', detail: String(payload?.route ?? payload?.signal ?? '') }
@@ -1143,13 +1143,15 @@ function createPageAgent(sessionId: string, q: () => QdadmGlobal) {
    * Run an action, let the app react — render, route, requests — then say where things stand: what it did,
    * a dialog it opened or closed, what has focus, the route.
    */
-  const perform = async (run: (page: PageActions) => Promise<string> | string, quietMs = 150) => {
+  const perform = async (run: (page: PageActions, forced: string[]) => Promise<string> | string, quietMs = 150) => {
     const page = await actions()
     page.useRefs((element) => refs.refOf(element))
     armSignals()
     // Named now: a dialog that closes is usually removed, and a detached one loses its title.
     const before = new Map(page.visibleDialogs().map((d) => [d, page.briefOf(d)]))
-    const done = await run(page)
+    // What `force` overruled (#2274), for the answer to say.
+    const forced: string[] = []
+    const done = await run(page, forced)
     await settle(quietMs, 2500)
     const after = page.visibleDialogs()
     const opened = after.filter((d) => !before.has(d)).map((d) => `${page.briefOf(d)} [ref=${refs.refOf(d)}]`)
@@ -1157,6 +1159,7 @@ function createPageAgent(sessionId: string, q: () => QdadmGlobal) {
     const active = document.activeElement
     return {
       done,
+      ...(forced.length > 0 ? { forced } : {}),
       ...(opened.length > 0 ? { dialogOpened: opened } : {}),
       ...(closed.length > 0 ? { dialogClosed: closed } : {}),
       focused: active && active !== document.body ? `${page.briefOf(active)} [ref=${refs.refOf(active)}]` : null,
@@ -1199,25 +1202,37 @@ function createPageAgent(sessionId: string, q: () => QdadmGlobal) {
 
   const handlers: Record<string, (payload?: Record<string, unknown>) => unknown | Promise<unknown>> = {
     click: (payload) =>
-      perform((page) =>
-        page.click(refOf(payload), { button: payload?.button as string, clickCount: payload?.clickCount as number, modifiers: payload?.modifiers as string[] })
+      perform((page, forced) =>
+        page.click(refOf(payload), {
+          button: payload?.button as string,
+          clickCount: payload?.clickCount as number,
+          modifiers: payload?.modifiers as string[],
+          force: payload?.force === true,
+          forced,
+        })
       ),
     typeText: (payload) =>
       perform(
-        (page) => page.typeText(rootOf(payload), String(payload?.text ?? ''), { clear: payload?.clear === true, submit: payload?.submit === true }),
+        (page, forced) =>
+          page.typeText(rootOf(payload), String(payload?.text ?? ''), {
+            clear: payload?.clear === true,
+            submit: payload?.submit === true,
+            force: payload?.force === true,
+            forced,
+          }),
         TYPING_QUIET_MS
       ),
     fill: (payload) => {
       if (payload?.value === undefined) throw new Error('fill needs a value')
-      return perform((page) => page.fill(refOf(payload), payload.value), TYPING_QUIET_MS)
+      return perform((page, forced) => page.fill(refOf(payload), payload.value, { force: payload?.force === true, forced }), TYPING_QUIET_MS)
     },
     pressKey: (payload) => perform((page) => page.pressKeys(rootOf(payload), String(payload?.keys ?? '')), TYPING_QUIET_MS),
-    hover: (payload) => perform((page) => page.hover(refOf(payload))),
+    hover: (payload) => perform((page, forced) => page.hover(refOf(payload), { force: payload?.force === true, forced })),
     scroll: (payload) =>
       perform((page) => page.scroll(rootOf(payload), payload?.direction as string | undefined, payload?.amount as number | undefined)),
     drag: (payload) => {
       if (!payload?.to) throw new Error('drag needs to: the ref of the element to drop onto')
-      return perform((page) => page.drag(refOf(payload), refs.resolve(String(payload.to))))
+      return perform((page, forced) => page.drag(refOf(payload), refs.resolve(String(payload.to)), { force: payload?.force === true, forced }))
     },
     uploadFile: (payload) => perform((page) => page.upload(refOf(payload), payload?.files as UploadFile[])),
     screenshot: async (payload) => {

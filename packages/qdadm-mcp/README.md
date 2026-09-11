@@ -213,7 +213,7 @@ Only what happened is listed: an empty category is left out.
 | `page_snapshot` | Relay: what the user sees, as an accessibility tree — role, name, states, value and a **ref** per element; `filter: "interactive"`, or one part by `ref` |
 | `find` | Relay: elements by role and/or text, with their ref and where they sit (row, dialog, form) |
 | `page_text` | Relay: the visible text of the tab, or of one element |
-| `click` / `type_text` / `press_key` | Relay: act on a ref like a user — real event order, focus, browser defaults (Enter submits, Tab moves focus); refused on a disabled or covered element |
+| `click` / `type_text` / `press_key` | Relay: act on a ref like a user — real event order, focus, browser defaults (Enter submits, Tab moves focus); refused on a disabled or covered element, unless `force: true`, and the answer then lists what was skipped |
 | `fill` | Relay: set any field — text, checkbox, select, PrimeVue dropdown, autocomplete, date |
 | `hover` / `scroll` / `drag` / `upload_file` | Relay: the rest of what a pointer does |
 | `console_messages` / `network_requests` | Relay: the tab's console, and its fetch / XMLHttpRequest calls with status |

@@ -96,6 +96,14 @@ const instance: ToolArg = {
     'May be omitted while a single instance is connected.',
 }
 
+/** #2274 — the last resort of the page actions. */
+const force: ToolArg = {
+  kind: 'boolean',
+  description:
+    'Last resort: act even if the element is covered, not visible, disabled or read-only. The answer lists what was ' +
+    'skipped under `forced`. A stale ref and the debug bar stay refused. Try what the refusal says first (close the dialog, scroll).',
+}
+
 /** The target an agent named — `session` is the pre-#2231 name, still honoured. */
 const targetOf = (args: Record<string, unknown>) => ((args.instance ?? args.session) as string | undefined) ?? 'latest'
 
@@ -383,8 +391,8 @@ export function buildToolset(api: DebugBrokerApi, options: ToolsetOptions = {}):
       {
         name: 'hover',
         description: 'Move the pointer over an element (ref): tooltips, hover menus, row actions shown on hover.',
-        args: { instance, ref: { kind: 'string', required: true, description: 'The element, from page_snapshot or find' } },
-        handler: (a) => act(a, 'hover', { ref: a.ref }),
+        args: { instance, ref: { kind: 'string', required: true, description: 'The element, from page_snapshot or find' }, force },
+        handler: (a) => act(a, 'hover', { ref: a.ref, force: a.force }),
       },
       {
         name: 'scroll',
@@ -564,8 +572,9 @@ export function buildToolset(api: DebugBrokerApi, options: ToolsetOptions = {}):
           button: { kind: 'string', description: 'left (default), right or middle' },
           clickCount: { kind: 'number', description: '2 for a double click' },
           modifiers: { kind: 'array', description: 'Keys held: ["Shift"], ["Control"], ["Alt"], ["Meta"]' },
+          force,
         },
-        handler: (a) => act(a, 'click', { ref: a.ref, button: a.button, clickCount: a.clickCount, modifiers: a.modifiers }),
+        handler: (a) => act(a, 'click', { ref: a.ref, button: a.button, clickCount: a.clickCount, modifiers: a.modifiers, force: a.force }),
       },
       {
         name: 'type_text',
@@ -579,8 +588,9 @@ export function buildToolset(api: DebugBrokerApi, options: ToolsetOptions = {}):
           text: { kind: 'string', required: true, description: 'What to type' },
           clear: { kind: 'boolean', description: 'Empty the field first' },
           submit: { kind: 'boolean', description: 'Press Enter after' },
+          force,
         },
-        handler: (a) => act(a, 'typeText', { ref: a.ref, text: a.text, clear: a.clear, submit: a.submit }),
+        handler: (a) => act(a, 'typeText', { ref: a.ref, text: a.text, clear: a.clear, submit: a.submit, force: a.force }),
       },
       {
         name: 'fill',
@@ -593,8 +603,9 @@ export function buildToolset(api: DebugBrokerApi, options: ToolsetOptions = {}):
           instance,
           ref,
           value: { kind: 'any', required: true, description: 'Text, true/false for a checkbox, an option label, or an array for a multiple select' },
+          force,
         },
-        handler: (a) => act(a, 'fill', { ref: a.ref, value: a.value }),
+        handler: (a) => act(a, 'fill', { ref: a.ref, value: a.value, force: a.force }),
       },
       {
         name: 'press_key',
@@ -615,8 +626,8 @@ export function buildToolset(api: DebugBrokerApi, options: ToolsetOptions = {}):
         description:
           'Drag an element (ref) onto another (to): HTML5 drag and drop when the source is draggable, a pointer drag ' +
           'in steps otherwise (sortable lists, sliders).',
-        args: { instance, ref, to: { kind: 'string', required: true, description: 'The element to drop onto' } },
-        handler: (a) => act(a, 'drag', { ref: a.ref, to: a.to }),
+        args: { instance, ref, to: { kind: 'string', required: true, description: 'The element to drop onto' }, force },
+        handler: (a) => act(a, 'drag', { ref: a.ref, to: a.to, force: a.force }),
       },
       {
         name: 'upload_file',

@@ -737,6 +737,22 @@ describe('relay connector — acting in the page, console and network (#2247)', 
     await expect(broker.ask('click', {})).rejects.toThrow(/needs a ref/)
   })
 
+  it('force (#2274): the answer lists what was overruled; a ref whose element is gone stays refused', async () => {
+    const { broker, controller } = await connected()
+    const button = document.querySelector('#save')
+    button.setAttribute('aria-disabled', 'true')
+    const save = refIn((await broker.ask('pageSnapshot', {})).text, 'button "Save"')
+
+    await expect(broker.ask('click', { ref: save })).rejects.toThrow('button "Save" is disabled (force: true acts anyway)')
+    const res = await broker.ask('click', { ref: save, force: true })
+    expect(res).toMatchObject({ done: 'clicked button "Save"', forced: ['disabled'] })
+    expect(saved).toBe(1)
+    expect(controller.activity.entries.at(-1)).toMatchObject({ tool: 'click', detail: `${save} force` })
+
+    button.remove()
+    await expect(broker.ask('click', { ref: save, force: true })).rejects.toThrow(/no longer in the page/)
+  })
+
   it('an action that opens a dialog says so, with its ref; the one that closes it says that too', async () => {
     const { broker } = await connected()
     document.querySelector('#save').addEventListener('click', () => {

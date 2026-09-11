@@ -77,6 +77,48 @@ describe('click', () => {
   })
 })
 
+describe('force (#2274)', () => {
+  it('a covered element takes the click, and forced names what covered it', async () => {
+    const $ = page('<button id="save">Save</button><div id="mask">Mask</div>')
+    $('#save').getBoundingClientRect = () => ({ top: 10, left: 10, bottom: 40, right: 110, width: 100, height: 30 })
+    document.elementsFromPoint = () => [$('#mask'), $('#save')]
+    const seen = record($('#save'), ['click'])
+    try {
+      await expect(click($('#save'))).rejects.toThrow('button "Save" is covered by div "Mask" — close what is over it')
+      const forced = []
+      expect(await click($('#save'), { force: true, forced })).toBe('clicked button "Save"')
+      expect(seen).toEqual(['click'])
+      expect(forced).toEqual(['was covered by div "Mask"'])
+    } finally {
+      delete document.elementsFromPoint
+    }
+  })
+
+  it('not visible and disabled: dispatched anyway, each reason listed once, in the order checked', async () => {
+    const $ = page('<div role="button" id="go" tabindex="0" aria-disabled="true" style="display: none">Go</div>')
+    const seen = record($('#go'), ['click'])
+    const forced = []
+    await click($('#go'), { force: true, forced })
+    await click($('#go'), { force: true, forced })
+    expect(seen).toEqual(['click', 'click'])
+    expect(forced).toEqual(['not visible', 'disabled'])
+  })
+
+  it('a read-only field gets the keys with force, and the answer says what the field kept', async () => {
+    const $ = page('<input id="code" aria-label="Code" readonly value="X1" />')
+    const keys = record($('#code'), ['keydown'])
+    const forced = []
+    expect(await typeText($('#code'), 'AB', { force: true, forced })).toBe('typed into textbox "Code" — the field holds "X1"')
+    expect(keys).toEqual(['keydown', 'keydown'])
+    expect(forced).toEqual(['read-only'])
+  })
+
+  it('the debug bar stays refused, force or not', async () => {
+    const $ = page('<div class="qd-debug"><button id="pause">Pause</button></div>')
+    await expect(click($('#pause'), { force: true, forced: [] })).rejects.toThrow(/debug bar/)
+  })
+})
+
 describe('typing', () => {
   it('types character by character: keydown, keypress, beforeinput, input, keyup — v-model sees each step', async () => {
     const $ = page('<label for="title">Title</label><input id="title" value="" />')
