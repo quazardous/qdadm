@@ -66,6 +66,20 @@ describe('createQdadmMcpServer', () => {
     expect(res.content).toEqual([{ type: 'text', text: 'Instance s1. - button "Save" [ref=e3]' }])
   })
 
+  it('array, boolean and any-typed arguments: advertised and checked (#2247)', async () => {
+    const api = { ...makeApi(), pairing: { status: () => ({ waiting: [] }), accept: vi.fn() } }
+    const client = await connect(api)
+    const tools = (await client.listTools()).tools
+    const byName = (name) => tools.find((t) => t.name === name).inputSchema.properties
+    expect(byName('click').modifiers.type).toBe('array')
+    expect(byName('type_text').clear.type).toBe('boolean')
+    expect(byName('fill').value.type).toBeUndefined()
+
+    const res = await client.callTool({ name: 'click', arguments: { ref: 'e1', modifiers: 'Shift' } })
+    expect(res.isError).toBe(true)
+    expect(res.content[0].text).toBe("Invalid argument 'modifiers': expected an array, got string.")
+  })
+
   it('missing required arg → one actionable sentence + registered entities', async () => {
     const client = await connect(makeApi())
     const res = await client.callTool({ name: 'entity_list', arguments: {} })

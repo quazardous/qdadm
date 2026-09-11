@@ -105,6 +105,40 @@ function iconOf(element: Element): string | null {
   return null
 }
 
+/**
+ * The label of the qdadm form field a control sits in, for a control that got no name: the `<label>` is tied
+ * to nothing, or to a hidden input of the PrimeVue component rather than to the part that shows.
+ */
+function fieldLabel(element: Element): string {
+  const label = element.closest('.form-field')?.querySelector(':scope > label')
+  return label ? collapse(label.textContent) : ''
+}
+
+/** `textbox "Title"`, `button [icon=pencil]` — one element, named the way the snapshot names it. */
+export function describeElement(element: Element): string {
+  // Inputs with no ARIA role (date, time, color) are named by their type.
+  const role = getRole(element) ?? (element instanceof HTMLInputElement ? `${element.type} input` : element.localName)
+  let name = ''
+  try {
+    name = collapse(computeAccessibleName(element, { computedStyleSupportsPseudoElements: false }))
+  } catch {
+    /* unnamed */
+  }
+  if (role === 'combobox' && name === collapse(element.textContent)) name = ''
+  if (!name && FIELD_ROLES.has(role)) name = fieldLabel(element)
+  if (name) return `${role} ${JSON.stringify(clip(name, 60))}`
+  if (role === 'button' || role === 'link') {
+    const icon = iconOf(element)
+    if (icon) return `${role} [icon=${icon}]`
+    const kind = kindOf(element)
+    if (kind) return `${role} [kind=${kind}]`
+  }
+  const placeholder = element.getAttribute('placeholder')
+  if (placeholder) return `${role} [placeholder=${JSON.stringify(clip(placeholder, 40))}]`
+  const text = ['body', 'html', 'main'].includes(element.localName) ? '' : collapse((element as HTMLElement).innerText ?? element.textContent)
+  return text ? `${role} ${JSON.stringify(clip(text, 50))}` : role
+}
+
 /** PrimeVue classes that say nothing about what a part is. */
 const GENERIC_CLASS = /^p-(button|component|disabled|focus|ripple|invalid|hidden-accessible|filled|fluid)/
 
@@ -232,13 +266,9 @@ function walk(node: Node, w: Walk, out: AxItem[]): void {
   walkChildren()
   const value = valueOf(element, role)
   if (value !== undefined) ax.value = value
-  if (!name && FIELD_ROLES.has(role)) {
-    // A qdadm form field whose label is not tied to its input still shows that label to the user.
-    const label = element.closest('.form-field')?.querySelector(':scope > label') as HTMLLabelElement | null
-    if (label && !label.control) ax.name = name = collapse(label.textContent)
-  }
-  // A select that shows its value as its label: say it once, as the value.
+  // A select that shows its value as its label (PrimeVue sets aria-label to the choice): say it once, as the value.
   if (ax.value !== undefined && ax.value === name) ax.name = name = ''
+  if (!name && FIELD_ROLES.has(role)) ax.name = name = fieldLabel(element)
   if (role === 'link') {
     const href = element.getAttribute('href')
     if (href) ax.url = href
@@ -403,7 +433,9 @@ export function find(refs: RefRegistry, options: FindOptions): string {
       .reverse()
       .find((a) => ['row', 'dialog', 'alertdialog', 'form', 'tabpanel', 'listitem', 'navigation', 'region', 'menu'].includes(a.role))
     const where = context ? ` — in ${context.role} ${JSON.stringify(clip(context.name || textOf(context), 60))}` : ''
-    found.push(`- ${describeNode(node)}${where}`)
+    // A row or a cell has no name: its text is what tells it apart.
+    const said = !node.name && node.value === undefined ? clip(textOf(node), 80) : ''
+    found.push(`- ${describeNode(node)}${said ? `: ${said}` : ''}${where}`)
   }
   if (found.length === 0) return `Nothing visible matches${role ? ` role "${role}"` : ''}${text ? ` text "${options.text}"` : ''}.`
   return [...found, ...(total > limit ? [`… ${total - limit} more — narrow the search, or raise limit`] : [])].join('\n')

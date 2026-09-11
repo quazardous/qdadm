@@ -35,6 +35,9 @@ const JSON_TYPES: Record<ToolArg['kind'], unknown> = {
   id: ['string', 'number'],
   object: 'object',
   number: 'number',
+  boolean: 'boolean',
+  array: 'array',
+  any: undefined,
 }
 
 const KIND_LABEL: Record<ToolArg['kind'], string> = {
@@ -42,13 +45,16 @@ const KIND_LABEL: Record<ToolArg['kind'], string> = {
   id: 'a string or number',
   object: 'an object',
   number: 'a number',
+  boolean: 'true or false',
+  array: 'an array',
+  any: 'a value',
 }
 
 function toInputSchema(tool: ToolDef): Record<string, unknown> {
   const properties: Record<string, unknown> = {}
   const required: string[] = []
   for (const [name, arg] of Object.entries(tool.args)) {
-    properties[name] = { type: JSON_TYPES[arg.kind], description: arg.description }
+    properties[name] = arg.kind === 'any' ? { description: arg.description } : { type: JSON_TYPES[arg.kind], description: arg.description }
     if (arg.required) required.push(name)
   }
   return {
@@ -62,6 +68,9 @@ function matchesKind(value: unknown, kind: ToolArg['kind']): boolean {
   if (kind === 'string') return typeof value === 'string'
   if (kind === 'id') return typeof value === 'string' || typeof value === 'number'
   if (kind === 'number') return typeof value === 'number' && Number.isFinite(value)
+  if (kind === 'boolean') return typeof value === 'boolean'
+  if (kind === 'array') return Array.isArray(value)
+  if (kind === 'any') return true
   return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
 

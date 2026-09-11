@@ -38,16 +38,30 @@ export interface DebugBrokerApi {
 }
 
 export interface ToolsetOptions {
-  /** Refuse entity_create / entity_update / entity_delete (default false). */
+  /** Leave out the tools that change data or act in the page: WRITE_TOOLS (default false). */
   readOnly?: boolean
 }
+
+/** What `readOnly` leaves out: the entity writes, and acting in the page as the user. */
+export const WRITE_TOOLS: ReadonlySet<string> = new Set([
+  'entity_create',
+  'entity_update',
+  'entity_delete',
+  'click',
+  'type_text',
+  'fill',
+  'press_key',
+  'drag',
+  'upload_file',
+  'page_eval',
+])
 
 /**
  * Argument spec — the whole vocabulary the toolset needs.
  * `string` / `id` (string|number) / `object` (free-form record).
  */
 export interface ToolArg {
-  kind: 'string' | 'id' | 'object' | 'number'
+  kind: 'string' | 'id' | 'object' | 'number' | 'boolean' | 'array' | 'any'
   required?: boolean
   description: string
 }
@@ -362,8 +376,60 @@ export function buildToolset(api: DebugBrokerApi, options: ToolsetOptions = {}):
           route: { kind: 'string', description: 'A route name instead of a path, e.g. "book-edit"' },
           params: { kind: 'object', description: 'Route params, with route' },
           query: { kind: 'object', description: 'Query string, with route' },
+          history: { kind: 'string', description: '"back", "forward" or "reload" instead of a target' },
         },
-        handler: (a) => act(a, 'navigate', { path: a.path, route: a.route, params: a.params, query: a.query }),
+        handler: (a) => act(a, 'navigate', { path: a.path, route: a.route, params: a.params, query: a.query, history: a.history }),
+      },
+      {
+        name: 'hover',
+        description: 'Move the pointer over an element (ref): tooltips, hover menus, row actions shown on hover.',
+        args: { instance, ref: { kind: 'string', required: true, description: 'The element, from page_snapshot or find' } },
+        handler: (a) => act(a, 'hover', { ref: a.ref }),
+      },
+      {
+        name: 'scroll',
+        description:
+          'Scroll. With ref alone: bring that element into view. With direction (up, down, left, right) and an ' +
+          'optional amount in pixels: scroll what is under ref, or under the middle of the viewport. Says where it ' +
+          'stopped.',
+        args: {
+          instance,
+          ref: { kind: 'string', description: 'The element to bring into view, or to scroll inside' },
+          direction: { kind: 'string', description: 'up, down, left or right' },
+          amount: { kind: 'number', description: 'Pixels (default: most of the viewport)' },
+        },
+        handler: (a) => act(a, 'scroll', { ref: a.ref, direction: a.direction, amount: a.amount }),
+      },
+      {
+        name: 'console_messages',
+        description:
+          'The console of the tab: errors, warnings, page errors and unhandled rejections since it connected; log, ' +
+          'info and debug from the first call on. level: error, warn, log, info, debug, pageerror, rejection, or ' +
+          '"errors" for every failure. pattern: a regex on the text. The latest `limit` are kept (default 50). ' +
+          'clear: the next call only shows newer messages.',
+        args: {
+          instance,
+          level: { kind: 'string', description: 'Only this level' },
+          pattern: { kind: 'string', description: 'Regex the text must match (case-insensitive)' },
+          limit: { kind: 'number', description: 'How many of the latest (default 50)' },
+          clear: { kind: 'boolean', description: 'Forget what was returned' },
+        },
+        handler: (a) => ask(a, 'consoleMessages', { level: a.level, pattern: a.pattern, limit: a.limit, clear: a.clear }),
+      },
+      {
+        name: 'network_requests',
+        description:
+          'The fetch and XMLHttpRequest calls of the tab since it connected: method, URL, status, duration, or the ' +
+          'network error. urlPattern: part of the URL. failedOnly: status 400+ or no response. The latest `limit` are ' +
+          'kept (default 50). clear: the next call only shows newer requests.',
+        args: {
+          instance,
+          urlPattern: { kind: 'string', description: 'Part of the URL, e.g. "/api/books"' },
+          failedOnly: { kind: 'boolean', description: 'Only failures' },
+          limit: { kind: 'number', description: 'How many of the latest (default 50)' },
+          clear: { kind: 'boolean', description: 'Forget what was returned' },
+        },
+        handler: (a) => ask(a, 'networkRequests', { urlPattern: a.urlPattern, failedOnly: a.failedOnly, limit: a.limit, clear: a.clear }),
       },
       {
         name: 'page_snapshot',
@@ -454,5 +520,97 @@ export function buildToolset(api: DebugBrokerApi, options: ToolsetOptions = {}):
     )
   }
 
-  return readOnly ? tools : [...tools, ...writes]
+  if (api.pairing) {
+    const ref: ToolArg = { kind: 'string', required: true, description: 'The element, from page_snapshot or find (e.g. "e12")' }
+    writes.push(
+      {
+        name: 'click',
+        description:
+          'Click an element like a user: pointer and mouse events in a real click\'s order, focus, then the page ' +
+          'settles. Refuses a disabled element, and one covered by something else — naming what covers it (a ' +
+          'dialog, an overlay). button "right" opens a context menu, clickCount 2 double-clicks, modifiers ["Shift"]. ' +
+          'Returns what was clicked, what has focus, the route, and the feedback block.',
+        args: {
+          instance,
+          ref,
+          button: { kind: 'string', description: 'left (default), right or middle' },
+          clickCount: { kind: 'number', description: '2 for a double click' },
+          modifiers: { kind: 'array', description: 'Keys held: ["Shift"], ["Control"], ["Alt"], ["Meta"]' },
+        },
+        handler: (a) => act(a, 'click', { ref: a.ref, button: a.button, clickCount: a.clickCount, modifiers: a.modifiers }),
+      },
+      {
+        name: 'type_text',
+        description:
+          'Type text into a field key by key, as a user would: input masks, number fields and autocompletes see every ' +
+          'key. ref: the field, or a wrapper holding one input; without ref, the focused element. clear empties it ' +
+          'first; submit presses Enter after.',
+        args: {
+          instance,
+          ref: { kind: 'string', description: 'The field (default: the focused element)' },
+          text: { kind: 'string', required: true, description: 'What to type' },
+          clear: { kind: 'boolean', description: 'Empty the field first' },
+          submit: { kind: 'boolean', description: 'Press Enter after' },
+        },
+        handler: (a) => act(a, 'typeText', { ref: a.ref, text: a.text, clear: a.clear, submit: a.submit }),
+      },
+      {
+        name: 'fill',
+        description:
+          'Set a field to a value, whatever the control. A text field is emptied and typed into. A checkbox or switch ' +
+          'is clicked if its state differs (value true or false). A select or a PrimeVue dropdown is opened and its ' +
+          'option clicked (value: the option\'s label). An autocomplete is typed into and the matching suggestion ' +
+          'picked. A date input is set whole ("2026-09-11"). When the option is not there, the error lists those that are.',
+        args: {
+          instance,
+          ref,
+          value: { kind: 'any', required: true, description: 'Text, true/false for a checkbox, an option label, or an array for a multiple select' },
+        },
+        handler: (a) => act(a, 'fill', { ref: a.ref, value: a.value }),
+      },
+      {
+        name: 'press_key',
+        description:
+          'Press keys: "Enter", "Escape", "Tab", "Shift+Tab", "Control+a", "ArrowDown", or several separated by ' +
+          'spaces ("ArrowDown ArrowDown Enter"). On ref (focused first), else on the focused element. The browser\'s ' +
+          'defaults run unless the app prevents them: Enter submits a form or presses a button, Tab moves focus, ' +
+          'Space toggles, Backspace deletes.',
+        args: {
+          instance,
+          keys: { kind: 'string', required: true, description: 'Keys to press' },
+          ref: { kind: 'string', description: 'The element to press them on' },
+        },
+        handler: (a) => act(a, 'pressKey', { keys: a.keys, ref: a.ref }),
+      },
+      {
+        name: 'drag',
+        description:
+          'Drag an element (ref) onto another (to): HTML5 drag and drop when the source is draggable, a pointer drag ' +
+          'in steps otherwise (sortable lists, sliders).',
+        args: { instance, ref, to: { kind: 'string', required: true, description: 'The element to drop onto' } },
+        handler: (a) => act(a, 'drag', { ref: a.ref, to: a.to }),
+      },
+      {
+        name: 'upload_file',
+        description:
+          'Attach files to a file input — ref: the input, or the upload button holding it. files: [{ "name": ' +
+          '"notes.txt", "text": "…" }] for text, [{ "name": "cover.png", "base64": "…", "mimeType": "image/png" }] ' +
+          'for binary.',
+        args: { instance, ref, files: { kind: 'array', required: true, description: 'The files: name, and text or base64 (+ mimeType)' } },
+        handler: (a) => act(a, 'uploadFile', { ref: a.ref, files: a.files }),
+      },
+      {
+        name: 'page_eval',
+        description:
+          'Run JavaScript in the tab and get its value back, JSON-safe; elements come back described, with a ref. code: ' +
+          'an expression ("document.title", "window.__qdadm.router.currentRoute.value.fullPath") or statements with a ' +
+          'return; await works; $ref("e12") is the element behind a ref. It can do anything the page can: reach for ' +
+          'the dedicated tools first.',
+        args: { instance, code: { kind: 'string', required: true, description: 'An expression, or statements with return' } },
+        handler: (a) => act(a, 'pageEval', { code: a.code }),
+      }
+    )
+  }
+
+  return readOnly ? tools.filter((t) => !WRITE_TOOLS.has(t.name)) : [...tools, ...writes]
 }

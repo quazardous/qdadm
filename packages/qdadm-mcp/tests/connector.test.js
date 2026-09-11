@@ -535,6 +535,7 @@ describe('relay connector — reading the page (#2247)', () => {
       <div class="form-field field-invalid"><label for="title">Title *</label><input id="title" class="p-inputtext p-invalid" required /><small class="field-error">Title is required</small></div>
       <div class="form-field"><label for="year">Year</label><input id="year" value="1965" disabled /></div>
       <div class="form-field"><label for="author">Author</label><input role="combobox" aria-expanded="false" value="Frank Herbert" /><button class="p-autocomplete-dropdown p-button" aria-expanded="false"><svg></svg></button></div>
+      <div class="form-field"><label for="shelf">Shelf</label><div class="p-select"><span role="combobox" aria-label="Top shelf" aria-expanded="false">Top shelf</span></div></div>
       <label><input type="checkbox" checked /> Available</label>
       <select aria-label="Genre"><option>sci-fi</option><option selected>fantasy</option></select>
       <button aria-expanded="false">Details</button>
@@ -580,6 +581,7 @@ describe('relay connector — reading the page (#2247)', () => {
       '- textbox "Year" [disabled] [value="1965"] [ref=',
       '- combobox "Author" [collapsed] [value="Frank Herbert"] [ref=',
       '- button [kind=autocomplete-dropdown] [collapsed] [ref=',
+      '- combobox "Shelf" [collapsed] [value="Top shelf"] [ref=',
       '- checkbox "Available" [checked] [ref=',
       '- combobox "Genre" [value="fantasy"] [ref=',
       '- button "Details" [collapsed] [ref=',
@@ -633,5 +635,125 @@ describe('relay connector — reading the page (#2247)', () => {
     expect(text).toContain('Frank Herbert')
     expect(text).not.toContain('Pause')
     expect(document.querySelector('.qd-debug').style.display).toBe('contents')
+  })
+})
+
+describe('relay connector — acting in the page, console and network (#2247)', () => {
+  let saved = 0
+
+  afterEach(() => {
+    document.body.innerHTML = ''
+    delete window.__qdadmRelayAuto
+    vi.unstubAllGlobals()
+  })
+
+  const connected = async (answer = async () => ({ ok: true, status: 200 })) => {
+    document.body.innerHTML = '<main><h1>Books</h1><label for="title">Title</label><input id="title" /><button id="save">Save</button></main>'
+    saved = 0
+    document.querySelector('#save').addEventListener('click', () => saved++)
+    window.__qdadmRelayAuto = '/__qdadm/relay.json'
+    vi.stubGlobal('fetch', async (url, init) =>
+      String(url).includes('relay.json')
+        ? { ok: true, status: 200, json: async () => ({ port: 47761, token: 'dev-token' }) }
+        : answer(url, init)
+    )
+    const broker = new RelayBroker({ token: 'dev-token', identity: identity(47761) })
+    const { controller } = install({ 47761: broker })
+    await vi.waitFor(() => expect(controller.state.status).toBe('connected'))
+    return { broker, controller }
+  }
+  const refIn = (text, line) => text.split('\n').find((l) => l.includes(line))?.match(/\[ref=(e\d+)\]/)?.[1]
+
+  it('type_text and click act on the refs of a snapshot, say what has focus, and log without what was typed', async () => {
+    const { broker, controller } = await connected()
+    const tree = (await broker.ask('pageSnapshot', {})).text
+    const title = refIn(tree, 'textbox "Title"')
+    const save = refIn(tree, 'button "Save"')
+
+    const typed = await broker.ask('typeText', { ref: title, text: 'Dune' })
+    expect(typed).toEqual({ done: 'typed into textbox "Title"', focused: `textbox "Title" [ref=${title}]`, route: '/' })
+    expect(document.querySelector('#title').value).toBe('Dune')
+
+    expect((await broker.ask('click', { ref: save })).done).toBe('clicked button "Save"')
+    expect(saved).toBe(1)
+    expect(controller.activity.entries.slice(-2).map(({ tool, detail }) => ({ tool, detail }))).toEqual([
+      { tool: 'type_text', detail: `${title} (4 characters)` },
+      { tool: 'click', detail: save },
+    ])
+    await expect(broker.ask('click', {})).rejects.toThrow(/needs a ref/)
+  })
+
+  it('an action that opens a dialog says so, with its ref; the one that closes it says that too', async () => {
+    const { broker } = await connected()
+    document.querySelector('#save').addEventListener('click', () => {
+      const dialog = document.createElement('div')
+      dialog.setAttribute('role', 'dialog')
+      dialog.setAttribute('aria-label', 'Unsaved changes')
+      dialog.innerHTML = '<button id="stay">Stay</button>'
+      dialog.querySelector('#stay').addEventListener('click', () => dialog.remove())
+      document.body.appendChild(dialog)
+    })
+    const tree = (await broker.ask('pageSnapshot', {})).text
+
+    const opening = await broker.ask('click', { ref: refIn(tree, 'button "Save"') })
+    expect(opening.dialogOpened).toEqual([expect.stringMatching(/^dialog "Unsaved changes" \[ref=e\d+\]$/)])
+
+    const dialog = opening.dialogOpened[0].match(/ref=(e\d+)/)[1]
+    const stay = refIn((await broker.ask('pageSnapshot', { ref: dialog })).text, 'button "Stay"')
+    const closing = await broker.ask('click', { ref: stay })
+    expect(closing.dialogClosed).toEqual(['dialog "Unsaved changes"'])
+    expect(closing.dialogOpened).toBeUndefined()
+  })
+
+  it('console_messages: failures since the tab connected, logs from the first call; level, pattern, clear', async () => {
+    const { broker } = await connected()
+    console.error('boom early')
+    console.log('before anyone asked')
+
+    const first = await broker.ask('consoleMessages', {})
+    expect(first.messages.map((m) => [m.level, m.text])).toEqual([['error', 'boom early']])
+    expect(first.note).toMatch(/from now on/)
+
+    console.log('saved book 7')
+    console.warn('slow list')
+    expect((await broker.ask('consoleMessages', { level: 'errors', pattern: 'BOOM' })).messages.map((m) => m.text)).toEqual(['boom early'])
+    expect((await broker.ask('consoleMessages', { clear: true })).messages.map((m) => m.text)).toEqual(['boom early', 'saved book 7', 'slow list'])
+    console.info('after the clear')
+    expect((await broker.ask('consoleMessages', {})).messages.map((m) => m.text)).toEqual(['after the clear'])
+  })
+
+  it('network_requests: fetch calls with their status; a failed one joins the feedback of an action', async () => {
+    const { broker } = await connected(async (url) => ({ ok: !String(url).includes('missing'), status: String(url).includes('missing') ? 404 : 200 }))
+    await window.fetch('/api/books')
+    const mark = await broker.ask('feedbackMark')
+    await window.fetch('/api/missing', { method: 'post' })
+
+    expect((await broker.ask('feedbackSince', { mark })).failedRequests).toEqual([{ method: 'POST', url: '/api/missing', status: 404 }])
+    const { requests } = await broker.ask('networkRequests', {})
+    expect(requests.map(({ kind, method, url, status }) => ({ kind, method, url, status }))).toEqual([
+      { kind: 'fetch', method: 'GET', url: '/api/books', status: 200 },
+      { kind: 'fetch', method: 'POST', url: '/api/missing', status: 404 },
+    ])
+    expect((await broker.ask('networkRequests', { failedOnly: true })).requests).toHaveLength(1)
+  })
+
+  it('page_eval: an expression, statements, $ref, and elements handed back with their ref', async () => {
+    const { broker } = await connected()
+    const save = refIn((await broker.ask('pageSnapshot', {})).text, 'button "Save"')
+
+    expect((await broker.ask('pageEval', { code: 'document.querySelector("h1").textContent' })).value).toBe('Books')
+    expect((await broker.ask('pageEval', { code: 'const n = 21; return n * 2' })).value).toBe(42)
+    expect((await broker.ask('pageEval', { code: `$ref("${save}").textContent` })).value).toBe('Save')
+    expect((await broker.ask('pageEval', { code: 'document.querySelector("#save")' })).value).toBe(`(element button "Save" [ref=${save}])`)
+    await expect(broker.ask('pageEval', { code: 'throw new Error("nope")' })).rejects.toThrow('nope')
+  })
+
+  it('navigate history: back goes back; with nowhere to go, it says so', async () => {
+    const { broker } = await connected()
+    window.history.pushState({}, '', '/books')
+    window.history.pushState({}, '', '/books/7')
+    await broker.ask('navigate', { history: 'back' })
+    expect(window.location.pathname).toBe('/books')
+    await expect(broker.ask('navigate', { history: 'sideways' })).rejects.toThrow(/back.*forward.*reload/)
   })
 })

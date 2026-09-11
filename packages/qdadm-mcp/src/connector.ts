@@ -31,6 +31,8 @@
  */
 import { RELAY_AUTO_GLOBAL, RELAY_PORTS, RELAY_PROTOCOL, type RelayAutoConfig, type RelayIdentity } from './protocol.ts'
 import { createRefs } from './page/refs.ts'
+import { pause } from './page/timing.ts'
+import type { UploadFile } from './page/actions.ts'
 
 interface BootEntry {
   at: number
@@ -44,8 +46,31 @@ interface BootEntry {
 interface FeedbackMark {
   log: number
   signal: number
+  network?: number
   route: string | null
   at: number
+}
+
+/** The part of the Navigation API that tells a same-document history entry from a page load. */
+interface NavigationLike {
+  currentEntry: { index: number } | null
+  entries(): Array<{ index: number; sameDocument: boolean; url: string | null }>
+}
+
+interface LogEntry extends BootEntry {
+  level: string
+}
+
+/** A fetch or XMLHttpRequest the tab made (#2247). */
+interface NetworkEntry {
+  seq: number
+  at: number
+  kind: 'fetch' | 'xhr'
+  method: string
+  url: string
+  status?: number
+  ms?: number
+  error?: string
 }
 
 interface QdadmGlobal {
@@ -148,6 +173,21 @@ const TOOL_OF_REQUEST: Record<string, string> = {
   chatRead: 'chat_read',
 }
 
+/** Requests that act on or inspect the page (#2247), by the tool they come from. */
+const PAGE_TOOLS: Record<string, string> = {
+  click: 'click',
+  typeText: 'type_text',
+  fill: 'fill',
+  pressKey: 'press_key',
+  hover: 'hover',
+  scroll: 'scroll',
+  drag: 'drag',
+  uploadFile: 'upload_file',
+  pageEval: 'page_eval',
+  consoleMessages: 'console_messages',
+  networkRequests: 'network_requests',
+}
+
 const brief = (value: unknown, max = 160): string => {
   try {
     const text = typeof value === 'string' ? value : JSON.stringify(value)
@@ -177,6 +217,13 @@ function describeRequest(type: string, payload?: Record<string, unknown>): { too
   }
   if (type === 'find') return { tool: 'find', detail: [payload?.role, payload?.text && brief(payload.text)].filter(Boolean).map(String).join(' ') }
   if (type === 'pageText') return { tool: 'page_text', detail: payload?.ref ? String(payload.ref) : '' }
+  if (PAGE_TOOLS[type]) {
+    // What was typed stays out of the history: it may be a password.
+    const typed = type === 'typeText' || type === 'fill' ? String(payload?.text ?? payload?.value ?? '') : null
+    const said = typed !== null ? `(${typed.length} characters)` : (payload?.keys ?? payload?.code ?? payload?.direction ?? payload?.pattern ?? payload?.urlPattern)
+    const parts = [payload?.ref, payload?.to ? `→ ${String(payload.to)}` : null, said]
+    return { tool: PAGE_TOOLS[type], detail: parts.filter((p) => p !== undefined && p !== null && p !== '').map((p) => brief(p, 80)).join(' ') }
+  }
   if (type === 'waitFor') return { tool: 'wait_for', detail: String(payload?.route ?? payload?.signal ?? '') }
   if (type === 'chatPost') return { tool: 'chat_send', detail: brief(payload?.message) }
   if (type === 'entityState' || type === 'storageDump') {
@@ -756,6 +803,7 @@ function createPageAgent(sessionId: string, q: () => QdadmGlobal) {
   const arm = () => {
     if (armed) return
     armed = true
+    armNetwork()
     const origError = console.error.bind(console)
     const origWarn = console.warn.bind(console)
     console.error = (...args: unknown[]) => {
@@ -783,6 +831,113 @@ function createPageAgent(sessionId: string, q: () => QdadmGlobal) {
       }
       cap(bootlog.rejections, { at: Date.now(), msg: String(msg).slice(0, 2000) })
     })
+  }
+
+  // ── console and network (#2247) ────────────────────────────────────────
+  // console.log, info and debug are wrapped only once an agent asks for them:
+  // wrapping moves every log's source line in the devtools to this file.
+  const logs: LogEntry[] = []
+  let consoleArmed = false
+  let consoleClearedAt = 0
+  const armConsole = () => {
+    if (consoleArmed) return
+    consoleArmed = true
+    for (const level of ['log', 'info', 'debug'] as const) {
+      const original = console[level].bind(console)
+      console[level] = (...args: unknown[]) => {
+        logs.push({ at: Date.now(), msg: fmt(args), level, seq: ++logSeq })
+        if (logs.length > 500) logs.shift()
+        original(...args)
+      }
+    }
+  }
+
+  const network: NetworkEntry[] = []
+  let networkSeq = 0
+  let networkClearedAt = 0
+  // The relay's own plumbing and vite's are not the app's requests.
+  const OWN_REQUEST = /\/__qdadm\/|\/@vite\//
+  const recordRequest = (entry: Pick<NetworkEntry, 'kind' | 'method' | 'url'>): NetworkEntry | null => {
+    if (OWN_REQUEST.test(entry.url)) return null
+    const recorded: NetworkEntry = { seq: ++networkSeq, at: Date.now(), ...entry }
+    network.push(recorded)
+    if (network.length > 300) network.shift()
+    return recorded
+  }
+  const armNetwork = () => {
+    const originalFetch = window.fetch
+    if (typeof originalFetch === 'function') {
+      window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
+        const isRequest = typeof Request === 'function' && input instanceof Request
+        const entry = recordRequest({
+          kind: 'fetch',
+          method: String(init?.method ?? (isRequest ? (input as Request).method : 'GET')).toUpperCase(),
+          url: isRequest ? (input as Request).url : String(input),
+        })
+        const started = Date.now()
+        try {
+          const response = await originalFetch.call(window, input, init)
+          if (entry) Object.assign(entry, { status: response.status, ms: Date.now() - started })
+          return response
+        } catch (e) {
+          if (entry) Object.assign(entry, { error: (e as Error).message, ms: Date.now() - started })
+          throw e
+        }
+      }
+    }
+    const xhr = window.XMLHttpRequest?.prototype as (XMLHttpRequest & { __qdadmRequest?: { method: string; url: string } }) | undefined
+    if (xhr) {
+      const open = xhr.open as (...args: unknown[]) => void
+      const send = xhr.send
+      xhr.open = function (this: typeof xhr, ...args: unknown[]) {
+        this!.__qdadmRequest = { method: String(args[0]).toUpperCase(), url: String(args[1]) }
+        return open.apply(this, args)
+      } as XMLHttpRequest['open']
+      xhr.send = function (this: NonNullable<typeof xhr>, body?: Document | XMLHttpRequestBodyInit | null) {
+        const entry = this.__qdadmRequest ? recordRequest({ kind: 'xhr', ...this.__qdadmRequest }) : null
+        const started = Date.now()
+        if (entry) {
+          this.addEventListener('loadend', () =>
+            Object.assign(entry, this.status ? { status: this.status, ms: Date.now() - started } : { error: 'failed or aborted', ms: Date.now() - started })
+          )
+        }
+        return send.call(this, body)
+      }
+    }
+  }
+  const failed = (e: NetworkEntry) => !!e.error || (e.status ?? 0) >= 400
+  const clockOf = (at: number) => new Date(at).toISOString().slice(11, 23)
+
+  /** A page_eval result an agent can read: JSON-safe, bounded, elements described with a ref. */
+  const forAgent = (value: unknown, describe: (element: Element) => string): unknown => {
+    const seen = new WeakSet<object>()
+    const walk = (v: unknown, depth: number): unknown => {
+      if (v === undefined) return '(undefined)'
+      if (v === null || typeof v === 'boolean' || typeof v === 'number' || typeof v === 'string') return v
+      if (typeof v === 'bigint' || typeof v === 'symbol') return String(v)
+      if (typeof v === 'function') return `(function ${v.name || 'anonymous'})`
+      if (v instanceof Error) return { error: v.message, stack: v.stack?.split('\n').slice(0, 5).join('\n') }
+      if (v instanceof Element) return `(element ${describe(v)})`
+      if (typeof v !== 'object') return String(v)
+      if (seen.has(v)) return '(circular)'
+      if (depth > 5) return '(…)'
+      seen.add(v)
+      if (v instanceof Date) return v.toISOString()
+      if (Array.isArray(v) || v instanceof Set || v instanceof NodeList || v instanceof HTMLCollection) {
+        return Array.from(v as ArrayLike<unknown>).slice(0, 100).map((x) => walk(x, depth + 1))
+      }
+      if (v instanceof Map) return Object.fromEntries(Array.from(v.entries()).slice(0, 100).map(([k, x]) => [String(k), walk(x, depth + 1)]))
+      const out: Record<string, unknown> = {}
+      for (const key of Object.keys(v).slice(0, 100)) {
+        try {
+          out[key] = walk((v as Record<string, unknown>)[key], depth + 1)
+        } catch (e) {
+          out[key] = `(unreadable: ${(e as Error).message})`
+        }
+      }
+      return out
+    }
+    return walk(value, 0)
   }
 
   /** Signal data kept small and JSON-safe: an agent reads it, a page may emit anything. */
@@ -860,6 +1015,12 @@ function createPageAgent(sessionId: string, q: () => QdadmGlobal) {
     }
     add('i18nMissing', [...missing.values()])
     add('apiErrors', signals.filter((e) => e.name === 'api:error').map((e) => e.data))
+    add(
+      'failedRequests',
+      network
+        .filter((e) => e.seq > (mark.network ?? networkSeq) && failed(e))
+        .map(({ method, url, status, error }) => ({ method, url, ...(status ? { status } : {}), ...(error ? { error } : {}) }))
+    )
     add('signals', signals.map((e) => e.name))
     return feedback
   }
@@ -870,7 +1031,7 @@ function createPageAgent(sessionId: string, q: () => QdadmGlobal) {
     let lastSeq = signalSeq
     let quietSince = Date.now()
     while (Date.now() - started < maxMs) {
-      await new Promise((r) => setTimeout(r, 50))
+      await pause(50)
       if (signalSeq !== lastSeq) {
         lastSeq = signalSeq
         quietSince = Date.now()
@@ -890,7 +1051,158 @@ function createPageAgent(sessionId: string, q: () => QdadmGlobal) {
     return `Page: ${JSON.stringify(document.title)} — route ${String(route?.name ?? '?')} (${route?.fullPath ?? window.location.pathname})`
   }
 
+  // ── acting in the page (#2247) ─────────────────────────────────────────
+  type PageActions = typeof import('./page/actions.ts')
+  const actions = (): Promise<PageActions> => import('./page/actions.ts')
+  /** After typing, lists debounce their search: wait that out before telling what the page shows. */
+  const TYPING_QUIET_MS = 450
+  const refOf = (payload?: Record<string, unknown>) => {
+    if (!payload?.ref) throw new Error('this action needs a ref: take a page_snapshot (or find) and pass the ref of the element')
+    return refs.resolve(String(payload.ref))
+  }
+  /**
+   * Run an action, let the app react — render, route, requests — then say where things stand: what it did,
+   * a dialog it opened or closed, what has focus, the route.
+   */
+  const perform = async (run: (page: PageActions) => Promise<string> | string, quietMs = 150) => {
+    const page = await actions()
+    page.useRefs((element) => refs.refOf(element))
+    armSignals()
+    // Named now: a dialog that closes is usually removed, and a detached one loses its title.
+    const before = new Map(page.visibleDialogs().map((d) => [d, page.briefOf(d)]))
+    const done = await run(page)
+    await settle(quietMs, 2500)
+    const after = page.visibleDialogs()
+    const opened = after.filter((d) => !before.has(d)).map((d) => `${page.briefOf(d)} [ref=${refs.refOf(d)}]`)
+    const closed = [...before].filter(([d]) => !after.includes(d)).map(([, name]) => name)
+    const active = document.activeElement
+    return {
+      done,
+      ...(opened.length > 0 ? { dialogOpened: opened } : {}),
+      ...(closed.length > 0 ? { dialogClosed: closed } : {}),
+      focused: active && active !== document.body ? `${page.briefOf(active)} [ref=${refs.refOf(active)}]` : null,
+      route: currentRoute()?.fullPath ?? window.location.pathname,
+      ...(document.hidden ? { tabHidden: 'The tab is in the background: the browser runs no animation and slows its timers.' } : {}),
+    }
+  }
+  const moveInHistory = async (move: string) => {
+    if (move === 'reload') {
+      setTimeout(() => window.location.reload(), 150)
+      return {
+        reloading: true,
+        next: 'The tab reloads and comes back as the same instance within seconds: call session_info (or wait_for a route) before acting on it.',
+      }
+    }
+    if (move !== 'back' && move !== 'forward') throw new Error('history is "back", "forward" or "reload"')
+    const go = () => (move === 'back' ? window.history.back() : window.history.forward())
+    // An entry of another document means a page load, which would take this answer down with it:
+    // answer first, then go — where the Navigation API can tell.
+    const navigation = (window as unknown as { navigation?: NavigationLike }).navigation
+    if (navigation?.currentEntry) {
+      const index = navigation.currentEntry.index + (move === 'back' ? -1 : 1)
+      const entry = navigation.entries().find((e) => e.index === index)
+      if (!entry) return { route: currentRoute(), title: document.title, note: `nothing to go ${move} to` }
+      if (!entry.sameDocument) {
+        setTimeout(go, 150)
+        return {
+          loadingPage: entry.url,
+          next: 'That entry is another page load: the tab comes back as the same instance within seconds — call session_info (or wait_for a route) before acting on it.',
+        }
+      }
+    }
+    const before = window.location.href
+    go()
+    const started = Date.now()
+    while (window.location.href === before && Date.now() - started < 1500) await pause(50)
+    await settle()
+    return { route: currentRoute(), title: document.title, ...(window.location.href === before ? { note: `nothing to go ${move} to` } : {}) }
+  }
+
   const handlers: Record<string, (payload?: Record<string, unknown>) => unknown | Promise<unknown>> = {
+    click: (payload) =>
+      perform((page) =>
+        page.click(refOf(payload), { button: payload?.button as string, clickCount: payload?.clickCount as number, modifiers: payload?.modifiers as string[] })
+      ),
+    typeText: (payload) =>
+      perform(
+        (page) => page.typeText(rootOf(payload), String(payload?.text ?? ''), { clear: payload?.clear === true, submit: payload?.submit === true }),
+        TYPING_QUIET_MS
+      ),
+    fill: (payload) => {
+      if (payload?.value === undefined) throw new Error('fill needs a value')
+      return perform((page) => page.fill(refOf(payload), payload.value), TYPING_QUIET_MS)
+    },
+    pressKey: (payload) => perform((page) => page.pressKeys(rootOf(payload), String(payload?.keys ?? '')), TYPING_QUIET_MS),
+    hover: (payload) => perform((page) => page.hover(refOf(payload))),
+    scroll: (payload) =>
+      perform((page) => page.scroll(rootOf(payload), payload?.direction as string | undefined, payload?.amount as number | undefined)),
+    drag: (payload) => {
+      if (!payload?.to) throw new Error('drag needs to: the ref of the element to drop onto')
+      return perform((page) => page.drag(refOf(payload), refs.resolve(String(payload.to))))
+    },
+    uploadFile: (payload) => perform((page) => page.upload(refOf(payload), payload?.files as UploadFile[])),
+    pageEval: async (payload) => {
+      const code = String(payload?.code ?? '').trim()
+      if (!code) throw new Error('page_eval needs code')
+      type Run = (ref: (r: string) => Element) => Promise<unknown>
+      const AsyncFunction = Object.getPrototypeOf(async () => {}).constructor as new (...args: string[]) => Run
+      let run: Run
+      try {
+        // An expression first ("document.title"), statements with a return otherwise.
+        run = new AsyncFunction('$ref', `return (${code}\n)`)
+      } catch {
+        run = new AsyncFunction('$ref', code)
+      }
+      const value = await run((ref: string) => refs.resolve(ref))
+      const { briefOf } = await actions()
+      const result = forAgent(value, (element) => `${briefOf(element)} [ref=${refs.refOf(element)}]`)
+      const text = JSON.stringify(result) ?? 'null'
+      return text.length <= 50_000 ? { value: result } : { value: `${text.slice(0, 50_000)}…`, cut: `${text.length} characters, cut at 50000` }
+    },
+    consoleMessages: (payload) => {
+      const startedNow = !consoleArmed
+      armConsole()
+      const level = payload?.level ? String(payload.level).toLowerCase() : 'all'
+      const pattern = payload?.pattern ? new RegExp(String(payload.pattern), 'i') : null
+      const limit = Math.min(Math.max(Number(payload?.limit) || 50, 1), 500)
+      const entries: LogEntry[] = [
+        ...bootlog.errors.map((e) => ({ ...e, level: 'error' })),
+        ...bootlog.warns.map((e) => ({ ...e, level: 'warn' })),
+        ...bootlog.pageErrors.map((e) => ({ ...e, level: 'pageerror' })),
+        ...bootlog.rejections.map((e) => ({ ...e, level: 'rejection' })),
+        ...logs,
+      ]
+        .filter((e) => (e.seq ?? 0) > consoleClearedAt)
+        .filter((e) => level === 'all' || e.level === level || (level === 'errors' && ['error', 'pageerror', 'rejection'].includes(e.level)))
+        .filter((e) => !pattern || pattern.test(e.msg))
+        .sort((a, b) => (a.seq ?? 0) - (b.seq ?? 0))
+      const shown = entries.slice(-limit)
+      if (payload?.clear) consoleClearedAt = logSeq
+      return {
+        messages: shown.map((e) => ({ at: clockOf(e.at), level: e.level, text: e.msg, ...(e.source ? { source: e.source } : {}) })),
+        ...(entries.length > shown.length ? { older: entries.length - shown.length } : {}),
+        ...(startedNow ? { note: 'console.log, info and debug are captured from now on; errors and warnings since the tab connected.' } : {}),
+      }
+    },
+    networkRequests: (payload) => {
+      const pattern = payload?.urlPattern ? String(payload.urlPattern) : null
+      const limit = Math.min(Math.max(Number(payload?.limit) || 50, 1), 300)
+      const entries = network
+        .filter((e) => e.seq > networkClearedAt)
+        .filter((e) => !pattern || e.url.includes(pattern))
+        .filter((e) => !payload?.failedOnly || failed(e))
+      const shown = entries.slice(-limit)
+      if (payload?.clear) networkClearedAt = networkSeq
+      return {
+        requests: shown.map(({ seq: _seq, at, ...request }) => ({
+          at: clockOf(at),
+          ...request,
+          ...(request.status === undefined && !request.error ? { pending: true } : {}),
+        })),
+        ...(entries.length > shown.length ? { older: entries.length - shown.length } : {}),
+        ...(network.length === 0 ? { note: 'No request yet. fetch and XMLHttpRequest calls are recorded from the moment the tab connected.' } : {}),
+      }
+    },
     pageSnapshot: async (payload) => {
       const { snapshot } = await aria()
       const text = snapshot(refs, { filter: payload?.filter as string, root: rootOf(payload), maxRows: payload?.maxRows as number, maxChars: payload?.maxChars as number })
@@ -906,7 +1218,7 @@ function createPageAgent(sessionId: string, q: () => QdadmGlobal) {
     },
     feedbackMark: (): FeedbackMark => {
       armSignals()
-      return { log: logSeq, signal: signalSeq, route: currentRoute()?.fullPath ?? null, at: Date.now() }
+      return { log: logSeq, signal: signalSeq, network: networkSeq, route: currentRoute()?.fullPath ?? null, at: Date.now() }
     },
     feedbackSince: (payload) => {
       const mark = payload?.mark as FeedbackMark | undefined
@@ -914,6 +1226,7 @@ function createPageAgent(sessionId: string, q: () => QdadmGlobal) {
       return feedbackSince(mark)
     },
     navigate: async (payload) => {
+      if (payload?.history) return moveInHistory(String(payload.history))
       const router = q().router
       if (!router?.push) throw new Error('router not ready')
       armSignals()
@@ -957,7 +1270,7 @@ function createPageAgent(sessionId: string, q: () => QdadmGlobal) {
             return { matched: 'signal', signal: { name: hit.name, data: hit.data }, route: currentRoute(), waitedMs: Date.now() - started }
           }
         }
-        await new Promise((r) => setTimeout(r, 50))
+        await pause(50)
       }
       const seen = signalBuffer.filter((e) => e.seq > fromSeq).map((e) => e.name).slice(-10)
       throw new Error(

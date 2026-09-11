@@ -98,7 +98,7 @@ To run it in a terminal and watch it: `npx qdadm-mcp-relay`.
 | Flag | |
 |---|---|
 | `--stdio` | Be the agent's MCP server, attached to the machine relay |
-| `--read-only` | Drop the three write tools |
+| `--read-only` | Leave out the tools that change data or act in the page |
 | `--origin <origin>` | Only pages from this origin may pair (repeatable) |
 | `--port <p>` | A private relay on that port: no run file, not shared |
 | `--token <t>` | A fixed page token instead of a random one |
@@ -154,7 +154,7 @@ It lives and dies with the dev server. A client that starts while the dev
 server is down may give up on it: Claude Code, for one, marks it failed
 until `/mcp` › Reconnect. The relay has no such window.
 
-Options: `qdadmMcpPlugin({ readOnly: true })` drops the write tools;
+Options: `qdadmMcpPlugin({ readOnly: true })` leaves out the tools that change data or act in the page;
 `relay: false` neither starts the relay nor connects the pages to it. The
 plugin is dev-only by construction (`apply: 'serve'`): none of it exists in
 a production build.
@@ -185,6 +185,11 @@ Only what happened is listed: an empty category is left out.
 | `page_snapshot` | Relay: what the user sees, as an accessibility tree — role, name, states, value and a **ref** per element; `filter: "interactive"`, or one part by `ref` |
 | `find` | Relay: elements by role and/or text, with their ref and where they sit (row, dialog, form) |
 | `page_text` | Relay: the visible text of the tab, or of one element |
+| `click` / `type_text` / `press_key` | Relay: act on a ref like a user — real event order, focus, browser defaults (Enter submits, Tab moves focus); refused on a disabled or covered element |
+| `fill` | Relay: set any field — text, checkbox, select, PrimeVue dropdown, autocomplete, date |
+| `hover` / `scroll` / `drag` / `upload_file` | Relay: the rest of what a pointer does |
+| `console_messages` / `network_requests` | Relay: the tab's console, and its fetch / XMLHttpRequest calls with status |
+| `page_eval` | Relay: run JavaScript in the tab; elements come back with a ref |
 | `session_info` | Which app/instance am I talking to? (zombie-tab detector) |
 | `boot_errors` | What broke — **including before the app booted** |
 | `routes` | Route names/paths/meta |
@@ -217,6 +222,11 @@ Typical debugging moves, grounded in real sessions:
   with a ref on every element. `filter: "interactive"` for just the
   controls, `find` to locate one ("the Save button", "the row of Dune"),
   `page_text` for the prose.
+- **Act like the user** → refs from `page_snapshot` or `find`, then `click`,
+  `fill`, `type_text`, `press_key`. Each returns the dialog it opened or
+  closed (with its ref), what has focus, and the feedback block; a refusal
+  names the reason (disabled, covered by a dialog). Re-snapshot after a
+  re-render: old refs fail on purpose. The tab may stay in the background.
 - **Blank page / app won't boot** → `boot_errors`. Capture starts before
   the app entry runs, so crashes during boot are recorded even though the
   bridge never came up.
@@ -247,7 +257,8 @@ manager permissions apply; it can do what that user can do, nothing more.
 - A tab is served only once it presents the page token — which only the dev
   server hands out, to its own pages, read from a 0600 file — or once paired
   with a code a human carried from the tab to the agent.
-- `--origin` narrows who may pair; `readOnly` drops the write tools.
+- `--origin` narrows who may pair; `readOnly` leaves out the entity writes,
+  the page actions and `page_eval`.
 
 Full documentation: [DEBUG.md](https://github.com/quazardous/qdadm/blob/main/docs/DEBUG.md)
 

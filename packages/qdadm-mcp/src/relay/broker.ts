@@ -117,6 +117,15 @@ const SLOW_REQUESTS: Record<string, number> = {
   pageSnapshot: 15_000,
   find: 15_000,
   pageText: 10_000,
+  click: 15_000,
+  typeText: 30_000,
+  fill: 15_000,
+  pressKey: 15_000,
+  hover: 10_000,
+  scroll: 10_000,
+  drag: 15_000,
+  uploadFile: 15_000,
+  pageEval: 30_000,
 }
 
 const isRecord = (v: unknown): v is Record<string, unknown> =>

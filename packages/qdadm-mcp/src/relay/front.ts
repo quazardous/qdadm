@@ -20,10 +20,8 @@ import {
   type Tool,
 } from '@modelcontextprotocol/sdk/types.js'
 import { createQdadmMcpServer } from '../server.ts'
-import type { DebugBrokerApi } from '../tools.ts'
+import { WRITE_TOOLS, type DebugBrokerApi } from '../tools.ts'
 import { ensureRelay } from './runfile.ts'
-
-const WRITE_TOOLS = new Set(['entity_create', 'entity_update', 'entity_delete'])
 
 export interface StdioFrontOptions {
   readOnly?: boolean

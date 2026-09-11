@@ -238,6 +238,35 @@ describe('qdadm-mcp toolset — navigation and action feedback (#2247)', () => {
   })
 })
 
+describe('qdadm-mcp toolset — acting in the page (#2247)', () => {
+  const relayApi = () => {
+    const api = { ...makeApi(), pairing: { status: vi.fn(() => ({ waiting: [] })), accept: vi.fn() } }
+    api.ask = vi.fn(async (type) =>
+      type === 'feedbackMark' ? { log: 0, signal: 0, route: '/', at: 0 } : type === 'feedbackSince' ? { ms: 1 } : { done: type }
+    )
+    return api
+  }
+  const ACTING = ['click', 'type_text', 'fill', 'press_key', 'drag', 'upload_file', 'page_eval']
+
+  it('exist on the relay only; readOnly keeps reading, hovering and scrolling, and drops every tool that acts', () => {
+    expect(buildToolset(makeApi()).map((t) => t.name)).not.toContain('click')
+    expect(buildToolset(relayApi()).map((t) => t.name)).toEqual(
+      expect.arrayContaining([...ACTING, 'hover', 'scroll', 'console_messages', 'network_requests'])
+    )
+    const readOnly = buildToolset(relayApi(), { readOnly: true }).map((t) => t.name)
+    for (const name of [...ACTING, 'entity_create']) expect(readOnly).not.toContain(name)
+    expect(readOnly).toEqual(expect.arrayContaining(['hover', 'scroll', 'console_messages', 'network_requests', 'page_snapshot']))
+  })
+
+  it('an action runs inside the feedback window', async () => {
+    const api = relayApi()
+    const res = await byName(buildToolset(api), 'click').handler({ ref: 'e4', clickCount: 2 })
+    expect(api.ask.mock.calls.map((c) => c[0])).toEqual(['feedbackMark', 'click', 'feedbackSince'])
+    expect(api.ask).toHaveBeenCalledWith('click', { ref: 'e4', button: undefined, clickCount: 2, modifiers: undefined }, 's1')
+    expect(res.feedback).toEqual({ ms: 1 })
+  })
+})
+
 describe('qdadm-mcp toolset — reading the page (#2247)', () => {
   const relayApi = () => {
     const api = { ...makeApi(), pairing: { status: vi.fn(() => ({ waiting: [] })), accept: vi.fn() } }
