@@ -99,6 +99,7 @@ To run it in a terminal and watch it: `npx qdadm-mcp-relay`.
 |---|---|
 | `--stdio` | Be the agent's MCP server, attached to the machine relay |
 | `--read-only` | Leave out the tools that change data or act in the page |
+| `--no-save-screenshots` | With `--stdio`: keep no screenshot in the project |
 | `--origin <origin>` | Only pages from this origin may pair (repeatable) |
 | `--port <p>` | A private relay on that port: no run file, not shared |
 | `--token <t>` | A fixed page token instead of a random one |
@@ -124,6 +125,12 @@ something failed, or a code waits.
 **Status** also offers **Allow real screenshots**. Agent screenshots are
 rendered from the page's DOM by default. Once you share the tab there, they
 are the real pixels, until **Stop sharing**.
+
+Screenshots are also kept in your project. The stdio front writes each one
+under `.aiball/screenshots/` in the directory the agent's client started it in
+(`20260911-112233-34fcb409-books-12-edit.jpg`), and the answer says where. Add
+`.aiball/screenshots/` to your `.gitignore`. `save: false` skips one picture;
+`--no-save-screenshots` turns saving off.
 
 ## Hear the chat: a Stop hook
 

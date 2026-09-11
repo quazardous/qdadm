@@ -30,3 +30,6 @@ packages/qdadm/src/generated/
 # Catches stray gen runs launched from the repo root instead of the package
 /src/generated/
 .mcp.json
+
+# Screenshots qdadm-mcp-relay --stdio keeps for the agent (#2284)
+.aiball/screenshots/

@@ -22,12 +22,20 @@ import {
 import { createQdadmMcpServer } from '../server.ts'
 import { WRITE_TOOLS, type DebugBrokerApi } from '../tools.ts'
 import { ensureRelay } from './runfile.ts'
+import { keepScreenshot } from './screenshots.ts'
 
 export interface StdioFrontOptions {
   readOnly?: boolean
+  /** Keep every screenshot under `.aiball/screenshots/` in the project (#2284). Default true. */
+  saveScreenshots?: boolean
+  /** The project: the directory the agent's client started this front in. Default: process.cwd(). */
+  cwd?: string
+  now?: () => Date
   log?: (message: string) => void
   /** Test seam: how to reach the relay's MCP endpoint. */
   resolveEndpoint?: () => Promise<URL>
+  /** Test seam: the upstream MCP client itself. */
+  connectUpstream?: () => Promise<Client>
 }
 
 const errorResult = (text: string): CallToolResult => ({ isError: true, content: [{ type: 'text', text }] })
@@ -62,11 +70,13 @@ export function createStdioFront(options: StdioFrontOptions = {}): Server {
     })
 
   let upstream: Client | null = null
-  const connect = async () => {
-    const client = new Client({ name: 'qdadm-mcp-front', version: '1.0.0' })
-    await client.connect(new StreamableHTTPClientTransport(await resolveEndpoint()))
-    return client
-  }
+  const connect =
+    options.connectUpstream ??
+    (async () => {
+      const client = new Client({ name: 'qdadm-mcp-front', version: '1.0.0' })
+      await client.connect(new StreamableHTTPClientTransport(await resolveEndpoint()))
+      return client
+    })
   /** One retry with a fresh connection: the relay may have been restarted since the last call. */
   const withUpstream = async <T>(fn: (client: Client) => Promise<T>): Promise<T> => {
     let lastError: unknown
@@ -101,14 +111,19 @@ export function createStdioFront(options: StdioFrontOptions = {}): Server {
     if (options.readOnly && WRITE_TOOLS.has(name)) {
       return errorResult(`'${name}' is disabled: this MCP server runs with --read-only.`)
     }
+    let result: CallToolResult
     try {
-      return (await withUpstream((c) => c.callTool({ name, arguments: args ?? {} }))) as CallToolResult
+      result = (await withUpstream((c) => c.callTool({ name, arguments: args ?? {} }))) as CallToolResult
     } catch (e) {
       return errorResult(
         `The qdadm relay could not be reached or started (${(e as Error).message}). Retry the call; if it keeps ` +
           'failing, run `npx qdadm-mcp-relay` in a terminal to see why.'
       )
     }
+    if (name === 'screenshot' && (options.saveScreenshots ?? true) && args?.save !== false) {
+      return keepScreenshot(result, { cwd: options.cwd ?? process.cwd(), now: options.now })
+    }
+    return result
   })
 
   return server

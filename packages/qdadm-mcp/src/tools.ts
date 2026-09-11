@@ -81,13 +81,19 @@ export interface ToolDef {
 
 /** An answer that is not JSON (#2247): text written for an agent to read, or an image. */
 export class ToolContent {
-  // A plain field, not a parameter property: the relay also runs from source, under Node's type stripping.
+  // Plain fields, not parameter properties: the relay also runs from source, under Node's type stripping.
   readonly content: Array<{ type: 'text'; text: string } | { type: 'image'; data: string; mimeType: string }>
+  /** Data for the MCP client rather than the agent, sent as the result's `_meta` (#2284). */
+  readonly meta: Record<string, unknown> | undefined
 
-  constructor(content: ToolContent['content']) {
+  constructor(content: ToolContent['content'], meta?: Record<string, unknown>) {
     this.content = content
+    this.meta = meta
   }
 }
+
+/** `_meta` key of a screenshot answer: which instance and page it shows, for the front that saves it (#2284). */
+export const SCREENSHOT_META = 'qdadm/screenshot'
 
 const instance: ToolArg = {
   kind: 'string',
@@ -497,16 +503,23 @@ export function buildToolset(api: DebugBrokerApi, options: ToolsetOptions = {}):
           format: { kind: 'string', description: '"jpeg" (default) or "png"' },
           quality: { kind: 'number', description: 'JPEG quality, 0.1 to 1 (default 0.8)' },
           withDebugBar: { kind: 'boolean', description: 'Keep the debug bar in a rendered picture' },
+          save: {
+            kind: 'boolean',
+            description: 'The stdio front keeps every picture under .aiball/screenshots/ in your project; false skips this one',
+          },
         },
         handler: async (a) => {
           const s = resolveSession(api, a)
           const payload = { ref: a.ref, fullPage: a.fullPage, source: a.source, format: a.format, quality: a.quality, withDebugBar: a.withDebugBar }
           const shot = (await api.ask('screenshot', payload, s.id)) as { data: string; mimeType: string; width: number; height: number; source: string }
           const how = shot.source === 'tab' ? 'real pixels from the tab capture' : 'rendered from the DOM'
-          return new ToolContent([
-            { type: 'image', data: shot.data, mimeType: shot.mimeType },
-            { type: 'text', text: `Instance ${s.id.slice(0, 8)}. ${shot.width}×${shot.height} ${shot.mimeType.replace('image/', '')}, ${how}.` },
-          ])
+          return new ToolContent(
+            [
+              { type: 'image', data: shot.data, mimeType: shot.mimeType },
+              { type: 'text', text: `Instance ${s.id.slice(0, 8)}. ${shot.width}×${shot.height} ${shot.mimeType.replace('image/', '')}, ${how}.` },
+            ],
+            { [SCREENSHOT_META]: { instance: s.id, location: s.meta.location ?? null } }
+          )
         },
       },
       {

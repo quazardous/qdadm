@@ -156,7 +156,9 @@ export function createQdadmMcpServer(api: DebugBrokerApi, options: McpServerOpti
 
     try {
       const result = await tool.handler(args)
-      if (result instanceof ToolContent) return { content: result.content }
+      if (result instanceof ToolContent) {
+        return result.meta ? { content: result.content, _meta: result.meta } : { content: result.content }
+      }
       return { content: [{ type: 'text' as const, text: JSON.stringify(result, null, 2) }] }
     } catch (e) {
       return errorResult((e as Error).message)

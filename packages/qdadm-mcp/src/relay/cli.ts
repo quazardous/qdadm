@@ -49,6 +49,8 @@ interface CliOptions {
   background: boolean
   token: string
   readOnly: boolean
+  /** `--no-save-screenshots`: the stdio front keeps no picture in the project (#2284). */
+  saveScreenshots: boolean
   origins: string[]
   idleMs: number
 }
@@ -61,6 +63,7 @@ function parseArgs(argv: string[]): CliOptions {
     background: false,
     token: randomUUID(),
     readOnly: false,
+    saveScreenshots: true,
     origins: [],
     idleMs: 30 * 60 * 1000,
   }
@@ -72,6 +75,7 @@ function parseArgs(argv: string[]): CliOptions {
     else if (a === '--background') opts.background = true
     else if (a === '--token') opts.token = String(argv[++i])
     else if (a === '--read-only') opts.readOnly = true
+    else if (a === '--no-save-screenshots') opts.saveScreenshots = false
     else if (a === '--origin') opts.origins.push(String(argv[++i]))
     else if (a === '--mcp-port') {
       i++
@@ -111,7 +115,7 @@ function readJsonBody(req: IncomingMessage): Promise<Record<string, unknown> | n
 export async function main(argv = process.argv.slice(2)): Promise<void> {
   const opts = parseArgs(argv)
   if (opts.chatHook !== null) return runChatHookCli(opts.chatHook)
-  if (opts.stdio) return runStdioFront({ readOnly: opts.readOnly })
+  if (opts.stdio) return runStdioFront({ readOnly: opts.readOnly, saveScreenshots: opts.saveScreenshots })
 
   const log = (m: string) => console.log(`${new Date().toISOString().slice(11, 19)} [qdadm-mcp-relay] ${m}`)
   const shared = opts.port === null
