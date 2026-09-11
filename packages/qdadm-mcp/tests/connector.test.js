@@ -386,3 +386,32 @@ describe('relay connector — chat and history survive a reload (#2231)', () => 
     expect(second.controller.activity.entries.map((e) => e.tool)).toEqual(['chat_send', 'chat_read'])
   })
 })
+
+describe('relay connector — clearing the chat (#2231)', () => {
+  afterEach(() => {
+    delete window.__qdadmRelayAuto
+    vi.unstubAllGlobals()
+  })
+
+  it('wipes the conversation for good: nothing to read, nothing back after a reload', async () => {
+    window.__qdadmRelayAuto = '/__qdadm/relay.json'
+    vi.stubGlobal('fetch', async () => ({ ok: true, status: 200, json: async () => ({ port: 47761, token: 'dev-token' }) }))
+    const broker = new RelayBroker({ token: 'dev-token', identity: identity(47761) })
+    const { controller } = install({ 47761: broker })
+    await vi.waitFor(() => expect(controller.state.status).toBe('connected'))
+    await broker.ask('chatPost', { message: 'hello' })
+    controller.chat.send('not read yet')
+    const seen = []
+    controller.chat.subscribe((messages) => seen.push(messages.length))
+
+    controller.chat.clear()
+
+    expect(controller.chat.messages).toEqual([])
+    expect(seen.at(-1)).toBe(0)
+    expect((await broker.ask('chatRead')).messages).toEqual([])
+    expect(JSON.parse(tabStore.getItem('qdadm-relay:chat')).messages).toEqual([])
+
+    controller.chat.send('after the clear')
+    expect((await broker.ask('chatRead')).messages.map((m) => m.text)).toEqual(['after the clear'])
+  })
+})

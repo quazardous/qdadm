@@ -257,6 +257,11 @@ const SETUP = 'npx qdadm-mcp-relay --stdio'
     </div>
 
     <section v-if="subTab === 'chat' && collector.canChat && state.status !== 'unavailable'" class="mcp-chat">
+      <div v-if="chat.length > 0" class="mcp-chat-toolbar">
+        <button type="button" class="mcp-btn mcp-btn-small" title="Clear the conversation" @click="collector.clearChat()">
+          <i class="pi pi-trash" /> Clear
+        </button>
+      </div>
       <div ref="chatLog" class="mcp-chat-log">
         <p v-if="chat.length === 0" class="mcp-hint">
           Chat with the agent: it writes here with <code>chat_send</code>, and reads what you type with
@@ -442,6 +447,14 @@ const SETUP = 'npx qdadm-mcp-relay --stdio'
   display: flex;
   flex-direction: column;
   gap: 0.4rem;
+}
+.mcp-chat-toolbar {
+  display: flex;
+  justify-content: flex-end;
+}
+.mcp-btn-small {
+  padding: 0.15rem 0.5rem;
+  font-size: 0.72rem;
 }
 .mcp-chat-log {
   display: flex;

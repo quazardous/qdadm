@@ -169,3 +169,19 @@ describe('RelayCollector — the MCP history (#2231)', () => {
     expect(listeners.size).toBe(0)
   })
 })
+
+describe('RelayCollector — clearing the chat (#2231)', () => {
+  it('asks the controller to clear', () => {
+    const controller = {
+      ...fakeController(),
+      chat: { messages: [], send: vi.fn(), clear: vi.fn(), subscribe: (l) => (l([]), () => {}) },
+    }
+    globalThis.__qdadmRelay = controller
+    const collector = new RelayCollector()
+    collector.install({})
+
+    collector.clearChat()
+
+    expect(controller.chat.clear).toHaveBeenCalled()
+  })
+})

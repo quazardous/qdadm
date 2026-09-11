@@ -183,6 +183,8 @@ export interface QdadmRelayController {
     readonly messages: readonly RelayChatMessage[]
     /** From the person at the tab. */
     send(text: string): void
+    /** Wipe the conversation — messages the agent has not read yet included. */
+    clear(): void
     /** Called at once with the messages, then on every new one. */
     subscribe(listener: (messages: readonly RelayChatMessage[]) => void): () => void
   }
@@ -273,10 +275,7 @@ export function installQdadmRelayConnector(options: QdadmRelayConnectorOptions =
   let agentReadUpTo = typeof savedChat?.readUpTo === 'number' ? savedChat.readUpTo : 0
   const saveChat = () =>
     tabStore.setItem(CHAT_KEY, JSON.stringify({ seq: chatSeq, readUpTo: agentReadUpTo, messages: chatMessages }))
-  const pushChat = (from: RelayChatMessage['from'], text: string) => {
-    chatMessages.push({ id: ++chatSeq, from, text: text.slice(0, 4000), at: Date.now() })
-    if (chatMessages.length > 100) chatMessages.shift()
-    saveChat()
+  const notifyChat = () => {
     for (const listener of chatListeners) {
       try {
         listener(chatMessages)
@@ -284,6 +283,12 @@ export function installQdadmRelayConnector(options: QdadmRelayConnectorOptions =
         /* a broken listener must not break the chat */
       }
     }
+  }
+  const pushChat = (from: RelayChatMessage['from'], text: string) => {
+    chatMessages.push({ id: ++chatSeq, from, text: text.slice(0, 4000), at: Date.now() })
+    if (chatMessages.length > 100) chatMessages.shift()
+    saveChat()
+    notifyChat()
   }
   const unreadFromUser = () => chatMessages.filter((m) => m.from === 'user' && m.id > agentReadUpTo)
   const chatHandlers: Record<string, (payload?: Record<string, unknown>) => unknown> = {
@@ -651,6 +656,13 @@ export function installQdadmRelayConnector(options: QdadmRelayConnectorOptions =
       send(text: string) {
         const trimmed = String(text ?? '').trim()
         if (trimmed) pushChat('user', trimmed)
+      },
+      clear() {
+        chatMessages.length = 0
+        // Ids keep counting: nothing wiped can come back as unread.
+        agentReadUpTo = chatSeq
+        saveChat()
+        notifyChat()
       },
       subscribe(listener) {
         chatListeners.add(listener)

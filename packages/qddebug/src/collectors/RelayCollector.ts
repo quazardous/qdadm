@@ -64,6 +64,7 @@ export interface RelayControllerLike {
   readonly chat?: {
     readonly messages: readonly RelayChatMessageLike[]
     send(text: string): void
+    clear?(): void
     subscribe(listener: (messages: readonly RelayChatMessageLike[]) => void): () => void
   }
   readonly activity?: {
@@ -148,6 +149,10 @@ export class RelayCollector extends Collector {
 
   sendChat(text: string): void {
     this._controller?.chat?.send(text)
+  }
+
+  clearChat(): void {
+    this._controller?.chat?.clear?.()
   }
 
   pair(port?: number): Promise<void> {
