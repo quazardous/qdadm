@@ -72,6 +72,27 @@ unsaved-changes guard.
 | `showErrorOnSubmit` | Only show the error after submit |
 | `fullWidth` | Stretch the field row |
 
+### Labels name their control
+
+The label points at the control inside the field. Clicking it focuses the
+field, and screen readers and agents read the field by its label.
+
+- `FormInput` binds the id with each PrimeVue control's own prop.
+- A widget put directly in the slot takes the id after render. If it already
+  has an id of its own, it keeps it and the label points there.
+- An element a `<label for>` cannot name, such as a `div` with
+  `role="combobox"`, gets `aria-labelledby` instead.
+- The ids are unique per field instance, so two forms on one page do not
+  collide.
+
+When a widget needs the ids passed explicitly, take them from the slot:
+
+```vue
+<FormField name="author" label="Author" v-slot="{ inputId, labelId }">
+  <AutoComplete v-model="form.data.value.author" :inputId="inputId" :ariaLabelledby="labelId" />
+</FormField>
+```
+
 ### Nested values (path-addressable dirty)
 
 `name` accepts dot paths: a `FormField` bound to a sub-field of a JSON

@@ -8,7 +8,8 @@
  * Usage:
  * <FormInput :field="f" v-model="form.data.value[f.name]" />
  */
-import { computed, type PropType } from 'vue'
+import { computed, inject, type PropType } from 'vue'
+import { FORM_FIELD_IDS } from './formFieldIds'
 import InputText from 'primevue/inputtext'
 import InputNumber from 'primevue/inputnumber'
 import Textarea from 'primevue/textarea'
@@ -51,8 +52,15 @@ const props = defineProps({
   // generateFields loop) must bind without casts (#1387)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   modelValue: { type: null as unknown as PropType<any>, default: null },
-  hint: { type: String as () => InputType | null, default: null }  // Optional type hint override
+  hint: { type: String as () => InputType | null, default: null },  // Optional type hint override
+  /** The control's id. Inside a FormField it defaults to the id the field's label points at (#2268). */
+  inputId: { type: String as PropType<string | null>, default: null }
 })
+
+// Inside a FormField, its label names this control (#2268): each PrimeVue control takes the id with its own prop.
+const fieldIds = inject(FORM_FIELD_IDS, null)
+const controlId = computed<string | undefined>(() => props.inputId ?? fieldIds?.inputId.value ?? undefined)
+const labelledBy = computed<string | undefined>(() => fieldIds?.labelId.value)
 
 const emit = defineEmits<{
   'update:modelValue': [value: ModelValue]
@@ -116,6 +124,7 @@ const dateValue = computed<Date | null>({
   <InputText
     v-if="inputType === 'text' || inputType === 'email'"
     v-model="stringValue"
+    :id="controlId"
     :placeholder="field.placeholder"
     :disabled="field.disabled"
     :readonly="field.readonly"
@@ -124,6 +133,7 @@ const dateValue = computed<Date | null>({
   <Password
     v-else-if="inputType === 'password'"
     v-model="stringValue"
+    :inputId="controlId"
     :placeholder="field.placeholder"
     :disabled="field.disabled"
     :feedback="false"
@@ -133,6 +143,7 @@ const dateValue = computed<Date | null>({
   <InputNumber
     v-else-if="inputType === 'number'"
     v-model="numberValue"
+    :inputId="controlId"
     :placeholder="field.placeholder"
     :disabled="field.disabled"
     :readonly="field.readonly"
@@ -147,6 +158,7 @@ const dateValue = computed<Date | null>({
   <Textarea
     v-else-if="inputType === 'textarea'"
     v-model="stringValue"
+    :id="controlId"
     :placeholder="field.placeholder"
     :disabled="field.disabled"
     :readonly="field.readonly"
@@ -156,6 +168,8 @@ const dateValue = computed<Date | null>({
   <Select
     v-else-if="inputType === 'select'"
     v-model="value"
+    :labelId="controlId"
+    :ariaLabelledby="labelledBy"
     :options="field.options"
     :optionLabel="field.optionLabel"
     :optionValue="field.optionValue"
@@ -166,12 +180,14 @@ const dateValue = computed<Date | null>({
   <Checkbox
     v-else-if="inputType === 'boolean'"
     v-model="booleanValue"
+    :inputId="controlId"
     :disabled="field.disabled"
     binary
   />
   <DatePicker
     v-else-if="inputType === 'date' || inputType === 'datetime'"
     v-model="dateValue"
+    :inputId="controlId"
     :placeholder="field.placeholder"
     :disabled="field.disabled"
     :showTime="inputType === 'datetime'"
@@ -181,6 +197,7 @@ const dateValue = computed<Date | null>({
   <InputText
     v-else
     v-model="stringValue"
+    :id="controlId"
     :placeholder="field.placeholder"
     :disabled="field.disabled"
     class="w-full"
