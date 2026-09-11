@@ -229,7 +229,7 @@ Only what happened is listed: an empty category is left out.
 | `instances` | Which tabs you can target |
 | `navigate` | Relay: open a path or a route like a user, wait for the page to settle, get route, title, breadcrumb and feedback |
 | `wait_for` | Relay: wait for a route or a signal, with a timeout that says where the tab is |
-| `page_snapshot` | Relay: what the user sees, as an accessibility tree — role, name, states, value and a **ref** per element; `filter: "interactive"`, or one part by `ref` |
+| `page_snapshot` | Relay: what the user sees, as an accessibility tree — role, name, states, value and a **ref** per element; `filter: "interactive"`, or one part by `ref`. It opens with the layout, the page component and the entity permissions, and shows qdadm zones as lines (`meta: false` for the bare tree) |
 | `find` | Relay: elements by role and/or text, with their ref and where they sit (row, dialog, form) |
 | `page_text` | Relay: the visible text of the tab, or of one element |
 | `click` / `type_text` / `press_key` | Relay: act on a ref like a user — real event order, focus, browser defaults (Enter submits, Tab moves focus); refused on a disabled or covered element, unless `force: true`, and the answer then lists what was skipped |
@@ -270,6 +270,10 @@ Typical debugging moves, grounded in real sessions:
   with a ref on every element. `filter: "interactive"` for just the
   controls, `find` to locate one ("the Save button", "the row of Dune"),
   `page_text` for the prose.
+- **What is the page made of?** → the same `page_snapshot`: its header
+  names the layout, the page component and its file, and what the user may
+  do with the entity; a `zone "…" [blocks: …]` line tells which module put
+  an element there.
 - **Act like the user** → refs from `page_snapshot` or `find`, then `click`,
   `fill`, `type_text`, `press_key`. Each returns the dialog it opened or
   closed (with its ref), what has focus, and the feedback block; a refusal

@@ -452,15 +452,20 @@ export function buildToolset(api: DebugBrokerApi, options: ToolsetOptions = {}):
           'states and value — `- textbox "Title" [required] [invalid] [value="Dune"] [ref=e9]` — and the text ' +
           'around it. Every element carries a ref that find and the action tools take. Refs stay valid while the ' +
           'element lives; a re-rendered one says so. The debug bar is left out; fields in error are listed at the ' +
-          'end. Far cheaper than a screenshot.',
+          'end. It opens with what the page is made of: the layout and page components (with their source file in ' +
+          'dev), the entity and what the current user may do with it. A qdadm zone shows as a `zone "name" [blocks: ' +
+          '…]` line above what it renders, so you can tell which module put an element there. Far cheaper than a ' +
+          'screenshot.',
         args: {
           instance,
           filter: { kind: 'string', description: '"interactive": only what can be acted on, as a flat list. Default: the whole tree' },
           ref: { kind: 'string', description: 'Snapshot only this element, e.g. a dialog or a table ("e42")' },
           maxRows: { kind: 'number', description: 'Rows kept per table (default 20)' },
           maxChars: { kind: 'number', description: 'Cut the snapshot past this many characters (default 30000)' },
+          meta: { kind: 'boolean', description: 'false: the tree only, without the page header and the zone lines' },
         },
-        handler: (a) => readText(a, 'pageSnapshot', { filter: a.filter, ref: a.ref, maxRows: a.maxRows, maxChars: a.maxChars }),
+        handler: (a) =>
+          readText(a, 'pageSnapshot', { filter: a.filter, ref: a.ref, maxRows: a.maxRows, maxChars: a.maxChars, meta: a.meta }),
       },
       {
         name: 'find',

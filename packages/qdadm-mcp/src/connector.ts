@@ -73,6 +73,17 @@ interface NetworkEntry {
   error?: string
 }
 
+/** What the page header reads from a matched route record: the mounted component, else the resolved one (#2342). */
+interface RouteRecordLike {
+  components?: Record<string, unknown> | null
+  instances?: Record<string, { $?: ComponentInstanceLike } | null | undefined>
+}
+
+interface ComponentInstanceLike {
+  type?: { name?: string; __name?: string; __file?: string }
+  subTree?: { component?: ComponentInstanceLike | null } | null
+}
+
 interface QdadmGlobal {
   kernel?: { options?: { app?: { name?: string; version?: string | (() => string) } } }
   orchestrator?: {
@@ -87,12 +98,24 @@ interface QdadmGlobal {
     }
   }
   router?: {
-    currentRoute: { value: { name?: unknown; fullPath?: string; params?: Record<string, unknown> } }
+    currentRoute: {
+      value: {
+        name?: unknown
+        fullPath?: string
+        params?: Record<string, unknown>
+        meta?: Record<string, unknown>
+        matched?: RouteRecordLike[]
+      }
+    }
     getRoutes(): Array<{ name?: unknown; path: string; meta?: Record<string, unknown> }>
     push?(to: unknown): Promise<unknown>
     afterEach?(hook: () => void): unknown
   }
   signals?: { on(pattern: string, cb: (event: { name?: string; data?: unknown }) => void): unknown }
+  zones?: {
+    inspect?(zone: string): { blocks: Array<{ id: string | null; component: string }>; default: string | null } | null
+  }
+  activeStack?: { getLevels?(): Array<{ entity?: string; id?: string | null }> }
   debug?: { bridge?: { describe(): unknown; dump(): unknown; call(c: string, a: string, args: unknown): Promise<unknown> } }
 }
 
@@ -1181,6 +1204,99 @@ function createPageAgent(sessionId: string, q: () => QdadmGlobal) {
     return `Page: ${JSON.stringify(document.title)} — route ${String(route?.name ?? '?')} (${route?.fullPath ?? window.location.pathname})`
   }
 
+  // ── what the page is made of (#2342) ───────────────────────────────────
+  /** A component's source, as short as still clear: `src/…` in the app, or the package it ships in. */
+  const sourceOf = (file?: string) => {
+    if (!file) return ''
+    const inPackage = /(@[\w.-]+\/[\w.-]+|packages\/[\w.-]+)\/(src\/.+)$/.exec(file)
+    if (inPackage) return `${inPackage[1]}/${inPackage[2]}`
+    const at = file.indexOf('/src/')
+    return at >= 0 ? file.slice(at + 1) : file
+  }
+  const nameOf = (type?: ComponentInstanceLike['type']) => type?.__name || type?.name || null
+  /** Layout, page component, entity and what the user may do with it, active stack — lines under `Page:`. */
+  const compositionLines = (): string[] => {
+    const lines: string[] = []
+    let route: NonNullable<QdadmGlobal['router']>['currentRoute']['value'] | undefined
+    try {
+      route = q().router?.currentRoute?.value
+    } catch {
+      return lines
+    }
+    const matched = route?.matched ?? []
+    const mounted = (record?: RouteRecordLike) => record?.instances?.default?.$ ?? null
+    if (matched.length > 1) {
+      // The layout route's component, then the components it renders at its root (MainLayout → AppLayout).
+      const chain: string[] = []
+      let instance = mounted(matched[0])
+      for (let depth = 0; instance && depth < 6; depth++) {
+        const name = nameOf(instance.type)
+        if (name && !chain.includes(name)) chain.push(name)
+        instance = instance.subTree?.component ?? null
+      }
+      if (chain.length > 0) lines.push(`Layout: ${chain.join(' → ')}`)
+    }
+    const leaf = matched[matched.length - 1]
+    const resolved = leaf?.components?.default
+    const page = mounted(leaf)?.type ?? (resolved && typeof resolved === 'object' ? (resolved as ComponentInstanceLike['type']) : undefined)
+    const pageName = nameOf(page)
+    if (pageName) {
+      const file = sourceOf(page?.__file)
+      lines.push(`Component: ${pageName}${file ? ` (${file})` : ''}`)
+    }
+    let levels: Array<{ entity?: string; id?: string | null }> = []
+    try {
+      levels = (q().activeStack?.getLevels?.() ?? []).filter((level) => level?.entity)
+    } catch {
+      /* no stack */
+    }
+    const entity = (route?.meta?.entity as string | undefined) ?? levels[levels.length - 1]?.entity
+    if (entity) {
+      let line = `Entity: ${entity}`
+      try {
+        const orch = q().orchestrator
+        if (orch?.isRegistered(entity)) {
+          const m = orch.get(entity) as Record<string, unknown>
+          const can = ['list', 'create', 'update', 'delete'].flatMap((action) => {
+            const check = m[`can${action[0].toUpperCase()}${action.slice(1)}`]
+            if (typeof check !== 'function') return []
+            try {
+              return [`${action} ${check.call(m) ? '✓' : '✗'}`]
+            } catch {
+              return [`${action} ?`]
+            }
+          })
+          if (can.length > 0) line += ` — ${can.join(', ')}`
+          const hasChecker = m._hasSecurityChecker as (() => boolean) | undefined
+          const keyOf = m._getPermissionString as ((action: string) => string) | undefined
+          if (typeof hasChecker === 'function' && hasChecker.call(m) && typeof keyOf === 'function') {
+            line += ` (checks ${keyOf.call(m, '<action>')})`
+          }
+        }
+      } catch {
+        /* the entity line without its permissions */
+      }
+      lines.push(line)
+    }
+    if (levels.some((level) => level.id)) {
+      lines.push(`Stack: ${levels.map((level) => (level.id ? `${level.entity} #${level.id}` : level.entity)).join(' › ')}`)
+    }
+    return lines
+  }
+  /** What a zone holds, from the zone registry: its blocks in render order, or its default. */
+  const zoneBlocks = (zone: string): string | null => {
+    try {
+      const info = q().zones?.inspect?.(zone)
+      if (!info) return null
+      if (info.blocks.length > 0) {
+        return `blocks: ${info.blocks.map((block) => [block.id, block.component].filter(Boolean).join(' ')).join(', ')}`
+      }
+      return info.default ? `default: ${info.default}` : null
+    } catch {
+      return null
+    }
+  }
+
   // ── screenshots (#2247) ────────────────────────────────────────────────
   // snapdom loads on the first screenshot. A real capture is a stream the user
   // shared from the MCP tab; it runs until they stop it, or the browser does.
@@ -1430,12 +1546,23 @@ function createPageAgent(sessionId: string, q: () => QdadmGlobal) {
     },
     pageSnapshot: async (payload) => {
       const { snapshot } = await aria()
-      const text = snapshot(refs, { filter: payload?.filter as string, root: rootOf(payload), maxRows: payload?.maxRows as number, maxChars: payload?.maxChars as number })
-      return { text: `${pageLine()}\n\n${text}` }
+      // meta: false gives the tree alone, as before #2342.
+      const meta = payload?.meta !== false
+      const text = snapshot(refs, {
+        filter: payload?.filter as string,
+        root: rootOf(payload),
+        maxRows: payload?.maxRows as number,
+        maxChars: payload?.maxChars as number,
+        zoneBlocks: meta ? zoneBlocks : null,
+      })
+      const head = meta ? [pageLine(), ...compositionLines()] : [pageLine()]
+      return { text: `${head.join('\n')}\n\n${text}` }
     },
     find: async (payload) => {
       const { find } = await aria()
-      return { text: find(refs, { text: payload?.text as string, role: payload?.role as string, root: rootOf(payload), limit: payload?.limit as number }) }
+      return {
+        text: find(refs, { text: payload?.text as string, role: payload?.role as string, root: rootOf(payload), limit: payload?.limit as number, zoneBlocks }),
+      }
     },
     pageText: async (payload) => {
       const { pageText } = await aria()

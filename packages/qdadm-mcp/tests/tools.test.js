@@ -314,7 +314,7 @@ describe('qdadm-mcp toolset — reading the page (#2247)', () => {
   it('answers with the text the tab wrote, headed by the instance, not a JSON dump', async () => {
     const api = relayApi()
     const res = await byName(buildToolset(api), 'page_snapshot').handler({ filter: 'interactive', ref: 'e2' })
-    expect(api.ask).toHaveBeenLastCalledWith('pageSnapshot', { filter: 'interactive', ref: 'e2', maxRows: undefined, maxChars: undefined }, 's1')
+    expect(api.ask).toHaveBeenLastCalledWith('pageSnapshot', { filter: 'interactive', ref: 'e2', maxRows: undefined, maxChars: undefined, meta: undefined }, 's1')
     expect(res).toBeInstanceOf(ToolContent)
     expect(res.content).toEqual([{ type: 'text', text: 'Instance s1. - button "Save" [ref=e3]' }])
 

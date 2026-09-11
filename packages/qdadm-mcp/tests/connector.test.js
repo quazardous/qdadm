@@ -1028,3 +1028,144 @@ describe('relay connector — the relay knows where the tab is (#2317)', () => {
     await vi.waitFor(() => expect(locationOf(broker)).toBe('/books'))
   })
 })
+
+describe('relay connector — page_snapshot says what the page is made of (#2342)', () => {
+  afterEach(() => {
+    document.body.innerHTML = ''
+    delete window.__qdadm
+    delete window.__qdadmRelayAuto
+    vi.unstubAllGlobals()
+  })
+
+  /** A qdadm app on its books list: MainLayout wraps AppLayout, BookList is the page, two blocks in the header zone. */
+  const booksApp = ({ levels = [] } = {}) => ({
+    router: {
+      currentRoute: {
+        value: {
+          name: 'book',
+          fullPath: '/books',
+          params: {},
+          meta: { entity: 'books' },
+          matched: [
+            {
+              instances: {
+                default: {
+                  $: {
+                    type: { __name: 'MainLayout', __file: '/home/dev/demo/src/pages/MainLayout.vue' },
+                    subTree: {
+                      component: {
+                        type: { __name: 'AppLayout', __file: '/home/dev/node_modules/@quazardous/qdadm/src/components/layout/AppLayout.vue' },
+                        subTree: {},
+                      },
+                    },
+                  },
+                },
+              },
+            },
+            { components: { default: { __name: 'BookList', __file: '/home/dev/demo/src/modules/books/pages/BookList.vue' } }, instances: {} },
+          ],
+        },
+      },
+      getRoutes: () => [],
+    },
+    orchestrator: {
+      isRegistered: (name) => name === 'books',
+      getRegisteredNames: () => ['books'],
+      get: () => ({
+        canList: () => true,
+        canCreate: () => true,
+        canUpdate: () => true,
+        canDelete: () => false,
+        _hasSecurityChecker: () => true,
+        _getPermissionString: (action) => `entity:books:${action}`,
+      }),
+    },
+    zones: {
+      inspect: (zone) =>
+        zone === 'books-list-header'
+          ? { name: zone, blocks: [{ id: 'filter-genre', weight: 0, component: 'GenreFilter' }, { id: 'export-btn', weight: 10, component: 'ExportButton' }], default: null }
+          : { name: zone, blocks: [], default: null },
+    },
+    activeStack: { getLevels: () => levels },
+  })
+
+  const PAGE = `
+    <main>
+      <h1>Books</h1>
+      <div data-zone="books-list-header" class="qdadm-zone">
+        <select aria-label="Genre"><option>sci-fi</option></select>
+        <button>Export</button>
+      </div>
+      <div data-zone="books-list-empty" class="qdadm-zone"></div>
+      <button>Add Book</button>
+    </main>`
+
+  const connectedTo = async (app, html = PAGE) => {
+    document.body.innerHTML = html
+    window.__qdadm = app
+    window.__qdadmRelayAuto = '/__qdadm/relay.json'
+    vi.stubGlobal('fetch', async () => ({ ok: true, status: 200, json: async () => ({ port: 47761, token: 'dev-token' }) }))
+    const broker = new RelayBroker({ token: 'dev-token', identity: identity(47761) })
+    const { controller } = install({ 47761: broker })
+    await vi.waitFor(() => expect(controller.state.status).toBe('connected'))
+    return broker
+  }
+
+  it('opens with the layout, the page component and its file, and what the user may do with the entity', async () => {
+    const broker = await connectedTo(booksApp())
+    const { text } = await broker.ask('pageSnapshot', {})
+    const head = text.split('\n\n')[0].split('\n')
+
+    expect(head[0]).toMatch(/^Page: .* — route book \(\/books\)$/)
+    expect(head).toContain('Layout: MainLayout → AppLayout')
+    expect(head).toContain('Component: BookList (src/modules/books/pages/BookList.vue)')
+    expect(head).toContain('Entity: books — list ✓, create ✓, update ✓, delete ✗ (checks entity:books:<action>)')
+  })
+
+  it('a zone on screen is a line naming its blocks, with what it renders below it; an empty zone says nothing', async () => {
+    const broker = await connectedTo(booksApp())
+    const lines = (await broker.ask('pageSnapshot', {})).text.split('\n')
+    const at = lines.findIndex((l) =>
+      /^\s*- zone "books-list-header" \[blocks: filter-genre GenreFilter, export-btn ExportButton\] \[ref=e\d+\]:$/.test(l)
+    )
+
+    expect(at).toBeGreaterThan(-1)
+    // What the zone renders sits one level below it; what follows the zone, at its level.
+    const pad = lines[at].indexOf('-')
+    expect(lines[at + 1]).toMatch(new RegExp(`^ {${pad + 2}}- combobox "Genre"`))
+    expect(lines[at + 2]).toMatch(new RegExp(`^ {${pad + 2}}- button "Export"`))
+    expect(lines.join('\n')).not.toContain('books-list-empty')
+    expect(lines.find((l) => l.includes('button "Add Book"'))).toMatch(new RegExp(`^ {${pad}}- button "Add Book"`))
+  })
+
+  it('"interactive" and find say which zone an element sits in', async () => {
+    const broker = await connectedTo(booksApp())
+    const interactive = (await broker.ask('pageSnapshot', { filter: 'interactive' })).text
+
+    expect(interactive).toMatch(/^- button "Export" \[ref=e\d+\] — in zone "books-list-header"$/m)
+    expect(interactive).toMatch(/^- button "Add Book" \[ref=e\d+\]$/m)
+    expect((await broker.ask('find', { text: 'Export' })).text).toContain('— in zone "books-list-header"')
+  })
+
+  it('meta: false gives the tree as before: no header, no zone lines', async () => {
+    const broker = await connectedTo(booksApp())
+    const { text } = await broker.ask('pageSnapshot', { meta: false })
+
+    expect(text).toMatch(/^Page: /)
+    expect(text).not.toContain('Layout:')
+    expect(text).not.toContain('zone "')
+    expect(text).toMatch(/^\s*- button "Export" \[ref=e\d+\]$/m)
+  })
+
+  it('an item page shows the active stack; an app without router, entity or zones still snapshots', async () => {
+    const broker = await connectedTo(booksApp({ levels: [{ entity: 'books', id: '7' }, { entity: 'loans', id: 'l1' }] }))
+    expect((await broker.ask('pageSnapshot', {})).text).toContain('Stack: books #7 › loans #l1')
+
+    document.body.innerHTML = PAGE
+    window.__qdadm = {}
+    const bare = (await broker.ask('pageSnapshot', {})).text
+    expect(bare.split('\n\n')[0]).toMatch(/^Page: [^\n]*$/)
+    expect(bare).toContain('- button "Export"')
+    expect(bare).toContain('zone "books-list-header" [ref=')
+  })
+})

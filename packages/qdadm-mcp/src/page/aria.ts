@@ -236,7 +236,12 @@ interface Walk {
   maxRows: number
   visited: number
   truncated: boolean
+  /** qdadm zones become lines, with what their blocks are (#2342). Null: zones stay transparent. */
+  zoneBlocks: ZoneBlocks | null
 }
+
+/** What a zone holds, as the zone line says it ("blocks: filter-genre GenreFilter"), or null. */
+export type ZoneBlocks = (zone: string) => string | null
 
 function pushText(out: AxItem[], text: string): void {
   const last = out.length - 1
@@ -257,6 +262,19 @@ function walk(node: Node, w: Walk, out: AxItem[]): void {
   if (!isShown(element)) return
   if (++w.visited > ELEMENT_LIMIT) {
     w.truncated = true
+    return
+  }
+
+  // A qdadm zone (<div data-zone>): which module put what follows on the page (#2342).
+  const zone = w.zoneBlocks ? element.getAttribute('data-zone') : null
+  if (zone) {
+    const ref = w.refs.refOf(element)
+    const inside: AxItem[] = []
+    for (const kid of Array.from(element.childNodes)) walk(kid, w, inside)
+    // A zone that renders nothing visible says nothing.
+    if (inside.length === 0) return
+    const blocks = w.zoneBlocks!(zone)
+    out.push({ element, role: 'zone', name: zone, ref, states: blocks ? [blocks] : [], children: inside })
     return
   }
 
@@ -331,7 +349,12 @@ function walk(node: Node, w: Walk, out: AxItem[]): void {
   out.push(ax)
 }
 
-function collect(refs: RefRegistry, root: Element | null, maxRows: number): { items: AxItem[]; truncated: boolean } {
+function collect(
+  refs: RefRegistry,
+  root: Element | null,
+  maxRows: number,
+  zoneBlocks: ZoneBlocks | null = null
+): { items: AxItem[]; truncated: boolean } {
   const cache = new Map<Element, CSSStyleDeclaration>()
   // One layout read per element per snapshot: names and visibility ask for the same styles.
   const style = ((element: Element, pseudo?: string | null) => {
@@ -343,7 +366,7 @@ function collect(refs: RefRegistry, root: Element | null, maxRows: number): { it
     }
     return s
   }) as typeof window.getComputedStyle
-  const w: Walk = { refs, style, maxRows, visited: 0, truncated: false }
+  const w: Walk = { refs, style, maxRows, visited: 0, truncated: false, zoneBlocks }
   const items: AxItem[] = []
   if (root) walk(root, w, items)
   else for (const child of Array.from(document.body.childNodes)) walk(child, w, items)
@@ -417,15 +440,21 @@ export interface SnapshotOptions {
   root?: Element | null
   maxRows?: number
   maxChars?: number
+  /** Show qdadm zones as lines, each saying what it holds (#2342). Default: zones stay transparent. */
+  zoneBlocks?: ZoneBlocks | null
 }
 
 export function snapshot(refs: RefRegistry, options: SnapshotOptions = {}): string {
   const maxRows = Math.min(Math.max(Number(options.maxRows) || 20, 1), 500)
   const maxChars = Math.min(Math.max(Number(options.maxChars) || 30000, 1000), 200000)
-  const { items, truncated } = collect(refs, options.root ?? null, maxRows)
+  const { items, truncated } = collect(refs, options.root ?? null, maxRows, options.zoneBlocks ?? null)
   const lines: string[] = []
   if (options.filter === 'interactive') {
-    for (const { node } of nodes(items)) if (INTERACTIVE.has(node.role)) lines.push(`- ${describeNode(node)}`)
+    for (const { node, ancestors } of nodes(items)) {
+      if (!INTERACTIVE.has(node.role)) continue
+      const zone = [...ancestors].reverse().find((a) => a.role === 'zone')
+      lines.push(`- ${describeNode(node)}${zone ? ` — in zone ${JSON.stringify(zone.name)}` : ''}`)
+    }
   } else {
     render(items, 0, lines)
   }
@@ -442,6 +471,8 @@ export interface FindOptions {
   role?: string
   root?: Element | null
   limit?: number
+  /** Say the zone an element sits in, when no row, dialog or form is nearer (#2342). */
+  zoneBlocks?: ZoneBlocks | null
 }
 
 /** Elements by role and/or text, each with where it sits (its row, dialog, form…). */
@@ -450,7 +481,7 @@ export function find(refs: RefRegistry, options: FindOptions): string {
   const role = options.role ? options.role.toLowerCase() : null
   if (!text && !role) throw new Error('find needs text, role, or both')
   const limit = Math.min(Math.max(Number(options.limit) || 30, 1), 200)
-  const { items } = collect(refs, options.root ?? null, Number.MAX_SAFE_INTEGER)
+  const { items } = collect(refs, options.root ?? null, Number.MAX_SAFE_INTEGER, options.zoneBlocks ?? null)
   const found: string[] = []
   let total = 0
   for (const { node, ancestors } of nodes(items)) {
@@ -462,7 +493,7 @@ export function find(refs: RefRegistry, options: FindOptions): string {
     if (++total > limit) continue
     const context = [...ancestors]
       .reverse()
-      .find((a) => ['row', 'dialog', 'alertdialog', 'form', 'tabpanel', 'listitem', 'navigation', 'region', 'menu'].includes(a.role))
+      .find((a) => ['row', 'dialog', 'alertdialog', 'form', 'tabpanel', 'listitem', 'navigation', 'region', 'menu', 'zone'].includes(a.role))
     const where = context ? ` — in ${context.role} ${JSON.stringify(clip(context.name || textOf(context), 60))}` : ''
     // A row or a cell has no name: its text is what tells it apart.
     const said = !node.name && node.value === undefined ? clip(textOf(node), 80) : ''
