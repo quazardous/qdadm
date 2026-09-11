@@ -35,7 +35,7 @@ npm install -D @quazardous/qdadm-mcp
 claude mcp add qdadm -- npx qdadm-mcp-relay --stdio
 ```
 
-Then in the app: debug bar → **MCP** → give the agent the code it shows →
+Then in the app: debug bar → **MCP** tab → **Pair** → give the agent the code →
 `pair_accept`. The relay belongs to the agent session, so app restarts do not
 break it. Dev-server-only alternative: `qdadmMcpPlugin()` and
 `claude mcp add --transport http qdadm http://localhost:5174/__qdadm/mcp`.

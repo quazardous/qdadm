@@ -74,8 +74,8 @@ installQdadmRelayConnector()
 claude mcp add qdadm -- npx qdadm-mcp-relay --stdio
 ```
 
-In the app, click **MCP** in the debug bar and give the agent the code it
-shows; the agent calls `pair_accept`. The paired tab is what every tool
+In the app, open the **MCP** tab of the debug bar, click **Pair**, and give
+the agent the code it shows; the agent calls `pair_accept`. The paired tab is what every tool
 targets. It stays paired across reloads and app restarts, and the relay
 lives as long as the agent session. Works on static hosting too. On a public
 https origin, Chrome first asks the user to allow local network access.
@@ -132,8 +132,8 @@ Every browser tab gets a session id, kept across reloads; endpoints accept
 The optional in-app debug bar (`debugBar` kernel option, see the demo)
 surfaces the same collectors visually: entities, routes, signals timeline,
 auth state, i18n domains.
-With the relay connector installed, its **MCP** button pairs the tab with
-an agent (see above).
+With the relay connector installed, an **MCP** tab pairs the browser tab
+with an agent (see above).
 
 `debugBar: { enabled: false }` turns it off — both the bar and the debug mode
 it would otherwise switch on.

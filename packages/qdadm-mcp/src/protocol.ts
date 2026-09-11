@@ -4,7 +4,7 @@
  */
 
 /**
- * Loopback ports a relay listens on, tried in order; "Pair MCP" scans the
+ * Loopback ports a relay listens on, tried in order; the MCP tab scans the
  * same list.
  *
  * A list, not one port: fixed ports collide. Where this was measured, the

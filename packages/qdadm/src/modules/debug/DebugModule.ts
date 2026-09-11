@@ -22,6 +22,7 @@ import { AuthCollector } from './AuthCollector'
 import { EntitiesCollector } from './EntitiesCollector'
 import { RouterCollector } from './RouterCollector'
 import { I18nCollector } from './I18nCollector'
+import { RelayCollector, findRelayController } from '@quazardous/qddebug'
 import DebugBar from './components/DebugBar.vue'
 import type { KernelContext } from '../../kernel/KernelContext'
 
@@ -67,6 +68,8 @@ export interface DebugModuleOptions extends ModuleOptions {
   entitiesCollector?: boolean
   routerCollector?: boolean
   i18nCollector?: boolean
+  /** MCP tab (#2231) — only shown where the relay connector is installed */
+  relayCollector?: boolean
   _kernelManaged?: boolean
   /**
    * Existing DebugBridge to register collectors onto. When provided,
@@ -150,6 +153,12 @@ export class DebugModule extends Module {
 
     if (this.options.i18nCollector !== false) {
       this._bridge.addCollector(new I18nCollector(collectorOptions))
+    }
+
+    // The MCP tab (#2231), after i18n — and only where the app installed the
+    // relay connector: no connector, nothing to pair, no tab.
+    if (this.options.relayCollector !== false && findRelayController()) {
+      this._bridge.addCollector(new RelayCollector(collectorOptions))
     }
 
     // Install collectors with context — only when WE own the bridge.

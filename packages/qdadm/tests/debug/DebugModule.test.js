@@ -283,3 +283,47 @@ describe('DebugModule', () => {
     })
   })
 })
+
+describe('DebugModule — the MCP tab (#2231)', () => {
+  const fakeRelay = () => ({
+    state: { status: 'idle' },
+    subscribe: (listener) => {
+      listener({ status: 'idle' })
+      return () => {}
+    },
+    pair: async () => {},
+    unpair: () => {},
+  })
+
+  let module
+
+  afterEach(async () => {
+    delete globalThis.__qdadmRelay
+    await module?.disconnect()
+  })
+
+  it('comes right after i18n where the relay connector is installed', async () => {
+    globalThis.__qdadmRelay = fakeRelay()
+    module = new DebugModule()
+    await module.connect(createMockContext())
+
+    const names = [...module.getBridge().collectors.keys()]
+    expect(names.at(-1)).toBe('mcp')
+    expect(names.at(-2)).toMatch(/i18n/i)
+  })
+
+  it('is absent without the connector — nothing to pair', async () => {
+    module = new DebugModule()
+    await module.connect(createMockContext())
+
+    expect([...module.getBridge().collectors.keys()]).not.toContain('mcp')
+  })
+
+  it('relayCollector: false hides it', async () => {
+    globalThis.__qdadmRelay = fakeRelay()
+    module = new DebugModule({ relayCollector: false })
+    await module.connect(createMockContext())
+
+    expect([...module.getBridge().collectors.keys()]).not.toContain('mcp')
+  })
+})

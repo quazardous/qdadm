@@ -133,8 +133,8 @@ describe('qdadm-mcp toolset — relay pairing (#2231)', () => {
     expect(res.session.id).toBe('s1')
   })
 
-  it('no paired tab → the hint explains Pair MCP, not "open a browser"', async () => {
+  it('no paired tab → the hint points at the MCP tab, not "open a browser"', async () => {
     const api = withPairing({ session: null })
-    await expect(byName(buildToolset(api), 'routes').handler({})).rejects.toThrow(/click "Pair MCP"/)
+    await expect(byName(buildToolset(api), 'routes').handler({})).rejects.toThrow(/MCP tab of the app's debug bar, click Pair/)
   })
 })

@@ -7,3 +7,10 @@ export {
   type LocaleChange,
   type I18nCollectorOptions,
 } from './I18nCollector'
+export {
+  RelayCollector,
+  findRelayController,
+  type RelayControllerLike,
+  type RelayStateLike,
+  type RelayIdentityLike,
+} from './RelayCollector'

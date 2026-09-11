@@ -216,7 +216,7 @@ export class RelayBroker implements DebugBrokerApi {
     if (!request) {
       const waiting = Array.from(this.pendingPairings.values())
       throw new Error(
-        `No tab is waiting with code "${rawCode}". Ask the user to click "Pair MCP" in the app's debug bar ` +
+        `No tab is waiting with code "${rawCode}". Ask the user to open the MCP tab of the app's debug bar, click Pair, ` +
           `and read you the code it shows — never guess one. ` +
           (waiting.length > 0
             ? `${waiting.length} tab(s) waiting, from ${[...new Set(waiting.map((w) => w.origin))].join(', ')}.`
@@ -404,7 +404,7 @@ export class RelayBroker implements DebugBrokerApi {
     if (!session) {
       return Promise.reject(
         new Error(
-          'relay: no tab is paired — have the user open the app, click "Pair MCP" in its debug bar, ' +
+          'relay: no tab is paired — have the user open the MCP tab of the app\'s debug bar and click Pair, ' +
             'then call pair_accept with the code it shows (or open the site with the #qdadm-relay fragment ' +
             'printed at startup)'
         )

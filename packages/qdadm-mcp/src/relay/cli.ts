@@ -8,7 +8,7 @@
  *
  *   claude mcp add qdadm -- npx qdadm-mcp-relay --stdio
  *
- * Then in the app: debug bar → "Pair MCP" → read the code to the agent,
+ * Then in the app: debug bar → MCP tab → Pair → read the code to the agent,
  * which calls `pair_accept`.
  *
  *   npx qdadm-mcp-relay [--stdio] [--port <p>] [--origin <origin>]...
@@ -107,7 +107,7 @@ export async function main(argv = process.argv.slice(2)): Promise<void> {
   wss.on('error', (e) => log(`[qdadm-mcp-relay] listener error: ${e.message}`))
 
   log(`[qdadm-mcp-relay] listening       ws://localhost:${port}  (${identity.project})`)
-  log('[qdadm-mcp-relay] pair a tab:     debug bar → "Pair MCP", then give the agent the code')
+  log('[qdadm-mcp-relay] pair a tab:     debug bar → MCP tab → Pair, then give the agent the code')
   log(`[qdadm-mcp-relay] token fragment  #qdadm-relay=ws://localhost:${port}/${opts.token}`)
 
   if (opts.stdio) {

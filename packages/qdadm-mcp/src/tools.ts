@@ -97,7 +97,7 @@ export class NoSessionError extends Error {
 }
 
 const pairHint =
-  'No tab is paired with this relay. Ask the user to open the app, click "Pair MCP" in its debug bar, ' +
+  'No tab is paired with this relay. Ask the user to open the MCP tab of the app\'s debug bar, click Pair, ' +
   'and read you the code it shows; then call pair_accept with it.'
 
 function resolveSession(api: DebugBrokerApi, args: Record<string, unknown>, hint?: string) {
@@ -309,7 +309,7 @@ export function buildToolset(api: DebugBrokerApi, options: ToolsetOptions = {}):
       {
         name: 'pair_accept',
         description:
-          'Complete a pairing: the user clicked "Pair MCP" in the app\'s debug bar and read you the code it ' +
+          'Complete a pairing: the user clicked Pair in the MCP tab of the app\'s debug bar and read you the code it ' +
           'shows. Pass exactly that code — never guess or reuse one. Replaces any previously paired tab; every ' +
           'tool then targets the newly paired tab.',
         args: {

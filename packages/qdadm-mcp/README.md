@@ -37,18 +37,19 @@ claude mcp add qdadm -- npx qdadm-mcp-relay --stdio
 The relay lives exactly as long as the agent session. Restarting the app does
 not touch it.
 
-**3. Pair a tab.** In the app's debug bar, click **MCP**. The button shows a
-code — `958 975`. Give the code to your agent; it calls `pair_accept`. The
-button turns active, and every tool now targets that tab.
+**3. Pair a tab.** In the app's debug bar, open the **MCP** tab and click
+**Pair**. It shows a code — `958 975`. Give the code to your agent; it calls
+`pair_accept`. The panel says *Paired*, and every tool now targets that
+browser tab.
 
 After that:
 
 | When | What happens |
 |---|---|
 | The tab reloads, or the app restarts | The tab re-pairs on load, same instance, before the app runs — boot capture still sees a crash. A tool called meanwhile answers "reloading — retry". |
-| Another tab is paired | It replaces this one: one paired tab at a time. This tab's button says so. |
-| The relay restarts (new agent session) | The new relay does not know the pairing; the button says so. Pair again. |
-| You click the active button | Unpaired on both sides. |
+| Another tab is paired | It replaces this one: one paired tab at a time. This tab's MCP panel says so. |
+| The relay restarts (new agent session) | The new relay does not know the pairing; the MCP panel says so. Pair again. |
+| You click **Unpair** | Unpaired on both sides. |
 
 **Why a code.** The relay shows it in the tab only — `pairing_status` lists
 waiting tabs without their codes. The agent cannot pair a tab you did not
@@ -66,16 +67,16 @@ agent's relay never issued.
 | `--token` | random | Token of the URL fragment flow |
 | `--read-only` | off | Drop the three write tools |
 
-The **MCP** button scans 47761–47765, and the relay skips any of them already
+**Pair** scans 47761–47765, and the relay skips any of them already
 in use. A relay pinned elsewhere with `--port` needs the app to scan it:
 `installQdadmRelayConnector({ ports: [<port>] })`. Both listeners bind to
 `127.0.0.1`.
 
 **Public https origins** (GitHub Pages, any hosted site). Chrome holds
 connections to `localhost` until the user allows local network access for the
-site, and nothing reaches the relay meanwhile. The button says the browser is
-holding the connection: allow it in the prompt by the address bar, then click
-again. Pages served from `http://localhost` get no prompt.
+site, and nothing reaches the relay meanwhile. The MCP panel says the browser
+is holding the connection: allow it in the prompt by the address bar, then
+click **Pair** again. Pages served from `http://localhost` get no prompt.
 
 **No debug bar?** Drive the controller from the console:
 `window.__qdadmRelay.pair()`, `.state`, `.unpair()`.
@@ -157,8 +158,9 @@ Typical debugging moves, grounded in real sessions:
 - **Always start with `session_info`** — it tells you which tab you're
   driving (app name/version, current route, session age). A stale
   `ageMs` means you're talking to a zombie tab: have the page reloaded.
-- **Relay says no tab is paired** → ask the user to click **MCP** in the
-  debug bar and read you the code, then `pair_accept`. Never guess a code.
+- **Relay says no tab is paired** → ask the user to open the **MCP** tab of
+  the debug bar, click **Pair**, and read you the code, then `pair_accept`.
+  Never guess a code.
 - **Blank page / app won't boot** → `boot_errors`. Capture starts before
   the app entry runs, so crashes during boot are recorded even though the
   bridge never came up.

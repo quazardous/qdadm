@@ -21,7 +21,7 @@ import { createRenderLoopDetector } from './renderLoopDetector'
 import EntriesPanel from './panels/EntriesPanel.vue'
 import SignalsPanel from './panels/SignalsPanel.vue'
 import ToastsPanel from './panels/ToastsPanel.vue'
-import RelayPairControl from './RelayPairControl.vue'
+import RelayPanel from './panels/RelayPanel.vue'
 
 // Layout/theming CSS + PrimeIcons font are shipped with qddebug so consumers
 // don't have to supply their own. Side-effect imports = registered once
@@ -542,11 +542,13 @@ const BUILTIN_META: Record<string, CollectorMeta> = {
   signals: { icon: 'pi-bolt', label: 'Signals', color: '#8b5cf6' },
   toasts: { icon: 'pi-bell', label: 'Toasts', color: '#f59e0b' },
   i18n: { icon: 'pi-globe', label: 'i18n', color: '#ec4899' },
+  mcp: { icon: 'pi-link', label: 'MCP', color: '#22c55e' },
   // Class-name aliases for legacy collector identifiers
   ErrorCollector: { icon: 'pi-exclamation-triangle', label: 'Errors', color: '#ef4444' },
   SignalCollector: { icon: 'pi-bolt', label: 'Signals', color: '#8b5cf6' },
   ToastCollector: { icon: 'pi-bell', label: 'Toasts', color: '#f59e0b' },
   I18nCollector: { icon: 'pi-globe', label: 'i18n', color: '#ec4899' },
+  RelayCollector: { icon: 'pi-link', label: 'MCP', color: '#22c55e' },
 }
 
 function metaFor(name: string | undefined): CollectorMeta {
@@ -573,6 +575,8 @@ const BUILTIN_PANELS: Record<string, Component> = {
   SignalCollector: SignalsPanel,
   toasts: ToastsPanel,
   ToastCollector: ToastsPanel,
+  mcp: RelayPanel,
+  RelayCollector: RelayPanel,
 }
 
 function panelFor(name: string | undefined): Component | null {
@@ -711,7 +715,6 @@ const currentPanel = computed<Component | null>(() => panelFor(currentCollector.
         </div>
 
         <div class="debug-actions">
-          <RelayPairControl />
           <button type="button" class="qd-btn" :class="{ 'qd-btn-active': isEnabled }" :title="isEnabled ? 'Pause' : 'Resume'" @click="toggleEnabled">
             <i :class="['pi', isEnabled ? 'pi-pause' : 'pi-play']" />
           </button>

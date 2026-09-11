@@ -5,7 +5,7 @@
  * its own:
  *
  * - it exposes `window.__qdadmRelay`, the pairing controller behind the
- *   debug bar's "Pair MCP" button: scan the relay ports, show the code the
+ *   debug bar's MCP tab: scan the relay ports, show the code the
  *   agent needs, keep the pairing across reloads;
  * - a tab paired before re-pairs on load — one attempt, on the remembered
  *   port — with boot capture armed before the app's first statement;
@@ -70,7 +70,7 @@ export interface QdadmRelayConnectorOptions {
   token?: string
   /** Token flow: reconnect attempts before giving up (default 20). */
   maxRetries?: number
-  /** Ports "Pair MCP" scans (default: the relay's own list). */
+  /** Ports the MCP tab scans (default: the relay's own list). */
   ports?: readonly number[]
   /** Host the relay listens on (default 'localhost'). */
   host?: string

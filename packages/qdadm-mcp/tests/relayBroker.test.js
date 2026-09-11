@@ -158,7 +158,7 @@ describe('RelayBroker — pairing (#2231)', () => {
     broker.attach(tab, { origin: ORIGIN })
     tab.pair()
 
-    expect(() => broker.pairing.accept('999999')).toThrow(/click "Pair MCP".*never guess one/)
+    expect(() => broker.pairing.accept('999999')).toThrow(/MCP tab of the app's debug bar, click Pair.*never guess one/)
     expect(broker.pairing.status().paired).toBeNull()
     expect(tab.last('paired')).toBeUndefined()
   })
