@@ -267,6 +267,27 @@ describe('qdadm-mcp toolset — acting in the page (#2247)', () => {
   })
 })
 
+describe('qdadm-mcp toolset — screenshot (#2247)', () => {
+  it('exists on the relay only, stays in readOnly, and answers with an image the agent can look at', async () => {
+    const api = { ...makeApi(), pairing: { status: vi.fn(() => ({ waiting: [] })), accept: vi.fn() } }
+    api.ask = vi.fn(async () => ({ data: 'QUJD', mimeType: 'image/jpeg', width: 1428, height: 838, source: 'dom' }))
+    expect(buildToolset(makeApi()).map((t) => t.name)).not.toContain('screenshot')
+    expect(buildToolset(api, { readOnly: true }).map((t) => t.name)).toContain('screenshot')
+
+    const res = await byName(buildToolset(api), 'screenshot').handler({ ref: 'e4', format: 'png' })
+    expect(api.ask).toHaveBeenCalledWith(
+      'screenshot',
+      { ref: 'e4', fullPage: undefined, source: undefined, format: 'png', quality: undefined, withDebugBar: undefined },
+      's1'
+    )
+    expect(res).toBeInstanceOf(ToolContent)
+    expect(res.content).toEqual([
+      { type: 'image', data: 'QUJD', mimeType: 'image/jpeg' },
+      { type: 'text', text: 'Instance s1. 1428×838 jpeg, rendered from the DOM.' },
+    ])
+  })
+})
+
 describe('qdadm-mcp toolset — reading the page (#2247)', () => {
   const relayApi = () => {
     const api = { ...makeApi(), pairing: { status: vi.fn(() => ({ waiting: [] })), accept: vi.fn() } }

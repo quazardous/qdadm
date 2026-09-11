@@ -186,6 +186,7 @@ const PAGE_TOOLS: Record<string, string> = {
   pageEval: 'page_eval',
   consoleMessages: 'console_messages',
   networkRequests: 'network_requests',
+  screenshot: 'screenshot',
 }
 
 const brief = (value: unknown, max = 160): string => {
@@ -259,6 +260,15 @@ export interface QdadmRelayController {
     readonly entries: readonly RelayActivityEntry[]
     /** Called at once with the entries, then on every new one. */
     subscribe(listener: (entries: readonly RelayActivityEntry[]) => void): () => void
+  }
+  /** Real screenshots (#2247): a capture of this tab, started by the user. */
+  readonly capture: {
+    readonly active: boolean
+    /** Call it from the user's click: the browser asks them to share the tab, and only within a click. */
+    start(): Promise<void>
+    stop(): void
+    /** Called at once with whether a capture runs, then on every change. */
+    subscribe(listener: (active: boolean) => void): () => void
   }
 }
 
@@ -748,6 +758,14 @@ export function installQdadmRelayConnector(options: QdadmRelayConnectorOptions =
         return () => activityListeners.delete(listener)
       },
     },
+    capture: {
+      get active() {
+        return page.capture.active()
+      },
+      start: () => page.capture.start(),
+      stop: () => page.capture.stop(),
+      subscribe: (listener) => page.capture.subscribe(listener),
+    },
   }
   w.__qdadmRelay = controller
 
@@ -1051,6 +1069,50 @@ function createPageAgent(sessionId: string, q: () => QdadmGlobal) {
     return `Page: ${JSON.stringify(document.title)} — route ${String(route?.name ?? '?')} (${route?.fullPath ?? window.location.pathname})`
   }
 
+  // ── screenshots (#2247) ────────────────────────────────────────────────
+  // snapdom loads on the first screenshot. A real capture is a stream the user
+  // shared from the MCP tab; it runs until they stop it, or the browser does.
+  const shots = (): Promise<typeof import('./page/screenshot.ts')> => import('./page/screenshot.ts')
+  let capture: MediaStream | null = null
+  const captureListeners = new Set<(active: boolean) => void>()
+  const captureLive = () => capture?.getVideoTracks()[0]?.readyState === 'live'
+  const notifyCapture = () => {
+    const active = captureLive()
+    for (const listener of captureListeners) {
+      try {
+        listener(active)
+      } catch {
+        /* a broken listener must not break the capture */
+      }
+    }
+  }
+  const stopCapture = () => {
+    const stream = capture
+    capture = null
+    if (!stream) return
+    for (const track of stream.getTracks()) track.stop()
+    notifyCapture()
+  }
+  const startCapture = async () => {
+    const devices = navigator.mediaDevices as (MediaDevices & { getDisplayMedia?: (options: object) => Promise<MediaStream> }) | undefined
+    if (!devices?.getDisplayMedia) throw new Error('This browser cannot capture a tab.')
+    // Asked before anything is awaited: the browser only asks within the user's click.
+    const stream = await devices.getDisplayMedia({
+      video: { displaySurface: 'browser' },
+      audio: false,
+      preferCurrentTab: true,
+      selfBrowserSurface: 'include',
+      surfaceSwitching: 'exclude',
+    })
+    stopCapture()
+    capture = stream
+    stream.getVideoTracks()[0]?.addEventListener('ended', () => {
+      if (capture === stream) capture = null
+      notifyCapture()
+    })
+    notifyCapture()
+  }
+
   // ── acting in the page (#2247) ─────────────────────────────────────────
   type PageActions = typeof import('./page/actions.ts')
   const actions = (): Promise<PageActions> => import('./page/actions.ts')
@@ -1141,6 +1203,24 @@ function createPageAgent(sessionId: string, q: () => QdadmGlobal) {
       return perform((page) => page.drag(refOf(payload), refs.resolve(String(payload.to))))
     },
     uploadFile: (payload) => perform((page) => page.upload(refOf(payload), payload?.files as UploadFile[])),
+    screenshot: async (payload) => {
+      const source = String(payload?.source ?? 'auto')
+      if (!['auto', 'dom', 'tab'].includes(source)) throw new Error('source is "auto", "dom" or "tab"')
+      if (source === 'tab' && !captureLive()) {
+        throw new Error(
+          'No real capture runs: ask the user to click "Allow real screenshots" in the MCP tab of the debug bar — the browser then asks them to share this tab.'
+        )
+      }
+      const { domShot, tabShot } = await shots()
+      const options = {
+        element: rootOf(payload),
+        fullPage: payload?.fullPage === true,
+        format: payload?.format as string | undefined,
+        quality: payload?.quality as number | undefined,
+        withDebugBar: payload?.withDebugBar === true,
+      }
+      return source !== 'dom' && capture && captureLive() ? tabShot(capture, options) : domShot(options)
+    },
     pageEval: async (payload) => {
       const code = String(payload?.code ?? '').trim()
       if (!code) throw new Error('page_eval needs code')
@@ -1417,6 +1497,18 @@ function createPageAgent(sessionId: string, q: () => QdadmGlobal) {
   return {
     arm,
     armSignals,
+    capture: {
+      active: captureLive,
+      start: startCapture,
+      stop: stopCapture,
+      subscribe: (listener: (active: boolean) => void) => {
+        captureListeners.add(listener)
+        listener(captureLive())
+        return () => {
+          captureListeners.delete(listener)
+        }
+      },
+    },
     handle: async (type: string, payload?: Record<string, unknown>) => {
       const handler = handlers[type]
       if (!handler) throw new Error(`unknown request type "${type}"`)

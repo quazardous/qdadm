@@ -170,6 +170,43 @@ describe('RelayCollector — the MCP history (#2231)', () => {
   })
 })
 
+describe('RelayCollector — real screenshots (#2247)', () => {
+  it('follows whether a capture runs, and starts or stops it for the panel', async () => {
+    let listener = () => {}
+    const controller = {
+      ...fakeController({ status: 'connected' }),
+      capture: {
+        active: false,
+        start: vi.fn(async () => listener(true)),
+        stop: vi.fn(() => listener(false)),
+        subscribe: (l) => {
+          listener = l
+          l(false)
+          return () => {}
+        },
+      },
+    }
+    globalThis.__qdadmRelay = controller
+    const collector = new RelayCollector()
+    collector.install({})
+    expect(collector.canCapture).toBe(true)
+    expect(collector.captureActive).toBe(false)
+
+    await collector.startCapture()
+    expect(controller.capture.start).toHaveBeenCalled()
+    expect(collector.captureActive).toBe(true)
+    collector.stopCapture()
+    expect(collector.captureActive).toBe(false)
+  })
+
+  it('a connector without capture offers none', () => {
+    globalThis.__qdadmRelay = fakeController()
+    const collector = new RelayCollector()
+    collector.install({})
+    expect(collector.canCapture).toBe(false)
+  })
+})
+
 describe('RelayCollector — clearing the chat (#2231)', () => {
   it('asks the controller to clear', () => {
     const controller = {

@@ -474,6 +474,34 @@ export function buildToolset(api: DebugBrokerApi, options: ToolsetOptions = {}):
         handler: (a) => readText(a, 'pageText', { ref: a.ref, maxChars: a.maxChars }),
       },
       {
+        name: 'screenshot',
+        description:
+          'A picture of the tab, as an image: the viewport by default, one element with ref, the whole page with ' +
+          'fullPage. Rendered from the page\'s DOM (snapdom): no permission needed, but it is a re-rendering — a ' +
+          'cross-origin image without CORS may come out blank. When the user has clicked "Allow real screenshots" in ' +
+          'the MCP tab of the debug bar, you get the real pixels instead. Read what the page says with page_snapshot; ' +
+          'take a screenshot to judge how it looks.',
+        args: {
+          instance,
+          ref: { kind: 'string', description: 'Only this element' },
+          fullPage: { kind: 'boolean', description: 'The whole page, not just the viewport (rendered pictures only)' },
+          source: { kind: 'string', description: '"auto" (default: real pixels when a capture runs), "dom" or "tab"' },
+          format: { kind: 'string', description: '"jpeg" (default) or "png"' },
+          quality: { kind: 'number', description: 'JPEG quality, 0.1 to 1 (default 0.8)' },
+          withDebugBar: { kind: 'boolean', description: 'Keep the debug bar in a rendered picture' },
+        },
+        handler: async (a) => {
+          const s = resolveSession(api, a)
+          const payload = { ref: a.ref, fullPage: a.fullPage, source: a.source, format: a.format, quality: a.quality, withDebugBar: a.withDebugBar }
+          const shot = (await api.ask('screenshot', payload, s.id)) as { data: string; mimeType: string; width: number; height: number; source: string }
+          const how = shot.source === 'tab' ? 'real pixels from the tab capture' : 'rendered from the DOM'
+          return new ToolContent([
+            { type: 'image', data: shot.data, mimeType: shot.mimeType },
+            { type: 'text', text: `Instance ${s.id.slice(0, 8)}. ${shot.width}×${shot.height} ${shot.mimeType.replace('image/', '')}, ${how}.` },
+          ])
+        },
+      },
+      {
         name: 'wait_for',
         description:
           'Wait until the tab reaches a route (a name, or a path prefix starting with "/") or emits a signal whose ' +

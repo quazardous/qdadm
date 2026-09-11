@@ -71,6 +71,13 @@ export interface RelayControllerLike {
     readonly entries: readonly RelayActivityLike[]
     subscribe(listener: (entries: readonly RelayActivityLike[]) => void): () => void
   }
+  /** Real screenshots (#2247): a capture of this tab the user starts with a click. */
+  readonly capture?: {
+    readonly active: boolean
+    start(): Promise<void>
+    stop(): void
+    subscribe(listener: (active: boolean) => void): () => void
+  }
 }
 
 /** The controller the relay connector installed, if any. */
@@ -96,6 +103,8 @@ export class RelayCollector extends Collector {
   private _unsubscribeChat: (() => void) | null = null
   private _activity: readonly RelayActivityLike[] = []
   private _unsubscribeActivity: (() => void) | null = null
+  private _captureActive = false
+  private _unsubscribeCapture: (() => void) | null = null
 
   constructor(options: CollectorOptions = {}) {
     super(options)
@@ -147,6 +156,24 @@ export class RelayCollector extends Collector {
     return !!this._controller?.activity
   }
 
+  /** Real screenshots for agents: whether the connector offers them, and whether one runs. */
+  get canCapture(): boolean {
+    return !!this._controller?.capture
+  }
+
+  get captureActive(): boolean {
+    return this._captureActive
+  }
+
+  /** Call it from the user's click: the browser asks them to share this tab. */
+  startCapture(): Promise<void> {
+    return this._controller?.capture ? this._controller.capture.start() : Promise.resolve()
+  }
+
+  stopCapture(): void {
+    this._controller?.capture?.stop()
+  }
+
   sendChat(text: string): void {
     this._controller?.chat?.send(text)
   }
@@ -193,6 +220,11 @@ export class RelayCollector extends Collector {
         this._activity = [...entries]
         this.notifyChange()
       }) ?? null
+    this._unsubscribeCapture =
+      this._controller.capture?.subscribe((active) => {
+        this._captureActive = active
+        this.notifyChange()
+      }) ?? null
   }
 
   protected override _doUninstall(): void {
@@ -202,6 +234,8 @@ export class RelayCollector extends Collector {
     this._unsubscribeChat = null
     this._unsubscribeActivity?.()
     this._unsubscribeActivity = null
+    this._unsubscribeCapture?.()
+    this._unsubscribeCapture = null
   }
 
   override snapshot(): CollectorSnapshot {

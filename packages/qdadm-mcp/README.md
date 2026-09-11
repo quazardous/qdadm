@@ -118,6 +118,10 @@ when several tabs are open. Three sub-tabs:
 
 Chat and history are kept for the browser tab, across reloads.
 
+**Status** also offers **Allow real screenshots**. Agent screenshots are
+rendered from the page's DOM by default. Once you share the tab there, they
+are the real pixels, until **Stop sharing**.
+
 ## Outside dev: pairing
 
 A tab not served by the dev server — a static build, `vite preview`, GitHub
@@ -190,6 +194,7 @@ Only what happened is listed: an empty category is left out.
 | `hover` / `scroll` / `drag` / `upload_file` | Relay: the rest of what a pointer does |
 | `console_messages` / `network_requests` | Relay: the tab's console, and its fetch / XMLHttpRequest calls with status |
 | `page_eval` | Relay: run JavaScript in the tab; elements come back with a ref |
+| `screenshot` | Relay: an image of the viewport, one element or the whole page — rendered from the DOM, or the real pixels once the user allowed it in the MCP tab |
 | `session_info` | Which app/instance am I talking to? (zombie-tab detector) |
 | `boot_errors` | What broke — **including before the app booted** |
 | `routes` | Route names/paths/meta |

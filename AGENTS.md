@@ -44,7 +44,7 @@ with what the tab went through meanwhile (console errors, toasts, missing i18n
 keys, failed API calls). See the page with `page_snapshot` (an accessibility
 tree, a ref per element), `find` and `page_text`; act on refs with `click`,
 `fill`, `type_text`, `press_key`; read `console_messages` and
-`network_requests`. `chat_send` / `chat_read`
+`network_requests`; look at it with `screenshot`. `chat_send` / `chat_read`
 talk with whoever looks at the tab.
 Full setup guide + agent playbook:
 [`packages/qdadm-mcp/README.md`](packages/qdadm-mcp/README.md).

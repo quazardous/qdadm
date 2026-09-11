@@ -11,6 +11,11 @@ import { EventEmitter } from 'node:events'
 import { installQdadmRelayConnector } from '../src/connector.ts'
 import { RelayBroker } from '../src/relay/broker.ts'
 
+// jsdom draws nothing: the picture itself is proven live on the demo.
+vi.mock('@zumer/snapdom', () => ({
+  snapdom: { toCanvas: vi.fn(async () => ({ width: 1200, height: 800, toDataURL: (type) => `data:${type};base64,QUJD` })) },
+}))
+
 const ORIGIN = 'http://localhost:5174'
 const identity = (port, project = 'demo') => ({
   name: 'qdadm-mcp-relay',
@@ -260,7 +265,8 @@ describe('relay connector — dev pages connect on their own (#2231)', () => {
     sockets.find((s) => s.readyState === 1).close()
 
     await vi.waitFor(() => expect(replacement.listSessions().map((s) => s.instance)).toEqual(['tab-1']), { timeout: 4000 })
-    expect(controller.state.status).toBe('connected')
+    // The relay knows the tab once it said hello; the tab calls itself connected once the welcome is back.
+    await vi.waitFor(() => expect(controller.state.status).toBe('connected'))
   })
 
   it('pair() does nothing on a dev page — it is already connected', async () => {
@@ -635,6 +641,34 @@ describe('relay connector — reading the page (#2247)', () => {
     expect(text).toContain('Frank Herbert')
     expect(text).not.toContain('Pause')
     expect(document.querySelector('.qd-debug').style.display).toBe('contents')
+  })
+})
+
+describe('relay connector — screenshot (#2247)', () => {
+  afterEach(() => {
+    document.body.innerHTML = ''
+    delete window.__qdadmRelayAuto
+    vi.unstubAllGlobals()
+  })
+
+  it('renders the page body without the debug bar; a real capture needs the user to share the tab first', async () => {
+    const { snapdom } = await import('@zumer/snapdom')
+    document.body.innerHTML = '<main><h1>Books</h1></main><div class="qd-debug"></div>'
+    window.__qdadmRelayAuto = '/__qdadm/relay.json'
+    vi.stubGlobal('fetch', async () => ({ ok: true, status: 200, json: async () => ({ port: 47761, token: 'dev-token' }) }))
+    const broker = new RelayBroker({ token: 'dev-token', identity: identity(47761) })
+    const { controller } = install({ 47761: broker })
+    await vi.waitFor(() => expect(controller.state.status).toBe('connected'))
+
+    expect(await broker.ask('screenshot', {})).toEqual({ data: 'QUJD', mimeType: 'image/jpeg', width: 1200, height: 800, source: 'dom' })
+    expect(snapdom.toCanvas).toHaveBeenLastCalledWith(document.body, expect.objectContaining({ exclude: ['.qd-debug'] }))
+
+    expect((await broker.ask('screenshot', { format: 'png', fullPage: true, withDebugBar: true })).mimeType).toBe('image/png')
+    expect(snapdom.toCanvas).toHaveBeenLastCalledWith(document.body, expect.objectContaining({ exclude: [] }))
+
+    await expect(broker.ask('screenshot', { source: 'tab' })).rejects.toThrow(/Allow real screenshots/)
+    expect(controller.capture.active).toBe(false)
+    expect(controller.activity.entries.at(-1).tool).toBe('screenshot')
   })
 })
 

@@ -66,6 +66,18 @@ describe('createQdadmMcpServer', () => {
     expect(res.content).toEqual([{ type: 'text', text: 'Instance s1. - button "Save" [ref=e3]' }])
   })
 
+  it('a screenshot reaches the agent as MCP image content (#2247)', async () => {
+    const api = {
+      ...makeApi(),
+      pairing: { status: () => ({ waiting: [] }), accept: vi.fn() },
+      ask: vi.fn(async () => ({ data: 'QUJD', mimeType: 'image/png', width: 10, height: 5, source: 'dom' })),
+    }
+    const res = await (await connect(api)).callTool({ name: 'screenshot', arguments: {} })
+    expect(res.isError).toBeFalsy()
+    expect(res.content[0]).toEqual({ type: 'image', data: 'QUJD', mimeType: 'image/png' })
+    expect(res.content[1].text).toBe('Instance s1. 10×5 png, rendered from the DOM.')
+  })
+
   it('array, boolean and any-typed arguments: advertised and checked (#2247)', async () => {
     const api = { ...makeApi(), pairing: { status: () => ({ waiting: [] }), accept: vi.fn() } }
     const client = await connect(api)

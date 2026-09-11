@@ -57,6 +57,22 @@ const pair = (port?: number) => {
 }
 const unpair = () => props.collector.unpair()
 
+/** Real screenshots for agents (#2247): the user shares this tab once, from here. */
+const captureActive = computed(() => {
+  void tick.value
+  return props.collector.captureActive
+})
+const captureError = ref<string | null>(null)
+const startCapture = async () => {
+  captureError.value = null
+  try {
+    await props.collector.startCapture()
+  } catch (e) {
+    // Declining the browser's prompt is a choice, not a failure.
+    captureError.value = (e as Error).name === 'NotAllowedError' ? 'Not shared.' : (e as Error).message
+  }
+}
+
 /** Status / Chat / History — remembered for the browser tab. */
 type SubTab = 'status' | 'chat' | 'history'
 const SUBTAB_KEY = 'qdadm-debug:mcp-subtab'
@@ -260,6 +276,22 @@ const SETUP = 'npx qdadm-mcp-relay --stdio'
         </button>
       </div>
     </template>
+
+    <div v-if="collector.canCapture && (state.status === 'connected' || state.status === 'paired')" class="mcp-capture">
+      <template v-if="captureActive">
+        <p class="mcp-hint mcp-ok"><i class="pi pi-video" /> Real screenshots on: this tab is shared, for agent screenshots only.</p>
+        <div class="mcp-actions">
+          <button type="button" class="mcp-btn" @click="collector.stopCapture()">Stop sharing</button>
+        </div>
+      </template>
+      <template v-else>
+        <p class="mcp-hint">Agent screenshots are rendered from the page. For the real pixels, share this tab once.</p>
+        <div class="mcp-actions">
+          <button type="button" class="mcp-btn" @click="startCapture"><i class="pi pi-video" /> Allow real screenshots</button>
+        </div>
+        <p v-if="captureError" class="mcp-hint mcp-warn">{{ captureError }}</p>
+      </template>
+    </div>
 
     </div>
 
@@ -626,5 +658,9 @@ const SETUP = 'npx qdadm-mcp-relay --stdio'
 }
 .mcp-btn-primary:hover:not(:disabled) {
   background: #1d4ed8;
+}
+
+.mcp-capture {
+  margin-top: 0.75rem;
 }
 </style>

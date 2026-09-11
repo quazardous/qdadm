@@ -72,7 +72,7 @@ export function qdadmMcpPlugin(options: QdadmMcpPluginOptions = {}): Plugin {
       // agent's call.
       return {
         optimizeDeps: {
-          include: ['@quazardous/qdadm-mcp > dom-accessibility-api'],
+          include: ['@quazardous/qdadm-mcp > dom-accessibility-api', '@quazardous/qdadm-mcp > @zumer/snapdom'],
         },
       }
     },

@@ -126,6 +126,7 @@ const SLOW_REQUESTS: Record<string, number> = {
   drag: 15_000,
   uploadFile: 15_000,
   pageEval: 30_000,
+  screenshot: 30_000,
 }
 
 const isRecord = (v: unknown): v is Record<string, unknown> =>
