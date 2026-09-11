@@ -779,6 +779,7 @@ describe('relay connector — screenshot (#2247)', () => {
     Object.defineProperty(navigator, 'mediaDevices', { value: { getDisplayMedia: vi.fn(async () => stream) }, configurable: true })
     const spies = [
       vi.spyOn(HTMLMediaElement.prototype, 'play').mockResolvedValue(undefined),
+      vi.spyOn(HTMLMediaElement.prototype, 'pause').mockImplementation(() => {}),
       vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue({ drawImage: () => {} }),
       vi.spyOn(HTMLCanvasElement.prototype, 'toDataURL').mockReturnValue('data:image/jpeg;base64,QUJD'),
     ]

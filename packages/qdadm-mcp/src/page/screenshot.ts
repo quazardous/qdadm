@@ -12,7 +12,7 @@
  *
  * Loaded on first use: a tab nobody photographs never downloads snapdom.
  */
-import { snapdom } from '@zumer/snapdom'
+import { snapdom, type SnapdomPlugin } from '@zumer/snapdom'
 import { DEBUG_BAR } from './aria.ts'
 
 export interface ShotOptions {
@@ -58,14 +58,45 @@ export async function domShot(options: ShotOptions = {}): Promise<Shot> {
   // <body>, not <html>: rendered from <html>, snapdom drops the position:fixed parts of a
   // layout (qdadm's sidebar) and shifts the rest — measured on the demo.
   const target = options.element ?? document.body
+  const viewport = !options.element && !options.fullPage
   const canvas = await snapdom.toCanvas(target, {
     dpr: 1,
     exclude: options.withDebugBar ? [] : [DEBUG_BAR],
     excludeMode: 'hide',
     embedFonts: true,
     backgroundColor: getComputedStyle(document.body).backgroundColor || '#ffffff',
+    ...(viewport ? { plugins: [fixedAtScroll()] } : {}),
   })
-  return encode(options.element || options.fullPage ? canvas : cropToViewport(canvas, target), options, 'dom')
+  return encode(viewport ? cropToViewport(canvas, target) : canvas, options, 'dom')
+}
+
+/**
+ * A scrolled page (#2312): snapdom renders `<body>` whole, where a `position: fixed` element sits as at scroll 0,
+ * and the viewport is then cropped at the scroll — a fixed sidebar came out cut, an `inset: 0` overlay spanned the
+ * whole document. In the clone only, each fixed element gets the box the user sees: moved by the scroll, sized as
+ * on screen. The page itself is not touched.
+ */
+export function fixedAtScroll(): SnapdomPlugin {
+  return {
+    name: 'qdadm-fixed-at-scroll',
+    afterClone({ clone, nodeMap }) {
+      const { scrollX, scrollY } = window
+      if (!clone || !nodeMap || (!scrollX && !scrollY)) return
+      for (const [copy, source] of nodeMap) {
+        if (!(source instanceof HTMLElement) || !(copy instanceof HTMLElement)) continue
+        const style = getComputedStyle(source)
+        if (style.position !== 'fixed') continue
+        const pin = (property: string, value: string) => copy.style.setProperty(property, value, 'important')
+        pin('top', `${(parseFloat(style.top) || 0) + scrollY}px`)
+        pin('left', `${(parseFloat(style.left) || 0) + scrollX}px`)
+        pin('bottom', 'auto')
+        pin('right', 'auto')
+        pin('box-sizing', 'border-box')
+        pin('width', `${source.offsetWidth}px`)
+        pin('height', `${source.offsetHeight}px`)
+      }
+    },
+  }
 }
 
 /**
