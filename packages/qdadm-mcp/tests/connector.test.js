@@ -1201,4 +1201,35 @@ describe('relay connector — page_snapshot says what the page is made of (#2342
     const interactive = (await broker.ask('pageSnapshot', { filter: 'interactive' })).text
     expect(interactive).toMatch(/^- button "Export" \[ref=e\d+\] — in zone "books-list-header", block "export-btn"$/m)
   })
+
+  it('the header says what the page is doing: list, form or show (#2363)', async () => {
+    let state = {
+      kind: 'list',
+      entity: 'books',
+      rows: 8,
+      total: 12,
+      page: 1,
+      pageSize: 8,
+      sort: { field: 'title', order: 'asc' },
+      search: 'dune',
+      filters: { genre: 'sci-fi' },
+      selected: 2,
+      loading: false,
+    }
+    const app = booksApp()
+    app.pageState = { current: () => state }
+    const broker = await connectedTo(app)
+    const head = async () => (await broker.ask('pageSnapshot', {})).text.split('\n\n')[0].split('\n')
+
+    expect(await head()).toContain('State: list — 8 of 12 rows, page 1 (8/page), sort title asc, search "dune", filters genre=sci-fi, 2 selected')
+
+    state = { kind: 'form', entity: 'books', mode: 'edit', dirtyFields: ['title', 'year'], errors: { author: 'Author is required' }, saving: false, loading: false }
+    expect(await head()).toContain('State: edit form — dirty: title, year; errors: author (Author is required)')
+
+    state = { kind: 'show', entity: 'books', loaded: true, loading: false, error: null }
+    expect(await head()).toContain('State: show — loaded')
+
+    state = null
+    expect((await head()).some((line) => line.startsWith('State:'))).toBe(false)
+  })
 })

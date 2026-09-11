@@ -37,6 +37,7 @@ import {
 } from '../routeState'
 import { useConfirm } from 'primevue/useconfirm'
 import { requireDeleteConfirmation } from './confirmDelete'
+import { registerPageState, activeFilters } from './usePageState'
 import { useHooks } from './useHooks.js'
 import { useEntityItemPage, type ParentConfig, type UseEntityItemPageReturn } from './useEntityItemPage.js'
 import { useActiveStack } from '../chain/useActiveStack.js'
@@ -1183,6 +1184,23 @@ export function useListPage<T = unknown>(config: UseListPageOptions<T>): UseList
   onUnmounted(() => {
     window.removeEventListener('resize', handleResize)
   })
+
+  // What this list is doing, for the debug tools and the MCP (#2363): counts and names, never row contents
+  onUnmounted(
+    registerPageState(() => ({
+      kind: 'list',
+      entity: String(entity),
+      rows: displayItems.value.length,
+      total: totalRecords.value,
+      page: page.value,
+      pageSize: pageSize.value,
+      sort: sortField.value ? { field: sortField.value, order: sortOrder.value < 0 ? 'desc' : 'asc' } : null,
+      search: searchQuery.value,
+      filters: activeFilters(filterValues.value as Record<string, unknown>),
+      selected: selected.value.length,
+      loading: loading.value,
+    }))
+  )
 
   // Reload when this entity changed outside the session (#1888 lot D).
   //

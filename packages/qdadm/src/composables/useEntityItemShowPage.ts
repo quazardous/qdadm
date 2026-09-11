@@ -33,7 +33,8 @@
  * <ShowPage v-bind="show.props.value" v-on="show.events" />
  * ```
  */
-import { ref, computed, type Ref, type ComputedRef } from 'vue'
+import { ref, computed, onUnmounted, type Ref, type ComputedRef } from 'vue'
+import { registerPageState } from './usePageState'
 import { useRouter, type Router } from 'vue-router'
 import { useConfirm } from 'primevue/useconfirm'
 import { requireDeleteConfirmation } from './confirmDelete'
@@ -309,6 +310,17 @@ export function useEntityItemShowPage<T = Record<string, unknown>>(
   })
 
   const { manager, orchestrator: baseOrchestrator, data, loading, error, entityId, entityLabel, isLoaded, hydrator } = base
+
+  // What this show page is doing, for the debug tools and the MCP (#2363)
+  onUnmounted(
+    registerPageState(() => ({
+      kind: 'show',
+      entity: String((manager as { name?: unknown }).name ?? ''),
+      loaded: isLoaded.value,
+      loading: loading.value,
+      error: error.value,
+    }))
+  )
 
   // Reload when THIS record changed outside the session (#1888 lot D).
   // Scoped by id: an event about another record must not reload every open

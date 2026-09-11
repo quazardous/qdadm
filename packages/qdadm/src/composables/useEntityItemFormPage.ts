@@ -36,6 +36,7 @@ import {
   type CreateContext,
 } from './useEntityItemPage'
 import { registerGuardDialog, unregisterGuardDialog } from './useGuardStore'
+import { registerPageState } from './usePageState'
 import { deepClone } from '../utils/transformers'
 import { getSiblingRoutes } from '../module/moduleRegistry'
 import {
@@ -226,6 +227,19 @@ export function useEntityItemFormPage<T extends Record<string, unknown> = Record
     registerGuardDialog(guardDialog)
     onUnmounted(() => unregisterGuardDialog(guardDialog!))
   }
+
+  // What this form is doing, for the debug tools and the MCP (#2363)
+  onUnmounted(
+    registerPageState(() => ({
+      kind: 'form',
+      entity: String((manager as { name?: unknown }).name ?? ''),
+      mode: mode.value,
+      dirtyFields: [...dirtyFields.value],
+      errors: { ...errors.value },
+      saving: saving.value,
+      loading: loading.value,
+    }))
+  )
 
   // ============ BREADCRUMB ============
 

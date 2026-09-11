@@ -18,6 +18,7 @@ import { createQdadm } from '../plugin.js'
 import { createNotificationStore, NOTIFICATION_KEY } from '../notifications/NotificationStore'
 import { I18N_INJECTION_KEY } from '../i18n/useI18n'
 import { warnWithoutQdadmVitePlugin } from './vitePluginCheck'
+import { currentPageState } from '../composables/usePageState'
 import type { Kernel } from './Kernel'
 // #1196 Phase B — this-typing against the real Kernel shape (was Self = any)
 type Self = Kernel
@@ -301,6 +302,8 @@ export function applyVueMethods(KernelClass: { prototype: Kernel }): void {
         hooks: this.hookRegistry,
         zones: this.zoneRegistry,
         activeStack: this.activeStack,
+        // What the page on screen is doing — list, form or show (#2363)
+        pageState: { current: currentPageState },
         stackHydrator: this.stackHydrator,
         deferred: this.deferred,
         router: this.router,

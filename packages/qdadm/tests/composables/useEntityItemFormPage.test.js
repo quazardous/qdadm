@@ -405,6 +405,21 @@ describe('useEntityItemFormPage', () => {
       expect(mockManager.delete).not.toHaveBeenCalled()
     })
 
+    it('registers its state for the debug tools while mounted, and leaves once unmounted (#2363)', async () => {
+      const { currentPageState } = await import('../../src/composables/usePageState')
+      // Earlier tests in this file leave their forms mounted: what answered before is what must answer after.
+      const before = currentPageState()
+      mockRouteState = { name: 'book-edit', params: { id: '1' } }
+      const { wrapper } = createWrapper(() => useEntityItemFormPage({ entity: 'books' }))
+      await flushPromises()
+
+      expect(currentPageState()).toMatchObject({ kind: 'form', entity: 'books', mode: 'edit', saving: false })
+      expect(Array.isArray(currentPageState().dirtyFields)).toBe(true)
+
+      wrapper.unmount()
+      expect(currentPageState()).toEqual(before)
+    })
+
     it('does nothing when not in edit mode', async () => {
       mockRouteState = { name: 'book-create', params: {} }
       const { result } = createWrapper(() => useEntityItemFormPage({ entity: 'books' }))

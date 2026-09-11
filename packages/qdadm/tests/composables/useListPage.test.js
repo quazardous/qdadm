@@ -1674,3 +1674,28 @@ describe('useListPage - delete confirmations close on Escape (#2269)', () => {
     expect(mockManager.delete).not.toHaveBeenCalled()
   })
 })
+
+describe('useListPage - page state for the debug tools (#2363)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mockRouteState = { name: 'book', params: {}, query: {}, meta: {} }
+    mockManager = createMockManager()
+    mockOrchestrator.get.mockImplementation(() => mockManager)
+  })
+
+  it('registers counts and names while mounted, and leaves once unmounted', async () => {
+    const { currentPageState } = await import('../../src/composables/usePageState')
+    // Earlier tests in this file leave their pages mounted: what answered before is what must answer after.
+    const before = currentPageState()
+    const { wrapper, result } = createWrapper(() => useListPage({ entity: 'books' }))
+    await flushPromises()
+    result.selected.value = [{ id: 1 }]
+
+    const state = currentPageState()
+    expect(state).toMatchObject({ kind: 'list', entity: 'books', rows: 2, total: 2, page: 1, selected: 1 })
+    expect(JSON.stringify(state)).not.toContain('Book 1')
+
+    wrapper.unmount()
+    expect(currentPageState()).toEqual(before)
+  })
+})

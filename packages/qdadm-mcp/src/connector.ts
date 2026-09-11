@@ -117,6 +117,8 @@ interface QdadmGlobal {
     getBlocks?(zone: string): Array<{ id?: string | null; component?: unknown }>
   }
   activeStack?: { getLevels?(): Array<{ entity?: string; id?: string | null }> }
+  /** What the page on screen is doing (#2363): a list, a form or a show page. */
+  pageState?: { current?(): Record<string, unknown> | null }
   debug?: { bridge?: { describe(): unknown; dump(): unknown; call(c: string, a: string, args: unknown): Promise<unknown> } }
 }
 
@@ -1282,7 +1284,43 @@ function createPageAgent(sessionId: string, q: () => QdadmGlobal) {
     if (levels.some((level) => level.id)) {
       lines.push(`Stack: ${levels.map((level) => (level.id ? `${level.entity} #${level.id}` : level.entity)).join(' › ')}`)
     }
+    try {
+      const state = stateLine(q().pageState?.current?.() ?? null)
+      if (state) lines.push(state)
+    } catch {
+      /* no page state */
+    }
     return lines
+  }
+  /** The page's state as one line (#2363): counts and names, never row contents. */
+  const stateLine = (state: Record<string, unknown> | null): string | null => {
+    if (!state) return null
+    const s = state as Record<string, any> // eslint-disable-line @typescript-eslint/no-explicit-any
+    if (s.kind === 'list') {
+      const parts = [`${s.rows} of ${s.total} rows`, `page ${s.page} (${s.pageSize}/page)`]
+      if (s.sort?.field) parts.push(`sort ${s.sort.field} ${s.sort.order}`)
+      if (s.search) parts.push(`search ${JSON.stringify(s.search)}`)
+      const filters = Object.entries((s.filters ?? {}) as Record<string, unknown>).map(
+        ([name, value]) => `${name}=${Array.isArray(value) ? value.join('|') : String(value)}`
+      )
+      if (filters.length > 0) parts.push(`filters ${filters.join(', ')}`)
+      if (s.selected) parts.push(`${s.selected} selected`)
+      if (s.loading) parts.push('loading')
+      return `State: list — ${parts.join(', ')}`
+    }
+    if (s.kind === 'form') {
+      const dirty: string[] = s.dirtyFields ?? []
+      const parts = [dirty.length > 0 ? `dirty: ${dirty.join(', ')}` : 'nothing changed']
+      const errors = Object.entries((s.errors ?? {}) as Record<string, string>)
+      if (errors.length > 0) parts.push(`errors: ${errors.map(([field, message]) => `${field} (${message})`).join(', ')}`)
+      if (s.saving) parts.push('saving')
+      if (s.loading) parts.push('loading')
+      return `State: ${s.mode === 'edit' ? 'edit' : 'create'} form — ${parts.join('; ')}`
+    }
+    if (s.kind === 'show') {
+      return `State: show — ${s.loading ? 'loading' : s.error ? `error: ${s.error}` : s.loaded ? 'loaded' : 'not loaded'}`
+    }
+    return null
   }
   /** What a zone holds, from the zone registry: its blocks in render order, or its default. */
   const zoneBlocks = (zone: string): string | null => {
