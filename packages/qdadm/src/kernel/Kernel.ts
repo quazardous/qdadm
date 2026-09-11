@@ -228,6 +228,7 @@ export class Kernel {
     this._createRouter()
     this._setupStackSync()
     this._setupAuthGuard()
+    this._setupChunkReload()
     this._setupAuthExpiredHandler()
     this._setupAuthImpersonation()
     this._setupAuthInvalidation()
@@ -262,6 +263,7 @@ export class Kernel {
     this._createRouter()
     this._setupStackSync()
     this._setupAuthGuard()
+    this._setupChunkReload()
     this._setupAuthExpiredHandler()
     this._setupAuthImpersonation()
     this._setupAuthInvalidation()
@@ -467,6 +469,7 @@ export interface Kernel {
   // Routing (Kernel.routing.ts)
   _createRouter(): void
   _setupAuthGuard(): void
+  _setupChunkReload(): void
   _setupStackSync(): void
   _rebuildActiveStack(route: RouteLocationNormalized): void
 

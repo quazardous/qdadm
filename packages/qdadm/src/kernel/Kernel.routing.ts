@@ -7,6 +7,7 @@ import {
   type RouteRecordNormalized,
 } from 'vue-router'
 import { getRoutes } from '../module/moduleRegistry'
+import { installChunkReload } from './chunkReload'
 import type { Kernel } from './Kernel'
 // #1196 Phase B — this-typing against the real Kernel shape (was Self = any)
 type Self = Kernel
@@ -145,6 +146,20 @@ export function applyRoutingMethods(KernelClass: { prototype: Kernel }): void {
     this.router = createRouter({
       history,
       routes,
+    })
+  }
+
+  /**
+   * A lazy page whose chunk is gone, typically after a deploy (#2295): reload once, then say so.
+   */
+  proto._setupChunkReload = function (this: Self): void {
+    installChunkReload(this.router!, {
+      notify: () =>
+        this.orchestrator!.toast.error(
+          'A new version is available',
+          'This page could not be loaded. Reload the page to get the new version.',
+          { life: 0, emitter: 'Kernel' }
+        ),
     })
   }
 

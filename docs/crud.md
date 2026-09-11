@@ -88,6 +88,12 @@ ctx.crud('genres', {
 })
 ```
 
+> **After a deploy:** a tab left open still runs the old build, and its lazy
+> pages point to chunks the deploy removed. When one fails to load, qdadm
+> reloads the page once, at the page the user was going to, which loads the new
+> build. If that page still fails, it shows an error toast asking for a reload
+> instead of reloading again.
+
 ### ctx.childPage()
 
 Non-entity tab on an entity item page:
