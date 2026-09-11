@@ -1,6 +1,8 @@
 /**
- * Default core provider — ships qdadm's `core.*` defaults (EN + FR) as a
- * `LazyTranslationProvider` configured with a YAML loader.
+ * Default core provider — ships qdadm's own defaults (EN + FR) as a
+ * `LazyTranslationProvider` configured with a YAML loader: the `core.*` tree,
+ * plus the `breadcrumb.*` keys the breadcrumb's View↔Edit toggle reads (#2270).
+ * It comes first in the provider chain, so an app's own translations win.
  *
  * The YAML text is imported from `core.<locale>.generated.ts` — plain TS
  * modules that `export default` the raw YAML string, generated from the

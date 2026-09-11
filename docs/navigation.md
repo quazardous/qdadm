@@ -114,8 +114,9 @@ AppLayout's inline breadcrumb and `DefaultBreadcrumb` — #1357):
 
 - the mode links **lead the right-side navlinks group** (pipe-separated,
   sibling tabs follow), styled like the other navlinks — plain text, no icon;
-- labels resolve through i18n keys `breadcrumb.view` / `breadcrumb.edit`
-  (fallbacks `View` / `Edit`), locale-reactive;
+- labels resolve through i18n keys `breadcrumb.view` / `breadcrumb.edit`,
+  locale-reactive. qdadm ships them in English and French; an app's own
+  translations of these keys win;
 - **dedup (#1357)**: a navlink whose target route is already covered by a
   shown mode link is dropped. In practice this removes the auto `Details`
   link on child pages (it resolves to the parent's edit route — the same

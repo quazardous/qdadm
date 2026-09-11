@@ -55,4 +55,8 @@ export default `core:
     invalid: Valeur invalide
     notFound: Introuvable
     unknown: Une erreur inconnue est survenue
+# The breadcrumb's View↔Edit toggle (useNavContext).
+breadcrumb:
+  view: Voir
+  edit: Modifier
 `

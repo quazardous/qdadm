@@ -55,4 +55,8 @@ export default `core:
     invalid: Invalid value
     notFound: Not found
     unknown: An unknown error occurred
+# The breadcrumb's View↔Edit toggle (useNavContext).
+breadcrumb:
+  view: View
+  edit: Edit
 `

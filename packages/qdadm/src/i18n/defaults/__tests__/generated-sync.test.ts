@@ -39,4 +39,13 @@ describe('i18n default providers — generated/.yml sync', () => {
     expect(en.core.actions.save).toBe('Save')
     expect(fr.core.actions.save).toBe('Enregistrer')
   })
+
+  it('ships the breadcrumb View↔Edit labels next to core.* (#2270)', async () => {
+    type BreadcrumbBundle = { breadcrumb: { view: string; edit: string } }
+    const provider = createDefaultCoreProvider()
+    const en = (await provider.load('en')) as BreadcrumbBundle
+    const fr = (await provider.load('fr')) as BreadcrumbBundle
+    expect(en.breadcrumb).toEqual({ view: 'View', edit: 'Edit' })
+    expect(fr.breadcrumb).toEqual({ view: 'Voir', edit: 'Modifier' })
+  })
 })
