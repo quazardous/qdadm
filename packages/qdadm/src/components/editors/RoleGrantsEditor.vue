@@ -341,15 +341,12 @@ const editorRegistry = computed(() => {
 .role-grants-remove:hover {
   color: var(--p-red-500);
 }
-/*
- * A box is a box, whatever form styles surround the widget: inside a FormField, qdadm's global
- * `.form-field input { width: 100% !important }` stretches a checkbox across the row.
- */
+/* A box is a box, whatever layout surrounds it. */
 .role-grants input[type='checkbox'] {
   display: inline-block;
   flex: none;
-  width: auto !important;
-  height: auto !important;
+  width: auto;
+  height: auto;
   margin: 0;
 }
 input[type='checkbox']:disabled {

@@ -82,16 +82,24 @@
     font-size: 0.85rem;
   }
 
-  // Force PrimeVue inputs to be full width
+  // Force PrimeVue inputs to be full width. Text-like native inputs only: a native checkbox, radio, range or
+  // colour keeps its own size (#2319). PrimeVue's Checkbox, RadioButton and ToggleSwitch size their hidden input
+  // themselves.
   .p-inputtext,
   .p-textarea,
   .p-select,
   .p-multiselect,
   .p-inputwrapper,
-  input,
+  input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='color']),
   textarea {
     width: 100% !important;
     box-sizing: border-box;
+  }
+
+  // The field is a flex column: a native checkbox or radio placed directly in it would be stretched across the row.
+  > input[type='checkbox'],
+  > input[type='radio'] {
+    align-self: flex-start;
   }
 
   .p-textarea,
