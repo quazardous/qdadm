@@ -95,6 +95,12 @@ export function createStdioFront(options: StdioFrontOptions = {}): Server {
   }
 
   const server = new Server({ name: 'qdadm-relay', version: '1.0.0' }, { capabilities: { tools: {} } })
+  // Closing the front closes its line to the relay: an open HTTP client keeps a one-shot `--call` from exiting (#2263).
+  server.onclose = () => {
+    const stale = upstream
+    upstream = null
+    void stale?.close().catch(() => {})
+  }
 
   server.setRequestHandler(ListToolsRequestSchema, async () => {
     let tools: Tool[]

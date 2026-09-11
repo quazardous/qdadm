@@ -100,6 +100,7 @@ To run it in a terminal and watch it: `npx qdadm-mcp-relay`.
 | `--stdio` | Be the agent's MCP server, attached to the machine relay |
 | `--read-only` | Leave out the tools that change data or act in the page |
 | `--no-save-screenshots` | With `--stdio`: keep no screenshot in the project |
+| `--call <tool> '<json>'` | One tool call from a shell, the answer printed, then exit: 0 done, 1 the tool failed, 2 a wrong command |
 | `--origin <origin>` | Only pages from this origin may pair (repeatable) |
 | `--port <p>` | A private relay on that port: no run file, not shared |
 | `--token <t>` | A fixed page token instead of a random one |

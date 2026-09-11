@@ -15,6 +15,10 @@
  *
  *   npx qdadm-mcp-relay [--stdio] [--read-only] [--origin <origin>]...
  *                       [--port <p>] [--token <fixed>] [--background]
+ *   npx qdadm-mcp-relay --call <tool> ['<json args>']
+ *
+ * `--call` makes one tool call on the machine relay, prints the answer and
+ * exits (#2263): 0 done, 1 the tool answered with an error, 2 a wrong command.
  *
  * `--port` runs a private relay on that port — no run file, no lock.
  * `--background` (how the plugin and the front spawn it) exits after 30
@@ -39,6 +43,7 @@ import {
 } from './runfile.ts'
 import { runStdioFront } from './front.ts'
 import { runChatHookCli } from './chatHook.ts'
+import { runCall } from './call.ts'
 
 interface CliOptions {
   /** One explicit port — a private relay. Null: the shared relay on RELAY_PORTS. */
@@ -46,6 +51,8 @@ interface CliOptions {
   stdio: boolean
   /** `--chat-hook <event>`: act as an agent hook for the MCP tab's chat (#2252), then exit. */
   chatHook: string | null
+  /** `--call <tool> [json]`: one tool call on the machine relay, printed, then exit (#2263). */
+  call: { tool: string; args?: string } | null
   background: boolean
   token: string
   readOnly: boolean
@@ -60,6 +67,7 @@ function parseArgs(argv: string[]): CliOptions {
     port: null,
     stdio: false,
     chatHook: null,
+    call: null,
     background: false,
     token: randomUUID(),
     readOnly: false,
@@ -72,6 +80,11 @@ function parseArgs(argv: string[]): CliOptions {
     if (a === '--port') opts.port = Number(argv[++i])
     else if (a === '--stdio') opts.stdio = true
     else if (a === '--chat-hook') opts.chatHook = String(argv[++i] ?? '')
+    else if (a === '--call') {
+      const tool = String(argv[++i] ?? '')
+      const next = argv[i + 1]
+      opts.call = { tool, args: next !== undefined && !next.startsWith('--') ? argv[++i] : undefined }
+    }
     else if (a === '--background') opts.background = true
     else if (a === '--token') opts.token = String(argv[++i])
     else if (a === '--read-only') opts.readOnly = true
@@ -115,6 +128,10 @@ function readJsonBody(req: IncomingMessage): Promise<Record<string, unknown> | n
 export async function main(argv = process.argv.slice(2)): Promise<void> {
   const opts = parseArgs(argv)
   if (opts.chatHook !== null) return runChatHookCli(opts.chatHook)
+  if (opts.call) {
+    process.exitCode = await runCall(opts.call.tool, opts.call.args, { readOnly: opts.readOnly, saveScreenshots: opts.saveScreenshots })
+    return
+  }
   if (opts.stdio) return runStdioFront({ readOnly: opts.readOnly, saveScreenshots: opts.saveScreenshots })
 
   const log = (m: string) => console.log(`${new Date().toISOString().slice(11, 19)} [qdadm-mcp-relay] ${m}`)
