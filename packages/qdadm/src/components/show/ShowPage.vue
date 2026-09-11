@@ -313,15 +313,17 @@ type ShowFieldValue = string | number | boolean | Date | Record<string, unknown>
   display: block;
 }
 
+/* minmax(0, 1fr), not 1fr: a bare 1fr track grows to its longest unbreakable
+   content (a URL, a <pre>) and pushes the card past its container (#2245). */
 .show-content--with-media {
   display: grid;
-  grid-template-columns: var(--media-width, 200px) 1fr;
+  grid-template-columns: var(--media-width, 200px) minmax(0, 1fr);
   gap: 2rem;
 }
 
 @media (max-width: 768px) {
   .show-content--with-media {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 
