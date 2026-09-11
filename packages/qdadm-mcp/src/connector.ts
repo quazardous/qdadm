@@ -90,6 +90,7 @@ interface QdadmGlobal {
     currentRoute: { value: { name?: unknown; fullPath?: string; params?: Record<string, unknown> } }
     getRoutes(): Array<{ name?: unknown; path: string; meta?: Record<string, unknown> }>
     push?(to: unknown): Promise<unknown>
+    afterEach?(hook: () => void): unknown
   }
   signals?: { on(pattern: string, cb: (event: { name?: string; data?: unknown }) => void): unknown }
   debug?: { bridge?: { describe(): unknown; dump(): unknown; call(c: string, a: string, args: unknown): Promise<unknown> } }
@@ -453,17 +454,58 @@ export function installQdadmRelayConnector(options: QdadmRelayConnectorOptions =
     } catch {
       /* not booted yet */
     }
-    return { app, title: document.title, location: window.location.pathname, userAgent: navigator.userAgent, transport: 'relay' }
+    return { app, title: document.title, location: pageLocation(), userAgent: navigator.userAgent, transport: 'relay' }
   }
 
-  /** The app's name exists only once the kernel is up — tell the relay when it is. */
+  /** The page as the user sees it (#2317): under hash routing the path alone stays `/`, and the route is `#/books`. */
+  const pageLocation = () => {
+    const { pathname, hash } = window.location
+    return hash.startsWith('#/') ? `${pathname}${hash}` : pathname
+  }
+
+  // The relay reads the page from the meta: `instances`, the Stop hook line, screenshot file names (#2317).
+  let metaSocket: WebSocket | null = null
+  let sentLocation: string | null = null
+  const sendMeta = (ws: WebSocket, meta = pageMeta()) => {
+    if (ws.readyState !== 1) return
+    ws.send(JSON.stringify({ kind: 'meta', meta }))
+    sentLocation = meta.location
+  }
+
+  /** After a route change, once the router has written the URL: tell the relay where the tab is now. */
+  const routeChanged = () => {
+    setTimeout(() => {
+      const ws = metaSocket
+      if (ws && pageLocation() !== sentLocation) sendMeta(ws)
+    }, 0)
+  }
+  window.addEventListener('popstate', routeChanged)
+  window.addEventListener('hashchange', routeChanged)
+  // An in-app navigation (pushState) fires no event: the router's afterEach does, once the router exists.
+  let followingRouter = false
+  const followRouter = () => {
+    if (followingRouter) return
+    try {
+      const router = w.__qdadm?.router
+      if (typeof router?.afterEach !== 'function') return
+      router.afterEach(routeChanged)
+      followingRouter = true
+    } catch {
+      /* no router yet */
+    }
+  }
+
+  /** The app's name and router exist only once the kernel is up — tell the relay when they do, then on every route change. */
   const announceApp = (ws: WebSocket) => {
+    metaSocket = ws
+    followRouter()
     let tries = 0
     const timer = setInterval(() => {
+      followRouter()
       const meta = pageMeta()
       if (!meta.app && ++tries < 40 && ws.readyState === 1) return
       clearInterval(timer)
-      if (meta.app && ws.readyState === 1) ws.send(JSON.stringify({ kind: 'meta', meta }))
+      if (meta.app) sendMeta(ws, meta)
     }, 250)
   }
 
@@ -535,6 +577,7 @@ export function installQdadmRelayConnector(options: QdadmRelayConnectorOptions =
           })
         )
         page.armSignals()
+        announceApp(ws)
       }
       ws.onmessage = (event) => {
         const msg = parse(event.data)

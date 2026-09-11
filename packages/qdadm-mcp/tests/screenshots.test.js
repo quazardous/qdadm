@@ -66,6 +66,7 @@ describe('screenshots kept in the project (#2284)', () => {
   it('names a file by time, instance and page', () => {
     expect(pageSlug('/books/12/edit')).toBe('books-12-edit')
     expect(pageSlug('/')).toBe('home')
+    expect(pageSlug('/#/books')).toBe('books') // hash routing (#2317)
     expect(pageSlug(null)).toBe('home')
     expect(screenshotFileName(AT, { instance: INSTANCE, location: '/books/12/edit' }, 'image/jpeg')).toBe(
       '20260911-112233-34fcb409-books-12-edit.jpg'

@@ -954,3 +954,76 @@ describe('relay connector — acting in the page, console and network (#2247)', 
     await expect(broker.ask('navigate', { history: 'sideways' })).rejects.toThrow(/back.*forward.*reload/)
   })
 })
+
+describe('relay connector — the relay knows where the tab is (#2317)', () => {
+  afterEach(() => {
+    delete window.__qdadm
+    delete window.__qdadmRelayAuto
+    vi.unstubAllGlobals()
+    window.history.replaceState({}, '', '/')
+  })
+
+  const connectedAt = async (app) => {
+    window.history.replaceState({}, '', '/')
+    window.__qdadm = app
+    window.__qdadmRelayAuto = '/__qdadm/relay.json'
+    vi.stubGlobal('fetch', async () => ({ ok: true, status: 200, json: async () => ({ port: 47761, token: 'dev-token' }) }))
+    const broker = new RelayBroker({ token: 'dev-token', identity: identity(47761) })
+    const { controller } = install({ 47761: broker })
+    await vi.waitFor(() => expect(controller.state.status).toBe('connected'))
+    return broker
+  }
+  const locationOf = (broker) => broker.listSessions()[0].location
+
+  /** A router like vue-router's: it writes the URL, then runs the afterEach hooks. */
+  const withRouter = () => {
+    const hooks = []
+    const app = {
+      router: {
+        currentRoute: { value: { name: 'home', fullPath: '/', params: {} } },
+        getRoutes: () => [],
+        afterEach: (hook) => {
+          hooks.push(hook)
+          return () => {}
+        },
+      },
+    }
+    const go = (url) => {
+      window.history.pushState({}, '', url)
+      for (const hook of hooks) hook()
+    }
+    return { app, hooks, go }
+  }
+
+  // Connectors installed by earlier tests may hook the router too: `go` runs every hook, as the router would.
+  it('an in-app navigation tells the relay the new page', async () => {
+    const { app, hooks, go } = withRouter()
+    const broker = await connectedAt(app)
+    expect(hooks.length).toBeGreaterThan(0)
+    expect(locationOf(broker)).toBe('/')
+
+    go('/books/12/edit')
+
+    await vi.waitFor(() => expect(locationOf(broker)).toBe('/books/12/edit'))
+  })
+
+  it('under hash routing the page is the route in the hash, not "/"', async () => {
+    const { app, hooks, go } = withRouter()
+    const broker = await connectedAt(app)
+    expect(hooks.length).toBeGreaterThan(0)
+
+    go('/#/books')
+
+    await vi.waitFor(() => expect(locationOf(broker)).toBe('/#/books'))
+  })
+
+  it('without a router, back and forward still tell the relay', async () => {
+    const broker = await connectedAt({})
+    window.history.pushState({}, '', '/books')
+    window.history.pushState({}, '', '/books/7')
+
+    window.history.back()
+
+    await vi.waitFor(() => expect(locationOf(broker)).toBe('/books'))
+  })
+})
