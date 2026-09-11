@@ -38,7 +38,11 @@ npx qdadm-mcp-relay --stdio   # your MCP client's stdio server (Claude Code: cla
 
 `npm run dev` starts the machine relay (`~/.qdadm_relay.run`) and connects
 every dev tab to it; the agent attaches to the same relay. Call `instances`
-first, and pass `instance` when several tabs are connected.
+first, and pass `instance` when several tabs are connected. Drive the app with
+`navigate` and `wait_for`: a navigation or a write returns a `feedback` block
+with what the tab went through meanwhile (console errors, toasts, missing i18n
+keys, failed API calls). `chat_send` / `chat_read` talk with whoever looks at
+the tab.
 Full setup guide + agent playbook:
 [`packages/qdadm-mcp/README.md`](packages/qdadm-mcp/README.md).
 

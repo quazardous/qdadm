@@ -88,15 +88,25 @@ out while a single one is connected. The relay outlives dev-server restarts.
 A tab outside dev (static build, preview) pairs instead: debug bar → **MCP**
 tab → **Pair** → give the agent the code, which it passes to `pair_accept`.
 
-Tools: `instances`, `session_info` (zombie-tab detector), `boot_errors`
-(captures failures from BEFORE the app booted), `routes`, `entity_state`,
-`entity_list/get/create/update/delete` (through the manager — permissions,
-cache and signals apply; `readOnly: true` to disable writes),
-`storage_dump` (raw localStorage view to diff against the manager),
-`recent_signals`, `describe`/`bridge_call` for collector discovery, and
-`pair_accept`. Every response carries a session stamp. The MCP acts within
-that browser session — manager permissions apply. Relay, run file, pairing
-and security: the package README.
+Tools: `instances`, `session_info` (zombie-tab detector), `navigate` (a
+path or a route, like a user, waits for the page to settle), `wait_for` (a
+route or a signal), `boot_errors` (captures failures from BEFORE the app
+booted), `routes`, `entity_state`, `entity_list/get/create/update/delete`
+(through the manager — permissions, cache and signals apply; `readOnly: true`
+to disable writes), `storage_dump` (raw localStorage view to diff against the
+manager), `recent_signals`, `describe`/`bridge_call` for collector discovery,
+`chat_send`/`chat_read`, and `pair_accept`.
+
+`navigate`, the entity writes and `bridge_call` return a **`feedback`**
+block: route change, console errors, toasts, missing i18n keys, failed API
+calls — what the tab went through while the call ran. Every response carries a
+session stamp. The MCP acts within that browser session — manager permissions
+apply.
+
+In the app, the debug bar's **MCP** tab shows the instance id (click to copy)
+and three sub-tabs: **Status**, **Chat** with the agent, and **History** of
+every MCP request the tab served. Relay, run file, pairing and security: the
+package README.
 
 ## Dev-server HTTP endpoints
 

@@ -15,7 +15,7 @@ TypeScript-first. Module-driven. Zero boilerplate.
 
 **Stop writing CRUD boilerplate.** qdadm gives you:
 
-- **AI-native** - Every app is self-describing at runtime; agents introspect and drive it via the [debug bridge](docs/DEBUG.md), or in one `claude mcp add` with [@quazardous/qdadm-mcp](packages/qdadm-mcp) (works even on static sites via its relay)
+- **AI-native** - Every app is self-describing at runtime. With [@quazardous/qdadm-mcp](packages/qdadm-mcp), `npm run dev` connects every tab to an MCP relay: any MCP agent navigates the app, acts in it, and gets back what its actions caused (errors, toasts, missing i18n keys) — see [debug bridge](docs/DEBUG.md)
 - **Entity-driven architecture** - Define once, get list/form/routes/permissions
 - **Smart defaults** - Works instantly, customize when needed
 - **TypeScript everywhere** - Full type safety, autocomplete, refactoring
@@ -231,7 +231,7 @@ ctx.block('books-list-header', { id: 'export-btn', component: ExportButton, weig
 | Package | Description |
 |---------|-------------|
 | [qdadm](packages/qdadm) | Core library (TypeScript) |
-| [qdadm-mcp](packages/qdadm-mcp) | MCP server over the debug bridge (dev server + static-site relay) |
+| [qdadm-mcp](packages/qdadm-mcp) | MCP relay: dev tabs connect on their own; agents navigate, act and read feedback |
 | [demo](packages/demo) | Full-featured demo |
 
 ---

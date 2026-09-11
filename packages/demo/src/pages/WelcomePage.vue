@@ -47,8 +47,8 @@ const features = [
   },
   {
     icon: 'pi pi-sliders-h',
-    title: 'Debug Tools',
-    desc: 'Optional debug bar with collectors for signals, routes, zones, auth state.'
+    title: 'Debug Tools & MCP',
+    desc: 'Optional debug bar with collectors for signals, routes, zones, auth state — and an MCP relay: under npm run dev, any MCP agent navigates this app, acts in it, and reads back the errors, toasts and missing translations its actions caused.'
   }
 ]
 
