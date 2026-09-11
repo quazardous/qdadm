@@ -164,8 +164,9 @@ export * from './entity/auth'
 // SESSION AUTH (user authentication)
 // ════════════════════════════════════════════════════════════════════════════
 export { LocalStorageSessionAuthAdapter } from './auth'
-export { GoogleOAuthAdapter, createGoogleOAuthAdapter, createPkceChallenge } from './auth'
+export { OAuthCodeAdapter, createOAuthCodeAdapter, GoogleOAuthAdapter, createGoogleOAuthAdapter, createPkceChallenge } from './auth'
 export type {
+  OAuthCodeAdapterOptions,
   GoogleOAuthAdapterOptions,
   OAuthExchangePayload,
   PkceChallenge,

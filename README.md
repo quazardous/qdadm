@@ -252,6 +252,7 @@ ctx.block('books-list-header', { id: 'export-btn', component: ExportButton, weig
 - [Debug bridge (for AI agents)](docs/DEBUG.md) - Introspect and drive any qdadm app at runtime
 - [Production facts](docs/production.md) - Bundle size, client-side SPA (no SSR)
 - [Testing](docs/testing.md) - Test an entity and a page with Vitest
+- [Sign-in with an OIDC provider](docs/auth-oidc.md) - Keycloak, Auth0, Google: code + PKCE, your backend issues the session
 - [QDADM_CREDO](docs/QDADM_CREDO.md) - Philosophy & patterns
 - [Contributing](CONTRIBUTING.md) - Setup, quality gates, release flow
 

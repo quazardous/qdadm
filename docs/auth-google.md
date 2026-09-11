@@ -7,6 +7,9 @@ session.
 Working example: [`examples/google-login/`](../examples/google-login/) —
 `npm run glogin`.
 
+`GoogleOAuthAdapter` is the generic `OAuthCodeAdapter` with Google's defaults.
+For Keycloak, Auth0 or any other OIDC provider, see [auth-oidc.md](auth-oidc.md).
+
 ## The rule everything else follows from
 
 **qdadm never validates a Google credential client-side.** Decoding a JWT in a

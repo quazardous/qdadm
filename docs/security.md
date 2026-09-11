@@ -318,6 +318,12 @@ const storage = new MockApiStorage({
 storage.capabilities  // { requiresAuth: true }
 ```
 
+### Signing in with a provider
+
+For a real identity provider, see [Sign-in with any OIDC provider](auth-oidc.md)
+(Keycloak, Auth0) and [Google sign-in](auth-google.md). The provider says who
+someone is; your backend fills `user.roles`, which this checker reads.
+
 ## Auth Signals
 
 Signal-driven authentication events:

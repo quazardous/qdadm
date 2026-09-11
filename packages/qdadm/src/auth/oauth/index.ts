@@ -7,10 +7,16 @@
  */
 
 export {
+  OAuthCodeAdapter,
+  createOAuthCodeAdapter,
+  type OAuthCodeAdapterOptions,
+  type OAuthExchangePayload,
+} from './OAuthCodeAdapter'
+
+export {
   GoogleOAuthAdapter,
   createGoogleOAuthAdapter,
   type GoogleOAuthAdapterOptions,
-  type OAuthExchangePayload,
 } from './GoogleOAuthAdapter'
 
 export {

@@ -15,6 +15,9 @@ export {
 } from './SessionAuthAdapter'
 
 export {
+  OAuthCodeAdapter,
+  createOAuthCodeAdapter,
+  type OAuthCodeAdapterOptions,
   GoogleOAuthAdapter,
   createGoogleOAuthAdapter,
   createPkceChallenge,
