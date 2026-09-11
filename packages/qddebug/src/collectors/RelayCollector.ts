@@ -95,9 +95,13 @@ export interface RelayControllerLike {
   /** Real screenshots (#2247): a capture of this tab the user starts with a click. */
   readonly capture?: {
     readonly active: boolean
+    /** False on a browser that cannot capture a tab. Absent from connectors older than #2318. */
+    readonly supported?: boolean
     start(): Promise<void>
     stop(): void
     subscribe(listener: (active: boolean) => void): () => void
+    /** An agent screenshot was rendered from the page because no capture runs (#2318). Absent from older connectors. */
+    onSuggest?(listener: () => void): () => void
   }
 }
 
@@ -139,6 +143,17 @@ const lastId = (items: readonly { id: number }[]) => items.at(-1)?.id ?? 0
 /** Statuses the Status sub-tab flags: something to read or to fix. */
 const STATUS_ALERTS = new Set(['offline', 'error', 'awaiting-code'])
 
+/** Status / Chat / History — remembered for the browser tab. */
+export type RelaySubTab = 'status' | 'chat' | 'history'
+const SUBTAB_KEY = 'qdadm-debug:mcp-subtab'
+
+/** The user went on without real screenshots (#2318): not asked again in this browser tab. */
+const DECLINED_KEY = 'qdadm-debug:mcp-capture-declined'
+
+/** The notice an agent screenshot brings up (#2318): how long it stays, and how soon it may come back. */
+export const CAPTURE_NOTICE_MS = 10_000
+export const CAPTURE_NOTICE_EVERY_MS = 60_000
+
 export class RelayCollector extends Collector {
   static override collectorName = 'mcp'
   static override records = false
@@ -152,6 +167,12 @@ export class RelayCollector extends Collector {
   private _unsubscribeActivity: (() => void) | null = null
   private _captureActive = false
   private _unsubscribeCapture: (() => void) | null = null
+  private _unsubscribeSuggest: (() => void) | null = null
+  private _declined: boolean | null = null
+  private _captureNotice = false
+  private _noticeShownAt: number | null = null
+  private _noticeTimer: ReturnType<typeof setTimeout> | null = null
+  private _subTab: RelaySubTab | null = null
   private _seen: SeenMarks | null = null
 
   constructor(options: CollectorOptions = {}) {
@@ -206,7 +227,8 @@ export class RelayCollector extends Collector {
 
   /** Real screenshots for agents: whether the connector offers them, and whether one runs. */
   get canCapture(): boolean {
-    return !!this._controller?.capture
+    const capture = this._controller?.capture
+    return !!capture && capture.supported !== false
   }
 
   get captureActive(): boolean {
@@ -220,6 +242,82 @@ export class RelayCollector extends Collector {
 
   stopCapture(): void {
     this._controller?.capture?.stop()
+  }
+
+  /** The user went on without real screenshots: neither the 📷 prompt nor the agent notice asks again in this browser tab. */
+  get captureDeclined(): boolean {
+    if (this._declined === null) {
+      try {
+        this._declined = tabStorage()?.getItem(DECLINED_KEY) === '1'
+      } catch {
+        this._declined = false
+      }
+    }
+    return this._declined
+  }
+
+  declineCapture(): void {
+    this._declined = true
+    try {
+      tabStorage()?.setItem(DECLINED_KEY, '1')
+    } catch {
+      /* storage refused: the choice lasts for the page only */
+    }
+    this.dismissCaptureNotice()
+    this.notifyChange()
+  }
+
+  /**
+   * An agent screenshot was just rendered from the page (#2318): the bar offers real screenshots in a corner, without
+   * blocking anything. It goes away on its own after CAPTURE_NOTICE_MS.
+   */
+  get captureNotice(): boolean {
+    return this._captureNotice
+  }
+
+  dismissCaptureNotice(): void {
+    if (this._noticeTimer) clearTimeout(this._noticeTimer)
+    this._noticeTimer = null
+    if (!this._captureNotice) return
+    this._captureNotice = false
+    this.notifyChange()
+  }
+
+  /** A burst of agent screenshots brings the notice up once: again only after CAPTURE_NOTICE_EVERY_MS. */
+  private _suggestCapture(): void {
+    if (!this.canCapture || this._captureActive || this.captureDeclined) return
+    const now = Date.now()
+    if (this._noticeShownAt !== null && now - this._noticeShownAt < CAPTURE_NOTICE_EVERY_MS) return
+    this._noticeShownAt = now
+    this._captureNotice = true
+    if (this._noticeTimer) clearTimeout(this._noticeTimer)
+    this._noticeTimer = setTimeout(() => this.dismissCaptureNotice(), CAPTURE_NOTICE_MS)
+    this.notifyChange()
+  }
+
+  /** The MCP tab's sub-tab. The bar opens Chat once a screenshot is sent (#2318). */
+  get subTab(): RelaySubTab {
+    if (this._subTab === null) {
+      let saved: string | null = null
+      try {
+        saved = tabStorage()?.getItem(SUBTAB_KEY) ?? null
+      } catch {
+        /* storage refused: start on Status */
+      }
+      this._subTab = saved === 'chat' || saved === 'history' ? saved : 'status'
+    }
+    return this._subTab
+  }
+
+  openSubTab(tab: RelaySubTab): void {
+    if (tab === this.subTab) return
+    this._subTab = tab
+    try {
+      tabStorage()?.setItem(SUBTAB_KEY, tab)
+    } catch {
+      /* storage refused: the choice just does not survive a reload */
+    }
+    this.notifyChange()
   }
 
   sendChat(text: string, image?: RelayChatImageLike): void {
@@ -346,8 +444,10 @@ export class RelayCollector extends Collector {
     this._unsubscribeCapture =
       this._controller.capture?.subscribe((active) => {
         this._captureActive = active
+        if (active) this.dismissCaptureNotice()
         this.notifyChange()
       }) ?? null
+    this._unsubscribeSuggest = this._controller.capture?.onSuggest?.(() => this._suggestCapture()) ?? null
     // No marks yet: what the tab already held is not news.
     this._seen = saved ?? { chat: lastId(this._chat), history: lastId(this._activity) }
     if (!saved) this._saveSeen()
@@ -363,6 +463,10 @@ export class RelayCollector extends Collector {
     this._unsubscribeActivity = null
     this._unsubscribeCapture?.()
     this._unsubscribeCapture = null
+    this._unsubscribeSuggest?.()
+    this._unsubscribeSuggest = null
+    if (this._noticeTimer) clearTimeout(this._noticeTimer)
+    this._noticeTimer = null
   }
 
   override snapshot(): CollectorSnapshot {

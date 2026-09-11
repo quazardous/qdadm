@@ -113,9 +113,7 @@ when several tabs are open. Three sub-tabs:
 
 - **Status**: how this tab reaches the relay (connected, offline, or Pair).
 - **Chat**: the agent writes with `chat_send`; what you type, it reads with
-  `chat_read`. 📷 takes a screenshot of the page (without the debug bar); circle
-  what you mean with the pen, pick a colour, add a note, and **Send**: `chat_read`
-  gives the agent the picture itself.
+  `chat_read`.
 - **History**: every MCP request this tab served — tool, detail, success or
   error, duration.
 
@@ -124,9 +122,17 @@ Chat and history are kept for the browser tab, across reloads. The tab icon,
 was last on screen; **Status** shows a dot while the relay is offline,
 something failed, or a code waits.
 
-**Status** also offers **Allow real screenshots**. Agent screenshots are
-rendered from the page's DOM by default. Once you share the tab there, they
-are the real pixels, until **Stop sharing**.
+**📷**, among the debug bar's own buttons, works from any tab: it takes a
+screenshot of the page; circle what you mean with the pen, pick a colour, add a
+note, and **Send**. The bar opens on **MCP → Chat**, and `chat_read` gives the
+agent the picture itself.
+
+Screenshots are rendered from the page's DOM unless you share the tab. For the
+real pixels, click **Allow real screenshots**: in **Status**, in the prompt the
+📷 shows first, or in the corner notice that comes up when an agent's
+screenshot is rendered from the page. That notice blocks nothing and goes away
+after 10 s. **Continue without** stops asking for this browser tab. Sharing
+lasts until **Stop sharing**.
 
 Screenshots are also kept in your project. The stdio front writes each one
 under `.aiball/screenshots/` in the directory the agent's client started it in

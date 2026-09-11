@@ -761,6 +761,62 @@ describe('relay connector — screenshot (#2247)', () => {
     expect(controller.capture.active).toBe(false)
     expect(controller.activity.entries.at(-1).tool).toBe('screenshot')
   })
+
+  const connectedForShots = async () => {
+    document.body.innerHTML = '<main><h1>Books</h1></main>'
+    window.__qdadmRelayAuto = '/__qdadm/relay.json'
+    vi.stubGlobal('fetch', async () => ({ ok: true, status: 200, json: async () => ({ port: 47761, token: 'dev-token' }) }))
+    const broker = new RelayBroker({ token: 'dev-token', identity: identity(47761) })
+    const { controller } = install({ 47761: broker })
+    await vi.waitFor(() => expect(controller.state.status).toBe('connected'))
+    return { broker, controller }
+  }
+
+  it('an agent picture rendered from the page, with no capture running, offers real screenshots to the debug bar (#2318)', async () => {
+    // A tab the browser lets the user share, and a <video>/<canvas> jsdom cannot draw: stubbed.
+    const track = { readyState: 'live', addEventListener: () => {}, stop: vi.fn() }
+    const stream = { getVideoTracks: () => [track], getTracks: () => [track] }
+    Object.defineProperty(navigator, 'mediaDevices', { value: { getDisplayMedia: vi.fn(async () => stream) }, configurable: true })
+    const spies = [
+      vi.spyOn(HTMLMediaElement.prototype, 'play').mockResolvedValue(undefined),
+      vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue({ drawImage: () => {} }),
+      vi.spyOn(HTMLCanvasElement.prototype, 'toDataURL').mockReturnValue('data:image/jpeg;base64,QUJD'),
+    ]
+    vi.stubGlobal('requestAnimationFrame', (cb) => setTimeout(cb, 0))
+    try {
+      const { broker, controller } = await connectedForShots()
+      const suggested = vi.fn()
+      controller.capture.onSuggest(suggested)
+      expect(controller.capture.supported).toBe(true)
+
+      expect((await broker.ask('screenshot', {})).source).toBe('dom')
+      expect(suggested).toHaveBeenCalledTimes(1)
+
+      // The agent asked for the rendering on purpose: nothing to offer.
+      await broker.ask('screenshot', { source: 'dom' })
+      expect(suggested).toHaveBeenCalledTimes(1)
+
+      // A real capture runs: the picture is the tab's, and nothing is offered.
+      await controller.capture.start()
+      expect((await broker.ask('screenshot', {})).source).toBe('tab')
+      expect(suggested).toHaveBeenCalledTimes(1)
+      controller.capture.stop()
+    } finally {
+      for (const spy of spies) spy.mockRestore()
+      delete navigator.mediaDevices
+    }
+  })
+
+  it('a browser that cannot capture a tab offers nothing', async () => {
+    const { broker, controller } = await connectedForShots()
+    const suggested = vi.fn()
+    const stop = controller.capture.onSuggest(suggested)
+
+    expect(controller.capture.supported).toBe(false)
+    await broker.ask('screenshot', {})
+    expect(suggested).not.toHaveBeenCalled()
+    stop()
+  })
 })
 
 describe('relay connector — acting in the page, console and network (#2247)', () => {

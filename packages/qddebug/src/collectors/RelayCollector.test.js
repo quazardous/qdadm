@@ -5,7 +5,7 @@
  * Run: npm test
  */
 import { describe, it, expect, vi, afterEach } from 'vitest'
-import { RelayCollector, findRelayController } from './RelayCollector'
+import { RelayCollector, findRelayController, CAPTURE_NOTICE_MS, CAPTURE_NOTICE_EVERY_MS } from './RelayCollector'
 
 function fakeController(initial = { status: 'idle' }) {
   let state = initial
@@ -392,5 +392,142 @@ describe('RelayCollector — clearing the chat (#2231)', () => {
     collector.clearChat()
 
     expect(controller.chat.clear).toHaveBeenCalled()
+  })
+})
+
+describe('RelayCollector — offering real screenshots (#2318)', () => {
+  afterEach(() => {
+    vi.useRealTimers()
+    vi.unstubAllGlobals()
+  })
+
+  const tabStore = () => {
+    const m = new Map()
+    return { getItem: (k) => m.get(k) ?? null, setItem: (k, v) => m.set(k, String(v)) }
+  }
+
+  function withCapture({ supported = true } = {}) {
+    let activeListener = () => {}
+    const suggestListeners = new Set()
+    const controller = {
+      ...fakeController({ status: 'connected' }),
+      capture: {
+        active: false,
+        supported,
+        start: vi.fn(async () => activeListener(true)),
+        stop: vi.fn(() => activeListener(false)),
+        subscribe: (l) => {
+          activeListener = l
+          l(false)
+          return () => {}
+        },
+        onSuggest: (l) => {
+          suggestListeners.add(l)
+          return () => suggestListeners.delete(l)
+        },
+      },
+      suggest: () => {
+        for (const l of suggestListeners) l()
+      },
+      suggestListeners,
+    }
+    globalThis.__qdadmRelay = controller
+    const collector = new RelayCollector()
+    collector.install({})
+    return { controller, collector }
+  }
+
+  it('an agent screenshot rendered from the page brings the notice up, gone after 10 s', () => {
+    vi.useFakeTimers()
+    const { controller, collector } = withCapture()
+    const notified = vi.fn()
+    collector.onNotify(notified)
+
+    controller.suggest()
+    expect(collector.captureNotice).toBe(true)
+    expect(notified).toHaveBeenCalled()
+
+    vi.advanceTimersByTime(CAPTURE_NOTICE_MS - 1)
+    expect(collector.captureNotice).toBe(true)
+    vi.advanceTimersByTime(1)
+    expect(collector.captureNotice).toBe(false)
+  })
+
+  it('a burst of agent screenshots brings it up once a minute at most', () => {
+    vi.useFakeTimers()
+    const { controller, collector } = withCapture()
+
+    controller.suggest()
+    collector.dismissCaptureNotice()
+    vi.advanceTimersByTime(CAPTURE_NOTICE_EVERY_MS - 1)
+    controller.suggest()
+    expect(collector.captureNotice).toBe(false)
+
+    vi.advanceTimersByTime(1)
+    controller.suggest()
+    expect(collector.captureNotice).toBe(true)
+  })
+
+  it('starting a capture takes the notice away, and none comes while it runs', async () => {
+    vi.useFakeTimers()
+    const { controller, collector } = withCapture()
+    controller.suggest()
+
+    await collector.startCapture()
+    expect(collector.captureNotice).toBe(false)
+
+    vi.advanceTimersByTime(CAPTURE_NOTICE_EVERY_MS)
+    controller.suggest()
+    expect(collector.captureNotice).toBe(false)
+  })
+
+  it('Continue without takes it away, and nothing asks again in this browser tab, reloads included', () => {
+    vi.useFakeTimers()
+    vi.stubGlobal('sessionStorage', tabStore())
+    const { controller, collector } = withCapture()
+    controller.suggest()
+
+    collector.declineCapture()
+    expect(collector.captureNotice).toBe(false)
+    expect(collector.captureDeclined).toBe(true)
+
+    vi.advanceTimersByTime(CAPTURE_NOTICE_EVERY_MS)
+    controller.suggest()
+    expect(collector.captureNotice).toBe(false)
+    // After a reload, a new collector reads the choice back.
+    expect(withCapture().collector.captureDeclined).toBe(true)
+  })
+
+  it('a browser that cannot capture a tab offers neither the capture nor the notice', () => {
+    const { controller, collector } = withCapture({ supported: false })
+
+    expect(collector.canCapture).toBe(false)
+    controller.suggest()
+    expect(collector.captureNotice).toBe(false)
+  })
+
+  it('stops listening and drops its timer when uninstalled', () => {
+    vi.useFakeTimers()
+    const { controller, collector } = withCapture()
+    controller.suggest()
+
+    collector.uninstall()
+
+    expect(controller.suggestListeners.size).toBe(0)
+    expect(vi.getTimerCount()).toBe(0)
+  })
+
+  it('remembers the sub-tab for the browser tab; opening Chat tells the panel', () => {
+    vi.stubGlobal('sessionStorage', tabStore())
+    const { collector } = withCapture()
+    const notified = vi.fn()
+    collector.onNotify(notified)
+    expect(collector.subTab).toBe('status')
+
+    collector.openSubTab('chat')
+
+    expect(collector.subTab).toBe('chat')
+    expect(notified).toHaveBeenCalled()
+    expect(withCapture().collector.subTab).toBe('chat')
   })
 })

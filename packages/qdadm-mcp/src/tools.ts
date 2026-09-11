@@ -492,8 +492,8 @@ export function buildToolset(api: DebugBrokerApi, options: ToolsetOptions = {}):
         description:
           'A picture of the tab, as an image: the viewport by default, one element with ref, the whole page with ' +
           'fullPage. Rendered from the page\'s DOM (snapdom): no permission needed, but it is a re-rendering — a ' +
-          'cross-origin image without CORS may come out blank. When the user has clicked "Allow real screenshots" in ' +
-          'the MCP tab of the debug bar, you get the real pixels instead. Read what the page says with page_snapshot; ' +
+          'cross-origin image without CORS may come out blank. Without a real capture, the tab offers the user to allow ' +
+          'one (a corner notice; your picture does not wait). Once they share the tab, you get the real pixels. Read what the page says with page_snapshot; ' +
           'take a screenshot to judge how it looks.',
         args: {
           instance,

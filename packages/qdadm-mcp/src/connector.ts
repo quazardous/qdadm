@@ -277,11 +277,18 @@ export interface QdadmRelayController {
   /** Real screenshots (#2247): a capture of this tab, started by the user. */
   readonly capture: {
     readonly active: boolean
+    /** Whether this browser can capture a tab at all. */
+    readonly supported: boolean
     /** Call it from the user's click: the browser asks them to share the tab, and only within a click. */
     start(): Promise<void>
     stop(): void
     /** Called at once with whether a capture runs, then on every change. */
     subscribe(listener: (active: boolean) => void): () => void
+    /**
+     * Called when an agent's `screenshot` was rendered from the page because no capture runs (#2318): the debug bar
+     * offers real screenshots. The agent's picture does not wait for it.
+     */
+    onSuggest(listener: () => void): () => void
   }
 }
 
@@ -820,9 +827,13 @@ export function installQdadmRelayConnector(options: QdadmRelayConnectorOptions =
       get active() {
         return page.capture.active()
       },
+      get supported() {
+        return page.capture.supported()
+      },
       start: () => page.capture.start(),
       stop: () => page.capture.stop(),
       subscribe: (listener) => page.capture.subscribe(listener),
+      onSuggest: (listener) => page.capture.onSuggest(listener),
     },
   }
   w.__qdadmRelay = controller
@@ -1134,6 +1145,20 @@ function createPageAgent(sessionId: string, q: () => QdadmGlobal) {
   let capture: MediaStream | null = null
   const captureListeners = new Set<(active: boolean) => void>()
   const captureLive = () => capture?.getVideoTracks()[0]?.readyState === 'live'
+  const captureSupported = () =>
+    typeof (navigator.mediaDevices as { getDisplayMedia?: unknown } | undefined)?.getDisplayMedia === 'function'
+  const suggestListeners = new Set<() => void>()
+  /** An agent picture came out rendered from the page (#2318): the debug bar offers the real pixels. */
+  const suggestCapture = () => {
+    if (!captureSupported()) return
+    for (const listener of suggestListeners) {
+      try {
+        listener()
+      } catch {
+        /* a broken listener must not break the screenshot */
+      }
+    }
+  }
   const notifyCapture = () => {
     const active = captureLive()
     for (const listener of captureListeners) {
@@ -1292,7 +1317,11 @@ function createPageAgent(sessionId: string, q: () => QdadmGlobal) {
         quality: payload?.quality as number | undefined,
         withDebugBar: payload?.withDebugBar === true,
       }
-      return source !== 'dom' && capture && captureLive() ? tabShot(capture, options) : domShot(options)
+      if (source !== 'dom' && capture && captureLive()) return tabShot(capture, options)
+      const shot = await domShot(options)
+      // Asked for the rendering on purpose: nothing to offer.
+      if (source === 'auto') suggestCapture()
+      return shot
     },
     pageEval: async (payload) => {
       const code = String(payload?.code ?? '').trim()
@@ -1578,6 +1607,7 @@ function createPageAgent(sessionId: string, q: () => QdadmGlobal) {
     },
     capture: {
       active: captureLive,
+      supported: captureSupported,
       start: startCapture,
       stop: stopCapture,
       subscribe: (listener: (active: boolean) => void) => {
@@ -1585,6 +1615,12 @@ function createPageAgent(sessionId: string, q: () => QdadmGlobal) {
         listener(captureLive())
         return () => {
           captureListeners.delete(listener)
+        }
+      },
+      onSuggest: (listener: () => void) => {
+        suggestListeners.add(listener)
+        return () => {
+          suggestListeners.delete(listener)
         }
       },
     },

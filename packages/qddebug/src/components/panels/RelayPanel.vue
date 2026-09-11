@@ -4,8 +4,7 @@
  * qdadm-mcp-relay, so an agent can debug the live app.
  */
 import { computed, nextTick, onUnmounted, ref, watch } from 'vue'
-import type { RelayChatImageLike, RelayCollector, RelayIdentityLike, RelayShotLike } from '../../collectors/RelayCollector'
-import ScreenshotAnnotator from './ScreenshotAnnotator.vue'
+import type { RelayChatImageLike, RelayCollector, RelayIdentityLike, RelaySubTab } from '../../collectors/RelayCollector'
 
 const props = defineProps<{
   collector: RelayCollector
@@ -74,26 +73,12 @@ const startCapture = async () => {
   }
 }
 
-/** Status / Chat / History — remembered for the browser tab. */
-type SubTab = 'status' | 'chat' | 'history'
-const SUBTAB_KEY = 'qdadm-debug:mcp-subtab'
-const readSubTab = (): SubTab => {
-  try {
-    const v = sessionStorage.getItem(SUBTAB_KEY)
-    return v === 'chat' || v === 'history' ? v : 'status'
-  } catch {
-    return 'status'
-  }
-}
-const subTab = ref<SubTab>(readSubTab())
-const openSubTab = (tab: SubTab) => {
-  subTab.value = tab
-  try {
-    sessionStorage.setItem(SUBTAB_KEY, tab)
-  } catch {
-    /* storage refused: the choice just does not survive a reload */
-  }
-}
+/** Status / Chat / History — the collector remembers it for the browser tab; the bar's 📷 opens Chat (#2318). */
+const subTab = computed<RelaySubTab>(() => {
+  void tick.value
+  return props.collector.subTab
+})
+const openSubTab = (tab: RelaySubTab) => props.collector.openSubTab(tab)
 
 /** The chat with the agent: it writes with chat_send, reads what you type with chat_read. */
 const chat = computed(() => {
@@ -137,25 +122,6 @@ const sendChat = () => {
   if (!text) return
   props.collector.sendChat(text)
   draft.value = ''
-}
-/** A screenshot the user annotates and sends to the agent (#2309). */
-const shot = ref<RelayShotLike | null>(null)
-const shooting = ref(false)
-const shotError = ref<string | null>(null)
-const takeScreenshot = async () => {
-  shotError.value = null
-  shooting.value = true
-  try {
-    shot.value = await props.collector.shoot()
-  } catch (e) {
-    shotError.value = `No screenshot: ${(e as Error).message}`
-  } finally {
-    shooting.value = false
-  }
-}
-const sendShot = (text: string, image: RelayChatImageLike) => {
-  props.collector.sendChat(text, image)
-  shot.value = null
 }
 const imageUrl = (image: RelayChatImageLike) => `data:${image.mimeType};base64,${image.data}`
 const zoomed = ref<RelayChatImageLike | null>(null)
@@ -353,24 +319,11 @@ const SETUP = 'npx qdadm-mcp-relay --stdio'
         </div>
       </div>
       <form class="mcp-chat-form" @submit.prevent="sendChat">
-        <button
-          v-if="collector.canShoot"
-          type="button"
-          class="mcp-btn"
-          :disabled="shooting"
-          title="Screenshot the page, circle what you mean, send it to the agent"
-          aria-label="Screenshot"
-          @click="takeScreenshot"
-        >
-          <i :class="['pi', shooting ? 'pi-spin pi-spinner' : 'pi-camera']" />
-        </button>
         <input v-model="draft" class="mcp-chat-input" maxlength="2000" placeholder="Message the agent…" @keydown.stop />
         <button type="submit" class="mcp-btn mcp-btn-primary" :disabled="!draft.trim()" title="Send">
           <i class="pi pi-send" />
         </button>
       </form>
-      <p v-if="shotError" class="mcp-hint mcp-warn">{{ shotError }}</p>
-      <ScreenshotAnnotator v-if="shot" :shot="shot" @send="sendShot" @cancel="shot = null" />
       <Teleport v-if="zoomed" to="body">
         <div class="qd-debug" style="display: contents">
           <div class="mcp-zoom" role="dialog" aria-label="Screenshot sent to the agent" @click="zoomed = null">

@@ -22,6 +22,8 @@ import EntriesPanel from './panels/EntriesPanel.vue'
 import SignalsPanel from './panels/SignalsPanel.vue'
 import ToastsPanel from './panels/ToastsPanel.vue'
 import RelayPanel from './panels/RelayPanel.vue'
+import RelayScreenshot from './panels/RelayScreenshot.vue'
+import type { RelayCollector } from '../collectors/RelayCollector'
 
 // Layout/theming CSS + PrimeIcons font are shipped with qddebug so consumers
 // don't have to supply their own. Side-effect imports = registered once
@@ -585,6 +587,35 @@ function panelFor(name: string | undefined): Component | null {
 }
 
 const currentPanel = computed<Component | null>(() => panelFor(currentCollector.value?.name))
+
+// ─── The 📷 (#2318) ──────────────────────────────────────────────────────────
+
+const RELAY_COLLECTORS = ['mcp', 'RelayCollector']
+const relayIndex = computed<number>(() => collectors.value.findIndex((c: CollectorEntry) => RELAY_COLLECTORS.includes(c.name)))
+const relayCollector = computed<RelayCollector | null>(() => {
+  const entry = collectors.value[relayIndex.value]
+  return entry ? (entry.collector as unknown as RelayCollector) : null
+})
+const canShoot = computed<boolean>(() => !!relayCollector.value?.canShoot)
+const shooter = ref<InstanceType<typeof RelayScreenshot> | null>(null)
+
+function takeScreenshot(): void {
+  void shooter.value?.start()
+}
+
+/** The picture went to the chat: the bar opens on MCP → Chat, where it shows. */
+function openRelayChat(): void {
+  const idx = relayIndex.value
+  if (idx < 0) return
+  relayCollector.value?.openSubTab('chat')
+  activeCollector.value = idx
+  if (minimized.value) {
+    expand()
+  } else if (!expanded.value) {
+    expanded.value = true
+    saveState()
+  }
+}
 </script>
 
 <template>
@@ -718,6 +749,17 @@ const currentPanel = computed<Component | null>(() => panelFor(currentCollector.
           <button type="button" class="qd-btn" :class="{ 'qd-btn-active': isEnabled }" :title="isEnabled ? 'Pause' : 'Resume'" @click="toggleEnabled">
             <i :class="['pi', isEnabled ? 'pi-pause' : 'pi-play']" />
           </button>
+          <button
+            v-if="canShoot"
+            type="button"
+            class="qd-btn"
+            :class="{ 'qd-btn-active': shooter?.busy }"
+            title="Screenshot: circle what you mean, send it to the agent"
+            aria-label="Screenshot"
+            @click="takeScreenshot"
+          >
+            <i class="pi pi-camera" />
+          </button>
           <button type="button" class="qd-btn" title="Clear all" @click="clearAll">
             <i class="pi pi-trash" />
           </button>
@@ -819,6 +861,9 @@ const currentPanel = computed<Component | null>(() => panelFor(currentCollector.
         />
       </div>
     </div>
+
+    <!-- The 📷's prompt and annotator, and the offer an agent screenshot brings up: shown even minimized. -->
+    <RelayScreenshot v-if="relayCollector && !suspended" ref="shooter" :collector="relayCollector" @sent="openRelayChat" />
     </div>
   </Teleport>
 </template>
