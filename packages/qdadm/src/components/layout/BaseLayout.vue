@@ -35,7 +35,7 @@ import { RouterView } from 'vue-router'
 import ConfirmDialog from 'primevue/confirmdialog'
 import Zone from './Zone.vue'
 import { LAYOUT_ZONES } from '../../zones/zones'
-import { useGuardDialog } from '../../composables/useGuardStore'
+import { useGuardDialog, GUARD_DIALOG_HOST } from '../../composables/useGuardStore'
 import UnsavedChangesDialog from '../dialogs/UnsavedChangesDialog.vue'
 import type { BreadcrumbItem, NavLinkItem } from '../../composables/useNavContext'
 
@@ -52,6 +52,8 @@ const hasMainSlot: boolean = !!slots.main
 
 // Guard dialog from shared store (registered by useBareForm/useEntityItemFormPage when a form is active)
 const guardDialog = useGuardDialog()
+// This layout renders it: pages below do not render their own (#2267)
+provide(GUARD_DIALOG_HOST, true)
 
 // Provide breadcrumb/navlinks override mechanism for child pages
 const breadcrumbOverride = ref<BreadcrumbItem[] | null>(null)

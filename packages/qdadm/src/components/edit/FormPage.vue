@@ -32,7 +32,8 @@
  * - #error: Custom error display
  * - #loading: Custom loading display
  */
-import { computed, type PropType } from 'vue'
+import { computed, inject, type PropType } from 'vue'
+import { GUARD_DIALOG_HOST } from '../../composables/useGuardStore'
 import PageHeader from '../layout/PageHeader.vue'
 import FormActions from './FormActions.vue'
 import UnsavedChangesDialog from '../dialogs/UnsavedChangesDialog.vue'
@@ -121,6 +122,10 @@ const headerActions = computed<ResolvedAction[]>(() =>
 
 // Get error message from fetchError
 const fetchErrorMessage = computed<string | null>(() => formatFetchError(props.fetchError))
+
+// A qdadm layout (AppLayout, BaseLayout) renders the registered guard dialog: rendering it here too
+// stacked two identical dialogs (#2267). Without such a layout, this page renders it.
+const layoutRendersGuardDialog = inject(GUARD_DIALOG_HOST, false)
 
 // Guard dialog handlers
 function onGuardSaveAndLeave(): void {
@@ -225,7 +230,7 @@ function onGuardStay(): void {
 
     <!-- Unsaved Changes Dialog -->
     <UnsavedChangesDialog
-      v-if="guardDialog"
+      v-if="guardDialog && !layoutRendersGuardDialog"
       :visible="guardDialog.visible.value"
       :saving="saving"
       :hasOnSave="guardDialog.hasOnSave"

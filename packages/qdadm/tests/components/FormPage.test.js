@@ -7,6 +7,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { h, ref } from 'vue'
 import FormPage from '../../src/components/edit/FormPage.vue'
+import { GUARD_DIALOG_HOST } from '../../src/composables/useGuardStore'
 
 // Mock PrimeVue components
 vi.mock('primevue/card', () => ({
@@ -361,6 +362,18 @@ describe('FormPage', () => {
           guardDialog: null
         },
         slots: { fields: '<div>Fields</div>' }
+      })
+
+      expect(wrapper.find('.unsaved-dialog').exists()).toBe(false)
+    })
+
+    it('renders no dialog of its own inside a layout that renders it (#2267)', () => {
+      const guardDialog = { visible: ref(true), onLeave: vi.fn(), onStay: vi.fn() }
+
+      const wrapper = mount(FormPage, {
+        props: { title: 'Test', guardDialog },
+        slots: { fields: '<div>Fields</div>' },
+        global: { provide: { [GUARD_DIALOG_HOST]: true } }
       })
 
       expect(wrapper.find('.unsaved-dialog').exists()).toBe(false)

@@ -19,7 +19,7 @@ import { useNavigation, type NavSection } from '../../composables/useNavigation'
 import { prettifyRole } from '../../utils/formatters'
 import { useApp } from '../../composables/useApp'
 import { useAuth } from '../../composables/useAuth'
-import { useGuardDialog } from '../../composables/useGuardStore'
+import { useGuardDialog, GUARD_DIALOG_HOST } from '../../composables/useGuardStore'
 import { useNavContext, type BreadcrumbItem, type NavLinkItem } from '../../composables/useNavContext'
 import QdButton from '../base/QdButton.vue'
 import Breadcrumb from 'primevue/breadcrumb'
@@ -56,6 +56,8 @@ const homeRoute = inject<string>('qdadmHomeRoute', 'home')
 
 // Guard dialog from shared store (registered by useBareForm/useEntityItemFormPage when a form is active)
 const guardDialog = useGuardDialog()
+// This layout renders it: pages below do not render their own (#2267)
+provide(GUARD_DIALOG_HOST, true)
 
 const router = useRouter()
 const route = useRoute()

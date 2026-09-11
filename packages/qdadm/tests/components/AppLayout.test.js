@@ -10,6 +10,7 @@ import { describe, it, expect, vi } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { ref } from 'vue'
 import AppLayout from '../../src/components/layout/AppLayout.vue'
+import { GUARD_DIALOG_HOST } from '../../src/composables/useGuardStore'
 
 const modeLinksRef = ref([])
 
@@ -56,7 +57,8 @@ vi.mock('../../src/composables/useAuth', () => ({
   }),
 }))
 
-vi.mock('../../src/composables/useGuardStore', () => ({
+vi.mock('../../src/composables/useGuardStore', async (importOriginal) => ({
+  ...(await importOriginal()),
   useGuardDialog: () => null,
 }))
 
@@ -155,5 +157,13 @@ describe('AppLayout inline breadcrumb mode links (#1341/#1353)', () => {
     })
 
     expect(wrapper.find('.breadcrumb-mode-toggle').exists()).toBe(false)
+  })
+})
+
+describe('AppLayout owns the unsaved-changes dialog (#2267)', () => {
+  it('tells the pages below that it renders the dialog, so FormPage does not render a second one', () => {
+    const wrapper = mountLayout()
+
+    expect(wrapper.vm.$.provides[GUARD_DIALOG_HOST]).toBe(true)
   })
 })

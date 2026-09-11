@@ -318,8 +318,9 @@ const { dirty, isFieldDirty, takeSnapshot, cancel, guardDialog } = useBareForm({
 
 It provides `isFieldDirty`/`dirtyFields` to child `FormField`s (same `inject`
 contract as the entity form), so the widget catalog above works inside a bare
-form too. Wire `guardDialog` through the shared guard store — `AppLayout`
-renders the dialog automatically.
+form too. The layout renders the dialog: `AppLayout` and `BaseLayout` show the
+guard a form registers. `FormPage` renders it itself only outside them, so a
+page never shows it twice.
 
 | Returns | What |
 |---|---|

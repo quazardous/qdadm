@@ -11,8 +11,9 @@
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { mount } from '@vue/test-utils'
-import { h, defineComponent, ref } from 'vue'
+import { h, defineComponent, ref, inject } from 'vue'
 import BaseLayout from '../../src/components/layout/BaseLayout.vue'
+import { GUARD_DIALOG_HOST } from '../../src/composables/useGuardStore'
 import { ZoneRegistry } from '../../src/zones/ZoneRegistry'
 import { registerStandardZones } from '../../src/zones/zones'
 
@@ -64,7 +65,8 @@ vi.mock('../../src/composables/useAuth', () => ({
   })
 }))
 
-vi.mock('../../src/composables/useGuardStore', () => ({
+vi.mock('../../src/composables/useGuardStore', async (importOriginal) => ({
+  ...(await importOriginal()),
   useGuardDialog: () => null
 }))
 
@@ -249,6 +251,21 @@ describe('BaseLayout', () => {
       const wrapper = mountBaseLayout()
 
       expect(wrapper.find('.mock-confirm-dialog').exists()).toBe(true)
+    })
+
+    it('tells the pages below that it renders the unsaved-changes dialog (#2267)', () => {
+      let host = null
+      const Page = defineComponent({
+        setup() {
+          host = inject(GUARD_DIALOG_HOST, false)
+          return () => h('div', { class: 'page-below' })
+        }
+      })
+
+      const wrapper = mountBaseLayout({ slots: { main: () => h(Page) } })
+
+      expect(wrapper.find('.page-below').exists()).toBe(true)
+      expect(host).toBe(true)
     })
   })
 

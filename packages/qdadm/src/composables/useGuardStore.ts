@@ -5,7 +5,13 @@
  * and parent components (AppLayout) to render it.
  */
 
-import { shallowRef, type ShallowRef, type Ref } from 'vue'
+import { shallowRef, type InjectionKey, type ShallowRef, type Ref } from 'vue'
+
+/**
+ * Provided by a layout that renders the registered guard dialog (#2267). FormPage renders its own dialog only
+ * without one above it, so a dirty form never shows the dialog twice.
+ */
+export const GUARD_DIALOG_HOST: InjectionKey<boolean> = Symbol('qdadm.guardDialogHost')
 
 /**
  * Guard dialog interface

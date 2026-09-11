@@ -65,7 +65,8 @@ vi.mock('../../src/composables/useAuth', () => ({
   })
 }))
 
-vi.mock('../../src/composables/useGuardStore', () => ({
+vi.mock('../../src/composables/useGuardStore', async (importOriginal) => ({
+  ...(await importOriginal()),
   useGuardDialog: () => null
 }))
 
