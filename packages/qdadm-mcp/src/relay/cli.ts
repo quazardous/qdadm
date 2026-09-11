@@ -11,7 +11,7 @@
  *
  * You rarely start it yourself:
  *   - `npm run dev` does, through qdadmMcpPlugin, and dev tabs connect to it;
- *   - the agent does, through `claude mcp add qdadm -- npx qdadm-mcp-relay --stdio`.
+ *   - the agent's MCP client does, running `npx qdadm-mcp-relay --stdio`.
  *
  *   npx qdadm-mcp-relay [--stdio] [--read-only] [--origin <origin>]...
  *                       [--port <p>] [--token <fixed>] [--background]
@@ -213,7 +213,7 @@ export async function main(argv = process.argv.slice(2)): Promise<void> {
   if (shared) log(`run file       ${runFile}`)
   log('dev tabs       connect on their own (qdadmMcpPlugin)')
   log('other tabs     debug bar → MCP tab → Pair, then give the agent the code')
-  log('agents         claude mcp add qdadm -- npx qdadm-mcp-relay --stdio')
+  log('agents         MCP stdio server: npx qdadm-mcp-relay --stdio')
   // The token lets a tab in without a code: print it to a terminal, never into a log file.
   if (!opts.background) log(`token fragment #qdadm-relay=ws://localhost:${port}/${opts.token}`)
 }

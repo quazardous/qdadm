@@ -23,6 +23,31 @@ const state = computed(() => {
 })
 const busy = computed(() => state.value.status === 'scanning' || state.value.status === 'reconnecting')
 
+/**
+ * The instance id agents target with `instance` — shown whatever the state,
+ * so with several tabs open you can tell the agent which one you mean.
+ * Clicking it copies it.
+ */
+const instanceShort = computed(() => props.collector.instanceId?.slice(0, 8) ?? null)
+const copied = ref(false)
+const copyInstance = async (event: MouseEvent) => {
+  if (!instanceShort.value) return
+  // Read before awaiting: once the handler yields, currentTarget is null.
+  const target = event.currentTarget as Node
+  try {
+    await navigator.clipboard.writeText(instanceShort.value)
+  } catch {
+    // Clipboard refused: select the id instead, ready for Ctrl+C.
+    const range = document.createRange()
+    range.selectNodeContents(target)
+    window.getSelection()?.removeAllRanges()
+    window.getSelection()?.addRange(range)
+    return
+  }
+  copied.value = true
+  setTimeout(() => (copied.value = false), 1500)
+}
+
 /** "424242" → "424 242": easier to read out loud. */
 const spaced = (code?: string) => (code && code.length === 6 ? `${code.slice(0, 3)} ${code.slice(3)}` : code ?? '')
 const relayName = (relay?: RelayIdentityLike) => (relay ? `${relay.project ?? 'relay'} · port ${relay.port ?? '?'}` : '')
@@ -32,11 +57,26 @@ const pair = (port?: number) => {
 }
 const unpair = () => props.collector.unpair()
 
-const SETUP = 'claude mcp add qdadm -- npx qdadm-mcp-relay --stdio'
+/** What any MCP client runs — no particular agent assumed. */
+const SETUP = 'npx qdadm-mcp-relay --stdio'
 </script>
 
 <template>
   <div class="mcp-panel">
+    <div v-if="instanceShort && state.status !== 'unavailable'" class="mcp-instance">
+      <span class="mcp-instance-label">Instance</span>
+      <button
+        type="button"
+        class="mcp-instance-id"
+        :title="copied ? 'Copied' : 'Click to copy — the id to give your agent'"
+        @click="copyInstance"
+      >
+        <code>{{ instanceShort }}</code>
+        <i :class="['pi', copied ? 'pi-check' : 'pi-copy']" />
+      </button>
+      <span v-if="copied" class="mcp-copied">copied</span>
+    </div>
+
     <template v-if="state.status === 'unavailable'">
       <p class="mcp-lead">The MCP connector is not installed in this app.</p>
       <p class="mcp-hint">
@@ -52,14 +92,12 @@ const SETUP = 'claude mcp add qdadm -- npx qdadm-mcp-relay --stdio'
     <template v-else-if="state.status === 'connected'">
       <p class="mcp-lead mcp-ok"><i class="pi pi-check-circle" /> Connected — agents reach this tab through the relay.</p>
       <dl class="mcp-facts">
-        <dt>Instance</dt>
-        <dd><code>{{ (state.instanceId ?? '').slice(0, 8) }}</code></dd>
         <dt>Relay</dt>
         <dd>{{ relayName(state.relay) }}</dd>
         <dt>Started in</dt>
         <dd><code>{{ state.relay?.cwd }}</code></dd>
       </dl>
-      <p class="mcp-hint">Connected by the dev server, no code needed. Agents attach with <code>{{ SETUP }}</code></p>
+      <p class="mcp-hint">Connected by the dev server, no code needed. Agents reach it through the MCP stdio server <code>{{ SETUP }}</code></p>
     </template>
 
     <template v-else-if="state.status === 'offline'">
@@ -121,7 +159,7 @@ const SETUP = 'claude mcp add qdadm -- npx qdadm-mcp-relay --stdio'
       </p>
       <p v-else-if="state.status === 'error'" class="mcp-lead mcp-warn">{{ state.message }}</p>
       <p v-else class="mcp-lead">Pair this tab with an agent, so it can debug the live app.</p>
-      <p class="mcp-hint">The agent runs the relay: <code>{{ SETUP }}</code></p>
+      <p class="mcp-hint">An agent reaches the relay through the MCP stdio server <code>{{ SETUP }}</code>, which starts one if needed.</p>
       <div class="mcp-actions">
         <button type="button" class="mcp-btn mcp-btn-primary" :disabled="busy" @click="pair()">
           <i class="pi pi-link" /> Pair
@@ -173,6 +211,49 @@ const SETUP = 'claude mcp add qdadm -- npx qdadm-mcp-relay --stdio'
   font-weight: 700;
   letter-spacing: 0.12em;
   white-space: nowrap;
+}
+.mcp-instance {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+.mcp-instance-label {
+  opacity: 0.6;
+}
+.mcp-instance-id {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: copy;
+}
+.mcp-panel .mcp-instance-id code {
+  padding: 0.1rem 0.45rem;
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+}
+.mcp-instance-id:hover code {
+  background: rgba(255, 255, 255, 0.16);
+}
+.mcp-instance-id:focus-visible {
+  outline: 2px solid #60a5fa;
+  outline-offset: 2px;
+}
+.mcp-instance-id .pi {
+  font-size: 0.8rem;
+  opacity: 0.7;
+}
+.mcp-copied {
+  color: #4ade80;
+  font-size: 0.72rem;
 }
 .mcp-facts {
   display: grid;

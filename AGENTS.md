@@ -33,7 +33,7 @@ MCP server with a curated tool arsenal (`session_info`, `boot_errors`,
 npm install -D @quazardous/qdadm-mcp
 # main.ts, first import: installQdadmRelayConnector() from '@quazardous/qdadm-mcp/connector'
 # vite.config: plugins [vue(), qdadmVitePlugin(), qdadmDebugPlugin(), qdadmMcpPlugin()]
-claude mcp add qdadm -- npx qdadm-mcp-relay --stdio
+npx qdadm-mcp-relay --stdio   # your MCP client's stdio server (Claude Code: claude mcp add qdadm -- …)
 ```
 
 `npm run dev` starts the machine relay (`~/.qdadm_relay.run`) and connects

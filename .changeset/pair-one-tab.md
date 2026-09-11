@@ -6,7 +6,7 @@ One relay per machine between your app's tabs and your agents (#2231).
 
 **`npm run dev` starts it, and connects the app to it.** `qdadmMcpPlugin()` starts the relay if none is running, detached, so it outlives dev-server restarts. Every page the dev server serves connects at startup, with no click and no code. `relay: false` opts out.
 
-**Agents attach with `claude mcp add qdadm -- npx qdadm-mcp-relay --stdio`.** The stdio server attaches to the running relay, or starts one, and never fails at startup. Claude Code does not retry an MCP server that failed when the session started; only `/mcp › Reconnect` brings it back.
+**Agents attach through the MCP stdio server `npx qdadm-mcp-relay --stdio`** (Claude Code: `claude mcp add qdadm -- npx qdadm-mcp-relay --stdio`). The stdio server attaches to the running relay, or starts one, and never fails at startup. Claude Code does not retry an MCP server that failed when the session started; only `/mcp › Reconnect` brings it back.
 
 **Instances.**
 - Every connected tab is an instance, with an id kept across reloads.

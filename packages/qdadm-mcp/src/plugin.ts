@@ -9,12 +9,12 @@
  *    takes the agents' MCP away. Every page it serves connects to the relay
  *    on its own, with no pairing code: the plugin serves the relay's page
  *    token at `<prefix>/relay.json` and marks the page as a dev page. Agents
- *    attach with `claude mcp add qdadm -- npx qdadm-mcp-relay --stdio`.
+ *    attach through the MCP stdio server `npx qdadm-mcp-relay --stdio`.
  *    `relay: false` turns this off.
  *
  * 2. **A dev-server MCP endpoint** at `<prefix>/mcp` (default
  *    `/__qdadm/mcp`), over the broker of qdadm's `qdadmDebugPlugin`:
- *    `claude mcp add --transport http qdadm http://localhost:5174/__qdadm/mcp`.
+ *    Streamable HTTP, e.g. `http://localhost:5174/__qdadm/mcp`.
  *    It lives and dies with the dev server.
  *
  * ```ts
@@ -99,7 +99,7 @@ export function qdadmMcpPlugin(options: QdadmMcpPluginOptions = {}): Plugin {
           .then(({ info, started }) =>
             s.config.logger.info(
               `  [qdadm-mcp] relay ${started ? 'started' : 'running'} on ws://localhost:${info.port} — ` +
-                'agents: claude mcp add qdadm -- npx qdadm-mcp-relay --stdio'
+                'agents: MCP stdio server `npx qdadm-mcp-relay --stdio`'
             )
           )
           .catch((e: Error) =>

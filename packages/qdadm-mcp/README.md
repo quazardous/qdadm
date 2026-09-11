@@ -40,11 +40,13 @@ export default defineConfig({
 `npm run dev` now starts the relay if none is running, and every page the
 dev server serves connects to it at startup — no click, no code.
 
-**3. Attach the agent:**
+**3. Attach the agent.** Give its MCP client this stdio server:
 
 ```bash
-claude mcp add qdadm -- npx qdadm-mcp-relay --stdio
+npx qdadm-mcp-relay --stdio
 ```
+
+With Claude Code, for instance: `claude mcp add qdadm -- npx qdadm-mcp-relay --stdio`.
 
 The stdio server attaches to the running relay, or starts one. It never
 fails at startup: while no relay can be reached, its tools answer with an
@@ -131,15 +133,12 @@ the relay runs in a terminal, connects a tab directly, with no code.
 ## The dev-server endpoint
 
 `qdadmMcpPlugin()` also serves an MCP endpoint on the dev server itself,
-targeting that server's tabs:
+targeting that server's tabs, over Streamable HTTP:
+`http://localhost:5174/__qdadm/mcp` (adjust the port).
 
-```bash
-claude mcp add --transport http qdadm http://localhost:5174/__qdadm/mcp
-```
-
-It lives and dies with the dev server. An agent session that starts while
-the dev server is down marks it failed and does not retry — `/mcp` ›
-Reconnect. The relay has no such window.
+It lives and dies with the dev server. A client that starts while the dev
+server is down may give up on it: Claude Code, for one, marks it failed
+until `/mcp` › Reconnect. The relay has no such window.
 
 Options: `qdadmMcpPlugin({ readOnly: true })` drops the write tools;
 `relay: false` neither starts the relay nor connects the pages to it. The

@@ -74,8 +74,10 @@ plugins: [vue(), qdadmVitePlugin(), qdadmDebugPlugin(), qdadmMcpPlugin()]
 ```
 
 ```bash
-claude mcp add qdadm -- npx qdadm-mcp-relay --stdio
+npx qdadm-mcp-relay --stdio   # the agent's MCP stdio server
 ```
+
+(Claude Code: `claude mcp add qdadm -- npx qdadm-mcp-relay --stdio`.)
 
 `npm run dev` starts the machine's relay (found through
 `~/.qdadm_relay.run`), and every page the dev server serves connects to it
