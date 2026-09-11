@@ -9,7 +9,7 @@
  *
  * Run: npm test
  */
-import { describe, it, expect, afterEach } from 'vitest'
+import { describe, it, expect, afterEach, vi } from 'vitest'
 import { click, fill, pressKeys, typeText } from '../src/page/actions.ts'
 
 afterEach(() => {
@@ -247,5 +247,77 @@ describe('fill', () => {
   it('a date input is set whole', async () => {
     const $ = page('<input type="date" id="d" aria-label="Due" />')
     expect(await fill($('#d'), '2026-09-11')).toBe('set textbox "Due" [type=date] to "2026-09-11"')
+  })
+})
+
+describe('fill on a number field (#2315)', () => {
+  const RealNumberFormat = Intl.NumberFormat
+  /** The locale the page writes numbers in, as Intl gives it without one. */
+  const pageLocale = (locale) =>
+    vi.spyOn(Intl, 'NumberFormat').mockImplementation((_locales, options) => new RealNumberFormat(locale, options))
+  afterEach(() => vi.restoreAllMocks())
+
+  it('leaves the field after typing, so a component that keeps the value on blur keeps it', async () => {
+    pageLocale('en-US')
+    const $ = page('<input role="spinbutton" id="n" aria-label="Year" />')
+    $('#n').addEventListener('blur', (e) => (e.target.dataset.committed = e.target.value))
+
+    expect(await fill($('#n'), '1966')).toBe('filled spinbutton "Year", then left the field')
+    expect($('#n').dataset.committed).toBe('1966')
+    expect(document.activeElement).not.toBe($('#n'))
+  })
+
+  it('in a hidden tab, where blur() fires no event, the field still hears that it was left', async () => {
+    pageLocale('en-US')
+    const $ = page('<input role="spinbutton" id="n" aria-label="Year" />')
+    const seen = record($('#n'), ['blur', 'focusout'])
+    $('#n').addEventListener('blur', (e) => (e.target.dataset.committed = e.target.value))
+    vi.spyOn(HTMLElement.prototype, 'blur').mockImplementation(() => {})
+
+    expect(await fill($('#n'), '1966')).toBe('filled spinbutton "Year", then left the field')
+    expect($('#n').dataset.committed).toBe('1966')
+    expect(seen).toEqual(['blur', 'focusout'])
+  })
+
+  it('a text field keeps its focus', async () => {
+    const $ = page('<input id="t" aria-label="Title" />')
+    await fill($('#t'), 'Dune')
+    expect(document.activeElement).toBe($('#t'))
+  })
+
+  it("types the page's own decimal separator, and says so", async () => {
+    pageLocale('de-DE')
+    const $ = page('<input role="spinbutton" id="p" aria-label="Price" />')
+    expect(await fill($('#p'), '12.5')).toBe('filled spinbutton "Price" (typed "12,5": this page writes decimals with ","), then left the field')
+    expect($('#p').value).toBe('12,5')
+
+    vi.restoreAllMocks()
+    pageLocale('en-US')
+    expect(await fill($('#p'), '12,5')).toBe('filled spinbutton "Price" (typed "12.5": this page writes decimals with "."), then left the field')
+    expect($('#p').value).toBe('12.5')
+  })
+
+  it('says when the field holds something else than asked', async () => {
+    pageLocale('en-US')
+    const $ = page('<input role="spinbutton" id="p" aria-label="Price" />')
+    $('#p').addEventListener('input', (e) => (e.target.value = e.target.value.replace(/[^0-9]/g, '')))
+
+    expect(await fill($('#p'), '12.5')).toBe('filled spinbutton "Price", then left the field — but it holds "125", not "12.5"')
+  })
+
+  it('formatting of the same number is not a difference', async () => {
+    pageLocale('de-DE')
+    const $ = page('<input role="spinbutton" id="p" aria-label="Price" />')
+    $('#p').addEventListener('blur', (e) => (e.target.value = new Intl.NumberFormat(undefined, { minimumFractionDigits: 2 }).format(12.5)))
+
+    expect(await fill($('#p'), '12.5')).toBe('filled spinbutton "Price" (typed "12,5": this page writes decimals with ","), then left the field')
+    expect($('#p').value).toBe('12,50')
+  })
+
+  it('a text field that drops characters is reported too', async () => {
+    const $ = page('<input id="code" aria-label="Code" />')
+    $('#code').addEventListener('input', (e) => (e.target.value = e.target.value.slice(0, 3)))
+
+    expect(await fill($('#code'), 'ABCDE')).toBe('filled textbox "Code" — but it holds "ABC", not "ABCDE"')
   })
 })

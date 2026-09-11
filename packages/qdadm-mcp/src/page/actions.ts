@@ -495,6 +495,54 @@ export async function typeText(element: Element | null, text: string, options: T
   return `typed into ${briefOf(target)}${options.submit ? ', then Enter' : ''}${keptValue(target, options)}`
 }
 
+// ── numbers (#2315) ─────────────────────────────────────────────────────
+
+const PLAIN_NUMBER = /^-?\d+(?:[.,]\d+)?$/
+
+/** How this page writes numbers: what Intl gives without a locale, which is also what PrimeVue's InputNumber uses. */
+function numberParts(): { decimal: string; group: string } {
+  try {
+    const parts = new Intl.NumberFormat().formatToParts(12345.6)
+    return {
+      decimal: parts.find((p) => p.type === 'decimal')?.value ?? '.',
+      group: parts.find((p) => p.type === 'group')?.value ?? ',',
+    }
+  } catch {
+    return { decimal: '.', group: ',' }
+  }
+}
+
+/** A plain number, typed with the page's own decimal separator: `12.5` is `12,5` where the page writes `12,5`. */
+function localizeNumber(text: string): string {
+  const trimmed = text.trim()
+  return PLAIN_NUMBER.test(trimmed) ? trimmed.replace(/[.,]/, numberParts().decimal) : text
+}
+
+/** A number as the page shows it, read back: group separators dropped, the decimal separator read as a dot. */
+function readShownNumber(shown: string): number | null {
+  const { decimal, group } = numberParts()
+  const spaces = /[\s\u00a0\u202f]/g
+  const groupSign = group.replace(spaces, '')
+  let bare = shown.replace(spaces, '')
+  if (groupSign) bare = bare.split(groupSign).join('')
+  bare = bare.replace(decimal, '.')
+  const n = Number(bare)
+  return bare !== '' && Number.isFinite(n) ? n : null
+}
+
+/**
+ * When the field does not hold what was asked (a number input that dropped a key, a mask, a max length), the answer
+ * says so. Formatting of the same number is not a difference: "12,50" holds 12.5.
+ */
+function heldNote(target: Editable, asked: string, numeric: boolean): string {
+  const shown = target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement ? target.value : (target.textContent ?? '')
+  const same =
+    numeric && PLAIN_NUMBER.test(asked.trim())
+      ? readShownNumber(shown) === Number(asked.trim().replace(',', '.'))
+      : collapse(shown) === collapse(asked)
+  return same ? '' : ` — but it holds ${JSON.stringify(shown)}, not ${JSON.stringify(asked)}`
+}
+
 // ── fill ────────────────────────────────────────────────────────────────
 
 const optionName = (option: Element) => collapse(option.getAttribute('aria-label') || option.textContent)
@@ -604,9 +652,11 @@ export async function fill(element: Element, value: unknown, force: ForceOptions
   const target = typable ?? editableIn(element)
   await aim(target, false, force)
   assertWritable(target, force)
+  const numeric = role === 'spinbutton' || getRole(target) === 'spinbutton'
+  const typed = numeric ? localizeNumber(text) : text
   target.focus({ preventScroll: true })
   clearText(target)
-  await typeInto(target, text)
+  await typeInto(target, typed)
   if (role === 'combobox') {
     // An autocomplete: when the suggestions hold exactly that value, pick it.
     const option = await until(() => {
@@ -620,7 +670,26 @@ export async function fill(element: Element, value: unknown, force: ForceOptions
     }
   }
   target.dispatchEvent(new Event('change', { bubbles: true }))
-  return `filled ${briefOf(target)}${keptValue(target, force)}`
+  let left = ''
+  if (numeric) {
+    // PrimeVue's InputNumber keeps what was typed only once the field loses focus: leave it, as a user moving on would.
+    // A hidden or unfocused tab moves the focus without firing blur (measured in Firefox): fire it, or the component
+    // never hears that the field was left.
+    let heard = false
+    const onBlur = () => (heard = true)
+    target.addEventListener('blur', onBlur)
+    ;(target as HTMLElement).blur()
+    target.removeEventListener('blur', onBlur)
+    if (!heard) {
+      target.dispatchEvent(new FocusEvent('blur', { relatedTarget: null }))
+      target.dispatchEvent(new FocusEvent('focusout', { bubbles: true, relatedTarget: null }))
+    }
+    await yieldToApp()
+    left = ', then left the field'
+  }
+  const converted = typed !== text ? ` (typed ${JSON.stringify(typed)}: this page writes decimals with ${JSON.stringify(numberParts().decimal)})` : ''
+  const kept = keptValue(target, force)
+  return `filled ${briefOf(target)}${converted}${left}${kept || heldNote(target, text, numeric)}`
 }
 
 // ── scroll, drag, upload ────────────────────────────────────────────────

@@ -629,7 +629,9 @@ export function buildToolset(api: DebugBrokerApi, options: ToolsetOptions = {}):
           'Set a field to a value, whatever the control. A text field is emptied and typed into. A checkbox or switch ' +
           'is clicked if its state differs (value true or false). A select or a PrimeVue dropdown is opened and its ' +
           'option clicked (value: the option\'s label). An autocomplete is typed into and the matching suggestion ' +
-          'picked. A date input is set whole ("2026-09-11"). When the option is not there, the error lists those that are.',
+          'picked. A date input is set whole ("2026-09-11"). A number field (spinbutton) is typed with the page\'s own ' +
+          'decimal separator ("12.5" or "12,5" both work) and left afterwards, so the app keeps the value. When a field ' +
+          'ends up holding something else than asked, the answer says what. When the option is not there, the error lists those that are.',
         args: {
           instance,
           ref,

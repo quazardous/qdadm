@@ -85,6 +85,8 @@ navigate /books, find { "text": "412" }
   `year` and `pages`. This app ships no translations and shows each field's
   `label` instead. A key that shows up there only after your change is the one
   to look at.
-- A number field keeps what was typed once it loses focus. Press Tab after
-  `fill`, or Update stays disabled.
-- A `type: 'number'` field holds whole numbers: typing `12.5` stores `125`.
+- `fill` on a number field types the page's own decimal separator and leaves
+  the field, so the form sees the change. When a field ends up holding
+  something else than asked, the answer says so: `— but it holds "125", not "12.5"`.
+- A `type: 'number'` field holds whole numbers unless it declares
+  `fractionDigits` (`fractionDigits: 2` for a price).
