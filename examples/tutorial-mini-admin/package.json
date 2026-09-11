@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "type": "module",
-  "description": "The docs/tutorial-mini-admin.md app, verbatim: 5 steps from hello world to parent-child entities (~310 LOC). Strict vue-ts template build — no shims, no casts.",
+  "description": "The docs/tutorial-mini-admin.md app, verbatim: 5 steps from hello world to parent-child entities (~310 LOC), plus the optional step 6 that lets an agent drive it. Strict vue-ts template build — no shims, no casts.",
   "scripts": {
     "dev": "vite",
     "build": "vue-tsc -b && vite build"
@@ -18,6 +18,7 @@
     "vue-router": "^4.5.0"
   },
   "devDependencies": {
+    "@quazardous/qdadm-mcp": "*",
     "@vitejs/plugin-vue": "^5.2.0",
     "@vue/tsconfig": "^0.9.0",
     "typescript": "^5.9.3",

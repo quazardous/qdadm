@@ -1,3 +1,7 @@
+// Step 6: first import, so the agent also sees what fails during boot
+import { installQdadmRelayConnector } from '@quazardous/qdadm-mcp/connector'
+installQdadmRelayConnector()
+
 import { Kernel } from '@quazardous/qdadm'
 import { AppLayout } from '@quazardous/qdadm/components'
 import { createLocalStorageRolesProvider } from '@quazardous/qdadm/security'
@@ -34,6 +38,7 @@ const kernel = new Kernel({
   app: { name: 'My Admin' },
   sectionOrder: ['Library', 'Main'],
   features: { breadcrumbModeToggle: true },
+  debug: import.meta.env.DEV, // step 6: window.__qdadm, which the agent's tools read
 })
 
 kernel.createApp().mount('#app')

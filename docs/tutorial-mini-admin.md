@@ -12,6 +12,8 @@ The 5 steps:
 4. [Breadcrumb & menu](#step-4--breadcrumb--menu) (sections, show page, View↔Edit toggle)
 5. [Child entities](#step-5--child-entities) (loans under books, dual-context breadcrumb, sibling links)
 
+Then, optional: [6. Let an agent drive it](#step-6--let-an-agent-drive-it-optional) (an MCP agent uses the running app).
+
 > **Prerequisites**: Node 22+, npm 10+.
 
 ---
@@ -543,11 +545,84 @@ Everything below is automatic — verified live:
 
 ---
 
+## Step 6 — Let an agent drive it (optional)
+
+An MCP agent (Claude Code, for instance) can use the running app the way a
+user does: open pages, read them, fill forms, click. Each action tells it what
+it caused: errors, toasts, missing i18n keys.
+
+### 6.1 Install
+
+```bash
+npm install -D @quazardous/qdadm-mcp
+```
+
+### 6.2 Vite config
+
+```ts
+// vite.config.ts
+import { defineConfig } from 'vite'
+import vue from '@vitejs/plugin-vue'
+import { qdadmVitePlugin } from '@quazardous/qdadm/vite'
+import { qdadmDebugPlugin } from '@quazardous/qdadm/vite-plugin-debug'
+import { qdadmMcpPlugin } from '@quazardous/qdadm-mcp'
+
+export default defineConfig({
+  plugins: [vue(), qdadmVitePlugin(), qdadmDebugPlugin(), qdadmMcpPlugin()],
+})
+```
+
+`qdadmDebugPlugin()` must come before `qdadmMcpPlugin()`.
+
+### 6.3 The connector
+
+```ts
+// src/main.ts — first import, so the agent also sees what fails during boot
+import { installQdadmRelayConnector } from '@quazardous/qdadm-mcp/connector'
+installQdadmRelayConnector()
+
+import { Kernel } from '@quazardous/qdadm'
+// … the other imports
+
+const kernel = new Kernel({
+  // … the options from the steps above
+  debug: import.meta.env.DEV, // window.__qdadm, which the agent's tools read
+})
+```
+
+Under `npm run dev` the tab connects on its own. The production build is
+unchanged: `debug` is off, and a page that is neither served by the dev server
+nor paired opens no connection.
+
+### 6.4 Attach the agent
+
+`npm run dev` now also prints:
+
+```
+[qdadm-mcp] relay running on ws://localhost:<port> — agents: MCP stdio server `npx qdadm-mcp-relay --stdio`
+```
+
+Give the agent that stdio server. With Claude Code:
+
+```bash
+claude mcp add qdadm -- npx qdadm-mcp-relay --stdio
+```
+
+Log in to the app in your browser. The agent works in that tab, as you, with
+your permissions; it never needs your password.
+
+[`examples/tutorial-mini-admin/AGENT.md`](../examples/tutorial-mini-admin/AGENT.md)
+walks through one task: the agent adds a required field, then checks it in the
+page.
+
+---
+
 ## Where to go next
 
 - [page-compositions.md](./page-compositions.md) — "I want X → use Y" decision table
 - [crud.md](./crud.md) — full reference for list/form/show/child pages
 - [navigation.md](./navigation.md) — breadcrumb, navlinks, View↔Edit toggle internals
 - [security.md](./security.md) — permissions, roles, ownership
+- [AGENT.md](../examples/tutorial-mini-admin/AGENT.md) — an agent adds a feature to this app and checks it through the MCP
 - The demo app (`packages/demo`) — every feature above plus zones, hooks,
   i18n, impersonation, debug bar
