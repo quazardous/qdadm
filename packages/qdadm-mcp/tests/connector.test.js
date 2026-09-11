@@ -1168,4 +1168,37 @@ describe('relay connector — page_snapshot says what the page is made of (#2342
     expect(bare).toContain('- button "Export"')
     expect(bare).toContain('zone "books-list-header" [ref=')
   })
+
+  it('a zone that marks its blocks shows each block and the component behind it (#2363)', async () => {
+    const app = booksApp()
+    app.zones.getBlocks = (zone) =>
+      zone === 'books-list-header'
+        ? [
+            { id: 'filter-genre', component: { __name: 'GenreFilter', __file: '/home/dev/demo/src/modules/books/components/GenreFilter.vue' } },
+            // An async block, once loaded.
+            { id: 'export-btn', component: { name: 'AsyncComponentWrapper', __asyncResolved: { __name: 'ExportButton', __file: '/home/dev/demo/src/modules/books/components/ExportButton.vue' } } },
+          ]
+        : []
+    const broker = await connectedTo(
+      app,
+      `<main>
+        <div data-zone="books-list-header" class="qdadm-zone">
+          <div data-zone-block="filter-genre" style="display: contents"><select aria-label="Genre"><option>sci-fi</option></select></div>
+          <div data-zone-block="export-btn" style="display: contents"><button>Export</button><span>CSV</span></div>
+        </div>
+      </main>`
+    )
+    const lines = (await broker.ask('pageSnapshot', {})).text.split('\n')
+    const zoneAt = lines.findIndex((l) => /^\s*- zone "books-list-header" \[ref=e\d+\]:$/.test(l))
+    const pad = lines[zoneAt]?.indexOf('-') ?? -1
+
+    // The zone line drops its [blocks: …] summary: each block says what it is.
+    expect(zoneAt).toBeGreaterThan(-1)
+    expect(lines[zoneAt + 1]).toMatch(new RegExp(`^ {${pad + 2}}- block "filter-genre" \\[GenreFilter \\(src/modules/books/components/GenreFilter\\.vue\\)\\] \\[ref=e\\d+\\]`))
+    expect(lines[zoneAt + 2]).toMatch(new RegExp(`^ {${pad + 4}}- combobox "Genre"`))
+    expect(lines.join('\n')).toMatch(/- block "export-btn" \[ExportButton \(src\/modules\/books\/components\/ExportButton\.vue\)\] \[ref=e\d+\]:/)
+
+    const interactive = (await broker.ask('pageSnapshot', { filter: 'interactive' })).text
+    expect(interactive).toMatch(/^- button "Export" \[ref=e\d+\] — in zone "books-list-header", block "export-btn"$/m)
+  })
 })

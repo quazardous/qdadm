@@ -155,19 +155,23 @@ function getWrappedComponent(block: BlockConfig): Component | undefined {
   <div :data-zone="name" class="qdadm-zone">
     <template v-if="hasBlocks">
       <template v-for="block in blocks" :key="block.id || block.weight">
-        <!-- Render wrapped blocks using memoized component -->
-        <component
-          v-if="block.wrappers"
-          :is="getWrappedComponent(block)"
-        />
-        <!-- Render simple blocks directly, passing Zone's slot content -->
-        <component
-          v-else
-          :is="block.component"
-          v-bind="{ ...blockProps, ...block.props }"
-        >
-          <slot />
-        </component>
+        <!-- Each block in its own marker (#2363): no box (display: contents), so the layout is unchanged, and the
+             page tools can tell which block rendered what — blocks with several root elements included. -->
+        <div :data-zone-block="block.id ?? ''" style="display: contents">
+          <!-- Render wrapped blocks using memoized component -->
+          <component
+            v-if="block.wrappers"
+            :is="getWrappedComponent(block)"
+          />
+          <!-- Render simple blocks directly, passing Zone's slot content -->
+          <component
+            v-else
+            :is="block.component"
+            v-bind="{ ...blockProps, ...block.props }"
+          >
+            <slot />
+          </component>
+        </div>
       </template>
     </template>
     <component

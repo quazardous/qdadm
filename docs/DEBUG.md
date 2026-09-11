@@ -92,7 +92,7 @@ Tools: `instances`, `session_info` (zombie-tab detector), `navigate` (a
 path or a route, like a user, waits for the page to settle), `wait_for` (a
 route or a signal), `page_snapshot` (the page as an accessibility tree, with a
 ref per element, headed by the layout, page component and entity permissions,
-with qdadm zones as lines), `find` (elements by role or text), `page_text`, the page
+with qdadm zones and their blocks as lines), `find` (elements by role or text), `page_text`, the page
 actions on refs (`click`, `type_text`, `fill`, `press_key`, `hover`, `scroll`,
 `drag`, `upload_file`), `page_eval`, `console_messages`, `network_requests`,
 `screenshot` (rendered from the DOM, or real pixels once shared from the MCP tab),

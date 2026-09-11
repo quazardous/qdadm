@@ -507,4 +507,42 @@ describe('Zone', () => {
       expect(wrapper.find('.slot-content').exists()).toBe(false)
     })
   })
+
+  describe('block markers (#2363)', () => {
+    it('wraps each block in a box-less marker named after its id', () => {
+      registry.registerBlock('header', { component: MockComponentA, id: 'a', weight: 10 })
+      registry.registerBlock('header', { component: MockComponentB, id: 'b', weight: 20 })
+
+      const wrapper = mountZone({ name: 'header' })
+      const markers = wrapper.findAll('.qdadm-zone > [data-zone-block]')
+
+      expect(markers.map((m) => m.attributes('data-zone-block'))).toEqual(['a', 'b'])
+      expect(markers[0].attributes('style')).toContain('display: contents')
+      expect(markers[0].find('.component-a').exists()).toBe(true)
+      expect(markers[1].find('.component-b').exists()).toBe(true)
+    })
+
+    it('keeps every root element of a block with several roots inside its marker', () => {
+      const TwoRoots = defineComponent({ name: 'TwoRoots', render: () => [h('span', { class: 'first' }), h('span', { class: 'second' })] })
+      registry.registerBlock('header', { component: TwoRoots, id: 'two' })
+
+      const marker = mountZone({ name: 'header' }).find('[data-zone-block="two"]')
+
+      expect(marker.find('.first').exists()).toBe(true)
+      expect(marker.find('.second').exists()).toBe(true)
+    })
+
+    it('marks a wrapped block around its wrappers, and leaves the default content and the slot unmarked', () => {
+      registry.registerBlock('header', { component: MockComponentC, id: 'c' })
+      registry.registerBlock('header', { operation: 'wrap', wraps: 'c', component: MockWrapper, id: 'w' })
+      const wrapped = mountZone({ name: 'header' })
+
+      expect(wrapped.find('[data-zone-block="c"] .wrapper .component-c').exists()).toBe(true)
+
+      registry.defineZone('main')
+      const fallback = mountZone({ name: 'main', defaultComponent: MockDefaultComponent })
+      expect(fallback.find('.default-component').exists()).toBe(true)
+      expect(fallback.find('[data-zone-block]').exists()).toBe(false)
+    })
+  })
 })

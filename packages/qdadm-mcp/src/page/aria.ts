@@ -238,10 +238,15 @@ interface Walk {
   truncated: boolean
   /** qdadm zones become lines, with what their blocks are (#2342). Null: zones stay transparent. */
   zoneBlocks: ZoneBlocks | null
+  /** What rendered a marked block (#2363), for its line. */
+  blockInfo: BlockInfo | null
 }
 
 /** What a zone holds, as the zone line says it ("blocks: filter-genre GenreFilter"), or null. */
 export type ZoneBlocks = (zone: string) => string | null
+
+/** The component behind a marked block of a zone ("ExportButton (src/…/ExportButton.vue)"), or null. */
+export type BlockInfo = (zone: string, block: string) => string | null
 
 function pushText(out: AxItem[], text: string): void {
   const last = out.length - 1
@@ -273,8 +278,22 @@ function walk(node: Node, w: Walk, out: AxItem[]): void {
     for (const kid of Array.from(element.childNodes)) walk(kid, w, inside)
     // A zone that renders nothing visible says nothing.
     if (inside.length === 0) return
-    const blocks = w.zoneBlocks!(zone)
+    // Marked blocks say what they are on their own lines: the summary is for zones without markers.
+    const marked = inside.some((c) => typeof c !== 'string' && c.role === 'block')
+    const blocks = marked ? null : w.zoneBlocks!(zone)
     out.push({ element, role: 'zone', name: zone, ref, states: blocks ? [blocks] : [], children: inside })
+    return
+  }
+
+  // One block of a zone (<div data-zone-block>, #2363): which registered component rendered what follows.
+  const block = w.zoneBlocks ? element.getAttribute('data-zone-block') : null
+  if (block !== null) {
+    const ref = w.refs.refOf(element)
+    const inside: AxItem[] = []
+    for (const kid of Array.from(element.childNodes)) walk(kid, w, inside)
+    if (inside.length === 0) return
+    const about = w.blockInfo?.(element.closest('[data-zone]')?.getAttribute('data-zone') ?? '', block) ?? null
+    out.push({ element, role: 'block', name: block, ref, states: about ? [about] : [], children: inside })
     return
   }
 
@@ -353,7 +372,8 @@ function collect(
   refs: RefRegistry,
   root: Element | null,
   maxRows: number,
-  zoneBlocks: ZoneBlocks | null = null
+  zoneBlocks: ZoneBlocks | null = null,
+  blockInfo: BlockInfo | null = null
 ): { items: AxItem[]; truncated: boolean } {
   const cache = new Map<Element, CSSStyleDeclaration>()
   // One layout read per element per snapshot: names and visibility ask for the same styles.
@@ -366,7 +386,7 @@ function collect(
     }
     return s
   }) as typeof window.getComputedStyle
-  const w: Walk = { refs, style, maxRows, visited: 0, truncated: false, zoneBlocks }
+  const w: Walk = { refs, style, maxRows, visited: 0, truncated: false, zoneBlocks, blockInfo }
   const items: AxItem[] = []
   if (root) walk(root, w, items)
   else for (const child of Array.from(document.body.childNodes)) walk(child, w, items)
@@ -442,18 +462,23 @@ export interface SnapshotOptions {
   maxChars?: number
   /** Show qdadm zones as lines, each saying what it holds (#2342). Default: zones stay transparent. */
   zoneBlocks?: ZoneBlocks | null
+  /** With zoneBlocks: say which component rendered each marked block (#2363). */
+  blockInfo?: BlockInfo | null
 }
 
 export function snapshot(refs: RefRegistry, options: SnapshotOptions = {}): string {
   const maxRows = Math.min(Math.max(Number(options.maxRows) || 20, 1), 500)
   const maxChars = Math.min(Math.max(Number(options.maxChars) || 30000, 1000), 200000)
-  const { items, truncated } = collect(refs, options.root ?? null, maxRows, options.zoneBlocks ?? null)
+  const { items, truncated } = collect(refs, options.root ?? null, maxRows, options.zoneBlocks ?? null, options.blockInfo ?? null)
   const lines: string[] = []
   if (options.filter === 'interactive') {
     for (const { node, ancestors } of nodes(items)) {
       if (!INTERACTIVE.has(node.role)) continue
-      const zone = [...ancestors].reverse().find((a) => a.role === 'zone')
-      lines.push(`- ${describeNode(node)}${zone ? ` — in zone ${JSON.stringify(zone.name)}` : ''}`)
+      const nearest = [...ancestors].reverse()
+      const zone = nearest.find((a) => a.role === 'zone')
+      const block = nearest.find((a) => a.role === 'block')
+      const where = zone ? ` — in zone ${JSON.stringify(zone.name)}${block ? `, block ${JSON.stringify(block.name)}` : ''}` : ''
+      lines.push(`- ${describeNode(node)}${where}`)
     }
   } else {
     render(items, 0, lines)
@@ -473,6 +498,8 @@ export interface FindOptions {
   limit?: number
   /** Say the zone an element sits in, when no row, dialog or form is nearer (#2342). */
   zoneBlocks?: ZoneBlocks | null
+  /** And the block, when the zone marks its blocks (#2363). */
+  blockInfo?: BlockInfo | null
 }
 
 /** Elements by role and/or text, each with where it sits (its row, dialog, form…). */
@@ -481,7 +508,7 @@ export function find(refs: RefRegistry, options: FindOptions): string {
   const role = options.role ? options.role.toLowerCase() : null
   if (!text && !role) throw new Error('find needs text, role, or both')
   const limit = Math.min(Math.max(Number(options.limit) || 30, 1), 200)
-  const { items } = collect(refs, options.root ?? null, Number.MAX_SAFE_INTEGER, options.zoneBlocks ?? null)
+  const { items } = collect(refs, options.root ?? null, Number.MAX_SAFE_INTEGER, options.zoneBlocks ?? null, options.blockInfo ?? null)
   const found: string[] = []
   let total = 0
   for (const { node, ancestors } of nodes(items)) {
@@ -493,7 +520,9 @@ export function find(refs: RefRegistry, options: FindOptions): string {
     if (++total > limit) continue
     const context = [...ancestors]
       .reverse()
-      .find((a) => ['row', 'dialog', 'alertdialog', 'form', 'tabpanel', 'listitem', 'navigation', 'region', 'menu', 'zone'].includes(a.role))
+      .find((a) =>
+        ['row', 'dialog', 'alertdialog', 'form', 'tabpanel', 'listitem', 'navigation', 'region', 'menu', 'block', 'zone'].includes(a.role)
+      )
     const where = context ? ` — in ${context.role} ${JSON.stringify(clip(context.name || textOf(context), 60))}` : ''
     // A row or a cell has no name: its text is what tells it apart.
     const said = !node.name && node.value === undefined ? clip(textOf(node), 80) : ''

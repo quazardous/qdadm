@@ -114,6 +114,7 @@ interface QdadmGlobal {
   signals?: { on(pattern: string, cb: (event: { name?: string; data?: unknown }) => void): unknown }
   zones?: {
     inspect?(zone: string): { blocks: Array<{ id: string | null; component: string }>; default: string | null } | null
+    getBlocks?(zone: string): Array<{ id?: string | null; component?: unknown }>
   }
   activeStack?: { getLevels?(): Array<{ entity?: string; id?: string | null }> }
   debug?: { bridge?: { describe(): unknown; dump(): unknown; call(c: string, a: string, args: unknown): Promise<unknown> } }
@@ -1296,6 +1297,20 @@ function createPageAgent(sessionId: string, q: () => QdadmGlobal) {
       return null
     }
   }
+  /** The component behind a marked block (#2363): its name and source, an async one once it has loaded. */
+  const blockInfo = (zone: string, block: string): string | null => {
+    try {
+      const found = (q().zones?.getBlocks?.(zone) ?? []).find((b) => (b?.id ?? '') === block)
+      const component = found?.component as (ComponentInstanceLike['type'] & { __asyncResolved?: ComponentInstanceLike['type'] }) | undefined
+      const type = component?.__asyncResolved ?? component
+      const name = nameOf(type)
+      if (!name) return null
+      const file = sourceOf(type?.__file)
+      return file ? `${name} (${file})` : name
+    } catch {
+      return null
+    }
+  }
 
   // ── screenshots (#2247) ────────────────────────────────────────────────
   // snapdom loads on the first screenshot. A real capture is a stream the user
@@ -1554,6 +1569,7 @@ function createPageAgent(sessionId: string, q: () => QdadmGlobal) {
         maxRows: payload?.maxRows as number,
         maxChars: payload?.maxChars as number,
         zoneBlocks: meta ? zoneBlocks : null,
+        blockInfo: meta ? blockInfo : null,
       })
       const head = meta ? [pageLine(), ...compositionLines()] : [pageLine()]
       return { text: `${head.join('\n')}\n\n${text}` }
@@ -1561,7 +1577,7 @@ function createPageAgent(sessionId: string, q: () => QdadmGlobal) {
     find: async (payload) => {
       const { find } = await aria()
       return {
-        text: find(refs, { text: payload?.text as string, role: payload?.role as string, root: rootOf(payload), limit: payload?.limit as number, zoneBlocks }),
+        text: find(refs, { text: payload?.text as string, role: payload?.role as string, root: rootOf(payload), limit: payload?.limit as number, zoneBlocks, blockInfo }),
       }
     },
     pageText: async (payload) => {

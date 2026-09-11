@@ -314,6 +314,11 @@ const {
 />
 ```
 
+Each block renders inside a marker, `<div data-zone-block="<id>" style="display: contents">`.
+The marker adds no box, so the layout is unchanged. It tells the debug tools and the MCP's
+`page_snapshot` which block rendered what, for blocks with several root elements too. A CSS
+child selector on a block goes through the marker: `.qdadm-zone > [data-zone-block] > .my-block`.
+
 ## Best Practices
 
 1. **Register in module init**: Use `init({ zones })` not Vue lifecycle hooks
