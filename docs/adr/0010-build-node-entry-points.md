@@ -74,3 +74,17 @@ watching the gate go red on the reported error.
   for what runs.
 - One more artifact to keep in step. The `prepack` hook makes forgetting it a
   build error rather than a silent regression.
+
+## Amendment — the stylesheet is built too (#2260)
+
+The same line — who consumes the artifact — applies to the stylesheet.
+`import '@quazardous/qdadm/styles'` asked every app to install sass, for a
+compile-time theming nobody could use: a side-effect import cannot pass
+`with (…)` overrides, qdadm's colours are CSS custom properties set at
+runtime, and no component style is SCSS.
+
+So `build:styles` compiles `src/styles/index.scss` to `dist/styles/qdadm.css`
+in the same `prepare` step, and `./styles` points at it. The raw SCSS stays
+published as `./styles/scss` (the repo's demo uses it, to hot-reload style
+work), and `./styles/variables` is unchanged. Consumer-smoke checks that the
+export resolves to the compiled file and that the tarball carries it.

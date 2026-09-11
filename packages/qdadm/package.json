@@ -25,7 +25,8 @@
     "format": "prettier --write src/",
     "build:types": "vue-tsc --declaration --emitDeclarationOnly --outDir dist/types",
     "build:node": "tsc -p tsconfig.node.json",
-    "prepare": "npm run build:node"
+    "build:styles": "sass --no-source-map --style=compressed src/styles/index.scss dist/styles/qdadm.css",
+    "prepare": "npm run build:node && npm run build:styles"
   },
   "exports": {
     ".": "./src/index.ts",
@@ -39,6 +40,10 @@
     "./modules/debug": "./src/modules/debug/index.ts",
     "./styles": {
       "types": "./src/styles/index.d.ts",
+      "default": "./dist/styles/qdadm.css"
+    },
+    "./styles/scss": {
+      "types": "./src/styles/index.d.ts",
       "default": "./src/styles/index.scss"
     },
     "./styles/variables": "./src/styles/_variables.scss",
@@ -51,7 +56,8 @@
     "src",
     "README.md",
     "LICENSE",
-    "dist/node"
+    "dist/node",
+    "dist/styles"
   ],
   "dependencies": {
     "@quazardous/qdcore": "^1.2.0",

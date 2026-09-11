@@ -18,7 +18,9 @@ import { debugBar } from '@quazardous/qdadm/modules/debug'
 import { createLocalStorageRolesProvider } from '@quazardous/qdadm/security'
 import PrimeVue from 'primevue/config'
 import Aura from '@primeuix/themes/aura'
-import '@quazardous/qdadm/styles'
+// The raw SCSS, not the compiled `@quazardous/qdadm/styles` apps import (#2260): editing qdadm's styles
+// hot-reloads here.
+import '@quazardous/qdadm/styles/scss'
 import 'primeicons/primeicons.css'
 
 import App from './App.vue'

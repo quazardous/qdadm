@@ -59,6 +59,21 @@ node --input-type=module -e "
   console.log('[consumer-smoke]   node entry points import cleanly')
 "
 
+# Apps import '@quazardous/qdadm/styles' without installing sass (#2260): the export must resolve to the
+# compiled stylesheet, and the tarball must carry it. A pack that skipped the build would ship a dead import.
+echo "[consumer-smoke] resolving the compiled stylesheet..."
+node --input-type=module -e "
+  import { createRequire } from 'node:module'
+  import { statSync } from 'node:fs'
+  const file = createRequire(process.cwd() + '/').resolve('@quazardous/qdadm/styles')
+  if (!file.endsWith('dist/styles/qdadm.css')) {
+    throw new Error('@quazardous/qdadm/styles resolves to ' + file + ', not the compiled stylesheet')
+  }
+  const size = statSync(file).size
+  if (size < 10000) throw new Error('the compiled stylesheet is suspiciously small: ' + size + ' bytes')
+  console.log('[consumer-smoke]   @quazardous/qdadm/styles →', file.split('node_modules/')[1], '(' + size + ' bytes)')
+"
+
 # The blocker exactly as the consumer meets it: vite RESOLVING a config that
 # imports the plugin. This is the operation that failed — `npm run dev` and
 # `npm run build` both die here, on an error that never names qdadm.
