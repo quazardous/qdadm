@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>qdadm — Vue 3 admin framework, agent-ready</title>
+  <link rel="icon" href="data:,">
+  <meta name="description" content="qdadm: a TypeScript-first Vue 3 admin framework. Declare entities once to get lists, forms, routes and permissions; attach an AI agent that reads, clicks and checks the live app through MCP.">
+  <!-- Published by .github/workflows/deploy.yml as the GitHub Pages index (#2266). Static on purpose: no build. -->
+  <style>
+    :root {
+      --green: #0f9f6e;
+      --green-dark: #0b7a55;
+      --ink: #111827;
+      --muted: #4b5563;
+      --faint: #6b7280;
+      --line: #e5e7eb;
+      --paper: #ffffff;
+      --wash: #f6f8f7;
+      --code: #0f172a;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      padding: 0 16px;
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      color: var(--ink);
+      background: var(--paper);
+      line-height: 1.55;
+    }
+    main { max-width: 980px; margin: 0 auto; }
+    a { color: var(--green-dark); }
+    code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+    pre {
+      margin: 0.75rem 0;
+      padding: 0.85rem 1rem;
+      background: var(--code);
+      color: #e2e8f0;
+      border-radius: 8px;
+      font-size: 0.82rem;
+      line-height: 1.5;
+      overflow-x: auto;
+    }
+
+    .hero { padding: 3.5rem 0 2.5rem; }
+    .eyebrow { margin: 0 0 0.75rem; color: var(--green-dark); font-weight: 600; font-size: 0.85rem; letter-spacing: 0.04em; text-transform: uppercase; }
+    .hero h1 { margin: 0; font-size: clamp(1.9rem, 4.5vw, 3rem); line-height: 1.12; letter-spacing: -0.02em; max-width: 22ch; }
+    .hero h1 span { color: var(--green); }
+    .lead { margin: 1.1rem 0 1.6rem; font-size: 1.12rem; color: var(--muted); max-width: 62ch; }
+    .cta { display: flex; flex-wrap: wrap; gap: 0.75rem; }
+    .btn {
+      display: inline-block;
+      padding: 0.65rem 1.1rem;
+      border-radius: 8px;
+      border: 1px solid var(--line);
+      font-weight: 600;
+      text-decoration: none;
+      color: var(--ink);
+      background: var(--paper);
+    }
+    .btn.primary { background: var(--green); border-color: var(--green); color: #fff; }
+    .btn:hover { border-color: var(--green); }
+    .btn.primary:hover { background: var(--green-dark); }
+
+    section { padding: 2rem 0; border-top: 1px solid var(--line); }
+    section > h2 { margin: 0 0 1rem; font-size: 1.35rem; }
+
+    .points { display: grid; grid-template-columns: repeat(auto-fit, minmax(270px, 1fr)); gap: 1.25rem; }
+    .point h3 { margin: 0 0 0.35rem; font-size: 1.05rem; }
+    .point p { margin: 0; color: var(--muted); font-size: 0.95rem; }
+
+    .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1rem; }
+    .card {
+      display: flex;
+      flex-direction: column;
+      padding: 1.1rem 1.2rem;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: var(--wash);
+      color: inherit;
+      text-decoration: none;
+    }
+    .card:hover { border-color: var(--green); }
+    .card h3 { margin: 0 0 0.35rem; font-size: 1.05rem; }
+    .card p { margin: 0 0 0.9rem; color: var(--muted); font-size: 0.92rem; flex: 1; }
+    .card .go { color: var(--green-dark); font-weight: 600; }
+    .login { color: var(--faint); font-size: 0.85rem; }
+
+    footer { padding: 1.5rem 0 3rem; border-top: 1px solid var(--line); color: var(--faint); font-size: 0.9rem; }
+    footer a { color: inherit; margin-right: 1rem; }
+  </style>
+</head>
+<body>
+<main>
+  <header class="hero">
+    <p class="eyebrow">Vue 3 · TypeScript · PrimeVue · MIT</p>
+    <h1>The Vue 3 admin framework <span>an AI agent can drive</span>.</h1>
+    <p class="lead">
+      Declare an entity once: its list, form, routes and permission checks follow.
+      Then attach an agent to the running app — it reads the page, clicks and fills
+      forms like a user, takes screenshots, and is told what every action caused.
+    </p>
+    <div class="cta">
+      <a class="btn primary" href="./tutorial/">Try the tutorial app</a>
+      <a class="btn" href="https://github.com/quazardous/qdadm#quick-start">Get started</a>
+    </div>
+  </header>
+
+  <section>
+    <h2>Why qdadm</h2>
+    <div class="points">
+      <article class="point">
+        <h3>CRUD from one declaration</h3>
+        <pre><code>ctx.entity('books', new EntityManager({
+  name: 'books',
+  labelField: 'title',
+  fields: { title: { type: 'text', required: true } },
+  storage: new MockApiStorage({ entityName: 'books' })
+}))
+ctx.crud('books', {
+  list: () => import('./pages/BookList.vue'),
+  form: () => import('./pages/BookForm.vue')
+})</code></pre>
+        <p>Swap the storage for your API; the pages, routes and permissions stay.</p>
+      </article>
+      <article class="point">
+        <h3>An agent drives the live app</h3>
+        <pre><code>npx qdadm-mcp-relay --stdio</code></pre>
+        <p>
+          An MCP server over the app running in your browser: a snapshot of the page with a
+          ref per element, click and fill like a user, screenshots, console and network — and
+          after each action, the errors, toasts and missing translations it caused.
+          <a href="https://github.com/quazardous/qdadm/tree/main/packages/qdadm-mcp">qdadm-mcp</a>
+        </p>
+      </article>
+      <article class="point">
+        <h3>Extend without forking</h3>
+        <p>
+          TypeScript everywhere. Hooks, signals and zones change behaviour from the outside;
+          modules bring their own entities, routes and menu. PrimeVue themes apply through
+          CSS variables.
+        </p>
+      </article>
+    </div>
+  </section>
+
+  <section>
+    <h2>See it running</h2>
+    <div class="cards">
+      <a class="card" href="./tutorial/">
+        <h3>Tutorial app</h3>
+        <p>The five-step tutorial, built: CRUD, auth, navigation, parent–child entities.
+          <span class="login">Log in with admin / admin (full access) or bob / bob (read-only).</span></p>
+        <span class="go">Open →</span>
+      </a>
+      <a class="card" href="./hello-world/">
+        <h3>Hello World</h3>
+        <p>The smallest app: one entity, one list page, about fifty lines.</p>
+        <span class="go">Open →</span>
+      </a>
+      <a class="card" href="./demo/">
+        <h3>Full demo</h3>
+        <p>Many entities over several storages, forms, auth, and the debug bar.
+          <span class="login">Log in with admin / admin or bob / bob.</span></p>
+        <span class="go">Open →</span>
+      </a>
+    </div>
+  </section>
+
+  <section>
+    <h2>Install</h2>
+    <pre><code>npm install @quazardous/qdadm primevue @primeuix/themes primeicons vue-router pinia</code></pre>
+    <p>
+      Then add <code>qdadmVitePlugin()</code> to your Vite config and follow the
+      <a href="https://github.com/quazardous/qdadm/blob/main/docs/tutorial-mini-admin.md">tutorial</a>.
+    </p>
+  </section>
+
+  <footer>
+    <a href="https://github.com/quazardous/qdadm">GitHub</a>
+    <a href="https://github.com/quazardous/qdadm#readme">README</a>
+    <a href="https://github.com/quazardous/qdadm/tree/main/docs">Docs</a>
+    <a href="https://www.npmjs.com/package/@quazardous/qdadm">npm</a>
+  </footer>
+</main>
+</body>
+</html>
