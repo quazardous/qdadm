@@ -354,6 +354,49 @@ describe('relay connector — the MCP tab chat (#2231)', () => {
     expect((await broker.ask('chatRead')).messages.map((m) => m.text)).toEqual(['are you there?', 'the save button does nothing', 'hello?'])
     expect(controller.activity.entries.map((e) => e.tool)).not.toContain('chatPending')
   })
+
+  it('a screenshot the user annotated goes with the message; hooks are told, chat_read hands it over (#2309)', async () => {
+    const { broker, controller } = await connected()
+    expect(typeof controller.chat.shoot).toBe('function')
+
+    controller.chat.send('  this one  ', { mimeType: 'image/jpeg', data: 'QUJD' })
+    controller.chat.send('', { mimeType: 'image/jpeg', data: 'REVG' })
+    controller.chat.send('', { mimeType: 'text/html', data: 'PHA+' }) // not a picture, and no text: nothing sent
+
+    expect(controller.chat.messages.map((m) => [m.text, m.image?.data])).toEqual([
+      ['this one', 'QUJD'],
+      ['', 'REVG'],
+    ])
+    expect((await broker.chatPending(false))[0].messages).toEqual([
+      { text: 'this one', at: expect.any(Number), screenshot: true },
+      { text: '', at: expect.any(Number), screenshot: true },
+    ])
+    expect((await broker.ask('chatRead')).messages).toEqual([
+      { text: 'this one', at: expect.any(Number), image: { mimeType: 'image/jpeg', data: 'QUJD' } },
+      { text: '', at: expect.any(Number), image: { mimeType: 'image/jpeg', data: 'REVG' } },
+    ])
+  })
+
+  it('the chat keeps the last 5 screenshots; a full storage drops the oldest pictures, never the text (#2309)', async () => {
+    const { controller } = await connected()
+    for (let i = 1; i <= 7; i++) controller.chat.send(`shot ${i}`, { mimeType: 'image/jpeg', data: `DATA${i}` })
+
+    expect(controller.chat.messages.map((m) => Boolean(m.image))).toEqual([false, false, true, true, true, true, true])
+    expect(controller.chat.messages[0]).toMatchObject({ text: 'shot 1', imageDropped: true })
+    expect(JSON.parse(tabStore.getItem('qdadm-relay:chat')).messages.filter((m) => m.image)).toHaveLength(5)
+
+    // A storage that silently refuses the chat once it holds more than two pictures.
+    const setItem = tabStore.setItem
+    tabStore.setItem = (k, v) => {
+      if (k === 'qdadm-relay:chat' && (v.match(/"image":/g) ?? []).length > 2) return
+      setItem(k, v)
+    }
+    controller.chat.send('shot 8', { mimeType: 'image/jpeg', data: 'DATA8' })
+
+    const kept = JSON.parse(tabStore.getItem('qdadm-relay:chat')).messages
+    expect(kept.map((m) => m.text)).toEqual(['shot 1', 'shot 2', 'shot 3', 'shot 4', 'shot 5', 'shot 6', 'shot 7', 'shot 8'])
+    expect(kept.filter((m) => m.image).map((m) => m.text)).toEqual(['shot 7', 'shot 8'])
+  })
 })
 
 describe('relay connector — the MCP history (#2231)', () => {

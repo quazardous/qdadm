@@ -21,7 +21,11 @@ export const CHAT_HOOK_EVENTS = ['stop'] as const
 export function stopDecision(pending: PendingChat[]): { decision: 'block'; reason: string } | null {
   const lines = pending.flatMap((p) => {
     const where = [p.app, p.location].filter(Boolean).join(' ')
-    return p.messages.map((m) => `- instance ${p.instance.slice(0, 8)}${where ? ` (${where})` : ''}: ${JSON.stringify(m.text)}`)
+    return p.messages.map(
+      (m) =>
+        `- instance ${p.instance.slice(0, 8)}${where ? ` (${where})` : ''}: ${JSON.stringify(m.text)}` +
+        (m.screenshot ? ' (with an annotated screenshot: read it with chat_read)' : '')
+    )
   })
   if (lines.length === 0) return null
   return {

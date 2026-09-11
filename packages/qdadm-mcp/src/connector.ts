@@ -140,12 +140,23 @@ export type RelayPairingState =
   | { status: 'paired'; relay: RelayIdentity; instanceId: string }
   | { status: 'error'; message: string }
 
+/** A screenshot the user annotated in the MCP tab and sent in the chat (#2309). */
+export interface RelayChatImage {
+  mimeType: string
+  /** Base64, without the `data:` prefix. */
+  data: string
+}
+
 /** One line of the MCP tab's chat (#2231). */
 export interface RelayChatMessage {
   id: number
   from: 'agent' | 'user'
   text: string
   at: number
+  /** The screenshot sent with the message (#2309). */
+  image?: RelayChatImage
+  /** It had one, dropped to keep the chat within the tab's storage. */
+  imageDropped?: boolean
 }
 
 /** One MCP request this tab served (#2231) — a line of the MCP tab's history. */
@@ -248,8 +259,10 @@ export interface QdadmRelayController {
   /** A small chat between the agent (`chat_send` / `chat_read`) and whoever looks at the tab. */
   readonly chat: {
     readonly messages: readonly RelayChatMessage[]
-    /** From the person at the tab. */
-    send(text: string): void
+    /** From the person at the tab, with the screenshot they annotated, if any (#2309). */
+    send(text: string, image?: RelayChatImage): void
+    /** A picture of the viewport for the MCP tab to annotate (#2309): real pixels while a capture runs, otherwise rendered without the debug bar. */
+    shoot(): Promise<{ data: string; mimeType: string; width: number; height: number; source: 'dom' | 'tab' }>
     /** Wipe the conversation — messages the agent has not read yet included. */
     clear(): void
     /** Called at once with the messages, then on every new one. */
@@ -356,8 +369,23 @@ export function installQdadmRelayConnector(options: QdadmRelayConnectorOptions =
   let agentReadUpTo = typeof savedChat?.readUpTo === 'number' ? savedChat.readUpTo : 0
   // What an agent hook already showed the agent (#2252): each message stops the agent once.
   let hookShownUpTo = typeof savedChat?.hookShownUpTo === 'number' ? savedChat.hookShownUpTo : 0
-  const saveChat = () =>
-    tabStore.setItem(CHAT_KEY, JSON.stringify({ seq: chatSeq, readUpTo: agentReadUpTo, hookShownUpTo, messages: chatMessages }))
+  // Screenshots in the chat (#2309): the tab's storage holds a few MB, and the text comes first.
+  const CHAT_IMAGES_KEPT = 5
+  const dropImage = (m: RelayChatMessage) => {
+    delete m.image
+    m.imageDropped = true
+  }
+  const saveChat = () => {
+    for (;;) {
+      const value = JSON.stringify({ seq: chatSeq, readUpTo: agentReadUpTo, hookShownUpTo, messages: chatMessages })
+      tabStore.setItem(CHAT_KEY, value)
+      if (tabStore.getItem(CHAT_KEY) === value) return
+      // Refused, the storage is full: the oldest picture goes, never the text.
+      const oldest = chatMessages.find((m) => m.image)
+      if (!oldest) return
+      dropImage(oldest)
+    }
+  }
   const notifyChat = () => {
     for (const listener of chatListeners) {
       try {
@@ -367,9 +395,13 @@ export function installQdadmRelayConnector(options: QdadmRelayConnectorOptions =
       }
     }
   }
-  const pushChat = (from: RelayChatMessage['from'], text: string) => {
-    chatMessages.push({ id: ++chatSeq, from, text: text.slice(0, 4000), at: Date.now() })
+  const pushChat = (from: RelayChatMessage['from'], text: string, image?: RelayChatImage) => {
+    const message: RelayChatMessage = { id: ++chatSeq, from, text: text.slice(0, 4000), at: Date.now() }
+    if (image) message.image = { mimeType: image.mimeType, data: image.data }
+    chatMessages.push(message)
     if (chatMessages.length > 100) chatMessages.shift()
+    const withImages = chatMessages.filter((m) => m.image)
+    for (const m of withImages.slice(0, Math.max(0, withImages.length - CHAT_IMAGES_KEPT))) dropImage(m)
     saveChat()
     notifyChat()
   }
@@ -386,7 +418,13 @@ export function installQdadmRelayConnector(options: QdadmRelayConnectorOptions =
       agentReadUpTo = chatSeq
       saveChat()
       return unread.length > 0
-        ? { messages: unread.map(({ text, at }) => ({ text, at })) }
+        ? {
+            messages: unread.map(({ text, at, image, imageDropped }) => ({
+              text,
+              at,
+              ...(image ? { image } : imageDropped ? { imageDropped: true } : {}),
+            })),
+          }
         : { messages: [], note: 'Nothing new from the user.' }
     },
     /** For agent hooks (#2252): what the user wrote that the agent neither read nor was shown. chat_read still returns it. */
@@ -396,7 +434,8 @@ export function installQdadmRelayConnector(options: QdadmRelayConnectorOptions =
         hookShownUpTo = pending[pending.length - 1].id
         saveChat()
       }
-      return { messages: pending.map(({ text, at }) => ({ text, at })) }
+      // The picture itself stays in the tab: chat_read hands it over.
+      return { messages: pending.map(({ text, at, image, imageDropped }) => ({ text, at, ...(image || imageDropped ? { screenshot: true } : {}) })) }
     },
   }
 
@@ -747,10 +786,12 @@ export function installQdadmRelayConnector(options: QdadmRelayConnectorOptions =
       get messages() {
         return chatMessages
       },
-      send(text: string) {
+      send(text: string, image?: RelayChatImage) {
         const trimmed = String(text ?? '').trim()
-        if (trimmed) pushChat('user', trimmed)
+        const picture = image && typeof image.data === 'string' && image.data && /^image\//.test(String(image.mimeType)) ? image : undefined
+        if (trimmed || picture) pushChat('user', trimmed, picture)
       },
+      shoot: () => page.shoot(),
       clear() {
         chatMessages.length = 0
         // Ids keep counting: nothing wiped can come back as unread.
@@ -1529,6 +1570,12 @@ function createPageAgent(sessionId: string, q: () => QdadmGlobal) {
   return {
     arm,
     armSignals,
+    /** The user's own screenshot, from the MCP tab (#2309): the viewport, taken like the agent's screenshot tool. */
+    shoot: async () => {
+      const { domShot, tabShot } = await shots()
+      const options = { format: 'jpeg', quality: 0.85 }
+      return capture && captureLive() ? tabShot(capture, options) : domShot(options)
+    },
     capture: {
       active: captureLive,
       start: startCapture,

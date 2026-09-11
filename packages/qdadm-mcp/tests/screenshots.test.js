@@ -40,7 +40,12 @@ const linked = async (server, name) => {
 const relayServer = () =>
   createQdadmMcpServer(
     {
-      ask: async (type) => (type === 'screenshot' ? { data: PNG, mimeType: 'image/png', width: 10, height: 5, source: 'dom' } : {}),
+      ask: async (type) =>
+        type === 'screenshot'
+          ? { data: PNG, mimeType: 'image/png', width: 10, height: 5, source: 'dom' }
+          : type === 'chatRead'
+            ? { messages: [{ text: 'this one', at: 1, image: { mimeType: 'image/png', data: PNG } }, { text: 'thanks', at: 2 }] }
+            : {},
       pickSession: () => ({ id: INSTANCE, lastSeenAt: Date.now(), meta: { location: '/books/12/edit' } }),
       listSessions: () => [],
       prefix: '/relay',
@@ -110,6 +115,22 @@ describe('screenshots kept in the project (#2284)', () => {
 
     expect(textOf(res)).not.toContain('Saved')
     expect(res._meta['qdadm/screenshot']).toEqual({ instance: INSTANCE, location: '/books/12/edit' })
+    await client.close()
+  })
+
+  it('chat_read hands over the screenshots the user sent, and the front keeps them (#2309)', async () => {
+    const { client, cwd } = await agentOnFront()
+
+    const res = await client.callTool({ name: 'chat_read', arguments: {} })
+
+    expect(res.content.filter((c) => c.type === 'image').map((c) => c.data)).toEqual([PNG])
+    const listed = JSON.parse(res.content[0].text).data.messages
+    expect(listed).toEqual([
+      { text: 'this one', at: 1, screenshot: 'image 1 below' },
+      { text: 'thanks', at: 2 },
+    ])
+    expect(textOf(res)).toContain(`Saved to ${join('.aiball', 'screenshots', '20260911-112233-34fcb409-chat.png')}.`)
+    expect(readdirSync(join(cwd, '.aiball', 'screenshots'))).toEqual(['20260911-112233-34fcb409-chat.png'])
     await client.close()
   })
 

@@ -37,11 +37,30 @@ export interface RelayStateLike {
   retryInMs?: number
 }
 
+/** A screenshot the user annotated and sent in the chat (#2309). */
+export interface RelayChatImageLike {
+  mimeType: string
+  /** Base64, without the `data:` prefix. */
+  data: string
+}
+
 export interface RelayChatMessageLike {
   id: number
   from: 'agent' | 'user'
   text: string
   at: number
+  image?: RelayChatImageLike
+  /** It had a screenshot, dropped to keep the chat within the tab's storage. */
+  imageDropped?: boolean
+}
+
+/** A picture of the viewport, taken by the connector for the user to annotate (#2309). */
+export interface RelayShotLike {
+  data: string
+  mimeType: string
+  width: number
+  height: number
+  source?: string
 }
 
 export interface RelayActivityLike {
@@ -63,7 +82,9 @@ export interface RelayControllerLike {
   unpair(): void
   readonly chat?: {
     readonly messages: readonly RelayChatMessageLike[]
-    send(text: string): void
+    send(text: string, image?: RelayChatImageLike): void
+    /** Absent from connectors older than #2309. */
+    shoot?(): Promise<RelayShotLike>
     clear?(): void
     subscribe(listener: (messages: readonly RelayChatMessageLike[]) => void): () => void
   }
@@ -201,8 +222,22 @@ export class RelayCollector extends Collector {
     this._controller?.capture?.stop()
   }
 
-  sendChat(text: string): void {
-    this._controller?.chat?.send(text)
+  sendChat(text: string, image?: RelayChatImageLike): void {
+    const chat = this._controller?.chat
+    if (!chat) return
+    if (image) chat.send(text, image)
+    else chat.send(text)
+  }
+
+  /** The chat can take a screenshot for the user to annotate and send (#2309). */
+  get canShoot(): boolean {
+    return typeof this._controller?.chat?.shoot === 'function'
+  }
+
+  /** A picture of the viewport, without the debug bar (real pixels while a tab capture runs). */
+  shoot(): Promise<RelayShotLike> {
+    const chat = this._controller?.chat
+    return chat?.shoot ? chat.shoot() : Promise.reject(new Error('This connector cannot take a screenshot.'))
   }
 
   clearChat(): void {

@@ -550,10 +550,28 @@ export function buildToolset(api: DebugBrokerApi, options: ToolsetOptions = {}):
       {
         name: 'chat_read',
         description:
-          'What the user typed in the chat of the MCP tab since your last chat_read. The chat lives in the ' +
-          'tab: a reload starts it afresh.',
+          'What the user typed in the chat of the MCP tab since your last chat_read, with the screenshots they ' +
+          'annotated and sent, as images. The chat lives in the tab: a reload starts it afresh.',
         args: { instance },
-        handler: (a) => ask(a, 'chatRead'),
+        handler: async (a) => {
+          const s = resolveSession(api, a)
+          const data = (await api.ask('chatRead', undefined, s.id)) as {
+            messages?: Array<{ text: string; at: number; image?: { mimeType: string; data: string } }>
+          }
+          const messages = Array.isArray(data?.messages) ? data.messages : []
+          if (!messages.some((m) => m.image)) return stamped(s, data)
+          // #2309: the pictures go as images the agent sees; the JSON says which message each belongs to.
+          const images: Array<{ type: 'image'; data: string; mimeType: string }> = []
+          const listed = messages.map(({ image, ...m }) => {
+            if (!image) return m
+            images.push({ type: 'image', data: image.data, mimeType: image.mimeType })
+            return { ...m, screenshot: `image ${images.length} below` }
+          })
+          return new ToolContent(
+            [{ type: 'text', text: JSON.stringify(stamped(s, { ...data, messages: listed }), null, 2) }, ...images],
+            { [SCREENSHOT_META]: { instance: s.id, location: s.meta.location ?? null } }
+          )
+        },
       },
       {
         name: 'pair_accept',

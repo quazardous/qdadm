@@ -120,8 +120,11 @@ export function createStdioFront(options: StdioFrontOptions = {}): Server {
           'failing, run `npx qdadm-mcp-relay` in a terminal to see why.'
       )
     }
-    if (name === 'screenshot' && (options.saveScreenshots ?? true) && args?.save !== false) {
-      return keepScreenshot(result, { cwd: options.cwd ?? process.cwd(), now: options.now })
+    if (options.saveScreenshots ?? true) {
+      const keep = { cwd: options.cwd ?? process.cwd(), now: options.now }
+      if (name === 'screenshot' && args?.save !== false) return keepScreenshot(result, keep)
+      // #2309: the screenshots the user annotated and sent in the chat.
+      if (name === 'chat_read') return keepScreenshot(result, { ...keep, label: 'chat' })
     }
     return result
   })

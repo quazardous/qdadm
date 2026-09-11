@@ -92,7 +92,8 @@ export interface PendingChat {
   instance: string
   app: unknown
   location: unknown
-  messages: Array<{ text: string; at: number }>
+  /** `screenshot`: the message came with one (#2309), which chat_read hands over. */
+  messages: Array<{ text: string; at: number; screenshot?: boolean }>
 }
 
 export type SessionEvent ='connected' | 'closed' | 'forgotten' | 'rejected' | 'pending' | 'paired'

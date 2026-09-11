@@ -349,6 +349,36 @@ describe('RelayCollector — what is new in the MCP tab (#2285)', () => {
   })
 })
 
+describe('RelayCollector — screenshots in the chat (#2309)', () => {
+  it('takes a picture through the connector, and sends it with a note', async () => {
+    const shot = { data: 'QUJD', mimeType: 'image/jpeg', width: 10, height: 5, source: 'dom' }
+    const controller = {
+      ...fakeController(),
+      chat: { messages: [], send: vi.fn(), shoot: vi.fn(async () => shot), subscribe: (l) => (l([]), () => {}) },
+    }
+    globalThis.__qdadmRelay = controller
+    const collector = new RelayCollector()
+    collector.install({})
+
+    expect(collector.canShoot).toBe(true)
+    expect(await collector.shoot()).toEqual(shot)
+    collector.sendChat('circled', { mimeType: 'image/jpeg', data: 'QUJD' })
+    collector.sendChat('just text')
+
+    expect(controller.chat.send).toHaveBeenNthCalledWith(1, 'circled', { mimeType: 'image/jpeg', data: 'QUJD' })
+    expect(controller.chat.send).toHaveBeenNthCalledWith(2, 'just text')
+  })
+
+  it('a connector older than #2309 offers no screenshot', async () => {
+    globalThis.__qdadmRelay = { ...fakeController(), chat: { messages: [], send: vi.fn(), subscribe: (l) => (l([]), () => {}) } }
+    const collector = new RelayCollector()
+    collector.install({})
+
+    expect(collector.canShoot).toBe(false)
+    await expect(collector.shoot()).rejects.toThrow(/cannot take a screenshot/)
+  })
+})
+
 describe('RelayCollector — clearing the chat (#2231)', () => {
   it('asks the controller to clear', () => {
     const controller = {

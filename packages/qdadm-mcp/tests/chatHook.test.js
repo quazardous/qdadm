@@ -33,6 +33,11 @@ describe('chat Stop hook (#2252)', () => {
     expect(stopDecision([])).toBeNull()
   })
 
+  it('says when a message comes with a screenshot, which chat_read hands over (#2309)', () => {
+    const reason = stopDecision([{ ...pending[0], messages: [{ text: 'this one', at: 1, screenshot: true }] }]).reason
+    expect(reason).toContain('- instance 9fd97119 (Book Manager /books): "this one" (with an annotated screenshot: read it with chat_read)')
+  })
+
   it('asks the relay to mark what it shows, and prints the decision as JSON', async () => {
     const deps = relayAnswering({ instances: pending })
     const out = await runChatHook('stop', deps)

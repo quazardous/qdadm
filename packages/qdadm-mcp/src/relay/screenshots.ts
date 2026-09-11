@@ -29,22 +29,24 @@ export function pageSlug(location: string | null | undefined): string {
   return slug || 'home'
 }
 
-/** `20260911-112233-34fcb409-books-12-edit.jpg` */
-export function screenshotFileName(at: Date, meta: ScreenshotMeta, mimeType: string): string {
+/** `20260911-112233-34fcb409-books-12-edit.jpg`; with a label, it replaces the page (`…-34fcb409-chat.jpg`). */
+export function screenshotFileName(at: Date, meta: ScreenshotMeta, mimeType: string, label?: string): string {
   const ext = mimeType === 'image/png' ? 'png' : 'jpg'
-  return `${stamp(at)}-${(meta.instance ?? 'tab').slice(0, 8)}-${pageSlug(meta.location)}.${ext}`
+  return `${stamp(at)}-${(meta.instance ?? 'tab').slice(0, 8)}-${pageSlug(label ?? meta.location)}.${ext}`
 }
 
 export interface KeepScreenshotOptions {
   /** The project: where `.aiball/screenshots/` goes, and what the path in the answer is relative to. */
   cwd: string
   now?: () => Date
+  /** Name the files after this rather than the page: `chat` for the pictures the user sent (#2309). */
+  label?: string
 }
 
-/** Writes the picture of a `screenshot` answer and adds where to the answer. Saving never fails the call. */
+/** Writes the pictures of an answer and adds where to the answer. Saving never fails the call. */
 export function keepScreenshot(result: CallToolResult, options: KeepScreenshotOptions): CallToolResult {
-  const image = result.content.find((c) => c.type === 'image') as { data: string; mimeType: string } | undefined
-  if (result.isError || !image) return result
+  const images = result.content.filter((c) => c.type === 'image') as Array<{ data: string; mimeType: string }>
+  if (result.isError || images.length === 0) return result
 
   const meta: ScreenshotMeta = { ...((result._meta?.[SCREENSHOT_META] as ScreenshotMeta | undefined) ?? {}) }
   if (!meta.instance) {
@@ -53,17 +55,23 @@ export function keepScreenshot(result: CallToolResult, options: KeepScreenshotOp
     meta.instance = /^Instance (\w{8})/.exec(text?.text ?? '')?.[1]
   }
 
+  const saved: string[] = []
   let note: string
   try {
     const dir = join(options.cwd, SCREENSHOTS_DIR)
     mkdirSync(dir, { recursive: true })
-    const name = screenshotFileName((options.now ?? (() => new Date()))(), meta, image.mimeType)
-    let file = join(dir, name)
-    for (let n = 2; existsSync(file); n++) file = join(dir, name.replace(/(\.\w+)$/, `-${n}$1`))
-    writeFileSync(file, Buffer.from(image.data, 'base64'))
-    note = `Saved to ${relative(options.cwd, file)}.`
+    const at = (options.now ?? (() => new Date()))()
+    for (const image of images) {
+      const name = screenshotFileName(at, meta, image.mimeType, options.label)
+      let file = join(dir, name)
+      for (let n = 2; existsSync(file); n++) file = join(dir, name.replace(/(\.\w+)$/, `-${n}$1`))
+      writeFileSync(file, Buffer.from(image.data, 'base64'))
+      saved.push(relative(options.cwd, file))
+    }
+    note = `Saved to ${saved.join(', ')}.`
   } catch (e) {
-    note = `Not saved to ${SCREENSHOTS_DIR}: ${(e as Error).message}`
+    const why = (e as Error).message
+    note = saved.length > 0 ? `Saved to ${saved.join(', ')}; the rest not saved: ${why}` : `Not saved to ${SCREENSHOTS_DIR}: ${why}`
   }
   return { ...result, content: [...result.content, { type: 'text', text: note }] }
 }

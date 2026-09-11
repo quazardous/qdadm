@@ -322,3 +322,37 @@ describe('qdadm-mcp toolset — reading the page (#2247)', () => {
     expect(api.ask).toHaveBeenLastCalledWith('find', { role: 'button', text: 'save', ref: undefined, limit: undefined }, 's1')
   })
 })
+
+describe('qdadm-mcp toolset — screenshots in the chat (#2309)', () => {
+  const relayApi = (messages) => {
+    const api = {
+      ...makeApi({ session: { id: 's1', lastSeenAt: Date.now(), meta: { location: '/books' } } }),
+      pairing: { status: vi.fn(() => ({ waiting: [] })), accept: vi.fn() },
+    }
+    api.ask = vi.fn(async () => ({ messages }))
+    return api
+  }
+
+  it('chat_read without a picture keeps its JSON answer', async () => {
+    const res = await byName(buildToolset(relayApi([{ text: 'hi', at: 1 }])), 'chat_read').handler({})
+
+    expect(res).not.toBeInstanceOf(ToolContent)
+    expect(res.data.messages).toEqual([{ text: 'hi', at: 1 }])
+  })
+
+  it('chat_read hands each screenshot over as an image, and says which message it belongs to', async () => {
+    const api = relayApi([
+      { text: 'this one', at: 1, image: { mimeType: 'image/jpeg', data: 'QUJD' } },
+      { text: 'and this', at: 2 },
+    ])
+    const res = await byName(buildToolset(api), 'chat_read').handler({})
+
+    expect(res).toBeInstanceOf(ToolContent)
+    expect(res.content.slice(1)).toEqual([{ type: 'image', data: 'QUJD', mimeType: 'image/jpeg' }])
+    expect(JSON.parse(res.content[0].text).data.messages).toEqual([
+      { text: 'this one', at: 1, screenshot: 'image 1 below' },
+      { text: 'and this', at: 2 },
+    ])
+    expect(res.meta).toEqual({ 'qdadm/screenshot': { instance: 's1', location: '/books' } })
+  })
+})

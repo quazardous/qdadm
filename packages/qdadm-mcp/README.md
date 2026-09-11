@@ -113,7 +113,9 @@ when several tabs are open. Three sub-tabs:
 
 - **Status**: how this tab reaches the relay (connected, offline, or Pair).
 - **Chat**: the agent writes with `chat_send`; what you type, it reads with
-  `chat_read`.
+  `chat_read`. 📷 takes a screenshot of the page (without the debug bar); circle
+  what you mean with the pen, pick a colour, add a note, and **Send**: `chat_read`
+  gives the agent the picture itself.
 - **History**: every MCP request this tab served — tool, detail, success or
   error, duration.
 
@@ -128,7 +130,8 @@ are the real pixels, until **Stop sharing**.
 
 Screenshots are also kept in your project. The stdio front writes each one
 under `.aiball/screenshots/` in the directory the agent's client started it in
-(`20260911-112233-34fcb409-books-12-edit.jpg`), and the answer says where. Add
+(`20260911-112233-34fcb409-books-12-edit.jpg`), and so are the screenshots you send
+in the chat (`…-chat.jpg`); the answer says where. Add
 `.aiball/screenshots/` to your `.gitignore`. `save: false` skips one picture;
 `--no-save-screenshots` turns saving off.
 

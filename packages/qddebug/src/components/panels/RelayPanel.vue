@@ -4,7 +4,8 @@
  * qdadm-mcp-relay, so an agent can debug the live app.
  */
 import { computed, nextTick, onUnmounted, ref, watch } from 'vue'
-import type { RelayCollector, RelayIdentityLike } from '../../collectors/RelayCollector'
+import type { RelayChatImageLike, RelayCollector, RelayIdentityLike, RelayShotLike } from '../../collectors/RelayCollector'
+import ScreenshotAnnotator from './ScreenshotAnnotator.vue'
 
 const props = defineProps<{
   collector: RelayCollector
@@ -137,6 +138,28 @@ const sendChat = () => {
   props.collector.sendChat(text)
   draft.value = ''
 }
+/** A screenshot the user annotates and sends to the agent (#2309). */
+const shot = ref<RelayShotLike | null>(null)
+const shooting = ref(false)
+const shotError = ref<string | null>(null)
+const takeScreenshot = async () => {
+  shotError.value = null
+  shooting.value = true
+  try {
+    shot.value = await props.collector.shoot()
+  } catch (e) {
+    shotError.value = `No screenshot: ${(e as Error).message}`
+  } finally {
+    shooting.value = false
+  }
+}
+const sendShot = (text: string, image: RelayChatImageLike) => {
+  props.collector.sendChat(text, image)
+  shot.value = null
+}
+const imageUrl = (image: RelayChatImageLike) => `data:${image.mimeType};base64,${image.data}`
+const zoomed = ref<RelayChatImageLike | null>(null)
+
 const clock = (at: number) => new Date(at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
 watch(
   [() => chat.value.length, subTab],
@@ -322,15 +345,39 @@ const SETUP = 'npx qdadm-mcp-relay --stdio'
         </p>
         <div v-for="m in chat" :key="m.id" class="mcp-msg" :class="`mcp-msg-${m.from}`">
           <span class="mcp-msg-who">{{ m.from === 'agent' ? 'Agent' : 'You' }} · {{ clock(m.at) }}</span>
-          <span class="mcp-msg-text">{{ m.text }}</span>
+          <button v-if="m.image" type="button" class="mcp-msg-shot" title="Open the screenshot" @click="zoomed = m.image">
+            <img :src="imageUrl(m.image)" alt="Screenshot sent to the agent" />
+          </button>
+          <span v-else-if="m.imageDropped" class="mcp-msg-dropped">[screenshot no longer kept]</span>
+          <span v-if="m.text" class="mcp-msg-text">{{ m.text }}</span>
         </div>
       </div>
       <form class="mcp-chat-form" @submit.prevent="sendChat">
+        <button
+          v-if="collector.canShoot"
+          type="button"
+          class="mcp-btn"
+          :disabled="shooting"
+          title="Screenshot the page, circle what you mean, send it to the agent"
+          aria-label="Screenshot"
+          @click="takeScreenshot"
+        >
+          <i :class="['pi', shooting ? 'pi-spin pi-spinner' : 'pi-camera']" />
+        </button>
         <input v-model="draft" class="mcp-chat-input" maxlength="2000" placeholder="Message the agent…" @keydown.stop />
         <button type="submit" class="mcp-btn mcp-btn-primary" :disabled="!draft.trim()" title="Send">
           <i class="pi pi-send" />
         </button>
       </form>
+      <p v-if="shotError" class="mcp-hint mcp-warn">{{ shotError }}</p>
+      <ScreenshotAnnotator v-if="shot" :shot="shot" @send="sendShot" @cancel="shot = null" />
+      <Teleport v-if="zoomed" to="body">
+        <div class="qd-debug" style="display: contents">
+          <div class="mcp-zoom" role="dialog" aria-label="Screenshot sent to the agent" @click="zoomed = null">
+            <img :src="imageUrl(zoomed)" alt="Screenshot sent to the agent" />
+          </div>
+        </div>
+      </Teleport>
     </section>
 
     <section v-if="subTab === 'history' && collector.hasActivity && state.status !== 'unavailable'" class="mcp-history">
@@ -579,6 +626,37 @@ const SETUP = 'npx qdadm-mcp-relay --stdio'
 .mcp-msg-who {
   font-size: 0.65rem;
   opacity: 0.65;
+}
+.mcp-msg-shot {
+  margin: 0.2rem 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: zoom-in;
+}
+.mcp-msg-shot img {
+  display: block;
+  max-width: 220px;
+  max-height: 140px;
+  border-radius: 6px;
+}
+.mcp-msg-dropped {
+  font-style: italic;
+  opacity: 0.7;
+}
+.mcp-zoom {
+  position: fixed;
+  inset: 0;
+  z-index: 2147483600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.82);
+  cursor: zoom-out;
+}
+.mcp-zoom img {
+  max-width: 95vw;
+  max-height: 95vh;
 }
 .mcp-chat-form {
   display: flex;
