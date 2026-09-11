@@ -122,6 +122,30 @@ Chat and history are kept for the browser tab, across reloads.
 rendered from the page's DOM by default. Once you share the tab there, they
 are the real pixels, until **Stop sharing**.
 
+## Hear the chat: a Stop hook
+
+An agent only sees what you type in the MCP tab's chat when it calls
+`chat_read`. For agents with hooks, a Stop hook closes that gap: when the
+agent is about to stop and someone wrote in a tab's chat without an answer,
+the hook keeps it going, with the message.
+
+Claude Code, in `.claude/settings.json` (or `~/.claude/settings.json`):
+
+```json
+{
+  "hooks": {
+    "Stop": [
+      { "hooks": [{ "type": "command", "command": "npx qdadm-mcp-relay --chat-hook stop", "timeout": 10 }] }
+    ]
+  }
+}
+```
+
+- Each message stops the agent once; `chat_read` still returns it.
+- No relay, no tab, nothing new: the hook prints nothing, and the agent stops
+  as usual.
+- Agent sessions share the relay: the first to stop gets the message.
+
 ## Outside dev: pairing
 
 A tab not served by the dev server — a static build, `vite preview`, GitHub

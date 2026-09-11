@@ -38,11 +38,14 @@ import {
   writeRunFile,
 } from './runfile.ts'
 import { runStdioFront } from './front.ts'
+import { runChatHookCli } from './chatHook.ts'
 
 interface CliOptions {
   /** One explicit port — a private relay. Null: the shared relay on RELAY_PORTS. */
   port: number | null
   stdio: boolean
+  /** `--chat-hook <event>`: act as an agent hook for the MCP tab's chat (#2252), then exit. */
+  chatHook: string | null
   background: boolean
   token: string
   readOnly: boolean
@@ -54,6 +57,7 @@ function parseArgs(argv: string[]): CliOptions {
   const opts: CliOptions = {
     port: null,
     stdio: false,
+    chatHook: null,
     background: false,
     token: randomUUID(),
     readOnly: false,
@@ -64,6 +68,7 @@ function parseArgs(argv: string[]): CliOptions {
     const a = argv[i]
     if (a === '--port') opts.port = Number(argv[++i])
     else if (a === '--stdio') opts.stdio = true
+    else if (a === '--chat-hook') opts.chatHook = String(argv[++i] ?? '')
     else if (a === '--background') opts.background = true
     else if (a === '--token') opts.token = String(argv[++i])
     else if (a === '--read-only') opts.readOnly = true
@@ -83,8 +88,29 @@ const sendJson = (res: ServerResponse, status: number, data: unknown) => {
   res.end(JSON.stringify(data, null, 2))
 }
 
+/** A small JSON request body, or null: a hook's request is a few bytes. */
+function readJsonBody(req: IncomingMessage): Promise<Record<string, unknown> | null> {
+  return new Promise((resolve) => {
+    let raw = ''
+    req.on('data', (chunk) => {
+      raw += chunk
+      if (raw.length > 10_000) req.destroy()
+    })
+    req.on('end', () => {
+      try {
+        const value = JSON.parse(raw || 'null')
+        resolve(value && typeof value === 'object' ? value : null)
+      } catch {
+        resolve(null)
+      }
+    })
+    req.on('error', () => resolve(null))
+  })
+}
+
 export async function main(argv = process.argv.slice(2)): Promise<void> {
   const opts = parseArgs(argv)
+  if (opts.chatHook !== null) return runChatHookCli(opts.chatHook)
   if (opts.stdio) return runStdioFront({ readOnly: opts.readOnly })
 
   const log = (m: string) => console.log(`${new Date().toISOString().slice(11, 19)} [qdadm-mcp-relay] ${m}`)
@@ -137,7 +163,14 @@ export async function main(argv = process.argv.slice(2)): Promise<void> {
       }
       return
     }
-    sendJson(res, 404, { error: 'GET /identity · POST /mcp · WebSocket for app tabs' })
+    if (url.pathname === '/chat/pending') {
+      // What users typed in the MCP tab, for agent hooks (#2252): refused to web pages, like /mcp.
+      if (req.headers.origin) return sendJson(res, 403, { error: 'the relay chat endpoint does not answer web pages' })
+      if (req.method !== 'POST') return sendJson(res, 405, { error: 'POST /chat/pending with { "mark": true | false }' })
+      const body = await readJsonBody(req)
+      return sendJson(res, 200, { instances: await broker.chatPending(body?.mark === true) })
+    }
+    sendJson(res, 404, { error: 'GET /identity · POST /mcp · POST /chat/pending · WebSocket for app tabs' })
   }
 
   const ports = opts.port ? [opts.port] : RELAY_PORTS

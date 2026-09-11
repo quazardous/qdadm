@@ -344,13 +344,20 @@ export function installQdadmRelayConnector(options: QdadmRelayConnectorOptions =
   // ── chat (#2231) ───────────────────────────────────────────────────────
   // Kept for the tab in sessionStorage: a reload (HMR included) must not eat a
   // message the agent has not read yet.
-  const savedChat = parse(tabStore.getItem(CHAT_KEY)) as { seq?: number; readUpTo?: number; messages?: RelayChatMessage[] } | null
+  const savedChat = parse(tabStore.getItem(CHAT_KEY)) as {
+    seq?: number
+    readUpTo?: number
+    hookShownUpTo?: number
+    messages?: RelayChatMessage[]
+  } | null
   const chatMessages: RelayChatMessage[] = Array.isArray(savedChat?.messages) ? savedChat.messages : []
   const chatListeners = new Set<(messages: readonly RelayChatMessage[]) => void>()
   let chatSeq = typeof savedChat?.seq === 'number' ? savedChat.seq : 0
   let agentReadUpTo = typeof savedChat?.readUpTo === 'number' ? savedChat.readUpTo : 0
+  // What an agent hook already showed the agent (#2252): each message stops the agent once.
+  let hookShownUpTo = typeof savedChat?.hookShownUpTo === 'number' ? savedChat.hookShownUpTo : 0
   const saveChat = () =>
-    tabStore.setItem(CHAT_KEY, JSON.stringify({ seq: chatSeq, readUpTo: agentReadUpTo, messages: chatMessages }))
+    tabStore.setItem(CHAT_KEY, JSON.stringify({ seq: chatSeq, readUpTo: agentReadUpTo, hookShownUpTo, messages: chatMessages }))
   const notifyChat = () => {
     for (const listener of chatListeners) {
       try {
@@ -381,6 +388,15 @@ export function installQdadmRelayConnector(options: QdadmRelayConnectorOptions =
       return unread.length > 0
         ? { messages: unread.map(({ text, at }) => ({ text, at })) }
         : { messages: [], note: 'Nothing new from the user.' }
+    },
+    /** For agent hooks (#2252): what the user wrote that the agent neither read nor was shown. chat_read still returns it. */
+    chatPending: (payload) => {
+      const pending = unreadFromUser().filter((m) => m.id > hookShownUpTo)
+      if (payload?.mark === true && pending.length > 0) {
+        hookShownUpTo = pending[pending.length - 1].id
+        saveChat()
+      }
+      return { messages: pending.map(({ text, at }) => ({ text, at })) }
     },
   }
 
@@ -428,8 +444,8 @@ export function installQdadmRelayConnector(options: QdadmRelayConnectorOptions =
     const type = String(msg.type)
     const payload = msg.payload as Record<string, unknown> | undefined
     const { tool, detail } = describeRequest(type, payload)
-    // The feedback window around an action is plumbing, not something an agent did.
-    const logged = !type.startsWith('feedback')
+    // The feedback window around an action, and a hook checking the chat, are plumbing, not something an agent did.
+    const logged = !type.startsWith('feedback') && type !== 'chatPending'
     const at = Date.now()
     try {
       const data = chatHandlers[type] ? chatHandlers[type](payload) : await page.handle(type, payload)
@@ -739,6 +755,7 @@ export function installQdadmRelayConnector(options: QdadmRelayConnectorOptions =
         chatMessages.length = 0
         // Ids keep counting: nothing wiped can come back as unread.
         agentReadUpTo = chatSeq
+        hookShownUpTo = chatSeq
         saveChat()
         notifyChat()
       },

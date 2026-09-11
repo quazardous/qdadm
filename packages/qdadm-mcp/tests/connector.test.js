@@ -334,6 +334,26 @@ describe('relay connector — the MCP tab chat (#2231)', () => {
     const { broker } = await connected()
     await expect(broker.ask('chatPost', { message: '   ' })).rejects.toThrow(/non-empty message/)
   })
+
+  it('agent hooks (#2252): each unanswered message is shown once, across instances; chat_read still returns it', async () => {
+    const { broker, controller } = await connected()
+    controller.chat.send('are you there?')
+    controller.chat.send('the save button does nothing')
+
+    expect(await broker.chatPending(false)).toEqual([
+      expect.objectContaining({
+        instance: 'tab-1',
+        messages: [expect.objectContaining({ text: 'are you there?' }), expect.objectContaining({ text: 'the save button does nothing' })],
+      }),
+    ])
+    expect((await broker.chatPending(true))[0].messages).toHaveLength(2)
+    expect(await broker.chatPending(true)).toEqual([])
+
+    controller.chat.send('hello?')
+    expect((await broker.chatPending(true))[0].messages.map((m) => m.text)).toEqual(['hello?'])
+    expect((await broker.ask('chatRead')).messages.map((m) => m.text)).toEqual(['are you there?', 'the save button does nothing', 'hello?'])
+    expect(controller.activity.entries.map((e) => e.tool)).not.toContain('chatPending')
+  })
 })
 
 describe('relay connector — the MCP history (#2231)', () => {

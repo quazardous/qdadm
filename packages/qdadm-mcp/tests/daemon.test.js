@@ -105,6 +105,24 @@ describe('the machine relay (#2231)', () => {
     expect(await postMcp(port, { origin: 'https://evil.example' })).toBe(403)
   })
 
+  it('answers agent hooks on /chat/pending, never web pages; the Stop hook stays silent with nothing pending (#2252)', async () => {
+    const { port } = readRunFile(runFile)
+    const pending = (headers = {}) =>
+      fetch(`http://127.0.0.1:${port}/chat/pending`, { method: 'POST', headers: { 'content-type': 'application/json', ...headers }, body: '{"mark":false}' })
+    expect((await pending({ origin: 'https://evil.example' })).status).toBe(403)
+    expect(await (await pending()).json()).toEqual({ instances: [] })
+
+    const hook = spawn(process.execPath, [BIN, '--chat-hook', 'stop'], {
+      env: { ...process.env, QDADM_RELAY_RUN: runFile },
+      stdio: ['pipe', 'pipe', 'pipe'],
+    })
+    let out = ''
+    hook.stdout.on('data', (d) => (out += d))
+    hook.stdin.end(JSON.stringify({ hook_event_name: 'Stop', stop_hook_active: false }))
+    expect(await exited(hook)).toBe(0)
+    expect(out).toBe('')
+  })
+
   it('a tab with the token becomes an instance agents target — without naming it while alone', async () => {
     const info = readRunFile(runFile)
     const ws = new WebSocket(`ws://127.0.0.1:${info.port}/`, { origin: 'http://localhost:5174' })

@@ -87,7 +87,15 @@ interface Pairing {
   pairedAt: number
 }
 
-export type SessionEvent = 'connected' | 'closed' | 'forgotten' | 'rejected' | 'pending' | 'paired'
+/** Chat messages of one instance that an agent hook has not shown yet (#2252). */
+export interface PendingChat {
+  instance: string
+  app: unknown
+  location: unknown
+  messages: Array<{ text: string; at: number }>
+}
+
+export type SessionEvent ='connected' | 'closed' | 'forgotten' | 'rejected' | 'pending' | 'paired'
 
 export interface RelayBrokerOptions {
   /** Page token (dev tabs, URL fragment). Omit to accept pairing only. */
@@ -488,6 +496,28 @@ export class RelayBroker implements DebugBrokerApi {
       this.pending.set(id, { resolve, reject, timeout })
       socket.send(JSON.stringify({ kind: 'request', id, type, payload }))
     })
+  }
+
+  /**
+   * What users typed in the MCP tab's chat that no agent hook showed yet (#2252), across the connected instances.
+   * `mark` records it as shown. An instance that does not answer — or runs a connector too old to know — is
+   * left out: a hook must never fail because of one tab.
+   */
+  async chatPending(mark: boolean): Promise<PendingChat[]> {
+    const connected = Array.from(this.sessions.values()).filter((s) => s.socket)
+    const answers = await Promise.all(
+      connected.map(async (s): Promise<PendingChat | null> => {
+        try {
+          const data = (await this.ask('chatPending', { mark }, s.id)) as { messages?: PendingChat['messages'] }
+          const messages = Array.isArray(data?.messages) ? data.messages : []
+          if (messages.length === 0) return null
+          return { instance: s.id, app: s.meta.app ?? null, location: s.meta.location ?? null, messages }
+        } catch {
+          return null
+        }
+      })
+    )
+    return answers.filter((a): a is PendingChat => a !== null)
   }
 
   /** May throw: an ambiguous or unknown instance is the agent's error to read. */
