@@ -53,6 +53,7 @@ export interface ConfirmService {
     header: string
     icon: string
     acceptClass?: string
+    closeOnEscape?: boolean
     accept: () => void
   }) => void
 }

@@ -1639,3 +1639,38 @@ describe('useListPage - subtitle (entity punchline)', () => {
     expect(result.props.value.subtitle).toBeNull()
   })
 })
+
+describe('useListPage - delete confirmations close on Escape (#2269)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mockRouteState = { name: 'book', params: {}, query: {}, meta: {} }
+    mockManager = createMockManager()
+    mockOrchestrator.get.mockImplementation(() => mockManager)
+  })
+
+  it('the row delete confirmation closes on Escape, and deletes only once accepted', async () => {
+    const { result } = createWrapper(() => useListPage({ entity: 'books' }))
+
+    result.confirmDelete({ id: 1, title: 'Book 1' }, 'title')
+
+    expect(mockConfirm.require).toHaveBeenCalledWith(
+      expect.objectContaining({ header: 'Confirm Delete', acceptClass: 'p-button-danger', closeOnEscape: true })
+    )
+    expect(mockManager.delete).not.toHaveBeenCalled()
+
+    await mockConfirm.require.mock.calls[0][0].accept()
+    expect(mockManager.delete).toHaveBeenCalledWith(1)
+  })
+
+  it('the bulk delete confirmation closes on Escape too', () => {
+    const { result } = createWrapper(() => useListPage({ entity: 'books' }))
+    result.selected.value = [{ id: 1 }, { id: 2 }]
+
+    result.confirmBulkDelete()
+
+    expect(mockConfirm.require).toHaveBeenCalledWith(
+      expect.objectContaining({ header: 'Confirm Bulk Delete', closeOnEscape: true })
+    )
+    expect(mockManager.delete).not.toHaveBeenCalled()
+  })
+})

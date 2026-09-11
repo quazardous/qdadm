@@ -36,6 +36,7 @@
 import { ref, computed, type Ref, type ComputedRef } from 'vue'
 import { useRouter, type Router } from 'vue-router'
 import { useConfirm } from 'primevue/useconfirm'
+import { requireDeleteConfirmation } from './confirmDelete'
 import {
   useEntityItemPage,
   type ParentConfig,
@@ -254,6 +255,7 @@ interface ConfirmService {
     header: string
     icon: string
     acceptClass?: string
+    closeOnEscape?: boolean
     accept: () => void
   }) => void
 }
@@ -411,11 +413,9 @@ export function useEntityItemShowPage<T = Record<string, unknown>>(
       severity: 'danger',
       onClick: () => {
         if (confirmDelete) {
-          confirm.require({
+          requireDeleteConfirmation(confirm, {
             message: `Are you sure you want to delete this ${manager.label || entity}?`,
             header: 'Confirm Delete',
-            icon: 'pi pi-exclamation-triangle',
-            acceptClass: 'p-button-danger',
             accept: () => deleteEntity(),
           })
         } else {

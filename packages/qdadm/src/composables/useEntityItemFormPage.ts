@@ -27,6 +27,7 @@
 import { ref, computed, watch, onMounted, onUnmounted, provide, type Ref } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useConfirm } from 'primevue/useconfirm'
+import { requireDeleteConfirmation } from './confirmDelete'
 import { useDirtyState } from './useDirtyState'
 import { useUnsavedChangesGuard, type GuardDialogState } from './useUnsavedChangesGuard'
 import { useBreadcrumb } from './useBreadcrumb'
@@ -384,11 +385,9 @@ export function useEntityItemFormPage<T extends Record<string, unknown> = Record
 
   function confirmDelete(): void {
     const label = manager.getEntityLabel(data.value) || entityId.value
-    confirm.require({
+    requireDeleteConfirmation(confirm, {
       message: `Delete ${entityName} "${label}"?`,
       header: 'Confirm Delete',
-      icon: 'pi pi-exclamation-triangle',
-      acceptClass: 'p-button-danger',
       accept: remove,
     })
   }

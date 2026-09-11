@@ -36,6 +36,7 @@ import {
   type RouteStatePersister,
 } from '../routeState'
 import { useConfirm } from 'primevue/useconfirm'
+import { requireDeleteConfirmation } from './confirmDelete'
 import { useHooks } from './useHooks.js'
 import { useEntityItemPage, type ParentConfig, type UseEntityItemPageReturn } from './useEntityItemPage.js'
 import { useActiveStack } from '../chain/useActiveStack.js'
@@ -1050,11 +1051,9 @@ export function useListPage<T = unknown>(config: UseListPageOptions<T>): UseList
 
   function confirmDelete(item: unknown, labelField = 'name'): void {
     const itemRecord = item as Record<string, unknown>
-    confirm.require({
+    requireDeleteConfirmation(confirm, {
       message: `Delete ${entityName} "${itemRecord[labelField] || itemRecord[resolvedDataKey]}"?`,
       header: 'Confirm Delete',
-      icon: 'pi pi-exclamation-triangle',
-      acceptClass: 'p-button-danger',
       accept: () => deleteItem(item, labelField),
     })
   }
@@ -1103,11 +1102,9 @@ export function useListPage<T = unknown>(config: UseListPageOptions<T>): UseList
 
   function confirmBulkDelete(): void {
     const count = selected.value.length
-    confirm.require({
+    requireDeleteConfirmation(confirm, {
       message: `Delete ${count} ${count > 1 ? entityNamePlural : entityName}?`,
       header: 'Confirm Bulk Delete',
-      icon: 'pi pi-exclamation-triangle',
-      acceptClass: 'p-button-danger',
       accept: bulkDelete,
     })
   }

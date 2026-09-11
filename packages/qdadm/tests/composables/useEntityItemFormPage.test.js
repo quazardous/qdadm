@@ -397,9 +397,12 @@ describe('useEntityItemFormPage', () => {
       expect(mockConfirm.require).toHaveBeenCalledWith(
         expect.objectContaining({
           header: 'Confirm Delete',
-          acceptClass: 'p-button-danger'
+          acceptClass: 'p-button-danger',
+          // Escape closes it without accepting (#2269)
+          closeOnEscape: true
         })
       )
+      expect(mockManager.delete).not.toHaveBeenCalled()
     })
 
     it('does nothing when not in edit mode', async () => {
