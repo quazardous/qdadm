@@ -118,6 +118,8 @@ export function qdadmVitePlugin(options: QdadmVitePluginOptions = {}): Plugin {
           exclude: [...widgetExcludes, ...themesExcludes, '@quazardous/qdadm'],
         },
         ...(fsAllow.length > 0 ? { server: { fs: { allow: fsAllow } } } : {}),
+        // The kernel checks it: an app without this plugin is told what to add (#2259).
+        define: { __QDADM_VITE_PLUGIN__: 'true' },
       }
     },
   }

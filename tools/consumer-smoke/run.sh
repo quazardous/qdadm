@@ -94,6 +94,13 @@ node --input-type=module -e "
   if (plugins.length < 3) {
     throw new Error('config loaded but the qdadm plugins are missing')
   }
+  // The kernel checks this define to tell an app it forgot the plugin (#2259): if the plugin stopped setting
+  // it, every correctly configured app would be told otherwise.
+  const qdadm = plugins.find((p) => p && p.name === 'qdadm')
+  const applied = typeof qdadm?.config === 'function' ? qdadm.config({}) : null
+  if (applied?.define?.__QDADM_VITE_PLUGIN__ !== 'true') {
+    throw new Error('qdadmVitePlugin() no longer defines __QDADM_VITE_PLUGIN__')
+  }
   console.log('[consumer-smoke]   vite resolved the config with', plugins.length, 'qdadm plugins')
 "
 

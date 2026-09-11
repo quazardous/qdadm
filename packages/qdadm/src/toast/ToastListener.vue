@@ -10,6 +10,7 @@
 import { onMounted, onUnmounted, inject } from 'vue'
 import { useToast } from 'primevue/usetoast'
 import type { SignalBus } from '../kernel/SignalBus'
+import { explainMissingToast } from '../kernel/vitePluginCheck'
 
 interface ToastEventData {
   summary?: string
@@ -17,7 +18,7 @@ interface ToastEventData {
   life?: number
 }
 
-const toast = useToast()
+const toast = explainMissingToast(useToast)
 const signals = inject<SignalBus | null>('qdadmSignals', null)
 
 let unsubscribe: (() => void) | null = null

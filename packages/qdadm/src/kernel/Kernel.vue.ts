@@ -17,6 +17,7 @@ import ToastListener from '../toast/ToastListener.vue'
 import { createQdadm } from '../plugin.js'
 import { createNotificationStore, NOTIFICATION_KEY } from '../notifications/NotificationStore'
 import { I18N_INJECTION_KEY } from '../i18n/useI18n'
+import { warnWithoutQdadmVitePlugin } from './vitePluginCheck'
 import type { Kernel } from './Kernel'
 // #1196 Phase B — this-typing against the real Kernel shape (was Self = any)
 type Self = Kernel
@@ -197,6 +198,8 @@ export function applyVueMethods(KernelClass: { prototype: Kernel }): void {
    * ConfirmationService.
    */
   proto._installPlugins = function (this: Self): void {
+    // Before PrimeVue: without the vite plugin, PrimeVue is what fails, without naming qdadm (#2259).
+    warnWithoutQdadmVitePlugin()
     const app = this.vueApp!
     const { authAdapter, features, primevue, existingApp } = this.options
     // eslint-disable-next-line @typescript-eslint/no-explicit-any

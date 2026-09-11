@@ -3,6 +3,8 @@ import vue from '@vitejs/plugin-vue'
 
 export default defineConfig({
   plugins: [vue()],
+  // What qdadmVitePlugin() defines: the suites run qdadm the way a correctly configured app does (#2259).
+  define: { __QDADM_VITE_PLUGIN__: 'true' },
   test: {
     globals: true,
     environment: 'jsdom',

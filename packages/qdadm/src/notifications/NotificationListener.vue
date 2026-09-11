@@ -12,6 +12,7 @@ import { useToast } from 'primevue/usetoast'
 import type { SignalBus } from '../kernel/SignalBus'
 import { useNotifications } from './NotificationStore'
 import type { NotificationSeverity } from './NotificationStore'
+import { explainMissingToast } from '../kernel/vitePluginCheck'
 
 interface ToastEventData {
   summary?: string
@@ -21,7 +22,7 @@ interface ToastEventData {
   forceToast?: boolean
 }
 
-const toast = useToast()
+const toast = explainMissingToast(useToast)
 const signals = inject<SignalBus | null>('qdadmSignals', null)
 const store = useNotifications()
 

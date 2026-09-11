@@ -35,6 +35,8 @@ describe('qdadmVitePlugin', () => {
     // no CJS transitives left (#1454) — an include entry unresolvable from
     // the consumer root would break file:-linked installs
     expect(config.optimizeDeps.include).toBeUndefined()
+    // what the kernel checks to tell an app it forgot the plugin (#2259)
+    expect(config.define).toEqual({ __QDADM_VITE_PLUGIN__: 'true' })
   })
 
   it('appends extra dedupe entries after the defaults', () => {
