@@ -21,6 +21,8 @@ import { relayPorts } from './ports.ts'
 export interface RelayRunInfo {
   pid: number
   port: number
+  /** The interface it listens on. Absent means the loopback, which is what older relays did. */
+  host?: string
   /** Lets a dev-server tab join without a code. Never sent to a browser except by the dev server. */
   token: string
   startedAt: number

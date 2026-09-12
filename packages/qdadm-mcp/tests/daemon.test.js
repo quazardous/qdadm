@@ -248,8 +248,14 @@ describe('a relay bound elsewhere than the default loopback (#2400)', () => {
   beforeAll(async () => {
     dir2 = mkdtempSync(join(tmpdir(), 'qdadm-relay-bind-'))
     port = 47771
-    child = spawn(process.execPath, [BIN, '--bind', BOUND_HOST, '--port', String(port)], {
-      env: { ...process.env, QDADM_RELAY_RUN: join(dir2, '.qdadm_relay.run') },
+    // Through the variables, the way a container sets it up: a shared relay, with its own run file.
+    child = spawn(process.execPath, [BIN], {
+      env: {
+        ...process.env,
+        QDADM_RELAY_RUN: join(dir2, '.qdadm_relay.run'),
+        QDADM_RELAY_PORT: String(port),
+        QDADM_RELAY_HOST: BOUND_HOST,
+      },
       stdio: ['ignore', 'pipe', 'pipe'],
     })
     child.stdout.on('data', (d) => (logs += d))
@@ -265,8 +271,10 @@ describe('a relay bound elsewhere than the default loopback (#2400)', () => {
     rmSync(dir2, { recursive: true, force: true })
   })
 
-  it('answers on the host it was given', async () => {
-    expect(await identity(BOUND_HOST)).toMatchObject({ name: 'qdadm-mcp-relay', port })
+  it('answers on the host it was given, and says which one it is (#2404)', async () => {
+    // Nobody else knows: the run file and the identity are where that answer has to live.
+    expect(await identity(BOUND_HOST)).toMatchObject({ name: 'qdadm-mcp-relay', port, host: BOUND_HOST })
+    expect(readRunFile(join(dir2, '.qdadm_relay.run'))).toMatchObject({ port, host: BOUND_HOST })
   })
 
   it('and nowhere else: the default loopback does not answer for it', async () => {

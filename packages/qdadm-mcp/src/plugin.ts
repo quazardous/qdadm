@@ -50,6 +50,18 @@ export interface QdadmMcpPluginOptions extends ToolsetOptions {
   relay?: boolean
 }
 
+/**
+ * Where the dev server says the relay is — the one line most people read, so
+ * never `localhost` by assumption (#2404). The address pages were given when
+ * there is one, otherwise the interface the relay reported.
+ */
+export function relayWhere(info: { host?: string; port: number }, publicUrl: string | null): string {
+  if (publicUrl) return `${publicUrl} (QDADM_RELAY_PUBLIC_URL)`
+  const host = info.host ?? '127.0.0.1'
+  const everywhere = host === '0.0.0.0' || host === '::'
+  return `ws://${host}:${info.port}${everywhere ? " — every interface, pages use this machine's address" : ''}`
+}
+
 export function qdadmMcpPlugin(options: QdadmMcpPluginOptions = {}): Plugin {
   let broker: DebugBrokerApi | null = null
   let mcpPath = options.path ?? null
@@ -112,8 +124,7 @@ export function qdadmMcpPlugin(options: QdadmMcpPluginOptions = {}): Plugin {
         ensureRelay()
           .then(({ info, started }) =>
             s.config.logger.info(
-              `  [qdadm-mcp] relay ${started ? 'started' : 'running'} on ws://localhost:${info.port} — ` +
-                (publicUrl ? `pages connect to ${publicUrl} (QDADM_RELAY_PUBLIC_URL) — ` : '') +
+              `  [qdadm-mcp] relay ${started ? 'started' : 'running'} on ${relayWhere(info, publicUrl)} — ` +
                 'agents: MCP stdio server `npx qdadm-mcp-relay --stdio`'
             )
           )

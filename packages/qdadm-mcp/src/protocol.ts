@@ -25,6 +25,11 @@ export interface RelayIdentity {
   project: string
   cwd: string
   port: number
+  /**
+   * The interface it listens on: `127.0.0.1` unless `--bind` said otherwise.
+   * Absent from a relay older than this field, which listened on the loopback.
+   */
+  host?: string
   pid: number
   startedAt: number
 }

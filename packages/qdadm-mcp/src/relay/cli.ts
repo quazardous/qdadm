@@ -256,6 +256,7 @@ export async function main(argv = process.argv.slice(2)): Promise<void> {
     project: basename(process.cwd()),
     cwd: process.cwd(),
     port,
+    host: opts.bind,
     pid: process.pid,
     startedAt: Date.now(),
   }
@@ -271,6 +272,7 @@ export async function main(argv = process.argv.slice(2)): Promise<void> {
       {
         pid: process.pid,
         port,
+        host: opts.bind,
         token: opts.token,
         startedAt: identity.startedAt,
         cwd: identity.cwd,

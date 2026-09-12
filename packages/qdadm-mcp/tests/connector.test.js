@@ -163,6 +163,20 @@ describe('relay connector — pairing (#2231)', () => {
     expect((await broker.ask('sessionInfo')).sessionId).toBe('tab-1')
   })
 
+  it('a pairing keeps the address it was made on, and redials it (#2404)', async () => {
+    const broker = new RelayBroker({ token: 't', identity: identity(47761) })
+    // Paired across a container boundary: the port alone would send this tab to a local relay.
+    store.setItem(
+      'qdadm-relay:pairing',
+      JSON.stringify({ port: 47761, key: 'key-1', relay: identity(47761), url: 'ws://relay.bmsctl.localhost:47761/' })
+    )
+    broker.pairing.accept = broker.pairing.accept.bind(broker.pairing)
+    const { controller, created } = install({ 47761: broker })
+
+    await vi.waitFor(() => expect(controller.state.status).not.toBe('idle'))
+    expect(created).toEqual(['ws://relay.bmsctl.localhost:47761/'])
+  })
+
   it('a restarted relay does not know the pairing: the tab says so and forgets it', async () => {
     store.setItem('qdadm-relay:pairing', JSON.stringify({ port: 47761, key: 'key-old', relay: identity(47761) }))
     const { controller } = install({ 47761: makeBroker() })

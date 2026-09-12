@@ -21,6 +21,7 @@ import {
   relayPublicWsUrl,
 } from '../src/relay/ports.ts'
 import { RELAY_PORTS } from '../src/protocol.ts'
+import { relayWhere } from '../src/plugin.ts'
 
 const opened = []
 afterEach(async () => {
@@ -175,6 +176,25 @@ describe('relayPublicWsUrl — the address the dev server gives its pages (#2400
     )
     expect(() => relayPublicWsUrl({ QDADM_RELAY_PUBLIC_URL: 'file:///relay' })).toThrow(
       /QDADM_RELAY_PUBLIC_URL must be http/
+    )
+  })
+})
+
+describe('the dev server line names the relay honestly (#2404)', () => {
+  it('reports the interface the relay says it listens on, not localhost', () => {
+    expect(relayWhere({ port: 47761 }, null)).toBe('ws://127.0.0.1:47761')
+    expect(relayWhere({ host: '127.0.0.2', port: 47761 }, null)).toBe('ws://127.0.0.2:47761')
+  })
+
+  it('says what a wide bind means, since the address itself is not dialable', () => {
+    expect(relayWhere({ host: '0.0.0.0', port: 35173 }, null)).toBe(
+      "ws://0.0.0.0:35173 — every interface, pages use this machine's address"
+    )
+  })
+
+  it('prefers the address pages were actually given', () => {
+    expect(relayWhere({ host: '0.0.0.0', port: 35173 }, 'ws://relay.bmsctl.localhost:8500/')).toBe(
+      'ws://relay.bmsctl.localhost:8500/ (QDADM_RELAY_PUBLIC_URL)'
     )
   })
 })

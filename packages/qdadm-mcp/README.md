@@ -246,6 +246,10 @@ curl -s http://localhost:35173/identity   # JSON with a pid and a port, or nothi
 Silence there, with the port published, means the relay is still bound to the
 container's loopback.
 
+The dev server's own startup line says where it found the relay — the address
+pages were given, or the interface the relay reported — so it is worth reading
+when something does not line up.
+
 ### A page from a production build
 
 Dev pages need nothing: the dev server tells each page where its relay is. A

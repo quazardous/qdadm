@@ -336,11 +336,18 @@ interface SavedPairing {
   port: number
   key: string
   relay: RelayIdentity
+  /**
+   * The address this tab paired with. Kept so a reload dials the relay it
+   * actually paired with — across a container boundary or a proxy, the port
+   * alone would send it to a local relay that is not the one (#2404).
+   * Absent in pairings saved before this field.
+   */
+  url?: string
 }
 
 type ProbeResult =
-  | { port: number; outcome: 'refused' | 'pending' | 'foreign' }
-  | { port: number; outcome: 'relay'; relay: RelayIdentity; ws: WebSocket }
+  | { port: number; url: string; outcome: 'refused' | 'pending' | 'foreign' }
+  | { port: number; url: string; outcome: 'relay'; relay: RelayIdentity; ws: WebSocket }
 
 const parse = (data: unknown): Record<string, unknown> | null => {
   try {
@@ -641,11 +648,12 @@ export function installQdadmRelayConnector(options: QdadmRelayConnectorOptions =
   /** `wsUrl` dials the address the page was told to use; without it, `port` on the local host. */
   const probe = (port: number, wsUrl?: string): Promise<ProbeResult> =>
     new Promise((resolve) => {
+      const url = wsUrl ?? `ws://${host}:${port}/`
       let ws: WebSocket
       try {
-        ws = new WS(wsUrl ?? `ws://${host}:${port}/`)
+        ws = new WS(url)
       } catch {
-        resolve({ port, outcome: 'refused' })
+        resolve({ port, url, outcome: 'refused' })
         return
       }
       let settled = false
@@ -667,27 +675,27 @@ export function installQdadmRelayConnector(options: QdadmRelayConnectorOptions =
       }
       // Still CONNECTING past the timeout: the browser is holding it back.
       const heldTimer = setTimeout(
-        () => finish({ port, outcome: ws.readyState === 0 ? 'pending' : 'foreign' }),
+        () => finish({ port, url, outcome: ws.readyState === 0 ? 'pending' : 'foreign' }),
         probeTimeoutMs
       )
-      ws.onerror = () => finish({ port, outcome: 'refused' })
-      ws.onclose = () => finish({ port, outcome: 'refused' })
+      ws.onerror = () => finish({ port, url, outcome: 'refused' })
+      ws.onclose = () => finish({ port, url, outcome: 'refused' })
       ws.onopen = () => {
         clearTimeout(heldTimer)
-        helloTimer = setTimeout(() => finish({ port, outcome: 'foreign' }), HELLO_TIMEOUT_MS)
+        helloTimer = setTimeout(() => finish({ port, url, outcome: 'foreign' }), HELLO_TIMEOUT_MS)
       }
       ws.onmessage = (event) => {
         const msg = parse(event.data)
         if (msg?.kind === 'relay-hello' && msg.name === 'qdadm-mcp-relay' && msg.protocol === RELAY_PROTOCOL) {
           const { kind: _kind, ...relay } = msg
-          finish({ port, outcome: 'relay', relay: relay as unknown as RelayIdentity, ws })
+          finish({ port, url, outcome: 'relay', relay: relay as unknown as RelayIdentity, ws })
         } else {
-          finish({ port, outcome: 'foreign' })
+          finish({ port, url, outcome: 'foreign' })
         }
       }
     })
 
-  const bind = (ws: WebSocket, relay: RelayIdentity, port: number, pairingKey?: string) => {
+  const bind = (ws: WebSocket, relay: RelayIdentity, port: number, pairingKey?: string, url?: string) => {
     socket = ws
     ws.onmessage = (event) => {
       const msg = parse(event.data)
@@ -697,7 +705,10 @@ export function installQdadmRelayConnector(options: QdadmRelayConnectorOptions =
       } else if (msg.kind === 'pair-pending') {
         setState({ status: 'awaiting-code', code: String(msg.code), relay })
       } else if (msg.kind === 'paired') {
-        store.setItem(PAIRING_KEY, JSON.stringify({ port, key: String(msg.pairingKey), relay } satisfies SavedPairing))
+        store.setItem(
+          PAIRING_KEY,
+          JSON.stringify({ port, key: String(msg.pairingKey), relay, url } satisfies SavedPairing)
+        )
         page.armSignals()
         announceApp(ws)
         setState({ status: 'paired', relay, instanceId: id })
@@ -739,8 +750,8 @@ export function installQdadmRelayConnector(options: QdadmRelayConnectorOptions =
     const saved = readSaved()
     if (!saved) return
     setState({ status: 'reconnecting', relay: saved.relay })
-    const result = await probe(saved.port)
-    if (result.outcome === 'relay') return bind(result.ws, result.relay, saved.port, saved.key)
+    const result = await probe(saved.port, saved.url)
+    if (result.outcome === 'relay') return bind(result.ws, result.relay, saved.port, saved.key, saved.url)
     if (retry && attempt < RECONNECT_DELAYS_MS.length) {
       setTimeout(() => void reconnect(attempt + 1), RECONNECT_DELAYS_MS[attempt])
       return
@@ -750,7 +761,8 @@ export function installQdadmRelayConnector(options: QdadmRelayConnectorOptions =
       message:
         result.outcome === 'pending'
           ? 'The browser is holding the connection to the relay: allow local network access for this site, then click Pair.'
-          : `The paired relay (${saved.relay.project}, port ${saved.port}) is not answering. Start it again, then click Pair.`,
+          : `The paired relay (${saved.relay.project}, ${saved.url ?? `port ${saved.port}`}) is not answering. ` +
+            'Start it again, then click Pair.',
     })
   }
 
@@ -776,7 +788,7 @@ export function installQdadmRelayConnector(options: QdadmRelayConnectorOptions =
     setState({ status: 'scanning', ports: targets })
     const results = await Promise.all(targets.map((p) => probe(p)))
     const relays = results.filter((r): r is Extract<ProbeResult, { outcome: 'relay' }> => r.outcome === 'relay')
-    if (relays.length === 1) return bind(relays[0].ws, relays[0].relay, relays[0].port)
+    if (relays.length === 1) return bind(relays[0].ws, relays[0].relay, relays[0].port, undefined, relays[0].url)
     for (const r of relays) r.ws.close()
     if (relays.length > 1) return setState({ status: 'choose', relays: relays.map((r) => r.relay) })
     setState({ status: 'none-found', ports: targets, permissionPending: results.some((r) => r.outcome === 'pending') })
