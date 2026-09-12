@@ -172,6 +172,40 @@ describe('the machine relay (#2231)', () => {
     }
   })
 
+  it('QDADM_RELAY_URL attaches the front to that relay, and starts none of its own (#2401)', async () => {
+    const { port } = readRunFile(runFile)
+    const elsewhere = join(dir, '.nowhere.run')
+    process.env.QDADM_RELAY_URL = `http://127.0.0.1:${port}`
+    // A run file it would have to create to start a relay: it must stay absent.
+    process.env.QDADM_RELAY_RUN = elsewhere
+    const front = createStdioFront({ log: () => {} })
+    const client = await inMemory(front)
+    try {
+      const res = await client.callTool({ name: 'instances', arguments: {} })
+      expect(res.isError).toBeFalsy()
+      expect(existsSync(elsewhere)).toBe(false)
+    } finally {
+      await client.close()
+      delete process.env.QDADM_RELAY_URL
+      process.env.QDADM_RELAY_RUN = runFile
+    }
+  })
+
+  it('a relay named by QDADM_RELAY_URL that answers nothing says where it looked (#2401)', async () => {
+    process.env.QDADM_RELAY_URL = 'http://127.0.0.1:1'
+    const front = createStdioFront({ log: () => {} })
+    const client = await inMemory(front)
+    try {
+      const res = await client.callTool({ name: 'session_info', arguments: {} })
+      expect(res.isError).toBe(true)
+      expect(res.content[0].text).toMatch(/relay at http:\/\/127\.0\.0\.1:1\/ could not be reached/)
+      expect(res.content[0].text).toMatch(/nothing is started here/)
+    } finally {
+      await client.close()
+      delete process.env.QDADM_RELAY_URL
+    }
+  })
+
   it('without a reachable relay the front still lists its tools, and calls fail with something to act on', async () => {
     const front = createStdioFront({
       resolveEndpoint: async () => {

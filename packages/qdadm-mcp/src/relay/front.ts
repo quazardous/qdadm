@@ -3,7 +3,9 @@
  *
  * The agent spawns this. It finds the machine's relay through
  * `~/.qdadm_relay.run`, starts one when there is none, and forwards every MCP
- * request to it. It never fails at startup: Claude Code marks a server that
+ * request to it. `QDADM_RELAY_URL` points it at a relay somewhere else
+ * instead — a container, a proxy, another machine — and then it starts
+ * nothing. It never fails at startup: Claude Code marks a server that
  * fails then as failed for the whole session (measured in #2231). While no
  * relay can be reached, the tool list still answers and tool calls come back
  * as actionable errors; the next call tries again.
@@ -21,6 +23,7 @@ import {
 } from '@modelcontextprotocol/sdk/types.js'
 import { createQdadmMcpServer } from '../server.ts'
 import { WRITE_TOOLS, type DebugBrokerApi } from '../tools.ts'
+import { relayBaseUrl, relayMcpEndpoint } from './ports.ts'
 import { ensureRelay } from './runfile.ts'
 import { keepScreenshot } from './screenshots.ts'
 
@@ -64,6 +67,12 @@ export function createStdioFront(options: StdioFrontOptions = {}): Server {
   const resolveEndpoint =
     options.resolveEndpoint ??
     (async () => {
+      const base = relayBaseUrl()
+      if (base) {
+        // Its relay, not ours: starting a local one would answer about the wrong browser.
+        log(`[qdadm-mcp-relay] the relay at ${base.href} (QDADM_RELAY_URL) — starting none here`)
+        return relayMcpEndpoint(base)
+      }
       const { info, started } = await ensureRelay()
       if (started) log(`[qdadm-mcp-relay] started the relay: pid ${info.pid}, ws://localhost:${info.port}`)
       return new URL(`http://127.0.0.1:${info.port}/mcp`)
@@ -121,9 +130,18 @@ export function createStdioFront(options: StdioFrontOptions = {}): Server {
     try {
       result = (await withUpstream((c) => c.callTool({ name, arguments: args ?? {} }))) as CallToolResult
     } catch (e) {
+      let configured: URL | null = null
+      try {
+        configured = relayBaseUrl()
+      } catch {
+        /* the message below carries the reason */
+      }
       return errorResult(
-        `The qdadm relay could not be reached or started (${(e as Error).message}). Retry the call; if it keeps ` +
-          'failing, run `npx qdadm-mcp-relay` in a terminal to see why.'
+        configured
+          ? `The qdadm relay at ${configured.href} could not be reached (${(e as Error).message}). Check that it runs ` +
+              'there and that this machine can reach it — QDADM_RELAY_URL says where to look, and nothing is started here.'
+          : `The qdadm relay could not be reached or started (${(e as Error).message}). Retry the call; if it keeps ` +
+              'failing, run `npx qdadm-mcp-relay` in a terminal to see why.'
       )
     }
     if (options.saveScreenshots ?? true) {

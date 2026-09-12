@@ -112,6 +112,7 @@ To run it in a terminal and watch it: `npx qdadm-mcp-relay`.
 | Variable | |
 |---|---|
 | `QDADM_RELAY_PORT` | Run a relay of your own on that port, instead of using the machine's default relay on 47761–47765 |
+| `QDADM_RELAY_URL` | Where the agent reaches the relay, when a proxy stands between them. Wins over `QDADM_RELAY_PORT` |
 | `QDADM_RELAY_RUN` | Path of the run file, instead of `~/.qdadm_relay.<port>.run` |
 
 ### Running the relay on a port you choose
@@ -156,6 +157,29 @@ what you want for a single project.
 
 To see what is running: `head ~/.qdadm_relay*.run` (pid and port of each), and
 `kill <pid>` stops one.
+
+### Behind a proxy: `QDADM_RELAY_URL`
+
+The relay stays where the browser is, on `127.0.0.1` — it drives real tabs,
+and nothing about it changes here. What changes is how the **agent's front**
+(`--stdio`, `--call`) reaches it: when something stands between them, give it
+the URL and it dials that instead of the local port.
+
+```bash
+QDADM_RELAY_URL=https://dev.example.com/qdadm npx qdadm-mcp-relay --stdio
+```
+
+- The base's path is kept: agents post to `https://dev.example.com/qdadm/mcp`.
+  The proxy passes it to `/mcp` on the relay.
+- It wins over `QDADM_RELAY_PORT`, no run file is read, and **no relay is
+  started here**: a relay of its own would answer about a browser nobody is
+  looking at.
+- A call that cannot get through fails saying which URL did not answer.
+- A value that is not an `http://` or `https://` URL is refused, rather than
+  silently falling back to the local relay.
+
+The proxy needs nothing but plain HTTP forwarding to `/mcp`. Tabs are not
+concerned: they connect to the relay next to them as usual.
 
 ### A page from a production build
 

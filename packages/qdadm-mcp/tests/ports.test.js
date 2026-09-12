@@ -9,7 +9,14 @@
  */
 import { describe, it, expect, afterEach } from 'vitest'
 import { createServer } from 'node:net'
-import { AllPortsBusyError, listenOnFirstFreePort, openWebSocketServer, relayPorts } from '../src/relay/ports.ts'
+import {
+  AllPortsBusyError,
+  listenOnFirstFreePort,
+  openWebSocketServer,
+  relayBaseUrl,
+  relayMcpEndpoint,
+  relayPorts,
+} from '../src/relay/ports.ts'
 import { RELAY_PORTS } from '../src/protocol.ts'
 
 const opened = []
@@ -77,5 +84,39 @@ describe('relayPorts — QDADM_RELAY_PORT forces one port', () => {
       if (value === '') expect(ports()).toEqual(RELAY_PORTS)
       else expect(ports).toThrow(/QDADM_RELAY_PORT is not a port number/)
     }
+  })
+})
+
+describe('relayBaseUrl — QDADM_RELAY_URL says the relay is elsewhere', () => {
+  it('is null when it is not set', () => {
+    expect(relayBaseUrl({})).toBeNull()
+    expect(relayBaseUrl({ QDADM_RELAY_URL: '  ' })).toBeNull()
+  })
+
+  it('takes an http or https base', () => {
+    expect(relayBaseUrl({ QDADM_RELAY_URL: 'http://relay.internal:47761' })?.href).toBe('http://relay.internal:47761/')
+    expect(relayBaseUrl({ QDADM_RELAY_URL: 'https://dev.example.com/qdadm' })?.href).toBe(
+      'https://dev.example.com/qdadm'
+    )
+  })
+
+  it('refuses what it cannot dial, instead of falling back to the local relay', () => {
+    // Falling back would answer about the wrong browser, which is worse than failing.
+    expect(() => relayBaseUrl({ QDADM_RELAY_URL: 'http://[nope' })).toThrow(/is not a URL/)
+    expect(() => relayBaseUrl({ QDADM_RELAY_URL: 'ws://relay.internal:47761' })).toThrow(/must be http/)
+    expect(() => relayBaseUrl({ QDADM_RELAY_URL: 'file:///tmp/relay' })).toThrow(/must be http/)
+    // A host and a port with no scheme parses as a scheme of its own: it is still not dialable.
+    expect(() => relayBaseUrl({ QDADM_RELAY_URL: 'relay.internal:47761' })).toThrow(/must be http/)
+  })
+
+  it('keeps the path of a relay behind a proxy prefix', () => {
+    const proxied = relayBaseUrl({ QDADM_RELAY_URL: 'https://dev.example.com/qdadm/' })
+    expect(relayMcpEndpoint(proxied).href).toBe('https://dev.example.com/qdadm/mcp')
+  })
+
+  it('reaches /mcp on a bare host', () => {
+    expect(relayMcpEndpoint(relayBaseUrl({ QDADM_RELAY_URL: 'http://127.0.0.1:50000' })).href).toBe(
+      'http://127.0.0.1:50000/mcp'
+    )
   })
 })

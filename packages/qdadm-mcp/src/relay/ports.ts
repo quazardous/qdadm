@@ -28,6 +28,37 @@ export function relayPorts(env: NodeJS.ProcessEnv = process.env): readonly numbe
   return [port]
 }
 
+/**
+ * Where the agent's front reaches the relay when it is not on its own
+ * loopback: `QDADM_RELAY_URL`, a base URL — typically a reverse proxy in
+ * front of a relay running elsewhere (`https://dev.example.com/qdadm`).
+ *
+ * The relay itself is unchanged by this: it still listens on `127.0.0.1`
+ * next to the browser it drives, and the proxy is what bridges the two. Set,
+ * it wins over `QDADM_RELAY_PORT`, nothing local is started, and no run file
+ * is read — the URL is the whereabouts. A malformed one is refused rather
+ * than quietly ignored.
+ */
+export function relayBaseUrl(env: NodeJS.ProcessEnv = process.env): URL | null {
+  const raw = env.QDADM_RELAY_URL?.trim()
+  if (!raw) return null
+  let url: URL
+  try {
+    url = new URL(raw)
+  } catch {
+    throw new Error(`QDADM_RELAY_URL is not a URL: ${JSON.stringify(env.QDADM_RELAY_URL)}`)
+  }
+  if (url.protocol !== 'http:' && url.protocol !== 'https:') {
+    throw new Error(`QDADM_RELAY_URL must be http:// or https://, got ${JSON.stringify(env.QDADM_RELAY_URL)}`)
+  }
+  return url
+}
+
+/** The agents' endpoint on that relay — the base's own path kept, so a proxy prefix survives. */
+export function relayMcpEndpoint(base: URL): URL {
+  return new URL(`${base.pathname.replace(/\/+$/, '')}/mcp`, base)
+}
+
 /** Errors meaning "this port is not ours to use" — try the next one. */
 const UNAVAILABLE = new Set(['EADDRINUSE', 'EACCES'])
 
