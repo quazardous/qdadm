@@ -223,6 +223,8 @@ instead of mirroring its rules in `role_permissions`:
 ```js
 const answers = new Map() // attribute -> boolean, filled from your API
 let loading = Promise.resolve()
+let failed = false
+let refresh = () => loading // replaced in install()
 
 const kernel = new Kernel({
   authAdapter,
@@ -232,10 +234,12 @@ const kernel = new Kernel({
       isGranted: (attribute, subject, user) => answers.get(attribute),
 
       // The load in progress: the route guard waits for it before deciding.
-      ready: () => loading,
+      // A failed load is retried, not returned — see below.
+      ready: () => (failed ? refresh() : loading),
 
       install({ signals, permissionRegistry }) {
-        const refresh = () => {
+        refresh = () => {
+          failed = false
           loading = (async () => {
             // Read the keys HERE, not in install(): modules register their
             // entities after install() runs.
@@ -244,7 +248,10 @@ const kernel = new Kernel({
             const changed = keys.some((k) => answers.get(k) !== next[k])
             for (const k of keys) answers.set(k, next[k])
             if (changed) signals.emit('security:changed')
-          })()
+          })().catch((error) => {
+            failed = true
+            throw error
+          })
           return loading
         }
         signals.on('kernel:ready', refresh) // modules are loaded, keys are known
@@ -289,6 +296,12 @@ The unknown is never allowed — it is only no longer decided before the answers
 can exist. Return the promise of the *current* load, so after `auth:login` the
 guard waits for the new user's answers. A judge that answers from memory from
 the start does not need `ready()`, and nothing waits.
+
+**`ready()` is called on every entity navigation**, not once. A judge that
+keeps returning the promise of a load that failed — one network hiccup at
+startup — denies every page until something loads again. Start a new load
+when the last one failed, as the example does; how eagerly to retry is the
+judge's own policy.
 
 Elsewhere, until the answers land, the judge abstains: menus and actions show
 what the role matrix grants — with no matrix, nothing — and
