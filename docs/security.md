@@ -10,7 +10,7 @@ qdadm provides a unified permission system with role hierarchy, permission match
 │  Central facade for all permission checks                       │
 ├─────────────────────────────────────────────────────────────────┤
 │  ┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐  │
-│  │  RolesManager   │  │  RolesProvider  │  │PermissionMatcher│  │
+│  │  RoleHierarchy  │  │  RolesProvider  │  │PermissionMatcher│  │
 │  │  Role → Roles   │  │  Role → Perms   │  │ Wildcard match  │  │
 │  └─────────────────┘  └─────────────────┘  └─────────────────┘  │
 ├─────────────────────────────────────────────────────────────────┤
@@ -71,17 +71,49 @@ const rolesProvider = new StaticRolesProvider({
 }, { anonymousRole: 'ROLE_ANONYMOUS' })
 ```
 
-### RolesManager
+### RoleHierarchy
 
-Manages role hierarchy and collects permissions from RolesProvider:
+Expands a role into every role it reaches, which is how a role inherits
+permissions. `SecurityChecker` uses it on every check:
 
 ```ts
-const rolesManager = new RolesManager(rolesProvider)
-
-// Get all reachable roles
-rolesManager.getReachableRoles('ROLE_ADMIN')
+hierarchy.getReachableRoles('ROLE_ADMIN')
 // → ['ROLE_ADMIN', 'ROLE_EDITOR', 'ROLE_USER', 'ROLE_ANONYMOUS']
 ```
+
+### The `roles` and `users` system entities
+
+`RolesManager` and `UsersManager` are the entity managers for roles and
+users. They are **system entities**: the framework provides them, and
+`system: true` is set by these managers — never by the application. qdadm
+reserves the right to attach behaviour to that flag.
+
+**On your own storage.** When roles live behind your API, keep the manager
+and give it your storage; the entity stays a system entity:
+
+```ts
+import { RolesManager } from '@quazardous/qdadm/security'
+
+ctx.entity('roles', new RolesManager({ storage: myApiStorage }))
+```
+
+For users, `ctx.userEntity({ storage })` does the same.
+
+Two things differ from a plain `ctx.entity()`, and both are by design:
+
+- **One permission for everything.** `canRead`, `canCreate`, `canUpdate` and
+  `canDelete` all go through `adminPermission` (`security:roles:manage` by
+  default), not `entity:roles:read|list|create|update|delete`. Reading roles
+  cannot be opened to a non-admin through it.
+- **qdadm's shape.** `idField` is `name` and `fields` are `name`, `label`,
+  `permissions`, `inherits`. An API serving another shape overrides both —
+  the options you pass win over the defaults:
+
+  ```ts
+  new RolesManager({ storage, idField: 'id', fields: { /* your fields */ } })
+  ```
+
+`ROLE_ANONYMOUS` cannot be deleted, whichever field carries the role code.
 
 ### PermissionMatcher
 
@@ -153,7 +185,7 @@ the MCP's `page_snapshot` prints it as the `Why:` lines under an entity.
 
 ```
 1. User has roles: ['ROLE_EDITOR']
-2. RolesManager expands via hierarchy: ['ROLE_EDITOR', 'ROLE_USER', 'ROLE_ANONYMOUS']
+2. RoleHierarchy expands them: ['ROLE_EDITOR', 'ROLE_USER', 'ROLE_ANONYMOUS']
 3. RolesProvider collects permissions for all roles
 4. PermissionMatcher checks if requested permission matches any granted
 ```

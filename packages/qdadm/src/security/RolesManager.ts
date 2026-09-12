@@ -40,6 +40,22 @@ interface EntityManagerInstance {
   }
 }
 
+/**
+ * The `roles` system entity.
+ *
+ * It is a system entity because this manager makes it one — apps do not set
+ * `system` themselves. To keep roles behind your own API, give it your
+ * storage; it stays a system entity:
+ *
+ * ```ts
+ * ctx.entity('roles', new RolesManager({ storage: myApiStorage }))
+ * ```
+ *
+ * Two things change compared with a plain entity, and both are deliberate:
+ * every `can*` goes through ONE permission (`adminPermission`), and `fields`
+ * / `idField` assume qdadm's shape (`name`, `label`, `permissions`,
+ * `inherits`) — override them when your API serves another one.
+ */
 export class RolesManager extends EntityManager<RoleRecord> {
   private _rolesProvider: RoleProvider | null
   private _permissionRegistry: PermissionRegistry | null
@@ -128,8 +144,12 @@ export class RolesManager extends EntityManager<RoleRecord> {
   canDelete(item?: RoleRecord | null): boolean {
     if (!this._isAdmin()) return false
     if (item) {
-      // Protected system roles cannot be deleted
-      return !RolesManager.PROTECTED_ROLES.includes(item.name)
+      // Protected system roles cannot be deleted. The role code is `name` in qdadm's shape, but an
+      // app whose API keys roles differently overrides `idField` (#2406): read both, or the guard
+      // silently stops matching.
+      const record = item as unknown as Record<string, unknown>
+      const codes = [record.name, record[this.idField]]
+      return !codes.some((code) => typeof code === 'string' && RolesManager.PROTECTED_ROLES.includes(code))
     }
     return true
   }

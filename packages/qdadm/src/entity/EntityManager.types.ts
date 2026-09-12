@@ -271,6 +271,15 @@ export interface EntityManagerOptions<T extends EntityRecord = EntityRecord> {
    * drop the stale cache but leave the screen alone until the user asks.
    */
   live?: LiveEntityPolicy
+  /**
+   * Marks an entity the framework provides (`roles`, `users`). Owned by
+   * qdadm: set by its system managers (`RolesManager`, `UsersManager`), not
+   * by applications. Behaviour may be attached to it in any release.
+   *
+   * To keep a system entity on your own storage, use its manager with your
+   * storage — `new RolesManager({ storage })` — rather than setting the flag
+   * on a plain entity.
+   */
   system?: boolean
   scopeWhitelist?: string[] | null
   isOwn?: ((record: T, user: AuthUser) => boolean) | null

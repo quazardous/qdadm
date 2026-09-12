@@ -654,7 +654,8 @@ export class EntityManager<T extends EntityRecord = EntityRecord> {
   }
 
   /**
-   * Check if entity is system-provided (roles, users)
+   * Whether this entity is one the framework provides (roles, users). Owned
+   * by qdadm — see `EntityManagerOptions.system`.
    */
   get system(): boolean {
     return this._system

@@ -213,13 +213,14 @@ See [crud.md](./crud.md) for complete documentation: list, form, show, children,
 | SecurityChecker | `qdadm/src/entity/auth/SecurityChecker.ts` | Central permission checking |
 | PermissionRegistry | `qdadm/src/security/PermissionRegistry.ts` | Register permission keys |
 | RolesProvider | `qdadm/src/security/RolesProvider.ts` | Map roles → permissions |
-| RolesManager | `qdadm/src/security/RolesManager.ts` | Role hierarchy & management |
+| RolesManager | `qdadm/src/security/RolesManager.ts` | The `roles` system entity (CRUD over roles) |
+| RoleHierarchy | `qdadm/src/entity/auth/RoleHierarchy.ts` | Role expansion: which roles a role reaches |
 | PermissionMatcher | `qdadm/src/security/PermissionMatcher.ts` | Wildcard matching |
 
 ### Permission Flow
 
 ```
-User roles → RolesManager (expand) → RolesProvider (get perms) → PermissionMatcher (check)
+User roles → RoleHierarchy (expand) → RolesProvider (get perms) → PermissionMatcher (check)
 ```
 
 ### Key Patterns
