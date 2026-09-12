@@ -15,7 +15,8 @@
  *   - the agent's MCP client does, running `npx qdadm-mcp-relay --stdio`.
  *
  *   npx qdadm-mcp-relay [--stdio] [--read-only] [--origin <origin>]...
- *                       [--port <p>] [--token <fixed>] [--background]
+ *                       [--port <p>] [--bind <host>] [--token <fixed>]
+ *                       [--background]
  *   npx qdadm-mcp-relay --call <tool> ['<json args>']
  *
  * `--call` makes one tool call on the machine relay, prints the answer and
@@ -23,6 +24,11 @@
  *
  * `--port` runs a private relay on that port — no run file, no lock. To move
  * the SHARED relay instead, set `QDADM_RELAY_PORT`.
+ *
+ * `--bind` (or `QDADM_RELAY_HOST`) is the interface it listens on, `127.0.0.1`
+ * by default. A relay inside a container needs `0.0.0.0`: a loopback socket
+ * refuses what Docker forwards to it, so a published port is unusable
+ * otherwise. Then the page token and `--origin` are what limit who gets in.
  * `--background` (how the plugin and the front spawn it) exits after 30
  * minutes with no connected tab and no MCP call.
  */
@@ -34,7 +40,14 @@ import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/
 import { createQdadmMcpServer } from '../server.ts'
 import { RELAY_PROTOCOL, type RelayIdentity } from '../protocol.ts'
 import { RelayBroker } from './broker.ts'
-import { AllPortsBusyError, listenOnFirstFreePort, openHttpServer, relayPorts } from './ports.ts'
+import {
+  AllPortsBusyError,
+  isLoopbackHost,
+  listenOnFirstFreePort,
+  openHttpServer,
+  relayBindHost,
+  relayPorts,
+} from './ports.ts'
 import {
   acquireRelayLock,
   findRunningRelay,
@@ -56,6 +69,8 @@ interface CliOptions {
   /** `--call <tool> [json]`: one tool call on the machine relay, printed, then exit (#2263). */
   call: { tool: string; args?: string } | null
   background: boolean
+  /** The interface to listen on. `127.0.0.1` unless asked otherwise. */
+  bind: string
   token: string
   readOnly: boolean
   /** `--no-save-screenshots`: the stdio front keeps no picture in the project (#2284). */
@@ -71,6 +86,7 @@ function parseArgs(argv: string[]): CliOptions {
     chatHook: null,
     call: null,
     background: false,
+    bind: relayBindHost(),
     token: randomUUID(),
     readOnly: false,
     saveScreenshots: true,
@@ -87,6 +103,7 @@ function parseArgs(argv: string[]): CliOptions {
       const next = argv[i + 1]
       opts.call = { tool, args: next !== undefined && !next.startsWith('--') ? argv[++i] : undefined }
     }
+    else if (a === '--bind') opts.bind = String(argv[++i] ?? '')
     else if (a === '--background') opts.background = true
     else if (a === '--token') opts.token = String(argv[++i])
     else if (a === '--read-only') opts.readOnly = true
@@ -212,7 +229,9 @@ export async function main(argv = process.argv.slice(2)): Promise<void> {
 
   let listening: { port: number; value: Awaited<ReturnType<typeof openHttpServer>>; busy: number[] }
   try {
-    listening = await listenOnFirstFreePort(ports, (p) => openHttpServer(p, (req, res) => void handle(req, res)))
+    listening = await listenOnFirstFreePort(ports, (p) =>
+      openHttpServer(p, (req, res) => void handle(req, res), opts.bind)
+    )
   } catch (e) {
     if (shared) releaseRelayLock(runFile)
     if (!(e instanceof AllPortsBusyError)) throw e
@@ -281,11 +300,18 @@ export async function main(argv = process.argv.slice(2)): Promise<void> {
     idle.unref()
   }
 
-  log(`listening      ws://localhost:${port}  (MCP: http://localhost:${port}/mcp)`)
+  // The host it really listens on: 'localhost' printed for a wider bind would be a half-truth.
+  const shown = opts.bind === '0.0.0.0' || opts.bind === '::' ? 'localhost' : opts.bind
+  log(`listening      ws://${shown}:${port}  (MCP: http://${shown}:${port}/mcp)`)
+  if (!isLoopbackHost(opts.bind)) {
+    // Said out loud: this is no longer a socket only this machine can reach.
+    log(`bound to       ${opts.bind} — anything that reaches this port can try, this machine or not`)
+    log('who gets in    tabs need the page token; --origin limits which pages may pair')
+  }
   if (shared) log(`run file       ${runFile}`)
   log('dev tabs       connect on their own (qdadmMcpPlugin)')
   log('other tabs     debug bar → MCP tab → Pair, then give the agent the code')
   log('agents         MCP stdio server: npx qdadm-mcp-relay --stdio')
   // The token lets a tab in without a code: print it to a terminal, never into a log file.
-  if (!opts.background) log(`token fragment #qdadm-relay=ws://localhost:${port}/${opts.token}`)
+  if (!opts.background) log(`token fragment #qdadm-relay=ws://${shown}:${port}/${opts.token}`)
 }

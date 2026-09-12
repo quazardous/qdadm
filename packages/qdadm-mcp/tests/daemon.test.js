@@ -230,3 +230,46 @@ describe('the machine relay (#2231)', () => {
     expect(existsSync(runFile)).toBe(false)
   })
 })
+
+describe('a relay bound elsewhere than the default loopback (#2400)', () => {
+  // A container's relay must answer what Docker forwards to it: a socket on 127.0.0.1 refuses that,
+  // so a published port is unusable however fixed it is. 127.0.0.2 proves the binding without
+  // opening anything: it is reachable here and nowhere else.
+  const BOUND_HOST = '127.0.0.2'
+  let dir2
+  let child
+  let port
+
+  const identity = (host) =>
+    fetch(`http://${host}:${port}/identity`, { signal: AbortSignal.timeout(1500) })
+      .then((res) => (res.ok ? res.json() : null))
+      .catch(() => null)
+
+  beforeAll(async () => {
+    dir2 = mkdtempSync(join(tmpdir(), 'qdadm-relay-bind-'))
+    port = 47771
+    child = spawn(process.execPath, [BIN, '--bind', BOUND_HOST, '--port', String(port)], {
+      env: { ...process.env, QDADM_RELAY_RUN: join(dir2, '.qdadm_relay.run') },
+      stdio: ['ignore', 'pipe', 'pipe'],
+    })
+    child.stdout.on('data', (d) => (logs += d))
+    child.stderr.on('data', (d) => (logs += d))
+    await until(() => identity(BOUND_HOST))
+  }, 15000)
+
+  afterAll(async () => {
+    if (child.exitCode === null) {
+      child.kill('SIGTERM')
+      await exited(child)
+    }
+    rmSync(dir2, { recursive: true, force: true })
+  })
+
+  it('answers on the host it was given', async () => {
+    expect(await identity(BOUND_HOST)).toMatchObject({ name: 'qdadm-mcp-relay', port })
+  })
+
+  it('and nowhere else: the default loopback does not answer for it', async () => {
+    expect(await identity('127.0.0.1')).toBeNull()
+  })
+})

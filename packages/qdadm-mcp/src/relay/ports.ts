@@ -59,6 +59,25 @@ export function relayMcpEndpoint(base: URL): URL {
   return new URL(`${base.pathname.replace(/\/+$/, '')}/mcp`, base)
 }
 
+/**
+ * The interface the relay binds: `QDADM_RELAY_HOST` (or `--bind`), and
+ * `127.0.0.1` by default — a browser and its agent normally sit on this
+ * machine.
+ *
+ * `0.0.0.0` is what a relay inside a container needs: a socket bound to the
+ * loopback refuses what Docker forwards to it from outside, so a published
+ * port stays unusable however fixed it is. Binding wider is a door, and the
+ * relay says so when it starts.
+ */
+export function relayBindHost(env: NodeJS.ProcessEnv = process.env): string {
+  return env.QDADM_RELAY_HOST?.trim() || '127.0.0.1'
+}
+
+/** Whether that host keeps the relay to this machine. */
+export function isLoopbackHost(host: string): boolean {
+  return host === 'localhost' || host === '::1' || /^127\./.test(host)
+}
+
 /** Errors meaning "this port is not ours to use" — try the next one. */
 const UNAVAILABLE = new Set(['EADDRINUSE', 'EACCES'])
 

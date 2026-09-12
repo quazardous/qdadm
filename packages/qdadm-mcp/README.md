@@ -10,6 +10,10 @@ attaches to it. Each tab is an **instance** the tools can target.
 npm install -D @quazardous/qdadm-mcp
 ```
 
+While this package is on `0.x`, a caret does **not** reach the next minor:
+`^0.6.0` means `>=0.6.0 <0.7.0`, so it pins you a minor behind without
+saying so. Write the range you mean: `">=0.7.0 <1"`.
+
 ## Setup
 
 **1. Wire the connector** — FIRST import of your entry (that is what
@@ -104,6 +108,7 @@ To run it in a terminal and watch it: `npx qdadm-mcp-relay`.
 | `--call <tool> '<json>'` | One tool call from a shell, the answer printed, then exit: 0 done, 1 the tool failed, 2 a wrong command |
 | `--origin <origin>` | Only pages from this origin may pair (repeatable) |
 | `--port <p>` | A private relay on that port: no run file, not shared |
+| `--bind <host>` | The interface it listens on. Default `127.0.0.1`: this machine only |
 | `--token <t>` | A fixed page token instead of a random one |
 | `--background` | How the plugin and the agent start it: idle stop after 30 minutes |
 
@@ -113,6 +118,7 @@ To run it in a terminal and watch it: `npx qdadm-mcp-relay`.
 |---|---|
 | `QDADM_RELAY_PORT` | Run a relay of your own on that port, instead of using the machine's default relay on 47761–47765 |
 | `QDADM_RELAY_URL` | Where the agent reaches the relay, when a proxy stands between them. Wins over `QDADM_RELAY_PORT` |
+| `QDADM_RELAY_HOST` | The interface the relay listens on, same as `--bind`. Default `127.0.0.1` |
 | `QDADM_RELAY_RUN` | Path of the run file, instead of `~/.qdadm_relay.<port>.run` |
 
 ### Running the relay on a port you choose
@@ -180,6 +186,46 @@ QDADM_RELAY_URL=https://dev.example.com/qdadm npx qdadm-mcp-relay --stdio
 
 The proxy needs nothing but plain HTTP forwarding to `/mcp`. Tabs are not
 concerned: they connect to the relay next to them as usual.
+
+### In a container
+
+A relay inside a container needs two things the default setup does not give
+it: a port you can publish, and an interface that accepts what Docker
+forwards. A socket bound to `127.0.0.1` **refuses** a forwarded connection,
+so a published port stays unusable however fixed it is.
+
+```bash
+# in the container, next to the dev server
+QDADM_RELAY_PORT=35173 QDADM_RELAY_HOST=0.0.0.0 npm run dev
+```
+
+Publish `35173`, and then:
+
+- the **browser** on the host reaches the relay at that port, so a dev page
+  connects as usual;
+- an **agent on the host** is told where it is, since the container's run
+  file is not visible from outside — without this it would find no relay and
+  start a second one, attached to no tab of yours:
+
+  ```bash
+  QDADM_RELAY_URL=http://localhost:35173 npx qdadm-mcp-relay --stdio
+  ```
+
+Binding beyond the loopback is a door: the relay says so when it starts.
+Tabs still need the page token, `--origin <origin>` limits which pages may
+pair, and publishing the port only to the loopback of the host
+(`-p 127.0.0.1:35173:35173`) keeps it off your network.
+
+**Checking it, and the trap:** a port publish makes `docker-proxy` accept the
+connection even when nothing behind it answers, so "the port is open" proves
+nothing. Ask the relay who it is instead:
+
+```bash
+curl -s http://localhost:35173/identity     # JSON with a pid and a port, or nothing at all
+```
+
+Silence there, with the port published, means the relay is still bound to the
+container's loopback.
 
 ### A page from a production build
 

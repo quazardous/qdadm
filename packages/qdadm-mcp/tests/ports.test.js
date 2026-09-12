@@ -11,9 +11,11 @@ import { describe, it, expect, afterEach } from 'vitest'
 import { createServer } from 'node:net'
 import {
   AllPortsBusyError,
+  isLoopbackHost,
   listenOnFirstFreePort,
   openWebSocketServer,
   relayBaseUrl,
+  relayBindHost,
   relayMcpEndpoint,
   relayPorts,
 } from '../src/relay/ports.ts'
@@ -118,5 +120,26 @@ describe('relayBaseUrl — QDADM_RELAY_URL says the relay is elsewhere', () => {
     expect(relayMcpEndpoint(relayBaseUrl({ QDADM_RELAY_URL: 'http://127.0.0.1:50000' })).href).toBe(
       'http://127.0.0.1:50000/mcp'
     )
+  })
+})
+
+describe('relayBindHost — which interface the relay answers on (#2400)', () => {
+  it('keeps the relay to this machine unless asked otherwise', () => {
+    expect(relayBindHost({})).toBe('127.0.0.1')
+    expect(relayBindHost({ QDADM_RELAY_HOST: '  ' })).toBe('127.0.0.1')
+  })
+
+  it('takes the host it is given', () => {
+    expect(relayBindHost({ QDADM_RELAY_HOST: '0.0.0.0' })).toBe('0.0.0.0')
+    expect(relayBindHost({ QDADM_RELAY_HOST: ' 127.0.0.2\n' })).toBe('127.0.0.2')
+  })
+
+  it('knows which hosts stay on this machine — the wider ones get warned about', () => {
+    for (const host of ['127.0.0.1', '127.0.0.2', 'localhost', '::1']) {
+      expect(isLoopbackHost(host)).toBe(true)
+    }
+    for (const host of ['0.0.0.0', '::', '192.168.1.10', '172.17.0.2']) {
+      expect(isLoopbackHost(host)).toBe(false)
+    }
   })
 })
