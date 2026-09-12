@@ -2,7 +2,8 @@
  * qdadm-mcp-relay (#1400, #2231) — the machine's relay between app tabs and agents.
  *
  * ONE relay serves every app and tab of the user. It listens on the first
- * free port of 47761–47765 and carries, on that single port:
+ * free port of 47761–47765 — or on `QDADM_RELAY_PORT` when that is set — and
+ * carries, on that single port:
  *   - app tabs, over WebSocket;
  *   - `GET /identity` — who answers here;
  *   - `POST /mcp` — the agents' MCP endpoint, refused to any web page.
@@ -20,7 +21,8 @@
  * `--call` makes one tool call on the machine relay, prints the answer and
  * exits (#2263): 0 done, 1 the tool answered with an error, 2 a wrong command.
  *
- * `--port` runs a private relay on that port — no run file, no lock.
+ * `--port` runs a private relay on that port — no run file, no lock. To move
+ * the SHARED relay instead, set `QDADM_RELAY_PORT`.
  * `--background` (how the plugin and the front spawn it) exits after 30
  * minutes with no connected tab and no MCP call.
  */
@@ -30,9 +32,9 @@ import { basename } from 'node:path'
 import { WebSocketServer } from 'ws'
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js'
 import { createQdadmMcpServer } from '../server.ts'
-import { RELAY_PORTS, RELAY_PROTOCOL, type RelayIdentity } from '../protocol.ts'
+import { RELAY_PROTOCOL, type RelayIdentity } from '../protocol.ts'
 import { RelayBroker } from './broker.ts'
-import { AllPortsBusyError, listenOnFirstFreePort, openHttpServer } from './ports.ts'
+import { AllPortsBusyError, listenOnFirstFreePort, openHttpServer, relayPorts } from './ports.ts'
 import {
   acquireRelayLock,
   findRunningRelay,
@@ -46,7 +48,7 @@ import { runChatHookCli } from './chatHook.ts'
 import { runCall } from './call.ts'
 
 interface CliOptions {
-  /** One explicit port — a private relay. Null: the shared relay on RELAY_PORTS. */
+  /** One explicit port — a private relay. Null: the shared relay, on QDADM_RELAY_PORT or RELAY_PORTS. */
   port: number | null
   stdio: boolean
   /** `--chat-hook <event>`: act as an agent hook for the MCP tab's chat (#2252), then exit. */
@@ -136,12 +138,26 @@ export async function main(argv = process.argv.slice(2)): Promise<void> {
 
   const log = (m: string) => console.log(`${new Date().toISOString().slice(11, 19)} [qdadm-mcp-relay] ${m}`)
   const shared = opts.port === null
-  const runFile = runFilePath()
+
+  let ports: readonly number[]
+  let runFile: string
+  try {
+    ports = opts.port ? [opts.port] : relayPorts()
+    runFile = runFilePath()
+  } catch (e) {
+    log((e as Error).message)
+    process.exitCode = 2
+    return
+  }
 
   if (shared) {
     const running = await findRunningRelay(runFile)
     if (running) {
       log(`already running — pid ${running.pid}, ws://localhost:${running.port} (${runFile})`)
+      // It was started before QDADM_RELAY_PORT said otherwise: saying so beats looking ignored.
+      if (!ports.includes(running.port)) {
+        log(`QDADM_RELAY_PORT asks for ${ports.join(', ')} — stop that relay (kill ${running.pid}) to move it there.`)
+      }
       return
     }
     if (!acquireRelayLock(runFile)) {
@@ -194,7 +210,6 @@ export async function main(argv = process.argv.slice(2)): Promise<void> {
     sendJson(res, 404, { error: 'GET /identity · POST /mcp · POST /chat/pending · WebSocket for app tabs' })
   }
 
-  const ports = opts.port ? [opts.port] : RELAY_PORTS
   let listening: { port: number; value: Awaited<ReturnType<typeof openHttpServer>>; busy: number[] }
   try {
     listening = await listenOnFirstFreePort(ports, (p) => openHttpServer(p, (req, res) => void handle(req, res)))
@@ -204,8 +219,11 @@ export async function main(argv = process.argv.slice(2)): Promise<void> {
     log(
       opts.port
         ? `port ${opts.port} is already in use. Pick another with --port.`
-        : `every relay port is in use (${ports.join(', ')}). Free one, or run a private relay with --port <free port> ` +
-            'and give the app the same one: installQdadmRelayConnector({ ports: [<port>] }).'
+        : ports.length === 1
+          ? `port ${ports[0]} is already in use (QDADM_RELAY_PORT). Free it, or set QDADM_RELAY_PORT to a free port.`
+          : `every relay port is in use (${ports.join(', ')}). Free one, set QDADM_RELAY_PORT to a free port, or run ` +
+              'a private relay with --port <free port> and give the app the same one: ' +
+              'installQdadmRelayConnector({ ports: [<port>] }).'
     )
     process.exitCode = 1
     return

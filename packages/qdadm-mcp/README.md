@@ -71,8 +71,9 @@ it: restarting the dev server, or ending an agent session, leaves it serving
 the others. Started in the background, it stops after 30 minutes with no tab
 connected and no MCP call.
 
-It listens on the first free port of **47761–47765**, on `127.0.0.1` only.
-That one port carries:
+It listens on the first free port of **47761–47765**, on `127.0.0.1` only,
+or on the one port `QDADM_RELAY_PORT` names (see below). That one port
+carries:
 
 - app tabs, over WebSocket;
 - `GET /identity`: who answers there;
@@ -105,6 +106,66 @@ To run it in a terminal and watch it: `npx qdadm-mcp-relay`.
 | `--port <p>` | A private relay on that port: no run file, not shared |
 | `--token <t>` | A fixed page token instead of a random one |
 | `--background` | How the plugin and the agent start it: idle stop after 30 minutes |
+
+## Environment
+
+| Variable | |
+|---|---|
+| `QDADM_RELAY_PORT` | Run a relay of your own on that port, instead of using the machine's default relay on 47761–47765 |
+| `QDADM_RELAY_RUN` | Path of the run file, instead of `~/.qdadm_relay.<port>.run` |
+
+### Running the relay on a port you choose
+
+`QDADM_RELAY_PORT` is the only setting needed:
+
+```bash
+QDADM_RELAY_PORT=50000 npm run dev
+```
+
+That relay is still a full relay — run file, lock, tabs, agents — just not the
+default one: its run file is `~/.qdadm_relay.50000.run`, so it neither
+disturbs nor is disturbed by the relay on 47761. (`--port` is a different
+thing: a relay with no run file at all, which nothing can find on its own.)
+
+**Whoever starts the relay needs the variable**, and both the dev server and
+the agent's MCP client can be the one that starts it. So the agent gets it
+too, or it will start the default relay instead and see none of your tabs:
+
+```bash
+claude mcp add qdadm -e QDADM_RELAY_PORT=50000 -- npx qdadm-mcp-relay --stdio
+```
+
+Exporting it in your shell profile covers both at once. A value that is not a
+port is refused, rather than quietly falling back to 47761.
+
+### Several relays at once
+
+One relay per port, and they ignore each other: give each project its own
+port, in `.envrc`, `.env` or your run scripts, and set the same one on the
+agent you attach to that project.
+
+```bash
+QDADM_RELAY_PORT=50000 npm run dev      # project A, agent A on 50000
+QDADM_RELAY_PORT=50001 npm run dev      # project B, agent B on 50001
+```
+
+A tab reaches the relay its own dev server started, and an agent the relay
+its variables name — so `instances` shows one project's tabs, not everyone's.
+Without the variable, everything shares the machine's default relay, which is
+what you want for a single project.
+
+To see what is running: `head ~/.qdadm_relay*.run` (pid and port of each), and
+`kill <pid>` stops one.
+
+### A page from a production build
+
+Dev pages need nothing: the dev server tells each page where its relay is. A
+page from a production build pairs by code and scans 47761–47765 only, so give
+the connector the port:
+
+```js
+installQdadmRelayConnector({ ports: [50000] })
+```
 
 ## The MCP tab
 

@@ -7,6 +7,26 @@
  */
 import { createServer, type RequestListener, type Server } from 'node:http'
 import { WebSocketServer } from 'ws'
+import { RELAY_PORTS } from '../protocol.ts'
+
+/**
+ * The ports the shared relay may listen on, and the one everything else
+ * looks for it on.
+ *
+ * `QDADM_RELAY_PORT=<port>` forces a single one — for a machine where
+ * 47761–47765 are taken, firewalled, or forwarded somewhere. It stays the
+ * machine's one shared relay: run file, lock, every tab and agent. (A relay
+ * on a port of its own, shared with nobody, is `--port` instead.)
+ */
+export function relayPorts(env: NodeJS.ProcessEnv = process.env): readonly number[] {
+  const forced = env.QDADM_RELAY_PORT?.trim()
+  if (!forced) return RELAY_PORTS
+  const port = Number(forced)
+  if (!Number.isInteger(port) || port < 1 || port > 65535) {
+    throw new Error(`QDADM_RELAY_PORT is not a port number: ${JSON.stringify(env.QDADM_RELAY_PORT)}`)
+  }
+  return [port]
+}
 
 /** Errors meaning "this port is not ours to use" — try the next one. */
 const UNAVAILABLE = new Set(['EADDRINUSE', 'EACCES'])

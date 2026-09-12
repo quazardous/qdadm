@@ -8,7 +8,7 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import { existsSync, mkdtempSync, rmSync, statSync, writeFileSync } from 'node:fs'
 import { createServer } from 'node:http'
-import { tmpdir } from 'node:os'
+import { homedir, tmpdir } from 'node:os'
 import { join } from 'node:path'
 import {
   acquireRelayLock,
@@ -16,6 +16,7 @@ import {
   readRunFile,
   releaseRelayLock,
   removeRunFile,
+  runFilePath,
   writeRunFile,
 } from '../src/relay/runfile.ts'
 
@@ -86,5 +87,24 @@ describe('relay run file (#2231)', () => {
 
     releaseRelayLock(file())
     expect(existsSync(`${file()}.lock`)).toBe(false)
+  })
+})
+
+describe('runFilePath — a relay on its own port is a relay of its own', () => {
+  it('is the machine default when nothing is set', () => {
+    expect(runFilePath({})).toBe(join(homedir(), '.qdadm_relay.run'))
+  })
+
+  it('is named after QDADM_RELAY_PORT, so two relays never share a file or a lock', () => {
+    expect(runFilePath({ QDADM_RELAY_PORT: '50000' })).toBe(join(homedir(), '.qdadm_relay.50000.run'))
+    expect(runFilePath({ QDADM_RELAY_PORT: '50001' })).not.toBe(runFilePath({ QDADM_RELAY_PORT: '50000' }))
+  })
+
+  it('lets QDADM_RELAY_RUN name the file outright', () => {
+    expect(runFilePath({ QDADM_RELAY_RUN: '/tmp/here.run', QDADM_RELAY_PORT: '50000' })).toBe('/tmp/here.run')
+  })
+
+  it('refuses a port that is not one, rather than building a path out of it', () => {
+    expect(() => runFilePath({ QDADM_RELAY_PORT: '../../evil' })).toThrow(/not a port number/)
   })
 })

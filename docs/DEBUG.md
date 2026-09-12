@@ -81,7 +81,9 @@ npx qdadm-mcp-relay --stdio   # the agent's MCP stdio server
 
 `npm run dev` starts the machine's relay (found through
 `~/.qdadm_relay.run`), and every page the dev server serves connects to it
-on its own. The agent attaches to the same relay. Each tab is an instance:
+on its own. The agent attaches to the same relay. To put the relay on a port
+you choose, set `QDADM_RELAY_PORT` — see
+[qdadm-mcp](../packages/qdadm-mcp/README.md#running-the-relay-on-a-port-you-choose). Each tab is an instance:
 `instances` lists them, and every tool takes `instance`, which may be left
 out while a single one is connected. The relay outlives dev-server restarts.
 

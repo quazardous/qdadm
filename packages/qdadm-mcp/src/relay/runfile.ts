@@ -3,9 +3,9 @@
  *
  * One relay serves every app and every tab of the user, so its whereabouts
  * live in one well-known place: `~/.qdadm_relay.run` (override with
- * `QDADM_RELAY_RUN`). The daemon writes it once listening and removes it on
- * exit; the vite plugin and the stdio front read it, and start a daemon when
- * it is missing or stale.
+ * `QDADM_RELAY_RUN`, or run a relay of your own with `QDADM_RELAY_PORT`). The
+ * daemon writes it once listening and removes it on exit; the vite plugin and
+ * the stdio front read it, and start a daemon when it is missing or stale.
  *
  * Mode 0600: it carries the page token that lets a dev tab join without a
  * pairing code, so only this user may read it.
@@ -16,6 +16,7 @@ import { homedir, tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import type { RelayIdentity } from '../protocol.ts'
+import { relayPorts } from './ports.ts'
 
 export interface RelayRunInfo {
   pid: number
@@ -30,8 +31,19 @@ export interface RelayRunInfo {
 /** The relay CLI, resolved from this file — the same depth under src/ and dist/. */
 export const RELAY_BIN = fileURLToPath(new URL('../../bin/qdadm-mcp-relay.mjs', import.meta.url))
 
-export function runFilePath(): string {
-  return process.env.QDADM_RELAY_RUN || join(homedir(), '.qdadm_relay.run')
+/**
+ * The file that says where the relay is.
+ *
+ * `QDADM_RELAY_RUN` names it outright. Otherwise a forced `QDADM_RELAY_PORT`
+ * gets a file of its own, `~/.qdadm_relay.<port>.run`: a relay on its own
+ * port is a relay of its own, so two projects can each run one — each with
+ * its own run file, its own lock, and the tabs and agents that share its
+ * variables — while `~/.qdadm_relay.run` stays the machine's default relay.
+ */
+export function runFilePath(env: NodeJS.ProcessEnv = process.env): string {
+  if (env.QDADM_RELAY_RUN) return env.QDADM_RELAY_RUN
+  const forced = env.QDADM_RELAY_PORT?.trim()
+  return join(homedir(), forced ? `.qdadm_relay.${relayPorts(env)[0]}.run` : '.qdadm_relay.run')
 }
 
 export function readRunFile(path = runFilePath()): RelayRunInfo | null {
