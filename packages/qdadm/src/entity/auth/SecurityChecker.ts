@@ -26,8 +26,8 @@ export interface GrantJudgeContext {
    *
    * `install` runs while the Kernel is still being built, before modules
    * register their entities, so `getKeys()` called here returns only the
-   * framework's own namespaces. Read the keys when you pre-warm (after login,
-   * before mount), not in `install`.
+   * framework's own namespaces. Read the keys when you fetch (on `kernel:ready`
+   * or `auth:login`), not in `install`.
    */
   permissionRegistry?: { getKeys(): string[] }
 }
@@ -44,12 +44,29 @@ export interface GrantJudgeContext {
  *   built-in judgement, which stays the default.
  * - A judge that THROWS denies — see `SecurityChecker._judge`.
  *
- * `isGranted` is called synchronously on every check, so answer from memory.
- * Fetch in bulk beforehand and emit `security:changed` when answers change.
+ * `isGranted` is called synchronously on every check, so answer from memory,
+ * and emit `security:changed` when answers change.
+ *
+ * A judge whose answers come from a request cannot have them before the first
+ * navigation: it starts inside `createApp()`. Such a judge implements `ready()`
+ * (#2412), and the route guard waits for it instead of deciding early.
  */
 export interface GrantJudge {
   isGranted(attribute: string, subject: unknown, user: AuthUser): boolean | undefined
   install?(ctx: GrantJudgeContext): void
+  /**
+   * Settles once the answers for the current user are loaded (#2412).
+   *
+   * Return the promise of the load in progress — the one started on
+   * `kernel:ready`, or the new one after `auth:login` — so the route guard
+   * waits for this user's answers, not an earlier user's. A resolved promise
+   * means "decide now". A rejection, or no settling within
+   * `security.readyTimeoutMs`, denies the navigation: the unknown is never
+   * allowed, only no longer decided before the answers can exist.
+   *
+   * Optional: a judge that answers from memory from the start needs none.
+   */
+  ready?(): Promise<void>
 }
 
 /**

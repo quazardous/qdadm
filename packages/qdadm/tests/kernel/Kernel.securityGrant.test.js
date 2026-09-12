@@ -104,3 +104,21 @@ describe('security:changed makes every screen re-evaluate', () => {
     expect(kernel.invalidateApp).toHaveBeenCalledTimes(1)
   })
 })
+
+describe('a judge that loads its answers holds the first navigation (#2412)', () => {
+  it('is a recognised security key', () => {
+    const spy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const kernel = makeKernel({ grant: { isGranted: () => undefined }, readyTimeoutMs: 5000 })
+    kernel._setupSecurity()
+
+    expect(spy.mock.calls.map((c) => String(c[0])).filter((m) => m.includes('readyTimeoutMs'))).toHaveLength(0)
+  })
+
+  it("the kernel's checker exposes the judge the guard waits on", () => {
+    const ready = () => Promise.resolve()
+    const kernel = makeKernel({ grant: { isGranted: () => undefined, ready } })
+    kernel._setupSecurity()
+
+    expect(kernel.securityChecker.grant.ready).toBe(ready)
+  })
+})

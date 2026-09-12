@@ -222,7 +222,7 @@ instead of mirroring its rules in `role_permissions`:
 
 ```js
 const answers = new Map() // attribute -> boolean, filled from your API
-let refresh // set in install(), awaited before mount
+let loading = Promise.resolve()
 
 const kernel = new Kernel({
   authAdapter,
@@ -231,17 +231,24 @@ const kernel = new Kernel({
     grant: {
       isGranted: (attribute, subject, user) => answers.get(attribute),
 
+      // The load in progress: the route guard waits for it before deciding.
+      ready: () => loading,
+
       install({ signals, permissionRegistry }) {
-        refresh = async () => {
-          // Read the keys HERE, not in install(): modules register their
-          // entities after install() runs.
-          const keys = permissionRegistry.getKeys()
-          const next = await api.post('/me/permissions', { keys })
-          const changed = keys.some((k) => answers.get(k) !== next[k])
-          for (const k of keys) answers.set(k, next[k])
-          if (changed) signals.emit('security:changed')
+        const refresh = () => {
+          loading = (async () => {
+            // Read the keys HERE, not in install(): modules register their
+            // entities after install() runs.
+            const keys = permissionRegistry.getKeys()
+            const next = await api.post('/me/permissions', { keys })
+            const changed = keys.some((k) => answers.get(k) !== next[k])
+            for (const k of keys) answers.set(k, next[k])
+            if (changed) signals.emit('security:changed')
+          })()
+          return loading
         }
-        signals.on('auth:login', () => refresh())
+        signals.on('kernel:ready', refresh) // modules are loaded, keys are known
+        signals.on('auth:login', refresh)   // another user, other answers
       },
     },
   },
@@ -259,18 +266,33 @@ The judge is consulted **first**, for roles (`ROLE_*`) and permissions alike:
 Nobody logged in is denied before the judge is asked.
 
 `isGranted` is called **synchronously**, on every check: menus, list actions,
-`canCreate`, the route guard. Answer from memory — fetch in bulk beforehand.
-Until the first answers land the judge abstains, so whatever the role matrix
-grants is what the user sees; with no matrix, that is nothing.
+`canCreate`, the route guard. Answer from memory.
 
-Pre-warm before mounting, the same way a session is restored
-([Restoring a session before the app mounts](#restoring-a-session-before-the-app-mounts)):
+### Answers that arrive after the first navigation: `ready()`
 
-```js
-authAdapter.revalidate()
-  .then(() => refresh())
-  .then(() => kernel.createApp().mount('#app'))
-```
+There is no "before" to fetch in. The first navigation — a reload of an
+entity page included — starts inside `createApp()`, and the judge's request
+cannot have answered yet. Without `ready()`, that cache miss falls through to
+the role matrix, which for a backend-judged app is empty, and the page is
+refused.
+
+`ready()` returns the load in progress, and the route guard waits for it on
+entity routes instead of deciding early:
+
+| `ready()` | The navigation |
+|---|---|
+| resolves | is decided with the answers, as usual |
+| rejects | is **denied**, with a console error naming the judge |
+| does not settle within `security.readyTimeoutMs` (10 s by default) | is **denied**, same error |
+
+The unknown is never allowed — it is only no longer decided before the answers
+can exist. Return the promise of the *current* load, so after `auth:login` the
+guard waits for the new user's answers. A judge that answers from memory from
+the start does not need `ready()`, and nothing waits.
+
+Elsewhere, until the answers land, the judge abstains: menus and actions show
+what the role matrix grants — with no matrix, nothing — and
+`security:changed` re-evaluates them once the answers are in.
 
 ### Re-evaluating: `security:changed`
 

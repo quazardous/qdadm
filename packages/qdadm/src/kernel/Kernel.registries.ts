@@ -406,13 +406,14 @@ export function applyRegistryMethods(KernelClass: { prototype: Kernel }): void {
     this._warnUnknownKeys(
       'security.',
       security,
-      new Set(['role_hierarchy', 'role_permissions', 'role_labels', 'entity_permissions', 'rolesProvider', 'grant']),
+      new Set(['role_hierarchy', 'role_permissions', 'role_labels', 'entity_permissions', 'rolesProvider', 'grant', 'readyTimeoutMs']),
       {
         role_hierarchy: 'roles will not inherit from one another',
         role_permissions: 'no role will carry any permission',
         entity_permissions: 'per-entity permissions will not be generated',
         rolesProvider: "the current user's roles will not be resolved",
         grant: "the application's judgement will not be consulted — the role matrix decides alone",
+        readyTimeoutMs: 'the route guard waits the default 10 s for grant.ready()',
       }
     )
   }

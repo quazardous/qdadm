@@ -15,6 +15,28 @@ type Self = Kernel
 /**
  * Patch Kernel prototype with routing-related methods.
  */
+/**
+ * `judge.ready()`, bounded (#2412): a judge that never settles must not hold a
+ * navigation forever. A synchronous throw from `ready()` counts as a rejection.
+ */
+function waitForJudge(judge: { ready(): Promise<void> }, timeoutMs: number): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error(`no answer within ${timeoutMs} ms`)), timeoutMs)
+    Promise.resolve()
+      .then(() => judge.ready())
+      .then(
+        () => {
+          clearTimeout(timer)
+          resolve()
+        },
+        (e: unknown) => {
+          clearTimeout(timer)
+          reject(e instanceof Error ? e : new Error(String(e)))
+        }
+      )
+  })
+}
+
 export function applyRoutingMethods(KernelClass: { prototype: Kernel }): void {
   const proto = KernelClass.prototype
 
@@ -230,14 +252,17 @@ export function applyRoutingMethods(KernelClass: { prototype: Kernel }): void {
       // declared before its manager loads) — allow. This is the ONLY
       // allowed pass-through; a failing access check must fail CLOSED,
       // not silently allow (#1190).
-      if (entity && this.orchestrator && this.orchestrator.isRegistered(entity)) {
+      const orchestrator = this.orchestrator
+      if (!entity || !orchestrator || !orchestrator.isRegistered(entity)) return
+
+      const checkEntity = (): { path: string } | undefined => {
         try {
-          const manager = this.orchestrator.get(entity)
+          const manager = orchestrator.get(entity)
           if (manager && !manager.canRead()) {
             console.warn(
               `[qdadm] Access denied to ${to.path} (entity: ${entity})`
             )
-            this.orchestrator.toast.error(
+            orchestrator.toast.error(
               'Access Denied',
               `You don't have permission to access ${manager.labelPlural || entity}`,
               'Kernel'
@@ -256,7 +281,23 @@ export function applyRoutingMethods(KernelClass: { prototype: Kernel }): void {
           )
           return { path: '/' }
         }
+        return undefined
       }
+
+      // A judge whose answers come from a request cannot have them yet on the
+      // first navigation, which starts inside createApp() (#2412). Its cache
+      // miss would fall through to an empty role matrix and read as a refusal:
+      // wait for its answers instead of deciding early. Still fail closed — a
+      // judge that rejects or never settles denies.
+      const judge = this.securityChecker?.grant
+      if (typeof judge?.ready !== 'function') return checkEntity()
+      const timeoutMs = this.options.security?.readyTimeoutMs ?? 10_000
+      return waitForJudge(judge as { ready(): Promise<void> }, timeoutMs).then(checkEntity, (reason: Error) => {
+        console.error(
+          `[qdadm] security.grant never became ready for ${to.path} (entity: ${entity}): ${reason.message} — denying navigation`
+        )
+        return { path: '/' }
+      })
     })
   }
 

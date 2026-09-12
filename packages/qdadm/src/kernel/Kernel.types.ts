@@ -105,6 +105,11 @@ export interface SecurityConfig {
    * throws denies. See docs/security.md.
    */
   grant?: GrantJudge
+  /**
+   * How long the route guard waits for `grant.ready()` before denying (#2412).
+   * Default 10000 ms. Only used when the judge implements `ready()`.
+   */
+  readyTimeoutMs?: number
 }
 
 /**

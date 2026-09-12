@@ -13,13 +13,15 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { Kernel } from '../../src/kernel/Kernel'
 
-function makeKernel({ manager, registered = true } = {}) {
+function makeKernel({ manager, registered = true, judge = null, readyTimeoutMs } = {}) {
   let guard = null
   const kernel = {
     options: {
       authAdapter: { isAuthenticated: () => true },
       debug: false,
+      security: readyTimeoutMs === undefined ? {} : { readyTimeoutMs },
     },
+    securityChecker: judge ? { grant: judge } : null,
     signals: { on: vi.fn(), emit: vi.fn() },
     orchestrator: {
       isRegistered: vi.fn(() => registered),
@@ -125,5 +127,87 @@ describe('auth guard redirect to login (#2292)', () => {
     )
     // Already told: the next redirect is a plain one.
     expect(guard(privateRoute, {})).toEqual({ name: 'login' })
+  })
+})
+
+describe('an asynchronous judge holds the first navigation (#2412)', () => {
+  // The reload case: the navigation starts inside createApp(), before the
+  // judge's request can answer. Deciding then reads a cache miss as a refusal.
+  const deferred = () => {
+    let resolve, reject
+    const promise = new Promise((res, rej) => { resolve = res; reject = rej })
+    return { promise, resolve, reject }
+  }
+
+  it('waits for the answers, then lets a granted page through', async () => {
+    const load = deferred()
+    let answers = null
+    const manager = { canRead: vi.fn(() => answers?.read === true), labelPlural: 'Offers' }
+    const { guard } = makeKernel({ manager, judge: { isGranted: () => undefined, ready: () => load.promise } })
+
+    const result = guard(to('offers'), {})
+    expect(result).toBeInstanceOf(Promise)
+    // Nothing decided while the answers are on their way.
+    await Promise.resolve()
+    expect(manager.canRead).not.toHaveBeenCalled()
+
+    answers = { read: true }
+    load.resolve()
+    expect(await result).toBeUndefined()
+  })
+
+  it('still denies a real refusal once the answers are in', async () => {
+    const manager = { canRead: () => false, labelPlural: 'Offers' }
+    const { kernel, guard } = makeKernel({ manager, judge: { isGranted: () => false, ready: () => Promise.resolve() } })
+
+    expect(await guard(to('offers'), {})).toEqual({ path: '/' })
+    expect(kernel.signals.emit).toHaveBeenCalledWith('auth:access-denied', expect.objectContaining({ entity: 'offers' }))
+  })
+
+  it('denies when the judge never answers — bounded, and saying why', async () => {
+    const manager = { canRead: vi.fn(() => true) }
+    const { guard } = makeKernel({
+      manager,
+      judge: { isGranted: () => undefined, ready: () => new Promise(() => {}) },
+      readyTimeoutMs: 20,
+    })
+
+    expect(await guard(to('offers'), {})).toEqual({ path: '/' })
+    // The unknown is never allowed, even though canRead would have said yes.
+    expect(manager.canRead).not.toHaveBeenCalled()
+    expect(String(errorSpy.mock.calls.at(-1)[0])).toMatch(/security\.grant never became ready .* no answer within 20 ms/)
+  })
+
+  it('denies when the load fails', async () => {
+    const { guard } = makeKernel({
+      manager: { canRead: () => true },
+      judge: { isGranted: () => undefined, ready: () => Promise.reject(new Error('permissions API down')) },
+    })
+
+    expect(await guard(to('offers'), {})).toEqual({ path: '/' })
+    expect(String(errorSpy.mock.calls.at(-1)[0])).toContain('permissions API down')
+  })
+
+  it('denies when ready() itself throws', async () => {
+    const { guard } = makeKernel({
+      manager: { canRead: () => true },
+      judge: { isGranted: () => undefined, ready: () => { throw new Error('not wired') } },
+    })
+
+    expect(await guard(to('offers'), {})).toEqual({ path: '/' })
+  })
+
+  it('leaves a judge without ready() exactly as it was: synchronous', () => {
+    const { guard } = makeKernel({ manager: { canRead: () => true }, judge: { isGranted: () => true } })
+
+    expect(guard(to('offers'), {})).toBeUndefined()
+  })
+
+  it('does not wait on routes that need no entity check', () => {
+    const ready = vi.fn(() => new Promise(() => {}))
+    const { guard } = makeKernel({ manager: { canRead: () => true }, judge: { isGranted: () => undefined, ready } })
+
+    expect(guard({ path: '/about', matched: [], meta: {} }, {})).toBeUndefined()
+    expect(ready).not.toHaveBeenCalled()
   })
 })
