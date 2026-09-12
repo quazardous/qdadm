@@ -18,6 +18,7 @@ import {
   relayBindHost,
   relayMcpEndpoint,
   relayPorts,
+  relayPublicWsUrl,
 } from '../src/relay/ports.ts'
 import { RELAY_PORTS } from '../src/protocol.ts'
 
@@ -102,10 +103,19 @@ describe('relayBaseUrl — QDADM_RELAY_URL says the relay is elsewhere', () => {
     )
   })
 
+  it("takes the tabs' scheme too, so one address serves both sides (#2400)", () => {
+    // Their own example is a ws:// url, given to an agent and to a page alike.
+    expect(relayBaseUrl({ QDADM_RELAY_URL: 'ws://relay.bmsctl.localhost:8500' })?.href).toBe(
+      'http://relay.bmsctl.localhost:8500/'
+    )
+    expect(relayBaseUrl({ QDADM_RELAY_URL: 'wss://dev.example.com/qdadm' })?.href).toBe(
+      'https://dev.example.com/qdadm'
+    )
+  })
+
   it('refuses what it cannot dial, instead of falling back to the local relay', () => {
     // Falling back would answer about the wrong browser, which is worse than failing.
     expect(() => relayBaseUrl({ QDADM_RELAY_URL: 'http://[nope' })).toThrow(/is not a URL/)
-    expect(() => relayBaseUrl({ QDADM_RELAY_URL: 'ws://relay.internal:47761' })).toThrow(/must be http/)
     expect(() => relayBaseUrl({ QDADM_RELAY_URL: 'file:///tmp/relay' })).toThrow(/must be http/)
     // A host and a port with no scheme parses as a scheme of its own: it is still not dialable.
     expect(() => relayBaseUrl({ QDADM_RELAY_URL: 'relay.internal:47761' })).toThrow(/must be http/)
@@ -141,5 +151,30 @@ describe('relayBindHost — which interface the relay answers on (#2400)', () =>
     for (const host of ['0.0.0.0', '::', '192.168.1.10', '172.17.0.2']) {
       expect(isLoopbackHost(host)).toBe(false)
     }
+  })
+})
+
+describe('relayPublicWsUrl — the address the dev server gives its pages (#2400)', () => {
+  it('is null unless asked for: the page uses the local port as before', () => {
+    expect(relayPublicWsUrl({})).toBeNull()
+    expect(relayPublicWsUrl({ QDADM_RELAY_PUBLIC_URL: ' ' })).toBeNull()
+  })
+
+  it('is a ws url a browser can dial, from either scheme', () => {
+    expect(relayPublicWsUrl({ QDADM_RELAY_PUBLIC_URL: 'ws://relay.bmsctl.localhost:8500' })).toBe(
+      'ws://relay.bmsctl.localhost:8500/'
+    )
+    expect(relayPublicWsUrl({ QDADM_RELAY_PUBLIC_URL: 'https://dev.example.com/relay' })).toBe(
+      'wss://dev.example.com/relay/'
+    )
+  })
+
+  it('says which variable is wrong rather than letting pages scan localhost', () => {
+    expect(() => relayPublicWsUrl({ QDADM_RELAY_PUBLIC_URL: 'nope' })).toThrow(
+      /QDADM_RELAY_PUBLIC_URL is not a URL/
+    )
+    expect(() => relayPublicWsUrl({ QDADM_RELAY_PUBLIC_URL: 'file:///relay' })).toThrow(
+      /QDADM_RELAY_PUBLIC_URL must be http/
+    )
   })
 })

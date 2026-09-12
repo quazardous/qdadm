@@ -118,6 +118,7 @@ To run it in a terminal and watch it: `npx qdadm-mcp-relay`.
 |---|---|
 | `QDADM_RELAY_PORT` | Run a relay of your own on that port, instead of using the machine's default relay on 47761–47765 |
 | `QDADM_RELAY_URL` | Where the agent reaches the relay, when a proxy stands between them. Wins over `QDADM_RELAY_PORT` |
+| `QDADM_RELAY_PUBLIC_URL` | The address the dev server tells its pages to dial, when the browser is not on the relay's loopback |
 | `QDADM_RELAY_HOST` | The interface the relay listens on, same as `--bind`. Default `127.0.0.1` |
 | `QDADM_RELAY_RUN` | Path of the run file, instead of `~/.qdadm_relay.<port>.run` |
 
@@ -164,6 +165,18 @@ what you want for a single project.
 To see what is running: `head ~/.qdadm_relay*.run` (pid and port of each), and
 `kill <pid>` stops one.
 
+### Two different questions
+
+Both variables are URLs, and they answer different things:
+
+| | Who reads it | What it means |
+|---|---|---|
+| `QDADM_RELAY_URL` | the agent's front (`--stdio`, `--call`) | the relay is **elsewhere**: reach it there, start none |
+| `QDADM_RELAY_PUBLIC_URL` | the dev server, for its pages | the relay is **here**, but the browser reaches it at this address |
+
+Both take `http(s)://` or `ws(s)://` — one address can be handed to an agent
+and to a page alike, each side using the scheme it speaks.
+
 ### Behind a proxy: `QDADM_RELAY_URL`
 
 The relay stays where the browser is, on `127.0.0.1` — it drives real tabs,
@@ -189,39 +202,45 @@ concerned: they connect to the relay next to them as usual.
 
 ### In a container
 
-A relay inside a container needs two things the default setup does not give
-it: a port you can publish, and an interface that accepts what Docker
-forwards. A socket bound to `127.0.0.1` **refuses** a forwarded connection,
-so a published port stays unusable however fixed it is.
+A relay inside a container needs a port you can publish and an interface that
+accepts what Docker forwards — a socket bound to `127.0.0.1` **refuses** a
+forwarded connection, so a published port stays unusable however fixed it is.
+And the browser, on the host, must be told where to dial.
 
 ```bash
 # in the container, next to the dev server
-QDADM_RELAY_PORT=35173 QDADM_RELAY_HOST=0.0.0.0 npm run dev
+QDADM_RELAY_PORT=35173 QDADM_RELAY_HOST=0.0.0.0 \
+  QDADM_RELAY_PUBLIC_URL=ws://relay.example.localhost:8500 npm run dev
 ```
 
-Publish `35173`, and then:
-
-- the **browser** on the host reaches the relay at that port, so a dev page
-  connects as usual;
-- an **agent on the host** is told where it is, since the container's run
-  file is not visible from outside — without this it would find no relay and
-  start a second one, attached to no tab of yours:
+- The relay is still started here, and the dev server still reads its token
+  from the run file beside it: **no token to pass around**.
+- `<prefix>/relay.json` carries that URL, so a dev page dials it instead of
+  the loopback it cannot reach. Leave the variable out and pages use the
+  local port exactly as before.
+- Where the browser can reach the published port directly, that address is
+  simply `ws://localhost:35173` — a proxy route is only needed when it
+  cannot.
+- An **agent on the host** is told the relay's whereabouts too, since the
+  container's run file is invisible from outside; without it, it would find
+  no relay and start a second one, attached to no tab of yours:
 
   ```bash
-  QDADM_RELAY_URL=http://localhost:35173 npx qdadm-mcp-relay --stdio
+  QDADM_RELAY_URL=ws://relay.example.localhost:8500 npx qdadm-mcp-relay --stdio
   ```
 
-Binding beyond the loopback is a door: the relay says so when it starts.
-Tabs still need the page token, `--origin <origin>` limits which pages may
-pair, and publishing the port only to the loopback of the host
-(`-p 127.0.0.1:35173:35173`) keeps it off your network.
+**Through a proxy**, two things to get right: it must forward the WebSocket
+upgrade for tabs, and `POST /mcp` is refused only to *browser* requests (the
+`Origin` header), so anything else that can reach the route can drive the
+relay. Keep that entrypoint on the host's loopback — a container boundary
+needs nothing more.
 
 **Checking it, and the trap:** a port publish makes `docker-proxy` accept the
 connection even when nothing behind it answers, so "the port is open" proves
 nothing. Ask the relay who it is instead:
 
 ```bash
-curl -s http://localhost:35173/identity     # JSON with a pid and a port, or nothing at all
+curl -s http://localhost:35173/identity   # JSON with a pid and a port, or nothing at all
 ```
 
 Silence there, with the port published, means the relay is still bound to the

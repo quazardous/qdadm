@@ -33,6 +33,7 @@ import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/
 import { createQdadmMcpServer } from './server.ts'
 import type { DebugBrokerApi, ToolsetOptions } from './tools.ts'
 import { RELAY_AUTO_GLOBAL, type RelayAutoConfig } from './protocol.ts'
+import { relayPublicWsUrl } from './relay/ports.ts'
 import { ensureRelay } from './relay/runfile.ts'
 
 export interface QdadmMcpPluginOptions extends ToolsetOptions {
@@ -104,12 +105,15 @@ export function qdadmMcpPlugin(options: QdadmMcpPluginOptions = {}): Plugin {
     },
 
     configureServer(s) {
+      // A wrong URL must not boot as if it were absent: pages would silently scan localhost instead.
+      const publicUrl = relayPublicWsUrl()
       if (relayEnabled) {
         // Now rather than on the first page load, so the page finds it up.
         ensureRelay()
           .then(({ info, started }) =>
             s.config.logger.info(
               `  [qdadm-mcp] relay ${started ? 'started' : 'running'} on ws://localhost:${info.port} — ` +
+                (publicUrl ? `pages connect to ${publicUrl} (QDADM_RELAY_PUBLIC_URL) — ` : '') +
                 'agents: MCP stdio server `npx qdadm-mcp-relay --stdio`'
             )
           )
@@ -134,7 +138,14 @@ export function qdadmMcpPlugin(options: QdadmMcpPluginOptions = {}): Plugin {
           res.setHeader('cache-control', 'no-store')
           try {
             const { info } = await ensureRelay()
-            res.end(JSON.stringify({ port: info.port, token: info.token } satisfies RelayAutoConfig))
+            res.end(
+              JSON.stringify({
+                port: info.port,
+                token: info.token,
+                // The page may not be on the same side of a container boundary as the relay.
+                ...(publicUrl ? { url: publicUrl } : {}),
+              } satisfies RelayAutoConfig)
+            )
           } catch (e) {
             res.statusCode = 503
             res.end(JSON.stringify({ error: (e as Error).message }))

@@ -28,30 +28,61 @@ export function relayPorts(env: NodeJS.ProcessEnv = process.env): readonly numbe
   return [port]
 }
 
+/** What each scheme means on the wire: tabs speak ws, agents speak http, to the same relay. */
+const AS_HTTP: Record<string, string> = { 'http:': 'http:', 'https:': 'https:', 'ws:': 'http:', 'wss:': 'https:' }
+const AS_WS: Record<string, string> = { 'ws:': 'ws:', 'wss:': 'wss:', 'http:': 'ws:', 'https:': 'wss:' }
+
+/** Parse one of our URL variables, or say which one is wrong and how. */
+function parseRelayUrl(name: string, raw: string | undefined, schemes: Record<string, string>): URL | null {
+  const value = raw?.trim()
+  if (!value) return null
+  let url: URL
+  try {
+    url = new URL(value)
+  } catch {
+    throw new Error(`${name} is not a URL: ${JSON.stringify(raw)}`)
+  }
+  const wanted = schemes[url.protocol]
+  if (!wanted) {
+    throw new Error(`${name} must be http://, https://, ws:// or wss://, got ${JSON.stringify(raw)}`)
+  }
+  // One address serves both sides: ws:// given for an http endpoint is the same relay, said the tabs' way.
+  url.protocol = wanted
+  return url
+}
+
 /**
  * Where the agent's front reaches the relay when it is not on its own
  * loopback: `QDADM_RELAY_URL`, a base URL — typically a reverse proxy in
  * front of a relay running elsewhere (`https://dev.example.com/qdadm`).
  *
- * The relay itself is unchanged by this: it still listens on `127.0.0.1`
- * next to the browser it drives, and the proxy is what bridges the two. Set,
- * it wins over `QDADM_RELAY_PORT`, nothing local is started, and no run file
- * is read — the URL is the whereabouts. A malformed one is refused rather
- * than quietly ignored.
+ * The relay itself is unchanged by this: it still listens where it listens,
+ * and the proxy is what bridges the two. Set, it wins over
+ * `QDADM_RELAY_PORT`, nothing local is started, and no run file is read —
+ * the URL is the whereabouts. `ws://` and `wss://` are taken too, so one
+ * address can be handed to an agent and to a page alike. A malformed one is
+ * refused rather than quietly ignored.
  */
 export function relayBaseUrl(env: NodeJS.ProcessEnv = process.env): URL | null {
-  const raw = env.QDADM_RELAY_URL?.trim()
-  if (!raw) return null
-  let url: URL
-  try {
-    url = new URL(raw)
-  } catch {
-    throw new Error(`QDADM_RELAY_URL is not a URL: ${JSON.stringify(env.QDADM_RELAY_URL)}`)
-  }
-  if (url.protocol !== 'http:' && url.protocol !== 'https:') {
-    throw new Error(`QDADM_RELAY_URL must be http:// or https://, got ${JSON.stringify(env.QDADM_RELAY_URL)}`)
-  }
-  return url
+  return parseRelayUrl('QDADM_RELAY_URL', env.QDADM_RELAY_URL, AS_HTTP)
+}
+
+/**
+ * The address the dev server advertises to its pages:
+ * `QDADM_RELAY_PUBLIC_URL`, a `ws://` or `wss://` URL.
+ *
+ * Different from `QDADM_RELAY_URL`, which says the relay is elsewhere. Here
+ * the relay is local — started by the plugin, its token read from its run
+ * file — but the **browser** reaches it by another address: a published
+ * container port, or a proxy route. Only who is told where changes.
+ */
+export function relayPublicWsUrl(env: NodeJS.ProcessEnv = process.env): string | null {
+  const url = parseRelayUrl('QDADM_RELAY_PUBLIC_URL', env.QDADM_RELAY_PUBLIC_URL, AS_WS)
+  if (!url) return null
+  url.pathname = `${url.pathname.replace(/\/+$/, '')}/`
+  url.search = ''
+  url.hash = ''
+  return url.href
 }
 
 /** The agents' endpoint on that relay — the base's own path kept, so a proxy prefix survives. */

@@ -39,4 +39,11 @@ export const RELAY_AUTO_GLOBAL = '__qdadmRelayAuto'
 export interface RelayAutoConfig {
   port: number
   token: string
+  /**
+   * The relay's WebSocket URL, when the page must dial an address rather
+   * than this machine's loopback: a published container port, or a proxy
+   * route (`QDADM_RELAY_PUBLIC_URL`). Absent for the usual local relay,
+   * where `port` is enough.
+   */
+  url?: string
 }

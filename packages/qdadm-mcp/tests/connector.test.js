@@ -241,6 +241,18 @@ describe('relay connector — dev pages connect on their own (#2231)', () => {
     vi.unstubAllGlobals()
   })
 
+  it('dials the url the dev server gave it, instead of the local port (#2400)', async () => {
+    const broker = new RelayBroker({ token: 'dev-token', identity: identity(47761) })
+    const { controller, created } = autoInstall(
+      { 47761: broker },
+      answering(() => ({ port: 47761, token: 'dev-token', url: 'ws://relay.bmsctl.localhost:47761/' }))
+    )
+
+    await vi.waitFor(() => expect(controller.state.status).toBe('connected'))
+    // The relay is across a container boundary: dialling localhost would find nothing.
+    expect(created).toEqual(['ws://relay.bmsctl.localhost:47761/'])
+  })
+
   it('connects at startup with the page token — no code, no click', async () => {
     const broker = new RelayBroker({ token: 'dev-token', identity: identity(47761) })
     const { controller, fetchMock } = autoInstall({ 47761: broker }, answering(() => ({ port: 47761, token: 'dev-token' })))

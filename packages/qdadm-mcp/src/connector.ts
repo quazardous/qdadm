@@ -638,11 +638,12 @@ export function installQdadmRelayConnector(options: QdadmRelayConnectorOptions =
     return v && typeof v.port === 'number' && typeof v.key === 'string' ? (v as unknown as SavedPairing) : null
   }
 
-  const probe = (port: number): Promise<ProbeResult> =>
+  /** `wsUrl` dials the address the page was told to use; without it, `port` on the local host. */
+  const probe = (port: number, wsUrl?: string): Promise<ProbeResult> =>
     new Promise((resolve) => {
       let ws: WebSocket
       try {
-        ws = new WS(`ws://${host}:${port}/`)
+        ws = new WS(wsUrl ?? `ws://${host}:${port}/`)
       } catch {
         resolve({ port, outcome: 'refused' })
         return
@@ -773,7 +774,7 @@ export function installQdadmRelayConnector(options: QdadmRelayConnectorOptions =
     dropSocket()
     const targets = port ? [port] : ports
     setState({ status: 'scanning', ports: targets })
-    const results = await Promise.all(targets.map(probe))
+    const results = await Promise.all(targets.map((p) => probe(p)))
     const relays = results.filter((r): r is Extract<ProbeResult, { outcome: 'relay' }> => r.outcome === 'relay')
     if (relays.length === 1) return bind(relays[0].ws, relays[0].relay, relays[0].port)
     for (const r of relays) r.ws.close()
@@ -821,8 +822,11 @@ export function installQdadmRelayConnector(options: QdadmRelayConnectorOptions =
     } catch (e) {
       return retryAuto(`The dev server could not provide the relay (${(e as Error).message}).`)
     }
-    const result = await probe(config.port)
-    if (result.outcome !== 'relay') return retryAuto(`No relay answered on port ${config.port}.`)
+    const result = await probe(config.port, config.url)
+    if (result.outcome !== 'relay') {
+      // Naming the url matters: a port it never dialled would be a misleading thing to report.
+      return retryAuto(`No relay answered on ${config.url ?? `port ${config.port}`}.`)
+    }
 
     const ws = result.ws
     socket = ws
