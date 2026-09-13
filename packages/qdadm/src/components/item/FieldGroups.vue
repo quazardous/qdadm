@@ -20,7 +20,7 @@
  * </FieldGroups>
  * ```
  */
-import { computed, type PropType } from 'vue'
+import { computed, ref, watch, type PropType } from 'vue'
 import Tabs from 'primevue/tabs'
 import TabList from 'primevue/tablist'
 import Tab from 'primevue/tab'
@@ -84,7 +84,20 @@ const props = defineProps({
     type: String as PropType<LayoutMode>,
     default: 'sections',
   },
+  /**
+   * The active group (`tabs`: a group name) or the open ones (`accordion`:
+   * names), for `v-model:active` (#2435). Optional: without it the component
+   * keeps its own, starting on the first group.
+   */
+  active: {
+    type: [String, Array] as PropType<string | string[] | null>,
+    default: undefined,
+  },
 })
+
+const emit = defineEmits<{
+  'update:active': [value: string | string[]]
+}>()
 
 // Expose slots for field rendering
 defineSlots<{
@@ -104,6 +117,34 @@ const displayGroups = computed(() => {
     return g.name !== '_default' || g.fields.length > 0
   })
 })
+
+// The active tab / open panels are state, not a constant: a re-render must not
+// send the user back to the first group (#2435). An app owning it passes
+// v-model:active; otherwise this is the only copy.
+const localActive = ref<string | string[] | null | undefined>(props.active)
+watch(
+  () => props.active,
+  (value) => {
+    if (value !== undefined) localActive.value = value
+  }
+)
+const firstGroupName = () => displayGroups.value[0]?.name || '0'
+const activeTab = computed(() => (typeof localActive.value === 'string' ? localActive.value : firstGroupName()))
+const openPanels = computed(() => {
+  const value = localActive.value
+  if (Array.isArray(value)) return value
+  return typeof value === 'string' ? [value] : [firstGroupName()]
+})
+function setActive(value: string | string[]) {
+  localActive.value = value
+  emit('update:active', value)
+}
+function onTabChange(value: string | number) {
+  setActive(String(value))
+}
+function onPanelsChange(value: unknown) {
+  setActive(Array.isArray(value) ? value.map(String) : value == null ? [] : [String(value)])
+}
 
 // Get value from data
 function getValue(fieldName: string): unknown {
@@ -227,7 +268,7 @@ function getBadgeValue(group: FieldGroup): string | number | null {
 
     <!-- Tabs layout -->
     <template v-else-if="layout === 'tabs'">
-      <Tabs :value="displayGroups[0]?.name || '0'">
+      <Tabs :value="activeTab" @update:value="onTabChange">
         <TabList>
           <Tab
             v-for="group in displayGroups"
@@ -275,7 +316,7 @@ function getBadgeValue(group: FieldGroup): string | number | null {
 
     <!-- Accordion layout -->
     <template v-else-if="layout === 'accordion'">
-      <Accordion :value="[displayGroups[0]?.name || '0']" multiple>
+      <Accordion :value="openPanels" multiple @update:value="onPanelsChange">
         <AccordionPanel
           v-for="group in displayGroups"
           :key="group.name"

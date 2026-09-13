@@ -443,6 +443,15 @@ useEntityItemFormPage({
 | `sections` | Labeled sections |
 | `cards` | Card-wrapped sections |
 
+With `tabs` or `accordion`, the active tab (or the open panels) is kept when
+the record re-renders — a `reload()` or a live update does not send the user
+back to the first group. To own it — restore it, keep it in the URL — bind
+`v-model:active`: a group name for `tabs`, an array of names for `accordion`.
+
+```vue
+<FieldGroups :groups="show.groups.value" :data="show.data.value" layout="tabs" v-model:active="tab" />
+```
+
 ---
 
 ## Show Page

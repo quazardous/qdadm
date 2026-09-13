@@ -35,7 +35,8 @@
  * - #fields: Field content (required) - renders in right column (or full width if no media)
  * - #footer: Custom footer (replaces ShowActions if provided)
  * - #error: Custom error display
- * - #loading: Custom loading display
+ * - #loading: Custom display for the first load. A reload of a record already
+ *   on screen keeps it there, marked busy (#2435).
  */
 import { computed, type PropType } from 'vue'
 import PageHeader from '../layout/PageHeader.vue'
@@ -203,8 +204,11 @@ type ShowFieldValue = string | number | boolean | Date | Record<string, unknown>
     <!-- Toolbar slot (between header and content) -->
     <slot name="toolbar" />
 
-    <!-- Loading State -->
-    <template v-if="loading">
+    <!-- First load only. A reload of a record already shown keeps the content
+         mounted (#2435): unmounting it threw away the active tab, open panels,
+         scroll and any local state — on every action reload and every live
+         update of the record. -->
+    <template v-if="loading && !data">
       <slot name="loading">
         <div class="loading-state">
           <i class="pi pi-spin pi-spinner" style="font-size: 2rem"></i>
@@ -223,6 +227,7 @@ type ShowFieldValue = string | number | boolean | Date | Record<string, unknown>
 
     <!-- Content -->
     <template v-else>
+      <div v-if="loading" class="show-refreshing" role="progressbar" aria-label="Refreshing" />
       <!-- Single content body; Card wrapper is conditional (#1193) -->
       <CardShell :card="cardWrapper">
         <!-- Grid layout with optional media zone -->
@@ -230,6 +235,7 @@ type ShowFieldValue = string | number | boolean | Date | Record<string, unknown>
           class="show-content"
           :class="{ 'show-content--with-media': slots.media }"
           :style="slots.media ? { '--media-width': mediaWidth } : {}"
+          :aria-busy="loading ? 'true' : undefined"
         >
           <!-- Media zone (optional) -->
           <div v-if="slots.media" class="show-media">
@@ -302,6 +308,29 @@ type ShowFieldValue = string | number | boolean | Date | Record<string, unknown>
   display: flex;
   justify-content: center;
   padding: 3rem;
+}
+
+/* A record being refreshed stays on screen: a thin bar says so (#2435). */
+.show-refreshing {
+  height: 3px;
+  margin-bottom: -1rem; /* inside the page gap: the content does not move */
+  background: linear-gradient(90deg, transparent, var(--p-primary-color, #3b82f6), transparent);
+  background-size: 40% 100%;
+  background-repeat: no-repeat;
+  animation: show-refreshing 1.1s ease-in-out infinite;
+}
+
+@keyframes show-refreshing {
+  from { background-position: -40% 0; }
+  to { background-position: 140% 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .show-refreshing {
+    animation: none;
+    background: var(--p-primary-color, #3b82f6);
+    opacity: 0.4;
+  }
 }
 
 .show-error-message {
