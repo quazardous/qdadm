@@ -24,7 +24,7 @@
  * </FormPage>
  * ```
  */
-import { ref, computed, watch, onMounted, onUnmounted, provide, type Ref } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted, provide, inject, type Ref } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useConfirm } from 'primevue/useconfirm'
 import { requireDeleteConfirmation } from './confirmDelete'
@@ -55,6 +55,9 @@ import type {
 import { createOrchestratorToast } from './useOrchestratorToast'
 import { useActionRegistry } from './useActionRegistry'
 import { TYPE_MAPPINGS, TYPE_VALIDATORS, snakeCaseToTitle, isEmpty } from './useEntityItemFormPage.types'
+
+/** Missing fields already reported, as `entity:field` — each is said once per page load of the app (#2484). */
+const reportedMissingFields = new Set<string>()
 
 // Re-export public types
 export type {
@@ -126,6 +129,7 @@ export function useEntityItemFormPage<T extends Record<string, unknown> = Record
   const router = useRouter()
   const route = useRoute()
   const confirm = useConfirm() as ConfirmService
+  const debug = inject<boolean>('qdadmDebug', false)
 
   // Use useEntityItemPage for common infrastructure
   const itemPage = useEntityItemPage({
@@ -247,6 +251,28 @@ export function useEntityItemFormPage<T extends Record<string, unknown> = Record
 
   // ============ LOADING ============
 
+  /**
+   * A field the form edits that the loaded record does not carry at all —
+   * `undefined`, not empty — is shown empty and saved back empty (#2484). Said
+   * in debug mode only, once per entity and field: some APIs omit null fields.
+   * Password fields are left out: no API returns one.
+   */
+  function reportMissingFields(record: Record<string, unknown> | null): void {
+    if (!record || typeof record !== 'object') return
+    const entityName = String((manager as { name?: unknown }).name ?? entity)
+    for (const field of fields.value) {
+      if (field.type === 'password' || field.name.includes('.')) continue
+      if (record[field.name] !== undefined) continue
+      const key = `${entityName}:${field.name}`
+      if (reportedMissingFields.has(key)) continue
+      reportedMissingFields.add(key)
+      console.warn(
+        `[qdadm] ${entityName} #${entityId.value} loaded without "${field.name}", which the form edits: ` +
+          'saving would send it back empty. Check that the record endpoint returns it.'
+      )
+    }
+  }
+
   async function load(): Promise<void> {
     if (!isEdit.value) {
       data.value = deepClone(initialData) as T
@@ -256,8 +282,11 @@ export function useEntityItemFormPage<T extends Record<string, unknown> = Record
 
     loading.value = true
     try {
-      const responseData = await manager.get(entityId.value!)
+      // The item itself, never a cached list row: a list row may be a summary,
+      // and whatever this form shows empty it saves back empty (#2484).
+      const responseData = await manager.get(entityId.value!, undefined, { listCache: false })
       const transformed = transformLoad(responseData)
+      if (debug) reportMissingFields(transformed as Record<string, unknown>)
       data.value = transformed as T
       originalData.value = deepClone(transformed)
       takeSnapshot()

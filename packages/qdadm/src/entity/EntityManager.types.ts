@@ -33,6 +33,19 @@ export interface CacheState<T> {
 }
 
 /**
+ * Options for `EntityManager.get()` (#2484).
+ */
+export interface GetOptions {
+  /**
+   * `false` reads the item from storage instead of a cached list row. A list
+   * row may be a summary: whoever loads a record in order to write it back
+   * needs the item itself. Default true — in symmetric mode, a valid list
+   * cache answers `get()`. Asymmetric entities never read the list cache.
+   */
+  listCache?: boolean
+}
+
+/**
  * Detail cache entry for asymmetric entities (full detail per item)
  */
 export interface DetailCacheEntry<T> {

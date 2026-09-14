@@ -71,7 +71,7 @@ export interface EntityManagerPermissions<T = unknown> {
  * Read operations + delete — used by list pages and other read-oriented views.
  */
 export interface EntityManagerRead<T = unknown> extends EntityManagerBase<T>, EntityManagerPermissions<T> {
-  get: (id: string | number, context?: unknown) => Promise<T>
+  get: (id: string | number, context?: unknown, options?: { listCache?: boolean }) => Promise<T>
   list: (params?: unknown, context?: unknown) => Promise<{ items: T[]; total?: number; fromCache?: boolean; [key: string]: unknown }>
   // query/invalidateCache/getFieldConfig are required since #1253: they are
   // unconditionally implemented on the class (prototype-applied) and called
@@ -170,7 +170,7 @@ export interface EntityManagerLike {
     total?: number
     fromCache?: boolean
   }>
-  get(id: string | number, context?: unknown): Promise<unknown>
+  get(id: string | number, context?: unknown, options?: { listCache?: boolean }): Promise<unknown>
   create(data: Record<string, unknown>, context?: unknown): Promise<unknown>
   update(id: string | number, data: Record<string, unknown>, context?: unknown): Promise<unknown>
   delete(id: string | number, context?: unknown): Promise<unknown>

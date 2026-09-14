@@ -218,8 +218,37 @@ describe('useEntityItemFormPage', () => {
 
       await flushPromises()
 
-      expect(mockManager.get).toHaveBeenCalledWith('1')
+      // The item itself, never a cached list row (#2484).
+      expect(mockManager.get).toHaveBeenCalledWith('1', undefined, { listCache: false })
       expect(result.data.value).toEqual({ id: 1, title: 'Test Book', author: 'Test Author' })
+    })
+
+    it('says, in debug mode, when the loaded record lacks a field the form edits (#2484)', async () => {
+      mockRouteState = { name: 'book-edit', params: { id: '1' } }
+      mockManager.get.mockResolvedValueOnce({ id: 1, title: 'Summary row' }) // no `author`
+      const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+
+      mount({ template: '<div />', setup: () => useEntityItemFormPage({ entity: 'books' }) }, {
+        global: { provide: { qdadmOrchestrator: mockOrchestrator, qdadmDebug: true } },
+      })
+      await flushPromises()
+
+      const said = warn.mock.calls.map((c) => String(c[0])).filter((m) => m.includes('loaded without'))
+      expect(said).toHaveLength(1)
+      expect(said[0]).toContain('"author"')
+      warn.mockRestore()
+    })
+
+    it('stays quiet about missing fields outside debug mode', async () => {
+      mockRouteState = { name: 'book-edit', params: { id: '1' } }
+      mockManager.get.mockResolvedValueOnce({ id: 1, title: 'Summary row' })
+      const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+
+      createWrapper(() => useEntityItemFormPage({ entity: 'books' }))
+      await flushPromises()
+
+      expect(warn.mock.calls.map((c) => String(c[0])).filter((m) => m.includes('loaded without'))).toHaveLength(0)
+      warn.mockRestore()
     })
 
     it('applies transformLoad hook', async () => {

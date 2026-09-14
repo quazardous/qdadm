@@ -323,6 +323,9 @@ export function applyVueMethods(KernelClass: { prototype: Kernel }): void {
     }
 
     app.provide('qdadmSignals', this.signals)
+    // Whether the app runs in debug mode, for composables that only speak up
+    // then (#2484). Until now it reached nothing but window.__qdadm.
+    app.provide('qdadmDebug', !!this.options.debug)
 
     if (this.i18nInstance) {
       app.provide(I18N_INJECTION_KEY, this.i18nInstance)

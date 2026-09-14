@@ -403,6 +403,11 @@ A single form component handles both create and edit. The mode is auto-detected 
 - `form.isEdit.value` — true on the edit route
 - `form.data.value` — empty defaults on create, loaded entity on edit
 
+On edit, the form reads the record itself, never a row from the list cache: a
+list endpoint may return summaries, and a field the form shows empty is saved
+back empty. In debug mode, a field the form edits that the loaded record does
+not carry at all is reported once in the console.
+
 ### FormPage slots
 
 | Slot | Purpose |

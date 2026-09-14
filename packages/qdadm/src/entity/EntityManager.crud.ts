@@ -1,5 +1,5 @@
 import type { ListParams, ListResult } from '../types'
-import type { EntityManagerInternal, Orchestrator, RoutingContext } from './EntityManager.types'
+import type { EntityManagerInternal, GetOptions, Orchestrator, RoutingContext } from './EntityManager.types'
 
 type Self = EntityManagerInternal<any>
 
@@ -208,7 +208,8 @@ export function applyCrudMethods(EntityManagerClass: { prototype: any }): void {
   proto.get = async function (
     this: Self,
     id: string | number,
-    context?: RoutingContext
+    context?: RoutingContext,
+    options: GetOptions = {}
   ): Promise<any> {
     const { storage, endpoint } = this._normalizeResolveResult(
       this.resolveStorage('get', context),
@@ -287,8 +288,9 @@ export function applyCrudMethods(EntityManagerClass: { prototype: any }): void {
 
     // ── Symmetric mode (default): try list cache ──
 
-    // Try cache first if valid and complete
-    if (cache.valid && !this.overflow) {
+    // Try cache first if valid and complete — unless the caller needs the item
+    // itself: a list row may be a summary (#2484).
+    if (options.listCache !== false && cache.valid && !this.overflow) {
       const cached = cache.items.find(
         (item: any) => String(item[this.idField]) === idStr
       )

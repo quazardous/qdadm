@@ -116,6 +116,14 @@ Two things differ from a plain `ctx.entity()`, and both are by design:
 
 `ROLE_ANONYMOUS` cannot be deleted, whichever field carries the role code.
 
+When your API's roles **list is a summary** — the permissions only come with
+a single role — set `asymmetric: true` on the manager. List rows then never
+stand in for a whole role anywhere, not only in the edit form:
+
+```ts
+new RolesManager({ storage, asymmetric: true })
+```
+
 ### PermissionMatcher
 
 Wildcard permission matching:

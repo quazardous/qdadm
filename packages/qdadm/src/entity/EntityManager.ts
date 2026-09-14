@@ -29,6 +29,7 @@ import type {
   ResolvedStorage,
   StorageResolution,
   Orchestrator,
+  GetOptions,
 } from './EntityManager.types'
 import type { NullSortMode } from '../query/clientFilter'
 
@@ -48,6 +49,7 @@ export type {
   SeverityMapValue,
   SeverityMap,
   EntityManagerOptions,
+  GetOptions,
 } from './EntityManager.types'
 
 // Import concrete types needed in method signatures
@@ -1001,7 +1003,7 @@ export interface EntityManager<T extends EntityRecord = EntityRecord> {
 
   // --- CRUD methods ---
   list(params?: ListParams & { _internal?: boolean }, context?: RoutingContext): Promise<ListResult<T>>
-  get(id: string | number, context?: RoutingContext): Promise<T>
+  get(id: string | number, context?: RoutingContext, options?: GetOptions): Promise<T>
   getMany(ids: Array<string | number>, context?: RoutingContext): Promise<T[]>
   create(data: Partial<T>, context?: RoutingContext): Promise<T>
   update(id: string | number, data: Partial<T>, context?: RoutingContext): Promise<T>
