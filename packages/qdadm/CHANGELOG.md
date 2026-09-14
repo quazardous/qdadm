@@ -1,5 +1,30 @@
 # Changelog
 
+## 2.26.0
+
+### Minor Changes
+
+- 3cfe2b2: An edit form reads the record itself, never a row from the list cache (#2484).
+
+  In symmetric mode — the default — a valid list cache answered `get()` with the **list row**. An edit form opened after its list had loaded was filled from that row, and when the list endpoint returned summaries, the missing fields showed empty and were saved back empty: a role lost its permissions in production.
+  - `EntityManager.get(id, context, { listCache: false })` reads the item from storage.
+  - The edit form loads with it, whatever the entity mode. Show pages still read the cache: they only display.
+  - In debug mode, the form reports once in the console a field it edits that the loaded record does not carry, so an incomplete record endpoint shows up before a save.
+  - The kernel provides `qdadmDebug` to composables.
+
+  The roles docs note `asymmetric: true` for APIs whose roles list is a summary.
+
+- dc99a98: A list page and its menu entry check `list`, not `read` (#2497).
+
+  `read` and `list` are separate grants, but the entity route guard and the menu checked `canRead()` for every entity route. A role granted List without Read lost the menu entry and was refused the list; a role granted Read without List was shown a list it was not allowed to list.
+  - `ctx.crud()` routes declare the action they perform: `meta.entityAction` is `list` on the list route and `read` on the show route.
+  - The route guard and the menu check that action — `canList()` for a list. Routes that declare none (custom pages, create, edit) keep checking `canRead()`.
+  - A custom route can opt in with `meta: { entityAction: 'list' }`.
+
+  **Check your managers:** a manager that overrides `canRead()` to restrict access must override `canList()` too, or its list page now follows the plain `entity:<x>:list` grant. `RolesManager` and `UsersManager` do: their lists stay behind `adminPermission`.
+
+  **Check your roles:** a role granted `entity:<x>:read` without `entity:<x>:list` no longer sees that entity's list page or its menu entry. Grant `list` where the list should stay visible.
+
 ## 2.25.0
 
 ### Minor Changes
