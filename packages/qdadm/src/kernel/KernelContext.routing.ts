@@ -245,7 +245,9 @@ export function applyRoutingMethods(KernelContextClass: { prototype: KernelConte
         path: '',
         name: routePrefix,
         component: pages.list,
-        meta: { layout: 'list' },
+        // The action this route performs, for the guard and the menu (#2497):
+        // a list page is governed by `list`, not by `read`.
+        meta: { layout: 'list', entityAction: 'list' },
       })
     }
 
@@ -254,7 +256,7 @@ export function applyRoutingMethods(KernelContextClass: { prototype: KernelConte
         path: `:${idParam}`,
         name: `${routePrefix}-show`,
         component: pages.show,
-        meta: { layout: 'show' },
+        meta: { layout: 'show', entityAction: 'read' },
       })
     }
 

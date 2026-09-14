@@ -101,9 +101,10 @@ For users, `ctx.userEntity({ storage })` does the same.
 
 Two things differ from a plain `ctx.entity()`, and both are by design:
 
-- **One permission for everything.** `canRead`, `canCreate`, `canUpdate` and
-  `canDelete` all go through `adminPermission` (`security:roles:manage` by
-  default), not `entity:roles:read|list|create|update|delete`. Reading roles
+- **One permission for everything.** `canList`, `canRead`, `canCreate`,
+  `canUpdate` and `canDelete` all go through `adminPermission`
+  (`security:roles:manage` by default), not
+  `entity:roles:list|read|create|update|delete`. Listing or reading roles
   cannot be opened to a non-admin through it.
 - **qdadm's shape.** `idField` is `name` and `fields` are `name`, `label`,
   `permissions`, `inherits`. An API serving another shape overrides both —
@@ -364,6 +365,28 @@ class BooksManager extends EntityManager {
     return record.owner_id === user?.id || user?.role === 'ROLE_ADMIN'
   }
 }
+```
+
+### Which permission a page needs
+
+The route guard and the menu check what the page does:
+
+| Route | Checks | Permission |
+|---|---|---|
+| a `ctx.crud()` list route, and its menu entry | `canList()` | `entity:<x>:list` |
+| a `ctx.crud()` show route | `canRead()` | `entity:<x>:read` |
+| any other entity route (custom pages, create, edit) | `canRead()` | `entity:<x>:read` |
+
+`read` and `list` are separate grants: a role granted `read` without `list`
+does not see the list or its menu entry.
+
+A manager that overrides `canRead()` to restrict who sees an entity must
+override `canList()` the same way, or the list page follows the plain
+`entity:<x>:list` grant. qdadm's own `RolesManager` and `UsersManager` do. A custom route opening a list follows
+the same rule when it says so:
+
+```js
+ctx.routes('things', [{ path: '', name: 'things', component: ThingsPage, meta: { entityAction: 'list' } }], { entity: 'things' })
 ```
 
 ## Storage-Level Auth

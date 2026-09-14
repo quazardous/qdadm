@@ -255,12 +255,17 @@ export function applyRoutingMethods(KernelClass: { prototype: Kernel }): void {
       const orchestrator = this.orchestrator
       if (!entity || !orchestrator || !orchestrator.isRegistered(entity)) return
 
+      // The action the route declares (#2497): a list route is governed by
+      // `list`. A route that declares none — any custom page — checks `read`.
+      const action = to.meta?.entityAction === 'list' ? 'list' : 'read'
+
       const checkEntity = (): { path: string } | undefined => {
         try {
           const manager = orchestrator.get(entity)
-          if (manager && !manager.canRead()) {
+          const allowed = manager && (action === 'list' ? manager.canList() : manager.canRead())
+          if (manager && !allowed) {
             console.warn(
-              `[qdadm] Access denied to ${to.path} (entity: ${entity})`
+              `[qdadm] Access denied to ${to.path} (entity: ${entity}, action: ${action})`
             )
             orchestrator.toast.error(
               'Access Denied',

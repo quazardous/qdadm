@@ -10,6 +10,7 @@
  */
 import { describe, it, expect } from 'vitest'
 import { RolesManager } from '../../src/security/RolesManager'
+import { UsersManager } from '../../src/security/UsersManager'
 import { MockApiStorage } from '../../src/entity/storage/MockApiStorage'
 
 const admin = (granted = ['security:roles:manage']) => ({
@@ -63,5 +64,27 @@ describe('RolesManager on your own storage (#2406)', () => {
     it('and only an admin may delete anything', () => {
       expect(onApi({ authAdapter: admin([]) }).canDelete({ name: 'ROLE_EDITOR' })).toBe(false)
     })
+  })
+})
+
+describe('system entity lists stay behind the admin permission (#2497)', () => {
+  // List pages and their menu entries check canList(). Without an override it
+  // would follow `entity:<x>:list` — which ordinary roles hold through
+  // `entity:*:list` — and show roles and users to non-admins.
+  const listerOnly = admin(['entity:*:list', 'entity:roles:list', 'entity:users:list'])
+
+  it('roles: a lister who is not an admin may not list them', () => {
+    expect(onApi({ authAdapter: listerOnly }).canList()).toBe(false)
+    expect(onApi().canList()).toBe(true)
+  })
+
+  it('users: the same', () => {
+    const users = (authAdapter) =>
+      new UsersManager({
+        storage: new MockApiStorage({ entityName: 'users', storageKey: `users_${Math.random()}`, initialData: [] }),
+        authAdapter,
+      })
+    expect(users(listerOnly).canList()).toBe(false)
+    expect(users(admin(['security:users:manage'])).canList()).toBe(true)
   })
 })

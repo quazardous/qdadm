@@ -146,6 +146,12 @@ export class UsersManager extends EntityManager {
     return this._isAdmin()
   }
 
+  // The list page and its menu entry check `list` (#2497): without this, they
+  // would follow `entity:<x>:list` and show a system entity to non-admins.
+  canList(): boolean {
+    return this._isAdmin()
+  }
+
   canCreate(): boolean {
     // little dumb but should work for simple storages
     return this._isAdmin()

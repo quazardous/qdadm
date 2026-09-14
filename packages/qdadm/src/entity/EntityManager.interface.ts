@@ -160,6 +160,8 @@ export interface EntityManagerLike {
   getEntityLabel(data: unknown): string | null
   getEntityBadges?(data: unknown): EntityBadge[]
   canRead(entity?: unknown): boolean
+  /** Whether the user may list — what a list page and its menu entry need (#2497). */
+  canList?(): boolean
   canCreate(): boolean
   canUpdate(entity?: unknown): boolean
   canDelete(entity?: unknown): boolean

@@ -93,13 +93,25 @@ export function useNavigation(): UseNavigationReturn {
   const alterVersion = ref(0)
 
   /**
-   * Check if user can access a nav item based on its entity's canRead()
+   * Check if user can access a nav item: canList() when it opens a list route, canRead() otherwise
    */
   function canAccessNavItem(item: NavItem): boolean {
     if (!item.entity || !orchestrator) return true
     const manager = orchestrator.get(item.entity)
     if (!manager) return true
+    // A menu entry is shown to whoever may do what its page does (#2497): a
+    // ctx.crud() entry opens a list, so it follows `list`. A route that
+    // declares no action, or is not registered, keeps `read`.
+    if (routeAction(item.route) === 'list' && manager.canList) return manager.canList()
     return manager.canRead()
+  }
+
+  function routeAction(name: string): string | undefined {
+    try {
+      return router.resolve({ name }).meta?.entityAction as string | undefined
+    } catch {
+      return undefined
+    }
   }
 
   // Note: Auth signal listeners removed - Kernel.invalidateApp() remounts entire app
