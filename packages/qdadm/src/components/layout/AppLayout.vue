@@ -604,7 +604,11 @@ const showBreadcrumb = computed<boolean>(() => {
   display: flex;
   flex-direction: column;
   transition: margin-left var(--fad-transition-slow);
-  overflow-y: auto;
+  /* Not a scroll container (#2534): the window scrolls, so an overflow here
+     made this box the anchor of every position: sticky below, and nothing
+     stuck. min-width: 0 keeps a wide child from stretching the column; wide
+     content scrolls in its own container (tables do, see _responsive.scss). */
+  min-width: 0;
 }
 
 .page-content {

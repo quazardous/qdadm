@@ -130,13 +130,15 @@
 // ============================================
 
 .p-datatable {
-  @include tablet {
-    // Horizontal scroll for table
-    .p-datatable-wrapper {
-      overflow-x: auto;
-      -webkit-overflow-scrolling: touch;
-    }
+  // A wide table scrolls itself, at every width (#2534). The page shell is not
+  // a scroll container — so position: sticky works in page content — and
+  // without this a wide table would scroll the whole page sideways.
+  .p-datatable-table-container {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
 
+  @include tablet {
     // Minimum width to prevent squishing
     .p-datatable-table {
       min-width: 600px;
