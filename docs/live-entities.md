@@ -173,6 +173,9 @@ fails is tried again at the same pace, since the subscription is about to lapse.
 ## What the framework handles for you
 
 - **Bursts collapse.** A backend replaying fifty rows costs one reload.
+- **Reloads never overlap.** Changes arriving while a reload is in flight cause
+  exactly one more when it settles, and only the latest answer reaches the
+  screen — an older one can never put a past state back.
 - **Detail pages stay scoped.** A screen showing record 42 ignores an event
   about record 7. An event carrying no `id` concerns the whole entity and
   always applies.

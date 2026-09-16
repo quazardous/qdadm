@@ -315,7 +315,15 @@ export function useEntityItemPage<T = unknown>(config: UseEntityItemPageOptions<
    * @param id - Optional ID override (defaults to route param)
    * @returns Loaded entity data or null on error
    */
+  let loadSeq = 0
+
   async function load(id: string | number | null = entityId.value): Promise<T | null> {
+    // Only the latest call may write (#2666). Live reloads and id changes can
+    // overlap; an older answer landing last would put a past state on screen.
+    // A superseded call resolves to null and touches nothing.
+    const seq = ++loadSeq
+    const isLatest = (): boolean => seq === loadSeq
+
     if (!id) {
       error.value = 'No entity ID provided'
       return null
@@ -326,6 +334,7 @@ export function useEntityItemPage<T = unknown>(config: UseEntityItemPageOptions<
 
     try {
       const responseData = await manager.get(id)
+      if (!isLatest()) return null
 
       if (!responseData) {
         error.value = `${manager.label || entity} not found`
@@ -344,6 +353,7 @@ export function useEntityItemPage<T = unknown>(config: UseEntityItemPageOptions<
 
       return transformed
     } catch (err) {
+      if (!isLatest()) return null
       console.error(`[useEntityItemPage] Failed to load ${entity}:`, err)
       const axiosError = err as { response?: { data?: { detail?: string } }; message?: string }
       error.value =
@@ -357,7 +367,7 @@ export function useEntityItemPage<T = unknown>(config: UseEntityItemPageOptions<
 
       return null
     } finally {
-      loading.value = false
+      if (isLatest()) loading.value = false
     }
   }
 

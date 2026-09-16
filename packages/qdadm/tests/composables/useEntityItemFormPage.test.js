@@ -251,6 +251,24 @@ describe('useEntityItemFormPage', () => {
       warn.mockRestore()
     })
 
+    it('keeps the latest load when two overlap — a slow answer cannot land in the form (#2666)', async () => {
+      mockRouteState = { name: 'book-edit', params: { id: '1' } }
+      let releaseFirst
+      mockManager.get
+        .mockImplementationOnce(() => new Promise((resolve) => { releaseFirst = () => resolve({ id: 1, title: 'Older', author: 'A' }) }))
+        .mockResolvedValueOnce({ id: 1, title: 'Newer', author: 'B' })
+
+      const { result } = createWrapper(() => useEntityItemFormPage({ entity: 'books', loadOnMount: false }))
+      const older = result.load()
+      await result.load()
+      releaseFirst()
+      await older
+      await flushPromises()
+
+      expect(result.data.value.title).toBe('Newer')
+      expect(result.loading.value).toBe(false)
+    })
+
     it('applies transformLoad hook', async () => {
       mockRouteState = { name: 'book-edit', params: { id: '1' } }
       const { result } = createWrapper(() =>

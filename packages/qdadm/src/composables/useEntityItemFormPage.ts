@@ -273,7 +273,14 @@ export function useEntityItemFormPage<T extends Record<string, unknown> = Record
     }
   }
 
+  // Only the latest load may write (#2666): moving quickly between records, a
+  // slow answer for the previous one would otherwise land in this record's form.
+  let loadSeq = 0
+
   async function load(): Promise<void> {
+    const seq = ++loadSeq
+    const isLatest = (): boolean => seq === loadSeq
+
     if (!isEdit.value) {
       data.value = deepClone(initialData) as T
       takeSnapshot()
@@ -285,6 +292,7 @@ export function useEntityItemFormPage<T extends Record<string, unknown> = Record
       // The item itself, never a cached list row: a list row may be a summary,
       // and whatever this form shows empty it saves back empty (#2484).
       const responseData = await manager.get(entityId.value!, undefined, { listCache: false })
+      if (!isLatest()) return
       const transformed = transformLoad(responseData)
       if (debug) reportMissingFields(transformed as Record<string, unknown>)
       data.value = transformed as T
@@ -298,6 +306,7 @@ export function useEntityItemFormPage<T extends Record<string, unknown> = Record
         await onLoadSuccess(transformed as T)
       }
     } catch (error) {
+      if (!isLatest()) return
       const axiosError = error as AxiosError
       toast.add({
         severity: 'error',
@@ -306,7 +315,7 @@ export function useEntityItemFormPage<T extends Record<string, unknown> = Record
         life: 5000,
       })
     } finally {
-      loading.value = false
+      if (isLatest()) loading.value = false
     }
   }
 

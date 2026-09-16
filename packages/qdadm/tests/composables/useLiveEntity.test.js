@@ -88,6 +88,40 @@ describe('useLiveEntity', () => {
       expect(reload).toHaveBeenCalledTimes(2)
     })
 
+    it('never runs two reloads at once, and runs one more for what arrived meanwhile (#2666)', async () => {
+      let running = 0
+      let most = 0
+      const releases = []
+      const slowReload = vi.fn(() => {
+        running++
+        most = Math.max(most, running)
+        return new Promise((resolve) => releases.push(() => { running--; resolve() }))
+      })
+      mountWatcher(signals, { reload: slowReload })
+
+      signals.emit('entity:data-invalidate', remote('runs'))
+      vi.advanceTimersByTime(300)
+      expect(slowReload).toHaveBeenCalledTimes(1)
+
+      // Two more changes while the first reload is still in flight.
+      signals.emit('entity:data-invalidate', remote('runs'))
+      vi.advanceTimersByTime(300)
+      signals.emit('entity:data-invalidate', remote('runs'))
+      vi.advanceTimersByTime(300)
+      expect(slowReload).toHaveBeenCalledTimes(1)
+
+      releases.shift()()
+      await Promise.resolve()
+      await Promise.resolve()
+      expect(slowReload).toHaveBeenCalledTimes(2)
+
+      releases.shift()()
+      await Promise.resolve()
+      await Promise.resolve()
+      expect(slowReload).toHaveBeenCalledTimes(2)
+      expect(most).toBe(1)
+    })
+
     it('honours the entity policy window', () => {
       mountWatcher(signals, { reload, manager: { live: { coalesceMs: 1000 } } })
 

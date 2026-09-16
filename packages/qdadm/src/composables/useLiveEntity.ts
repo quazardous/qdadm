@@ -40,7 +40,8 @@ interface LivePolicy {
  *
  * @param entityName - entity to watch
  * @param manager - its manager, read for the `live` policy (may be null)
- * @param reload - what to run; coalesced, never called concurrently by us
+ * @param reload - what to run; coalesced, and never called while a previous
+ *   call's promise is still pending — changes arriving meanwhile cause one more call
  * @returns unsubscribe function (also called automatically on unmount)
  */
 export function useLiveEntity(
@@ -63,10 +64,44 @@ export function useLiveEntity(
   let timer: ReturnType<typeof setTimeout> | null = null
   let disposed = false
 
+  // Never two reloads at once (#2666), as this composable promises: an event
+  // arriving while one is in flight marks it dirty, and exactly one more runs
+  // when it settles — no overlapping requests, and the last state lands.
+  let inFlight = false
+  let dirty = false
+
+  const settle = (): void => {
+    inFlight = false
+    if (dirty && !disposed) {
+      dirty = false
+      run()
+    }
+  }
+
+  // Only a reload that returns a promise is in flight: a synchronous one is done
+  // when it returns. A failure — thrown or rejected — must not stop the next one;
+  // the page reports its own load errors.
+  const run = (): void => {
+    let result: void | Promise<void>
+    try {
+      result = reload()
+    } catch {
+      return
+    }
+    if (result && typeof (result as Promise<void>).then === 'function') {
+      inFlight = true
+      ;(result as Promise<void>).then(settle, settle)
+    }
+  }
+
   const fire = (): void => {
     timer = null
     if (disposed) return
-    void reload()
+    if (inFlight) {
+      dirty = true
+      return
+    }
+    run()
   }
 
   const off = signals.on('entity:data-invalidate', (event: { name: string; data: unknown }) => {
