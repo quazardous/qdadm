@@ -136,6 +136,23 @@ export interface SSEConfig {
    */
   entities?: string[] | true | '*'
   /**
+   * Per-record subscriptions (#2664): a detail page tells the backend which
+   * record it shows, so the stream carries that record's changes to this tab.
+   *
+   * `url` receives `POST {session, entity, id}` when a detail page shows a
+   * record, answering `{expires_in}` (seconds); qdadm renews at half of it, and
+   * sends `DELETE` with the same body when the page leaves the record. Calls go
+   * through the kernel's `apiClient`, with the app's own auth.
+   *
+   * `session` is a per-tab id qdadm mints and also appends to the stream URL as
+   * `sessionParam` (default `'session'`): the stream and the subscriptions name
+   * the same tab. Do not put your own session parameter in `url`.
+   *
+   * The entity must be declared in `entities`, or its frames are dropped before
+   * any page sees them. Absent: no subscription, no session parameter.
+   */
+  subscriptions?: { url: string; sessionParam?: string }
+  /**
    * Token appended to the SSE URL as a query parameter.
    *
    * Defaults to the session auth adapter's token. Override it — the function

@@ -16,6 +16,7 @@ import { Orchestrator } from '../orchestrator/Orchestrator'
 import type { EntityAuthAdapter } from '../entity/auth/EntityAuthAdapter'
 import type { Kernel } from './Kernel'
 import type { SSEConfig } from './Kernel.types'
+import { sseTabSession, withQueryParam } from './sseSubscriptions'
 // #1196 Phase B — this-typing against the real Kernel shape (was Self = any)
 type Self = Kernel
 
@@ -447,6 +448,7 @@ export function applyRegistryMethods(KernelClass: { prototype: Kernel }): void {
         'getToken',
         'connectOnSignal',
         'disconnectOnSignal',
+        'subscriptions',
       ]),
       {
         getToken:
@@ -454,6 +456,7 @@ export function applyRegistryMethods(KernelClass: { prototype: Kernel }): void {
           'and query strings reach access logs',
         entities: 'no entity cache will be invalidated from the stream',
         tokenParam: 'the token will be sent under the default name "token"',
+        subscriptions: 'detail pages will not subscribe to their record, and the stream carries no tab session',
       }
     )
   }
@@ -466,6 +469,16 @@ export function applyRegistryMethods(KernelClass: { prototype: Kernel }): void {
 
     this._validateSseConfig(sse)
 
+    // Per-record subscriptions (#2664): the tab id is minted here and put in
+    // the stream URL, so the one the pages subscribe with is the same.
+    let url = sse.url
+    this.sseSubscriptions = null
+    if (sse.subscriptions?.url) {
+      const session = sseTabSession()
+      this.sseSubscriptions = { url: sse.subscriptions.url, session }
+      url = withQueryParam(url, sse.subscriptions.sessionParam ?? 'session', session)
+    }
+
     // An explicit sse.getToken wins — including an explicit null, which means
     // "send no token" and must not fall back to the auth adapter.
     const getToken =
@@ -477,7 +490,7 @@ export function applyRegistryMethods(KernelClass: { prototype: Kernel }): void {
 
     this.sseBridge = createSSEBridge({
       signals: this.signals!,
-      url: sse.url,
+      url,
       reconnectDelay: sse.reconnectDelay ?? 5000,
       signalPrefix: sse.signalPrefix ?? 'sse',
       autoConnect: sse.autoConnect ?? false,

@@ -80,6 +80,7 @@ import { isDebugBarKilled } from './debugBarKillSwitch'
 import { applyApiMethods } from './Kernel.api'
 import { applyI18nMethods } from './Kernel.i18n'
 import type { I18n } from '../i18n/I18n'
+import type { SseSubscriptions } from './sseSubscriptions'
 
 export class Kernel {
   options: KernelOptions
@@ -101,6 +102,8 @@ export class Kernel {
   deferred!: DeferredRegistry
   eventRouter: EventRouter | null = null
   sseBridge: SSEBridge | null = null
+  /** Where detail pages subscribe to their record, and as which tab (#2664). Null without `sse.subscriptions`. */
+  sseSubscriptions: SseSubscriptions | null = null
   /** Routes external entity changes to cache invalidation (#1888). */
   liveEntityRouter: LiveEntityRouter | null = null
   layoutComponents: InternalLayoutComponents | null = null

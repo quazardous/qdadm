@@ -129,6 +129,47 @@ new EntityManager({
 The defaults suit most entities; declare a policy only where they don't. A
 heavy list is the usual reason to set `refresh: false`.
 
+## Subscribing a detail page to its record
+
+A backend with many records rarely broadcasts every change to every tab. It
+sends a record's changes to the tabs that asked for them — and a detail page is
+where that question makes sense: it shows one record, for a while.
+
+```js
+new Kernel({
+  apiClient,                                   // the app's own client and auth
+  sse: {
+    url: '/api/events',                        // no session parameter of your own
+    entities: ['offers'],
+    subscriptions: { url: '/api/events/subscriptions' },
+  },
+})
+```
+
+With `subscriptions` set, a page built on `useEntityItemShowPage` subscribes to
+the record it shows, and qdadm keeps it that way:
+
+| When | Call |
+|---|---|
+| the page shows record 42 | `POST /api/events/subscriptions {session, entity, id: "42"}` → `{expires_in}` |
+| half of `expires_in` later, and so on | the same `POST` again |
+| the page leaves, or shows another record | `DELETE` with the same body |
+
+`session` is an id qdadm keeps **per browser tab** (a reload is the same tab)
+and appends to the stream URL as `?session=<id>` — `sessionParam` changes the
+name. The stream and the subscriptions therefore name the same tab; do not add
+a session parameter to `url` yourself.
+
+The backend then sends `entity:updated {entity, id}` down that tab's stream, and
+the page reloads through the usual path — so the entity must be listed in
+`entities`, like any live entity. An entity with `live.refresh: false` does not
+subscribe, and lists never do.
+
+Calls go through the kernel's `apiClient`: without one, nothing subscribes.
+A failed call never breaks the page — it simply does not update on its own —
+and debug mode logs which entity, record and status failed. A renewal that
+fails is tried again at the same pace, since the subscription is about to lapse.
+
 ## What the framework handles for you
 
 - **Bursts collapse.** A backend replaying fifty rows costs one reload.

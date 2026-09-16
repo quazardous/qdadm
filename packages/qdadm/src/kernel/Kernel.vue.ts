@@ -334,6 +334,8 @@ export function applyVueMethods(KernelClass: { prototype: Kernel }): void {
 
     if (this.sseBridge) {
       app.provide('qdadmSSEBridge', this.sseBridge)
+      // Detail pages subscribe to their record through this (#2664); null without sse.subscriptions.
+      app.provide('qdadmSSESubscriptions', this.sseSubscriptions)
     }
 
     app.provide('qdadmHooks', this.hookRegistry)
