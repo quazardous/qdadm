@@ -8,7 +8,7 @@
  * - Mobile: Full width overlay at bottom of screen
  *
  * Features:
- * - Inline action bar (mark read, clear, close) at top right
+ * - Toolbar row (mark read, clear, close) above the list
  * - Status items section (custom module items)
  * - Notification list (most recent first)
  * - Empty state
@@ -189,16 +189,15 @@ function formatTime(timestamp: number): string {
   left: calc(var(--fad-sidebar-width-collapsed, 2.5rem) + 0.375rem);
 }
 
-/* Inline toolbar - floats top-right inside the panel */
+/* Toolbar - its own row above the list, so its buttons never cover an entry's dismiss button */
 .notification-toolbar {
-  position: absolute;
-  top: 0;
-  right: 0;
   display: flex;
   align-items: center;
+  justify-content: flex-end;
   gap: 1px;
   padding: 0.25rem;
-  z-index: 1;
+  border-bottom: 1px solid var(--p-surface-100, #f1f5f9);
+  flex-shrink: 0;
 }
 
 .notification-toolbar-btn {
@@ -228,7 +227,6 @@ function formatTime(timestamp: number): string {
 /* Status items */
 .notification-panel-status {
   padding: 0.5rem 0.625rem;
-  padding-right: 2.5rem;
   border-bottom: 1px solid var(--p-surface-100, #f1f5f9);
   flex-shrink: 0;
 }
@@ -307,10 +305,6 @@ function formatTime(timestamp: number): string {
   border-bottom: 1px solid var(--p-surface-50, #f8fafc);
   cursor: pointer;
   transition: background 0.1s;
-}
-
-.notification-item:first-child {
-  padding-right: 2.5rem;
 }
 
 .notification-item:hover {
