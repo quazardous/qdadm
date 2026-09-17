@@ -1,7 +1,7 @@
 # Notifications
 
 Try it in the demo: **Features → Notifications**, and the *Simulate a change
-made elsewhere* button on a JP user.
+made elsewhere* buttons on a JP user.
 
 One place, the badge on the sidebar logo, says what is happening in the app:
 
@@ -80,7 +80,9 @@ When a detail page reloads because its record changed outside the session (see
 - the logo **flashes at once** — the moment the update arrives, before the reload
   starts, however short it is; a burst flashes once;
 - once the record is back, the history gets one `short` entry — `Offer "Dune"
-  updated elsewhere` — linked to it, without a pop-up.
+  updated elsewhere` — linked to it, without a pop-up. The entity can drop that
+  entry or say something more useful with
+  [`live.describeUpdate`](live-entities.md#saying-what-an-update-means).
 
 The page itself stays still. Lists add nothing: a list refreshing for fifty rows
 would bury the history.

@@ -102,7 +102,21 @@ const JSON_SERVER_DIALECT = {
   responseTotalHeader: 'X-Total-Count',
 }
 
-const jpUsersStorage = new ApiStorage({ endpoint: '/users', client: jpClient, ...JSON_SERVER_DIALECT })
+// DEMO HACK (#2685) — a phone number "changed elsewhere". JSONPlaceholder
+// persists nothing, so the user page's simulate button stores the new number in
+// sessionStorage and this storage serves it, as a live backend would.
+export const JP_USER_PHONE_KEY = 'qdadm-demo:jp_users:phone:'
+
+class JpUsersStorage extends ApiStorage {
+  async get(id, context) {
+    const user = await super.get(id, context)
+    let phone = null
+    try { phone = sessionStorage.getItem(JP_USER_PHONE_KEY + id) } catch { /* storage blocked */ }
+    return phone ? { ...user, phone } : user
+  }
+}
+
+const jpUsersStorage = new JpUsersStorage({ endpoint: '/users', client: jpClient, ...JSON_SERVER_DIALECT })
 const postsStorage = new ApiStorage({ endpoint: '/posts', client: jpClient, ...JSON_SERVER_DIALECT })
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -252,7 +266,14 @@ export class JsonPlaceholderModule extends Module {
         phone: { type: 'text', label: 'Phone' },
         website: { type: 'url', label: 'Website' }
       },
-      storage: jpUsersStorage
+      storage: jpUsersStorage,
+      // A reload is only worth a notification entry when something a person
+      // cares about changed — here, the phone number (#2685).
+      live: {
+        describeUpdate: (before, after) => before.phone === after.phone
+          ? null
+          : { summary: `${after.name}'s phone changed`, detail: `${before.phone} → ${after.phone}` },
+      },
     })
 
     ctx.entity('posts', {

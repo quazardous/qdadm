@@ -17,6 +17,7 @@ import type { HookRegistry } from '../hooks/HookRegistry'
 // Circular type import — safe because `import type` is erased at runtime
 import type { EntityManager } from './EntityManager'
 import type { RouteStatePersister } from '../routeState'
+import type { NewNotification } from '../notifications/NotificationStore'
 
 // ============ INTERNAL TYPES ============
 
@@ -230,7 +231,23 @@ export interface LiveEntityPolicy {
    * Default 300. `0` reloads on every event — rarely what you want.
    */
   coalesceMs?: number
+  /**
+   * Whether a live reload of a detail page is worth a notification entry, and
+   * what it says (#2685). Called once per reload, with the record that was on
+   * screen and the reloaded one.
+   *
+   * Return `null` / `undefined` for no entry (the badge still flashes), or the
+   * entry: `severity` defaults to `'info'`, `keep` to `'short'`, `to` to the
+   * record's page. Without this hook, the page adds a generic
+   * "… updated elsewhere" entry. If it throws, no entry is added.
+   *
+   * Do not mutate `before` or `after`: they are the page's own records.
+   */
+  describeUpdate?: (before: EntityRecord, after: EntityRecord) => LiveUpdateEntry | null | undefined
 }
+
+/** The notification entry `LiveEntityPolicy.describeUpdate` asks for (#2685). */
+export type LiveUpdateEntry = Omit<NewNotification, 'severity'> & Partial<Pick<NewNotification, 'severity'>>
 
 /**
  * EntityManager constructor options

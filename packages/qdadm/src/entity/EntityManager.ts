@@ -105,7 +105,7 @@ export class EntityManager<T extends EntityRecord = EntityRecord> {
   protected _warmup: boolean
   protected _authSensitive: boolean
   /** Reaction policy for changes made outside this session (#1888). */
-  protected _live: Required<LiveEntityPolicy>
+  protected _live: LiveEntityPolicy & Required<Pick<LiveEntityPolicy, 'refresh' | 'coalesceMs'>>
   protected _system: boolean
 
   protected _scopeWhitelist: string[] | null
@@ -215,6 +215,7 @@ export class EntityManager<T extends EntityRecord = EntityRecord> {
     this._live = {
       refresh: live?.refresh ?? 'mounted',
       coalesceMs: live?.coalesceMs ?? 300,
+      ...(live?.describeUpdate ? { describeUpdate: live.describeUpdate } : {}),
     }
     this._system = system
 
@@ -640,7 +641,7 @@ export class EntityManager<T extends EntityRecord = EntityRecord> {
    * Check if user can read entities
    */
   /** Reaction policy for changes made outside this session (#1888). */
-  get live(): Required<LiveEntityPolicy> {
+  get live(): LiveEntityPolicy & Required<Pick<LiveEntityPolicy, 'refresh' | 'coalesceMs'>> {
     return this._live
   }
 

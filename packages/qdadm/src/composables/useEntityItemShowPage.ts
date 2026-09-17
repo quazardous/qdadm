@@ -58,7 +58,8 @@ import {
   type ShowResolvedFieldConfig,
 } from './createShowFieldResolver'
 import type { OrchestratorLike } from '../entity/EntityManager.interface'
-import type { ButtonSeverity } from '../types'
+import type { LiveEntityPolicy } from '../entity/EntityManager.types'
+import type { ButtonSeverity, EntityRecord } from '../types'
 import { useActionRegistry } from './useActionRegistry'
 import { useLiveEntity } from './useLiveEntity'
 
@@ -329,17 +330,35 @@ export function useEntityItemShowPage<T = Record<string, unknown>>(
   const notifications = useNotifications()
   const route = useRoute()
   useLiveEntity(entity, manager, async () => {
+    // A burst of events is one reload, so this is the record from before the burst.
+    const before = data.value
     const record = await base.reload()
     // A change made elsewhere to the record on screen leaves a line in the
-    // history (#2677): short-lived, linked back to it, never a pop-up.
+    // history (#2677): short-lived, linked back to it, never a pop-up. The
+    // entity may say the change is not worth one, or what it means (#2685).
     if (!record) return
-    const name = entityLabel.value ? `"${entityLabel.value}"` : `#${entityId.value}`
-    notifications.addNotification({
-      severity: 'info',
-      summary: `${manager.label ?? entity} ${name} updated elsewhere`,
-      keep: 'short',
-      ...(route?.name ? { to: { name: String(route.name), params: { ...route.params } } } : {}),
-    })
+    const to = route?.name ? { to: { name: String(route.name), params: { ...route.params } } } : {}
+    const describeUpdate = (manager as { live?: LiveEntityPolicy }).live?.describeUpdate
+    if (!describeUpdate) {
+      const name = entityLabel.value ? `"${entityLabel.value}"` : `#${entityId.value}`
+      notifications.addNotification({
+        severity: 'info',
+        summary: `${manager.label ?? entity} ${name} updated elsewhere`,
+        keep: 'short',
+        ...to,
+      })
+      return
+    }
+    if (!before) return
+    let entry
+    try {
+      entry = describeUpdate(before as unknown as EntityRecord, record as unknown as EntityRecord)
+    } catch (err) {
+      console.warn(`[qdadm] live.describeUpdate failed for ${entity} #${entityId.value}:`, err)
+      return
+    }
+    if (!entry) return
+    notifications.addNotification({ severity: 'info', keep: 'short', ...to, ...entry })
   }, {
     id: () => entityId.value,
     // The update has arrived: say so on the badge at once — before the reload is

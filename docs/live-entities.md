@@ -125,9 +125,40 @@ new EntityManager({
 |---|---|---|
 | `refresh` | `'mounted'` | A screen showing this entity reloads itself. `false` invalidates only — the screen updates next time it asks. |
 | `coalesceMs` | `300` | Window over which a burst collapses into a single reload. `0` reloads on every frame, which is rarely what you want. |
+| `describeUpdate` | — | Whether a detail page's live reload is worth a notification entry, and what it says. See below. |
 
 The defaults suit most entities; declare a policy only where they don't. A
 heavy list is the usual reason to set `refresh: false`.
+
+### Saying what an update means
+
+A record can change many times on the server before anything a person cares
+about happens. `describeUpdate` decides, after each live reload of a detail
+page, whether the change deserves a line in the
+[notification history](notifications.md):
+
+```js
+new EntityManager({
+  name: 'offers',
+  live: {
+    describeUpdate(before, after) {
+      if (after.vote === before.vote) return null   // flash only, no entry
+      return { summary: `Offer "${after.title}" judged: ${after.vote}`, severity: 'success' }
+    },
+  },
+})
+```
+
+- It receives the record that was on screen and the reloaded one. A burst of
+  events is one reload, so one call: `before` is the record from before the burst.
+- Return `null` or `undefined` for no entry, or an entry: `summary`, and
+  optionally `detail`, `severity` (default `'info'`), `keep` (default `'short'`)
+  and `to` (default: the record's page).
+- If it throws, no entry is added and a warning goes to the console.
+- Without it, every live reload adds a generic `… updated elsewhere` entry.
+- The badge flashes either way: the flash says something arrived, before the
+  reload.
+- Do not mutate `before` or `after`: they are the page's own records.
 
 ## Subscribing a detail page to its record
 
@@ -175,8 +206,8 @@ fails is tried again at the same pace, since the subscription is about to lapse.
 - **Bursts collapse.** A backend replaying fifty rows costs one reload.
 - **A trace is kept.** With [notifications](notifications.md) enabled, a detail
   page reloaded by a change made elsewhere flashes the badge at once and adds
-  one short-lived entry to the history, linked to the record; the page itself
-  stays still.
+  one short-lived entry to the history, linked to the record — or the entry
+  `describeUpdate` returns, if any. The page itself stays still.
 - **Reloads never overlap.** Changes arriving while a reload is in flight cause
   exactly one more when it settles, and only the latest answer reaches the
   screen — an older one can never put a past state back.

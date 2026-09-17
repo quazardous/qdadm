@@ -8,18 +8,25 @@ import { computed, inject } from 'vue'
 import { useEntityItemShowPage, ShowPage, ShowField, FieldGroups, PageNav } from '@quazardous/qdadm'
 import { useRouter, useRoute } from 'vue-router'
 import Button from 'primevue/button'
+import { JP_USER_PHONE_KEY } from '../modules/jsonplaceholder/JsonPlaceholderModule'
 
 const router = useRouter()
 const route = useRoute()
 
 const show = useEntityItemShowPage({ entity: 'jp_users' })
 
-// Demo (#2677): what a live backend would send when this user changes elsewhere.
-// The page reloads, the badge shows the activity, and the notification history
-// gets a short entry linked back here — no pop-up.
+// Demo (#2677, #2685): what a live backend would send when this user changes
+// elsewhere. The badge flashes and the page reloads. The entity decides whether
+// that is worth a notification entry: an unchanged record adds none, a new phone
+// number adds one, linked back here.
 const signals = inject('qdadmSignals', null)
 function simulateRemoteChange() {
   signals?.emit('entity:data-invalidate', { entity: 'jp_users', id: route.params.id, action: 'updated', source: 'remote' })
+}
+function simulatePhoneChange() {
+  const phone = `+33 1 ${String(Math.floor(Math.random() * 1e8)).padStart(8, '0').replace(/(..)(?=.)/g, '$1 ')}`
+  try { sessionStorage.setItem(JP_USER_PHONE_KEY + route.params.id, phone) } catch { /* storage blocked */ }
+  simulateRemoteChange()
 }
 
 // Generate fields from schema and organize into groups
@@ -96,6 +103,13 @@ function getNestedValue(fieldName) {
         severity="secondary"
         size="small"
         @click="simulateRemoteChange"
+      />
+      <Button
+        icon="pi pi-phone"
+        label="Simulate a phone change made elsewhere"
+        severity="secondary"
+        size="small"
+        @click="simulatePhoneChange"
       />
     </template>
 
