@@ -35,7 +35,8 @@
  */
 import { ref, computed, onUnmounted, type Ref, type ComputedRef } from 'vue'
 import { registerPageState } from './usePageState'
-import { useRouter, type Router } from 'vue-router'
+import { useRouter, useRoute, type Router } from 'vue-router'
+import { useNotifications } from '../notifications/NotificationStore'
 import { useConfirm } from 'primevue/useconfirm'
 import { requireDeleteConfirmation } from './confirmDelete'
 import {
@@ -325,8 +326,20 @@ export function useEntityItemShowPage<T = Record<string, unknown>>(
   // Reload when THIS record changed outside the session (#1888 lot D).
   // Scoped by id: an event about another record must not reload every open
   // detail page. An event carrying no id concerns the whole entity and applies.
+  const notifications = useNotifications()
+  const route = useRoute()
   useLiveEntity(entity, manager, async () => {
-    await base.reload()
+    const record = await base.reload()
+    // A change made elsewhere to the record on screen leaves a line in the
+    // history (#2677): short-lived, linked back to it, never a pop-up.
+    if (!record) return
+    const name = entityLabel.value ? `"${entityLabel.value}"` : `#${entityId.value}`
+    notifications.addNotification({
+      severity: 'info',
+      summary: `${manager.label ?? entity} ${name} updated elsewhere`,
+      keep: 'short',
+      ...(route?.name ? { to: { name: String(route.name), params: { ...route.params } } } : {}),
+    })
   }, { id: () => entityId.value })
   // Cast orchestrator to include toast methods
   const orchestrator = baseOrchestrator as Orchestrator

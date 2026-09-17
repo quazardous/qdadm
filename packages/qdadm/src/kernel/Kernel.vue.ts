@@ -359,6 +359,8 @@ export function applyVueMethods(KernelClass: { prototype: Kernel }): void {
     if (this.options.notifications?.enabled) {
       this.notificationStore = createNotificationStore({
         maxNotifications: this.options.notifications.maxNotifications,
+        keep: this.options.notifications.keep,
+        shortKeepMs: this.options.notifications.shortKeepMs,
       })
       app.provide(NOTIFICATION_KEY, this.notificationStore)
     }

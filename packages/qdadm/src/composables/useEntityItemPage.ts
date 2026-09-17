@@ -15,6 +15,7 @@
 import { ref, computed, onMounted, provide, type Ref, type ComputedRef } from 'vue'
 import { useRoute } from 'vue-router'
 import { useStackHydrator, type StackHydratorReturn } from '../chain/useStackHydrator'
+import { useNotifications } from '../notifications/NotificationStore'
 import type { EntityManagerCrud } from '../entity/EntityManager.interface'
 import type { OrchestratorLike } from '../entity/EntityManager.interface'
 import { useOrchestrator } from '../orchestrator/useOrchestrator.js'
@@ -161,6 +162,8 @@ export function useEntityItemPage<T = unknown>(config: UseEntityItemPageOptions<
 
   // Stack hydrator for setting entity data on navigation context
   const hydrator = useStackHydrator()
+  // Loads show as activity on the notification badge (#2677); a no-op without notifications.
+  const notifications = useNotifications()
 
   // ============ STATE ============
 
@@ -333,7 +336,7 @@ export function useEntityItemPage<T = unknown>(config: UseEntityItemPageOptions<
     error.value = null
 
     try {
-      const responseData = await manager.get(id)
+      const responseData = await notifications.track(manager.get(id))
       if (!isLatest()) return null
 
       if (!responseData) {

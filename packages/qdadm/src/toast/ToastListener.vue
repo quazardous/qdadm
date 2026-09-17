@@ -11,15 +11,26 @@ import { onMounted, onUnmounted, inject } from 'vue'
 import { useToast } from 'primevue/usetoast'
 import type { SignalBus } from '../kernel/SignalBus'
 import { explainMissingToast } from '../kernel/vitePluginCheck'
+import {
+  NOTIFICATION_KEY,
+  type NotificationKeep,
+  type NotificationSeverity,
+  type NotificationTarget,
+} from '../notifications/NotificationStore'
 
 interface ToastEventData {
   summary?: string
   detail?: string
   life?: number
+  emitter?: string
+  keep?: NotificationKeep
+  to?: NotificationTarget
 }
 
 const toast = explainMissingToast(useToast)
 const signals = inject<SignalBus | null>('qdadmSignals', null)
+// Provided when `notifications.enabled`: every toast also leaves a trace (#2677).
+const notifications = inject(NOTIFICATION_KEY, null)
 
 let unsubscribe: (() => void) | null = null
 
@@ -38,6 +49,15 @@ onMounted(() => {
       summary: data?.summary,
       detail: data?.detail,
       life: data?.life ?? 3000
+    })
+    // The pop-up is unchanged; the history keeps it, for as long as its keep level says.
+    notifications?.addNotification({
+      severity: severity as NotificationSeverity,
+      summary: data?.summary ?? '',
+      ...(data?.detail !== undefined ? { detail: data.detail } : {}),
+      ...(data?.emitter !== undefined ? { emitter: data.emitter } : {}),
+      ...(data?.keep !== undefined ? { keep: data.keep } : {}),
+      ...(data?.to !== undefined ? { to: data.to } : {}),
     })
   })
 })

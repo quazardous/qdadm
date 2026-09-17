@@ -34,6 +34,16 @@ const NOTIFICATION_KEY: InjectionKey<NotificationStore> = Symbol('qdadm-notifica
 
 export type NotificationSeverity = 'success' | 'info' | 'warn' | 'error'
 
+/**
+ * How long an entry stays in the list (#2677): `none` is not recorded, `short`
+ * is dropped after `shortKeepMs` (read or not), `long` stays until cleared or
+ * pushed out by the cap.
+ */
+export type NotificationKeep = 'none' | 'short' | 'long'
+
+/** Where an entry leads when clicked: a vue-router location. */
+export type NotificationTarget = { name: string; params?: Record<string, unknown>; query?: Record<string, unknown> } | string
+
 export interface Notification {
   id: string
   severity: NotificationSeverity
@@ -42,6 +52,20 @@ export interface Notification {
   emitter?: string
   timestamp: number
   read: boolean
+  keep: Exclude<NotificationKeep, 'none'>
+  /** When a `short` entry leaves the list; null for `long`. */
+  expiresAt: number | null
+  to?: NotificationTarget
+}
+
+/** What `addNotification` takes: `keep` defaults by severity, see `NotificationStoreConfig.keep`. */
+export interface NewNotification {
+  severity: NotificationSeverity
+  summary: string
+  detail?: string
+  emitter?: string
+  keep?: NotificationKeep
+  to?: NotificationTarget
 }
 
 export interface StatusItem {
@@ -56,6 +80,19 @@ export interface StatusItem {
 
 export interface NotificationStoreConfig {
   maxNotifications?: number
+  /** Keep level per severity. Default: success and info `short`, warn and error `long`. */
+  keep?: Partial<Record<NotificationSeverity, NotificationKeep>>
+  /** How long a `short` entry stays, in ms. Default 5 minutes. */
+  shortKeepMs?: number
+  /** Ongoing activity shorter than this shows nothing on the badge, in ms. Default 400. */
+  activityDelayMs?: number
+}
+
+const DEFAULT_KEEP: Record<NotificationSeverity, NotificationKeep> = {
+  success: 'short',
+  info: 'short',
+  warn: 'long',
+  error: 'long',
 }
 
 export interface NotificationStore {
@@ -63,7 +100,8 @@ export interface NotificationStore {
   notifications: ComputedRef<Notification[]>
   unreadCount: ComputedRef<number>
   hasAlert: ComputedRef<boolean>
-  addNotification(n: Omit<Notification, 'id' | 'timestamp' | 'read'>): string
+  /** Records an entry and returns its id — `''` when its keep level is `none`. */
+  addNotification(n: NewNotification): string
   markRead(id: string): void
   markAllRead(): void
   removeNotification(id: string): void
@@ -74,6 +112,12 @@ export interface NotificationStore {
   registerStatus(item: StatusItem): void
   updateStatus(id: string, updates: Partial<StatusItem>): void
   removeStatus(id: string): void
+
+  // Activity (#2677)
+  /** Counts `work` as in progress until it settles, and returns it unchanged. */
+  track<T>(work: Promise<T>): Promise<T>
+  /** True once tracked work has been in progress for `activityDelayMs`. */
+  isBusy: ComputedRef<boolean>
 
   // Panel state
   isOpen: Ref<boolean>
@@ -102,6 +146,9 @@ let _idCounter = 0
  */
 export function createNotificationStore(config: NotificationStoreConfig = {}): NotificationStore {
   const maxNotifications = config.maxNotifications ?? 50
+  const keepBySeverity = { ...DEFAULT_KEEP, ...(config.keep ?? {}) }
+  const shortKeepMs = config.shortKeepMs ?? 5 * 60 * 1000
+  const activityDelayMs = config.activityDelayMs ?? 400
 
   const state = reactive<NotificationState>({
     notifications: [],
@@ -112,13 +159,46 @@ export function createNotificationStore(config: NotificationStoreConfig = {}): N
 
   // ── Notifications ──────────────────────────────────────────────────────
 
-  function addNotification(n: Omit<Notification, 'id' | 'timestamp' | 'read'>): string {
+  // A `short` entry leaves when it expires; one timer, set for the soonest.
+  let pruneTimer: ReturnType<typeof setTimeout> | null = null
+
+  function schedulePrune(): void {
+    if (pruneTimer) clearTimeout(pruneTimer)
+    pruneTimer = null
+    const soonest = state.notifications.reduce<number | null>(
+      (min, n) => (n.expiresAt !== null && (min === null || n.expiresAt < min) ? n.expiresAt : min),
+      null
+    )
+    if (soonest === null) return
+    pruneTimer = setTimeout(prune, Math.max(0, soonest - Date.now()))
+  }
+
+  function prune(): void {
+    const now = Date.now()
+    for (let i = state.notifications.length - 1; i >= 0; i--) {
+      const expiresAt = state.notifications[i]!.expiresAt
+      if (expiresAt !== null && expiresAt <= now) state.notifications.splice(i, 1)
+    }
+    schedulePrune()
+  }
+
+  function addNotification(n: NewNotification): string {
+    const keep = n.keep ?? keepBySeverity[n.severity] ?? 'long'
+    if (keep === 'none') return ''
+
     const id = `notif-${++_idCounter}-${Date.now()}`
+    const timestamp = Date.now()
     const notification: Notification = {
-      ...n,
+      severity: n.severity,
+      summary: n.summary,
+      ...(n.detail !== undefined ? { detail: n.detail } : {}),
+      ...(n.emitter !== undefined ? { emitter: n.emitter } : {}),
+      ...(n.to !== undefined ? { to: n.to } : {}),
       id,
-      timestamp: Date.now(),
+      timestamp,
       read: false,
+      keep,
+      expiresAt: keep === 'short' ? timestamp + shortKeepMs : null,
     }
 
     // Add to front (most recent first)
@@ -129,6 +209,7 @@ export function createNotificationStore(config: NotificationStoreConfig = {}): N
       state.notifications.length = maxNotifications
     }
 
+    if (notification.expiresAt !== null) schedulePrune()
     return id
   }
 
@@ -181,6 +262,32 @@ export function createNotificationStore(config: NotificationStoreConfig = {}): N
     }
   }
 
+  // ── Activity ───────────────────────────────────────────────────────────
+
+  const inFlight = ref(0)
+  const busy = ref(false)
+  let busyTimer: ReturnType<typeof setTimeout> | null = null
+
+  function track<T>(work: Promise<T>): Promise<T> {
+    inFlight.value++
+    if (inFlight.value === 1) {
+      // Only work that lasts shows: a fast reload leaves the badge alone.
+      busyTimer = setTimeout(() => {
+        busyTimer = null
+        if (inFlight.value > 0) busy.value = true
+      }, activityDelayMs)
+    }
+    const settle = (): void => {
+      inFlight.value = Math.max(0, inFlight.value - 1)
+      if (inFlight.value > 0) return
+      if (busyTimer) clearTimeout(busyTimer)
+      busyTimer = null
+      busy.value = false
+    }
+    work.then(settle, settle)
+    return work
+  }
+
   // ── Panel state ────────────────────────────────────────────────────────
 
   function open(): void {
@@ -229,6 +336,8 @@ export function createNotificationStore(config: NotificationStoreConfig = {}): N
     registerStatus,
     updateStatus,
     removeStatus,
+    track,
+    isBusy: computed(() => busy.value),
     isOpen,
     open,
     close,
@@ -272,6 +381,8 @@ export function useNotifications(): NotificationStore {
       registerStatus: () => {},
       updateStatus: () => {},
       removeStatus: () => {},
+      track: (work) => work,
+      isBusy: computed(() => false),
       isOpen: ref(false),
       open: () => {},
       close: () => {},

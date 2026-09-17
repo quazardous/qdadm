@@ -62,13 +62,13 @@ describe('ShowPage while its record reloads (#2435)', () => {
     expect(life.unmounted).toBe(0)
     expect(page.find('.probe').exists()).toBe(true)
     expect(page.find('.first-load').exists()).toBe(false)
-    expect(page.find('.show-refreshing').exists()).toBe(true)
+    // No stripe across the content (#2677): the notification badge shows the activity.
+    expect(page.find('.show-refreshing').exists()).toBe(false)
     expect(page.find('.show-content').attributes('aria-busy')).toBe('true')
 
     await page.setProps({ loading: false, data: { id: 1, title: 'Dune (revised)' } })
     expect(life.mounted).toBe(1)
     expect(life.unmounted).toBe(0)
-    expect(page.find('.show-refreshing').exists()).toBe(false)
     expect(page.find('.show-content').attributes('aria-busy')).toBeUndefined()
   })
 

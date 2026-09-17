@@ -199,6 +199,10 @@ export interface DebugBarConfig {
 export interface NotificationsConfig {
   enabled?: boolean
   maxNotifications?: number
+  /** Keep level per severity (#2677). Default: success and info `short`, warn and error `long`. */
+  keep?: Partial<Record<'success' | 'info' | 'warn' | 'error', 'none' | 'short' | 'long'>>
+  /** How long a `short` entry stays in the list, in ms. Default 5 minutes. */
+  shortKeepMs?: number
 }
 
 /**

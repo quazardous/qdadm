@@ -13,11 +13,21 @@
  * - Notification list (most recent first)
  * - Empty state
  */
-import { RouterLink } from 'vue-router'
+import { RouterLink, useRouter, type RouteLocationRaw } from 'vue-router'
 import { useNotifications } from './NotificationStore'
-import type { NotificationSeverity } from './NotificationStore'
+import type { Notification, NotificationSeverity } from './NotificationStore'
 
 const store = useNotifications()
+const router = useRouter()
+
+/** An entry is read when clicked; one with a `to` also takes the user there (#2677). */
+function openNotification(notif: Notification): void {
+  store.markRead(notif.id)
+  if (!notif.to) return
+  store.close()
+  // NotificationTarget mirrors StatusItem.to: a vue-router location, typed loosely for app code.
+  void router.push(notif.to as RouteLocationRaw)
+}
 
 const severityIcons: Record<NotificationSeverity, string> = {
   success: 'pi pi-check-circle',
@@ -113,9 +123,11 @@ function formatTime(timestamp: number): string {
           class="notification-item"
           :class="{
             'notification-item--unread': !notif.read,
+            'notification-item--link': !!notif.to,
             [`notification-item--${notif.severity}`]: true,
           }"
-          @click="store.markRead(notif.id)"
+          :role="notif.to ? 'link' : undefined"
+          @click="openNotification(notif)"
         >
           <div class="notification-item-icon">
             <i :class="severityIcons[notif.severity]" />

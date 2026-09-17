@@ -19,6 +19,7 @@
 
 import { inject, getCurrentInstance } from 'vue'
 import type { SignalBus } from '../kernel/SignalBus'
+import type { NotificationKeep, NotificationTarget } from '../notifications/NotificationStore'
 
 /**
  * Toast severity types
@@ -33,16 +34,24 @@ export interface ToastOptions {
   summary: string
   detail?: string
   life?: number
-  /** Force classic PrimeVue toast even when NotificationModule is active */
+  /** @deprecated Toasts always pop up now (#2677); kept for compatibility, it does nothing. */
   forceToast?: boolean
+  /** How long the notification history keeps it (#2677); default by severity. */
+  keep?: NotificationKeep
+  /** Where its history entry leads: a vue-router location. */
+  to?: NotificationTarget
 }
 
 /**
  * Toast method options
  */
 export interface ToastMethodOptions {
-  /** Force classic PrimeVue toast even when NotificationModule is active */
+  /** @deprecated Toasts always pop up now (#2677); kept for compatibility, it does nothing. */
   forceToast?: boolean
+  /** How long the notification history keeps it (#2677); default by severity. */
+  keep?: NotificationKeep
+  /** Where its history entry leads: a vue-router location. */
+  to?: NotificationTarget
 }
 
 /**
@@ -90,10 +99,18 @@ export function useSignalToast(emitter?: string): SignalToastAPI {
    * @param summary - Toast title
    * @param detail - Toast detail message
    * @param life - Duration in ms (0 for sticky)
-   * @param forceToast - Force classic PrimeVue toast when NotificationModule is active
+   * @param options - keep and to, for the notification history (#2677)
    */
-  function addToast(severity: ToastSeverity, summary: string, detail?: string, life: number = 3000, forceToast?: boolean): void {
-    signals.emit(`toast:${severity}`, { summary, detail, life, emitter: resolvedEmitter, forceToast })
+  function addToast(severity: ToastSeverity, summary: string, detail?: string, life: number = 3000, options?: ToastMethodOptions): void {
+    signals.emit(`toast:${severity}`, {
+      summary,
+      detail,
+      life,
+      emitter: resolvedEmitter,
+      ...(options?.forceToast !== undefined ? { forceToast: options.forceToast } : {}),
+      ...(options?.keep !== undefined ? { keep: options.keep } : {}),
+      ...(options?.to !== undefined ? { to: options.to } : {}),
+    })
   }
 
   return {
@@ -105,7 +122,7 @@ export function useSignalToast(emitter?: string): SignalToastAPI {
      * @param options - Additional options
      */
     success(summary: string, detail?: string, life: number = 3000, options?: ToastMethodOptions): void {
-      addToast('success', summary, detail, life, options?.forceToast)
+      addToast('success', summary, detail, life, options)
     },
 
     /**
@@ -116,7 +133,7 @@ export function useSignalToast(emitter?: string): SignalToastAPI {
      * @param options - Additional options
      */
     error(summary: string, detail?: string, life: number = 5000, options?: ToastMethodOptions): void {
-      addToast('error', summary, detail, life, options?.forceToast)
+      addToast('error', summary, detail, life, options)
     },
 
     /**
@@ -127,7 +144,7 @@ export function useSignalToast(emitter?: string): SignalToastAPI {
      * @param options - Additional options
      */
     info(summary: string, detail?: string, life: number = 3000, options?: ToastMethodOptions): void {
-      addToast('info', summary, detail, life, options?.forceToast)
+      addToast('info', summary, detail, life, options)
     },
 
     /**
@@ -138,7 +155,7 @@ export function useSignalToast(emitter?: string): SignalToastAPI {
      * @param options - Additional options
      */
     warn(summary: string, detail?: string, life: number = 4000, options?: ToastMethodOptions): void {
-      addToast('warn', summary, detail, life, options?.forceToast)
+      addToast('warn', summary, detail, life, options)
     },
 
     /**
@@ -146,7 +163,7 @@ export function useSignalToast(emitter?: string): SignalToastAPI {
      * @param options - Toast options
      */
     add(options: ToastOptions): void {
-      addToast(options.severity || 'info', options.summary, options.detail, options.life, options.forceToast)
+      addToast(options.severity || 'info', options.summary, options.detail, options.life, options)
     },
   }
 }

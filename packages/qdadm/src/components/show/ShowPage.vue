@@ -36,7 +36,8 @@
  * - #footer: Custom footer (replaces ShowActions if provided)
  * - #error: Custom error display
  * - #loading: Custom display for the first load. A reload of a record already
- *   on screen keeps it there, marked busy (#2435).
+ *   on screen keeps it there, marked busy (#2435); the notification badge shows
+ *   the activity (#2677).
  */
 import { computed, type PropType } from 'vue'
 import PageHeader from '../layout/PageHeader.vue'
@@ -227,7 +228,6 @@ type ShowFieldValue = string | number | boolean | Date | Record<string, unknown>
 
     <!-- Content -->
     <template v-else>
-      <div v-if="loading" class="show-refreshing" role="progressbar" aria-label="Refreshing" />
       <!-- Single content body; Card wrapper is conditional (#1193) -->
       <CardShell :card="cardWrapper">
         <!-- Grid layout with optional media zone -->
@@ -310,28 +310,7 @@ type ShowFieldValue = string | number | boolean | Date | Record<string, unknown>
   padding: 3rem;
 }
 
-/* A record being refreshed stays on screen: a thin bar says so (#2435). */
-.show-refreshing {
-  height: 3px;
-  margin-bottom: -1rem; /* inside the page gap: the content does not move */
-  background: linear-gradient(90deg, transparent, var(--p-primary-color, #3b82f6), transparent);
-  background-size: 40% 100%;
-  background-repeat: no-repeat;
-  animation: show-refreshing 1.1s ease-in-out infinite;
-}
 
-@keyframes show-refreshing {
-  from { background-position: -40% 0; }
-  to { background-position: 140% 0; }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .show-refreshing {
-    animation: none;
-    background: var(--p-primary-color, #3b82f6);
-    opacity: 0.4;
-  }
-}
 
 .show-error-message {
   margin: 1rem 0;

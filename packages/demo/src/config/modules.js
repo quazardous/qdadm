@@ -14,6 +14,7 @@ import { ProductsModule } from '../modules/products/ProductsModule'
 import { SettingsModule } from '../modules/settings/SettingsModule'
 import { FavoritesModule } from '../modules/favorites/FavoritesModule'
 import { JsonPlaceholderModule } from '../modules/jsonplaceholder/JsonPlaceholderModule'
+import { NotificationsDemoModule } from '../modules/notifications/NotificationsDemoModule'
 
 export const moduleDefs = [
   SecurityModule,
@@ -24,7 +25,8 @@ export const moduleDefs = [
   ProductsModule,
   SettingsModule,
   FavoritesModule,
-  JsonPlaceholderModule
+  JsonPlaceholderModule,
+  NotificationsDemoModule
 ]
 
 export const modulesOptions = {
@@ -40,5 +42,6 @@ export const sectionOrder = [
   'JSONPlaceholder',
   'DummyJSON',
   'REST Countries',
-  'Security'
+  'Security',
+  'Features'
 ]

@@ -12,6 +12,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
 import { useListPage } from '../../src/composables/useListPage'
 import { createSignalBus } from '../../src/kernel/SignalBus'
+import { createNotificationStore, NOTIFICATION_KEY } from '../../src/notifications/NotificationStore'
 
 const mockRouter = { push: vi.fn(), replace: vi.fn() }
 vi.mock('vue-router', () => ({
@@ -46,7 +47,7 @@ function createManager(live) {
   }
 }
 
-function mountList(manager, signals) {
+function mountList(manager, signals, store = null) {
   let list
   const wrapper = mount(
     {
@@ -62,6 +63,7 @@ function mountList(manager, signals) {
           qdadmOrchestrator: { get: () => manager },
           qdadmSignals: signals,
           qdadmEntityFilters: {},
+          ...(store ? { [NOTIFICATION_KEY]: store } : {}),
         },
       },
     }
@@ -101,6 +103,25 @@ describe('useListPage — live refresh wiring', () => {
     await flushPromises()
 
     expect(manager.query.mock.calls.length).toBeGreaterThan(afterMount)
+    wrapper.unmount()
+  })
+
+  it('leaves no line in the notification history — a list refresh would bury it (#2677)', async () => {
+    const manager = createManager()
+    const signals = createSignalBus()
+    const store = createNotificationStore()
+    const { wrapper } = mountList(manager, signals, store)
+
+    await vi.runOnlyPendingTimersAsync()
+    await flushPromises()
+    const afterMount = manager.query.mock.calls.length
+
+    signals.emit('entity:data-invalidate', remote())
+    await vi.advanceTimersByTimeAsync(300)
+    await flushPromises()
+
+    expect(manager.query.mock.calls.length).toBeGreaterThan(afterMount)
+    expect(store.notifications.value).toHaveLength(0)
     wrapper.unmount()
   })
 

@@ -85,7 +85,7 @@ change gets a minor and a CHANGELOG entry rather than silence.
 | Field widgets — `LookupField`, `KeyValueEditor`, `ScopeEditor`, `PermissionEditor`, … | [forms.md](forms.md) |
 | Non-entity forms — `useBareForm` | [forms.md](forms.md) |
 | Module extension and manager decorators — `extendModule`, `createDecoratedManager` | [extension.md](extension.md) |
-| Notifications — `useNotifications`, `NotificationModule` | [AGENT_GUIDE.md](AGENT_GUIDE.md) |
+| Notifications — `useNotifications`, `NotificationModule` | [notifications.md](notifications.md) |
 | Live entities — `sse.entities`, the `live` policy | [live-entities.md](live-entities.md) |
 | Google sign-in — `GoogleOAuthAdapter`, the `#alternatives` slot | [auth-google.md](auth-google.md) |
 | OIDC sign-in — `OAuthCodeAdapter` | [auth-oidc.md](auth-oidc.md) |

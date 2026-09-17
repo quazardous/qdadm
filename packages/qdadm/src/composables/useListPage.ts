@@ -38,6 +38,7 @@ import {
 import { useConfirm } from 'primevue/useconfirm'
 import { requireDeleteConfirmation } from './confirmDelete'
 import { registerPageState, activeFilters } from './usePageState'
+import { useNotifications } from '../notifications/NotificationStore'
 import { useHooks } from './useHooks.js'
 import { useEntityItemPage, type ParentConfig, type UseEntityItemPageReturn } from './useEntityItemPage.js'
 import { useActiveStack } from '../chain/useActiveStack.js'
@@ -142,6 +143,8 @@ export function useListPage<T = unknown>(config: UseListPageOptions<T>): UseList
 
   const router = useRouter()
   const route = useRoute()
+  // Loads show as activity on the notification badge (#2677); a no-op without notifications.
+  const notifications = useNotifications()
   const confirm = useConfirm() as ConfirmService
 
   // Mobile detection (viewport width < 768px)
@@ -841,9 +844,12 @@ export function useListPage<T = unknown>(config: UseListPageOptions<T>): UseList
         params = onBeforeLoad(params) || params
       }
 
-      const response = manager.query
-        ? await manager.query(params, { routingContext: entityContext.value })
-        : await manager.list(params, entityContext.value)
+      // The request shows as activity on the notification badge (#2677).
+      const response = await notifications.track(
+        manager.query
+          ? manager.query(params, { routingContext: entityContext.value })
+          : manager.list(params, entityContext.value)
+      )
 
       fromCache.value = response.fromCache || false
 

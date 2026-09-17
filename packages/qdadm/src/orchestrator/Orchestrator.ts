@@ -59,6 +59,10 @@ export type EntityFactory = (
 export interface ToastOptions {
   life?: number
   emitter?: string
+  /** How long the notification history keeps it (#2677); default by severity. */
+  keep?: 'none' | 'short' | 'long'
+  /** Where its history entry leads: a vue-router location. */
+  to?: { name: string; params?: Record<string, unknown>; query?: Record<string, unknown> } | string
 }
 
 /**
@@ -196,6 +200,8 @@ export class Orchestrator {
             detail,
             life: opts.life ?? defaults[severity],
             emitter: opts.emitter,
+            ...(opts.keep !== undefined ? { keep: opts.keep } : {}),
+            ...(opts.to !== undefined ? { to: opts.to } : {}),
           })
         }
       }

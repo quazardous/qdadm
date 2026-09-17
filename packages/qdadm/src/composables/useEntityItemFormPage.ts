@@ -37,6 +37,7 @@ import {
 } from './useEntityItemPage'
 import { registerGuardDialog, unregisterGuardDialog } from './useGuardStore'
 import { registerPageState } from './usePageState'
+import { useNotifications } from '../notifications/NotificationStore'
 import { deepClone } from '../utils/transformers'
 import { getSiblingRoutes } from '../module/moduleRegistry'
 import {
@@ -130,6 +131,8 @@ export function useEntityItemFormPage<T extends Record<string, unknown> = Record
   const route = useRoute()
   const confirm = useConfirm() as ConfirmService
   const debug = inject<boolean>('qdadmDebug', false)
+  // Loads show as activity on the notification badge (#2677); a no-op without notifications.
+  const notifications = useNotifications()
 
   // Use useEntityItemPage for common infrastructure
   const itemPage = useEntityItemPage({
@@ -291,7 +294,7 @@ export function useEntityItemFormPage<T extends Record<string, unknown> = Record
     try {
       // The item itself, never a cached list row: a list row may be a summary,
       // and whatever this form shows empty it saves back empty (#2484).
-      const responseData = await manager.get(entityId.value!, undefined, { listCache: false })
+      const responseData = await notifications.track(manager.get(entityId.value!, undefined, { listCache: false }))
       if (!isLatest()) return
       const transformed = transformLoad(responseData)
       if (debug) reportMissingFields(transformed as Record<string, unknown>)

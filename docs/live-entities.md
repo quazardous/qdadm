@@ -173,6 +173,9 @@ fails is tried again at the same pace, since the subscription is about to lapse.
 ## What the framework handles for you
 
 - **Bursts collapse.** A backend replaying fifty rows costs one reload.
+- **A trace is kept.** With [notifications](notifications.md) enabled, a detail
+  page reloaded by a change made elsewhere adds one short-lived entry to the
+  history, linked to the record; the badge shows the reload while it lasts.
 - **Reloads never overlap.** Changes arriving while a reload is in flight cause
   exactly one more when it settles, and only the latest answer reaches the
   screen — an older one can never put a past state back.

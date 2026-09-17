@@ -4,14 +4,23 @@
  *
  * Demonstrates field groups with tabs layout, including icons and badges.
  */
-import { computed } from 'vue'
+import { computed, inject } from 'vue'
 import { useEntityItemShowPage, ShowPage, ShowField, FieldGroups, PageNav } from '@quazardous/qdadm'
 import { useRouter, useRoute } from 'vue-router'
+import Button from 'primevue/button'
 
 const router = useRouter()
 const route = useRoute()
 
 const show = useEntityItemShowPage({ entity: 'jp_users' })
+
+// Demo (#2677): what a live backend would send when this user changes elsewhere.
+// The page reloads, the badge shows the activity, and the notification history
+// gets a short entry linked back here — no pop-up.
+const signals = inject('qdadmSignals', null)
+function simulateRemoteChange() {
+  signals?.emit('entity:data-invalidate', { entity: 'jp_users', id: route.params.id, action: 'updated', source: 'remote' })
+}
 
 // Generate fields from schema and organize into groups
 show.generateFields({ exclude: ['address', 'company'] })
@@ -78,6 +87,16 @@ function getNestedValue(fieldName) {
   <ShowPage v-bind="show.props.value" v-on="show.events">
     <template #nav>
       <PageNav />
+    </template>
+
+    <template #header-actions>
+      <Button
+        icon="pi pi-sync"
+        label="Simulate a change made elsewhere"
+        severity="secondary"
+        size="small"
+        @click="simulateRemoteChange"
+      />
     </template>
 
     <template #fields>
