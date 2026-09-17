@@ -1,5 +1,15 @@
 # Changelog
 
+## 2.30.0
+
+### Minor Changes
+
+- 7fdf765: feat(live): an entity decides whether a live reload of a detail page is worth a notification entry, and what it says. `live.describeUpdate(before, after)` returns `null` for no entry (the badge still flashes) or the entry to add. Without it, the generic "… updated elsewhere" entry stays.
+
+### Patch Changes
+
+- 36fca9e: fix(notifications): the panel's toolbar no longer covers the first entry's dismiss button. The mark-read, clear and close buttons now sit on their own row above the list, so the panel shows one close cross, not two overlapping ones.
+
 ## 2.29.0
 
 ### Minor Changes
