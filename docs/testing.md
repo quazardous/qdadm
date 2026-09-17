@@ -69,3 +69,20 @@ For end-to-end checks on the running app, an agent drives the real tab through
 the MCP. `page_snapshot` shows what the page is made of and what it is doing;
 `fill`, `click` and `entity_get` act and check what was stored. See
 [DEBUG.md](DEBUG.md) and the tutorial's [AGENT.md](../examples/tutorial-mini-admin/AGENT.md).
+
+## A visual glitch during a live reload
+
+A flash that lasts half a second is easy to describe wrong. `tools/visual-capture/live-reload.mjs`
+drives headless Chromium, triggers the update and reports, for 2.5 s, every CSS transition and
+animation that starts, every focus change, the DOM changes, and what paints at a few points of a
+region — events and computed styles, not pixels:
+
+```bash
+node tools/visual-capture/live-reload.mjs \
+  --url http://localhost:5174/jp-users/1 \
+  --storage 'qdadm_demo_auth={"token":"t","user":{"id":1,"username":"admin","role":"ROLE_ADMIN"}}' \
+  --signal '{"entity":"jp_users","id":"1","action":"updated","source":"remote"}' \
+  --region .p-tabs
+```
+
+`--click "<button text>"` triggers it like a user instead. `--signal` needs debug mode (`window.__qdadm`).

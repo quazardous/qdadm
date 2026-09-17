@@ -8,7 +8,9 @@ One place, the badge on the sidebar logo, says what is happening in the app:
 - **what happened** — a history of toasts and other entries, in a panel;
 - **what needs attention** — the logo blinks for an unread warning or error, and
   a count shows how many entries are unread;
-- **what is in progress** — a ring turns around the logo while work lasts.
+- **what is in progress** — a ring turns around the logo while work lasts;
+- **what just arrived** — a short flash, the moment an update reaches the record
+  on screen.
 
 ## Enable
 
@@ -73,9 +75,17 @@ orchestrator.toast.warn('Import finished with errors', '3 rows skipped', {
 ## Changes made elsewhere
 
 When a detail page reloads because its record changed outside the session (see
-[live entities](live-entities.md)), it adds one `short` entry — `Offer "Dune"
-updated elsewhere` — linked to the record, without a pop-up. Lists add nothing:
-a list refreshing for fifty rows would bury the history.
+[live entities](live-entities.md)):
+
+- the logo **flashes at once** — the moment the update arrives, before the reload
+  starts, however short it is; a burst flashes once;
+- once the record is back, the history gets one `short` entry — `Offer "Dune"
+  updated elsewhere` — linked to it, without a pop-up.
+
+The page itself stays still. Lists add nothing: a list refreshing for fifty rows
+would bury the history.
+
+`flash()` is also yours to call, for anything else that just arrived.
 
 ## Activity on the badge
 
@@ -101,7 +111,7 @@ const {
   notifications, unreadCount, hasAlert, isBusy,
   addNotification, markRead, markAllRead, removeNotification, clearNotifications,
   registerStatus, updateStatus, removeStatus,
-  track, open, close, toggle,
+  track, flash, isFlashing, open, close, toggle,
 } = useNotifications()
 
 addNotification({ severity: 'info', summary: 'Sync complete', keep: 'short', to: { name: 'sync' } })

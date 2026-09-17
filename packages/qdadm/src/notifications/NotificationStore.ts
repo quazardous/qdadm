@@ -118,6 +118,14 @@ export interface NotificationStore {
   track<T>(work: Promise<T>): Promise<T>
   /** True once tracked work has been in progress for `activityDelayMs`. */
   isBusy: ComputedRef<boolean>
+  /**
+   * Flash the badge: something just arrived — an update to the record on
+   * screen (#2679). Immediate, never delayed; a flash already running absorbs
+   * further calls, so a burst flashes once.
+   */
+  flash(): void
+  /** True while the badge flashes. */
+  isFlashing: ComputedRef<boolean>
 
   // Panel state
   isOpen: Ref<boolean>
@@ -288,6 +296,20 @@ export function createNotificationStore(config: NotificationStoreConfig = {}): N
     return work
   }
 
+  // ── Flash ──────────────────────────────────────────────────────────────
+
+  const FLASH_MS = 900
+  const flashing = ref(false)
+
+  function flash(): void {
+    // A burst of updates flashes once: the running flash already says it.
+    if (flashing.value) return
+    flashing.value = true
+    setTimeout(() => {
+      flashing.value = false
+    }, FLASH_MS)
+  }
+
   // ── Panel state ────────────────────────────────────────────────────────
 
   function open(): void {
@@ -338,6 +360,8 @@ export function createNotificationStore(config: NotificationStoreConfig = {}): N
     removeStatus,
     track,
     isBusy: computed(() => busy.value),
+    flash,
+    isFlashing: computed(() => flashing.value),
     isOpen,
     open,
     close,
@@ -383,6 +407,8 @@ export function useNotifications(): NotificationStore {
       removeStatus: () => {},
       track: (work) => work,
       isBusy: computed(() => false),
+      flash: () => {},
+      isFlashing: computed(() => false),
       isOpen: ref(false),
       open: () => {},
       close: () => {},

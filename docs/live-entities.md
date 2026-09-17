@@ -174,8 +174,9 @@ fails is tried again at the same pace, since the subscription is about to lapse.
 
 - **Bursts collapse.** A backend replaying fifty rows costs one reload.
 - **A trace is kept.** With [notifications](notifications.md) enabled, a detail
-  page reloaded by a change made elsewhere adds one short-lived entry to the
-  history, linked to the record; the badge shows the reload while it lasts.
+  page reloaded by a change made elsewhere flashes the badge at once and adds
+  one short-lived entry to the history, linked to the record; the page itself
+  stays still.
 - **Reloads never overlap.** Changes arriving while a reload is in flight cause
   exactly one more when it settles, and only the latest answer reaches the
   screen — an older one can never put a past state back.

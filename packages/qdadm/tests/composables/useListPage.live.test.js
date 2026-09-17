@@ -122,6 +122,7 @@ describe('useListPage — live refresh wiring', () => {
 
     expect(manager.query.mock.calls.length).toBeGreaterThan(afterMount)
     expect(store.notifications.value).toHaveLength(0)
+    expect(store.isFlashing.value).toBe(false)
     wrapper.unmount()
   })
 

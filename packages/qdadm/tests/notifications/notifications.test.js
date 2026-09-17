@@ -145,6 +145,35 @@ describe('toasts leave a trace', () => {
   })
 })
 
+describe('flash (#2679)', () => {
+  it('flashes at once, for a short while', () => {
+    const store = createNotificationStore()
+    store.flash()
+    expect(store.isFlashing.value).toBe(true)
+    vi.advanceTimersByTime(899)
+    expect(store.isFlashing.value).toBe(true)
+    vi.advanceTimersByTime(1)
+    expect(store.isFlashing.value).toBe(false)
+  })
+
+  it('a burst flashes once: calls during a flash do not extend it', () => {
+    const store = createNotificationStore()
+    store.flash()
+    vi.advanceTimersByTime(500)
+    store.flash()
+    vi.advanceTimersByTime(400)
+    expect(store.isFlashing.value).toBe(false)
+  })
+
+  it('does not wait like the activity ring does', async () => {
+    const store = createNotificationStore()
+    store.track(new Promise((resolve) => setTimeout(resolve, 100)))
+    store.flash()
+    expect(store.isFlashing.value).toBe(true)
+    expect(store.isBusy.value).toBe(false)
+  })
+})
+
 describe('useSignalToast carries keep and to (#2677)', () => {
   it('forwards them to the toast signal, so a component can set them', async () => {
     const { useSignalToast } = await import('../../src/toast/useSignalToast')
@@ -177,6 +206,17 @@ describe('the badge', () => {
     store.markAllRead()
     await badge.vm.$nextTick()
     expect(badge.find('.notification-badge-count').exists()).toBe(false)
+  })
+
+  it('flashes when something arrives', async () => {
+    const store = createNotificationStore()
+    const badge = mountBadge(store)
+    store.flash()
+    await badge.vm.$nextTick()
+    expect(badge.find('.notification-badge-flash').exists()).toBe(true)
+    vi.advanceTimersByTime(900)
+    await badge.vm.$nextTick()
+    expect(badge.find('.notification-badge-flash').exists()).toBe(false)
   })
 
   it('turns a ring while tracked work lasts', async () => {

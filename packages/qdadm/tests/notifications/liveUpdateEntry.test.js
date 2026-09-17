@@ -16,7 +16,7 @@ vi.mock('primevue/useconfirm', () => ({ useConfirm: () => ({ require: vi.fn() })
 
 import { useEntityItemShowPage } from '../../src/composables/useEntityItemShowPage'
 
-function mountShow({ store, signals, get }) {
+function mountShow({ store, signals, get, live = { coalesceMs: 0 } }) {
   const manager = {
     name: 'offers',
     label: 'Offer',
@@ -31,7 +31,7 @@ function mountShow({ store, signals, get }) {
     canRead: () => true,
     canUpdate: () => true,
     canDelete: () => true,
-    live: { coalesceMs: 0 },
+    live,
   }
   mount({ template: '<div />', setup() { useEntityItemShowPage({ entity: 'offers' }); return {} } }, {
     global: {
@@ -71,10 +71,28 @@ describe('a detail page reloaded by a change made elsewhere (#2677)', () => {
     expect(toasts).not.toHaveBeenCalled()
   })
 
+  it('flashes the badge as soon as the update arrives, before the reload ends (#2679)', async () => {
+    const store = createNotificationStore()
+    const signals = createSignalBus()
+    const get = vi.fn()
+      .mockResolvedValueOnce({ id: 7, title: 'Dune' })
+      .mockReturnValueOnce(new Promise(() => {})) // a reload that never ends
+    mountShow({ store, signals, get, live: {} }) // the default 300 ms coalescing window
+    await flushPromises()
+    expect(store.isFlashing.value).toBe(false)
+
+    signals.emit('entity:data-invalidate', { entity: 'offers', id: 7, source: 'remote' })
+    // At once — before any coalescing window or reload.
+    expect(store.isFlashing.value).toBe(true)
+    await flushPromises()
+    expect(store.notifications.value).toHaveLength(0) // the entry waits for the reload; the flash does not
+  })
+
   it('adds nothing for the page’s own first load', async () => {
     const store = createNotificationStore()
     mountShow({ store, signals: createSignalBus(), get: vi.fn().mockResolvedValue({ id: 7, title: 'Dune' }) })
     await flushPromises()
     expect(store.notifications.value).toHaveLength(0)
+    expect(store.isFlashing.value).toBe(false)
   })
 })

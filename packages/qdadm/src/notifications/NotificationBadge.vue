@@ -7,7 +7,8 @@
  * - something needs attention: the parent layout blinks the logo via
  *   :has(.notification-badge-zone--alert);
  * - how many entries are unread: a count;
- * - work is in progress: a ring, once tracked work has lasted `activityDelayMs`.
+ * - work is in progress: a ring, once tracked work has lasted `activityDelayMs`;
+ * - something just arrived: a short flash, immediately (#2679).
  *
  * Click toggles the notification panel open/close.
  */
@@ -29,6 +30,7 @@ const unreadLabel = computed(() => (unread.value > 99 ? '99+' : String(unread.va
     @click.stop.prevent="store.toggle()"
   >
     <span v-if="store.isBusy.value" class="notification-badge-ring" role="progressbar" aria-label="Loading" />
+    <span v-if="store.isFlashing.value" class="notification-badge-flash" aria-hidden="true" />
     <span v-if="unread > 0" class="notification-badge-count">{{ unreadLabel }}</span>
   </div>
 </template>
@@ -78,11 +80,30 @@ const unreadLabel = computed(() => (unread.value > 99 ? '99+' : String(unread.va
   to { transform: rotate(360deg); }
 }
 
+/* Something just arrived: a halo that grows out of the logo and fades. */
+.notification-badge-flash {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  pointer-events: none;
+  animation: notification-badge-flash 0.9s ease-out 1;
+}
+
+@keyframes notification-badge-flash {
+  0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--p-primary-color, #3b82f6) 70%, transparent); }
+  100% { box-shadow: 0 0 0 14px color-mix(in srgb, var(--p-primary-color, #3b82f6) 0%, transparent); }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .notification-badge-ring {
     animation: none;
     border-color: var(--p-primary-color, #3b82f6);
     opacity: 0.5;
+  }
+
+  .notification-badge-flash {
+    animation: none;
+    box-shadow: 0 0 0 3px var(--p-primary-color, #3b82f6);
   }
 }
 </style>

@@ -27,6 +27,12 @@ export interface UseLiveEntityOptions {
    * own id: without it, changing one record reloads every open detail page.
    */
   id?: () => string | number | null | undefined
+  /**
+   * Called at once for every event that concerns this screen, before the
+   * reload is coalesced (#2679) — for a cue that must not wait, like the
+   * notification badge's flash.
+   */
+  onEvent?: () => void
 }
 
 interface LivePolicy {
@@ -128,6 +134,8 @@ export function useLiveEntity(
         return
       }
     }
+
+    options.onEvent?.()
 
     // Coalesce: a backend replaying fifty rows must cost one reload, not fifty.
     if (coalesceMs <= 0) {

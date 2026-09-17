@@ -122,6 +122,19 @@ describe('useLiveEntity', () => {
       expect(most).toBe(1)
     })
 
+    it('calls onEvent at once for each event about this screen, before coalescing (#2679)', () => {
+      const onEvent = vi.fn()
+      mountWatcher(signals, { reload, options: { id: () => 42, onEvent } })
+
+      signals.emit('entity:data-invalidate', remote('runs', { id: 42 }))
+      expect(onEvent).toHaveBeenCalledTimes(1)
+      expect(reload).not.toHaveBeenCalled()
+
+      signals.emit('entity:data-invalidate', remote('runs', { id: 7 }))      // another record
+      signals.emit('entity:data-invalidate', { entity: 'runs', id: 42, source: 'local' }) // a local echo
+      expect(onEvent).toHaveBeenCalledTimes(1)
+    })
+
     it('honours the entity policy window', () => {
       mountWatcher(signals, { reload, manager: { live: { coalesceMs: 1000 } } })
 

@@ -340,7 +340,12 @@ export function useEntityItemShowPage<T = Record<string, unknown>>(
       keep: 'short',
       ...(route?.name ? { to: { name: String(route.name), params: { ...route.params } } } : {}),
     })
-  }, { id: () => entityId.value })
+  }, {
+    id: () => entityId.value,
+    // The update has arrived: say so on the badge at once — before the reload is
+    // coalesced, let alone finished (#2679).
+    onEvent: () => notifications.flash(),
+  })
   // Cast orchestrator to include toast methods
   const orchestrator = baseOrchestrator as Orchestrator
 
