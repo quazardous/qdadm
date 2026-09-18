@@ -268,6 +268,11 @@ export interface KernelOptions {
   routeState?: string | RouteStatePersister
   debugBar?: DebugBarConfig
   notifications?: NotificationsConfig
+  /** App-wide display defaults (#2772). */
+  display?: {
+    /** What a missing value shows, in detail pages and formatters. Default `'-'`. */
+    emptyPlaceholder?: string
+  }
   toast?: Record<string, unknown>
   debug?: boolean
   onAuthExpired?: (payload: unknown) => void

@@ -81,6 +81,7 @@ import { applyApiMethods } from './Kernel.api'
 import { applyI18nMethods } from './Kernel.i18n'
 import type { I18n } from '../i18n/I18n'
 import type { SseSubscriptions } from './sseSubscriptions'
+import { setEmptyPlaceholder } from '../utils/formatters'
 
 export class Kernel {
   options: KernelOptions
@@ -133,6 +134,8 @@ export class Kernel {
   _authImpersonationCleanup: (() => void) | null = null
 
   constructor(options: KernelOptions) {
+    // Module-level, like the formatters that read it: one app per page (#2772).
+    if (options.display?.emptyPlaceholder !== undefined) setEmptyPlaceholder(options.display.emptyPlaceholder)
     // Auto-inject DebugModule if debugBar.module is provided
     if (options.debugBar?.module) {
       const DebugModuleClass = options.debugBar.module

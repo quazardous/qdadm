@@ -375,7 +375,7 @@ export function applyRegistryMethods(KernelClass: { prototype: Kernel }): void {
    */
   const KNOWN_KERNEL_OPTIONS = new Set([
     'apiClient', 'app', 'authAdapter', 'authTypes', 'basePath', 'coreRoutes',
-    'debug', 'debugBar', 'defaultEntityCacheTtlMs', 'entityAuthAdapter',
+    'debug', 'debugBar', 'defaultEntityCacheTtlMs', 'display', 'entityAuthAdapter',
     'eventRouter', 'existingApp', 'existingRouter', 'existingSignals',
     'features', 'hashMode', 'homeRoute', 'i18n', 'layouts', 'managerRegistry',
     'managerResolver', 'managers', 'moduleDefs', 'modules', 'modulesOptions',

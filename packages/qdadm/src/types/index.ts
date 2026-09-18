@@ -109,6 +109,8 @@ export interface FieldConfig {
   filterable?: boolean
   searchable?: boolean
   validator?: (value: unknown) => boolean | string
+  /** Shown in displays for an empty value; defaults to the kernel's `display.emptyPlaceholder` (#2772). */
+  emptyText?: string
   [key: string]: unknown
 }
 

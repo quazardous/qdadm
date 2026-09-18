@@ -9,6 +9,25 @@
  */
 
 // =============================================================================
+// EMPTY PLACEHOLDER
+// =============================================================================
+
+let emptyPlaceholder = '-'
+
+/**
+ * What qdadm shows for a missing value (#2772): the formatters and detail
+ * pages. Set once by the kernel from `display.emptyPlaceholder`.
+ */
+export function setEmptyPlaceholder(value: string): void {
+  emptyPlaceholder = value
+}
+
+/** The current empty placeholder, `'-'` unless configured. */
+export function getEmptyPlaceholder(): string {
+  return emptyPlaceholder
+}
+
+// =============================================================================
 // DATE/TIME FORMATTING
 // =============================================================================
 
@@ -22,16 +41,16 @@
  * @param dateStr - ISO date string or Date object
  * @param options - Intl.DateTimeFormat options
  * @param locale - Explicit locale override (default: browser locale)
- * @returns Formatted date string or '-' if empty
+ * @returns Formatted date string or the empty placeholder if empty
  */
 export function formatDate(
   dateStr: string | Date | null | undefined,
   options: Intl.DateTimeFormatOptions = {},
   locale?: string
 ): string {
-  if (!dateStr) return '-'
+  if (!dateStr) return emptyPlaceholder
   const date = new Date(dateStr)
-  if (isNaN(date.getTime())) return '-'
+  if (isNaN(date.getTime())) return emptyPlaceholder
 
   if (Object.keys(options).length === 0) {
     return date.toLocaleString(locale)
@@ -75,9 +94,9 @@ export function formatDateOnly(
   options: Intl.DateTimeFormatOptions = {},
   locale?: string
 ): string {
-  if (!dateStr) return '-'
+  if (!dateStr) return emptyPlaceholder
   const date = new Date(dateStr)
-  if (isNaN(date.getTime())) return '-'
+  if (isNaN(date.getTime())) return emptyPlaceholder
   return date.toLocaleDateString(locale, {
     year: 'numeric',
     month: '2-digit',
@@ -90,9 +109,9 @@ export function formatDateOnly(
  * Format to time only (14:30:00)
  */
 export function formatTimeOnly(dateStr: string | Date | null | undefined): string {
-  if (!dateStr) return '-'
+  if (!dateStr) return emptyPlaceholder
   const date = new Date(dateStr)
-  if (isNaN(date.getTime())) return '-'
+  if (isNaN(date.getTime())) return emptyPlaceholder
   return date.toLocaleTimeString()
 }
 
@@ -115,7 +134,7 @@ export function formatDateOrNever(dateStr: string | Date | null | undefined): st
  * @returns Human-readable duration (e.g., "2h 30m 15s" or "45.2s")
  */
 export function formatDuration(ms: number | null | undefined): string {
-  if (ms === null || ms === undefined) return '-'
+  if (ms === null || ms === undefined) return emptyPlaceholder
   if (ms < 1000) return `${ms}ms`
 
   const seconds = Math.floor(ms / 1000)
@@ -142,10 +161,10 @@ export function formatDurationBetween(
   startDate: string | Date | null | undefined,
   endDate: string | Date | null | undefined
 ): string {
-  if (!startDate || !endDate) return '-'
+  if (!startDate || !endDate) return emptyPlaceholder
   const start = new Date(startDate)
   const end = new Date(endDate)
-  if (isNaN(start.getTime()) || isNaN(end.getTime())) return '-'
+  if (isNaN(start.getTime()) || isNaN(end.getTime())) return emptyPlaceholder
   return formatDuration(end.getTime() - start.getTime())
 }
 
@@ -163,7 +182,7 @@ export function formatNumber(
   options: Intl.NumberFormatOptions = {},
   locale?: string
 ): string {
-  if (value === null || value === undefined) return '-'
+  if (value === null || value === undefined) return emptyPlaceholder
   return value.toLocaleString(locale, options)
 }
 
@@ -178,7 +197,7 @@ export function formatCurrency(
   currencyCode = 'USD',
   locale?: string
 ): string {
-  if (value === null || value === undefined) return '-'
+  if (value === null || value === undefined) return emptyPlaceholder
   return new Intl.NumberFormat(locale, { style: 'currency', currency: currencyCode }).format(value)
 }
 
@@ -186,7 +205,7 @@ export function formatCurrency(
  * Format bytes to human-readable size
  */
 export function formatBytes(bytes: number | null | undefined): string {
-  if (bytes === null || bytes === undefined) return '-'
+  if (bytes === null || bytes === undefined) return emptyPlaceholder
   if (bytes === 0) return '0 B'
 
   const units = ['B', 'KB', 'MB', 'GB', 'TB']
@@ -200,7 +219,7 @@ export function formatBytes(bytes: number | null | undefined): string {
  * Format a percentage
  */
 export function formatPercent(value: number | null | undefined, decimals = 1): string {
-  if (value === null || value === undefined) return '-'
+  if (value === null || value === undefined) return emptyPlaceholder
   return `${(value * 100).toFixed(decimals)}%`
 }
 

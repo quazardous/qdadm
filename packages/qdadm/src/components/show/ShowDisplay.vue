@@ -28,7 +28,7 @@
 import { computed, type PropType } from 'vue'
 import { RouterLink, type RouteLocationRaw } from 'vue-router'
 import Tag from 'primevue/tag'
-import { formatDate, formatNumber, formatCurrency } from '../../utils/formatters'
+import { formatDate, formatNumber, formatCurrency, getEmptyPlaceholder } from '../../utils/formatters'
 
 type DisplayType =
   | 'text'
@@ -80,6 +80,8 @@ interface FieldConfig {
   imageHeight?: string
   // Custom render
   render?: (value: unknown) => string
+  /** Shown for an empty value; defaults to the kernel's `display.emptyPlaceholder` (#2772). */
+  emptyText?: string
 }
 
 const props = defineProps({
@@ -97,16 +99,19 @@ const isEmpty = computed(() => {
   return props.value === null || props.value === undefined || props.value === ''
 })
 
+// What an empty value shows: the field's own, else the app-wide placeholder (#2772)
+const emptyText = computed(() => props.field.emptyText ?? getEmptyPlaceholder())
+
 // Format text value
 const textValue = computed(() => {
-  if (isEmpty.value) return '-'
+  if (isEmpty.value) return emptyText.value
   if (props.field.render) return props.field.render(props.value)
   return String(props.value)
 })
 
 // Format number value (browser locale by default — utils/formatters policy)
 const numberValue = computed(() => {
-  if (isEmpty.value) return '-'
+  if (isEmpty.value) return emptyText.value
   const num = Number(props.value)
   if (isNaN(num)) return String(props.value)
   // useGrouping: false → no locale digit grouping (years, ids… "1965",
@@ -117,7 +122,7 @@ const numberValue = computed(() => {
 
 // Format currency value
 const currencyValue = computed(() => {
-  if (isEmpty.value) return '-'
+  if (isEmpty.value) return emptyText.value
   const num = Number(props.value)
   if (isNaN(num)) return String(props.value)
   return formatCurrency(num, props.field.currencyCode || 'USD', props.field.locale)
@@ -125,7 +130,7 @@ const currencyValue = computed(() => {
 
 // Format boolean value
 const booleanValue = computed(() => {
-  if (isEmpty.value) return '-'
+  if (isEmpty.value) return emptyText.value
   const labels = props.field.booleanLabels || { true: 'Yes', false: 'No' }
   return props.value ? labels.true : labels.false
 })
@@ -142,7 +147,7 @@ const booleanIconClass = computed(() => {
 
 // Format date value
 const dateValue = computed(() => {
-  if (isEmpty.value) return '-'
+  if (isEmpty.value) return emptyText.value
   const v = props.value as unknown
   const date = (typeof v === 'object' && v instanceof Date) ? v : new Date(String(v))
   if (isNaN(date.getTime())) return String(props.value)
@@ -152,7 +157,7 @@ const dateValue = computed(() => {
 
 // Format datetime value
 const datetimeValue = computed(() => {
-  if (isEmpty.value) return '-'
+  if (isEmpty.value) return emptyText.value
   const v = props.value as unknown
   const date = (typeof v === 'object' && v instanceof Date) ? v : new Date(String(v))
   if (isNaN(date.getTime())) return String(props.value)
@@ -161,7 +166,7 @@ const datetimeValue = computed(() => {
 
 // Format select value (lookup label from options)
 const selectValue = computed(() => {
-  if (isEmpty.value) return '-'
+  if (isEmpty.value) return emptyText.value
   const options = props.field.options || []
   const optionValue = props.field.optionValue || 'value'
   const optionLabel = props.field.optionLabel || 'label'
@@ -184,7 +189,7 @@ const referenceRoute = computed<RouteLocationRaw | null>(() => {
 
 // Reference label
 const referenceLabel = computed(() => {
-  if (isEmpty.value) return '-'
+  if (isEmpty.value) return emptyText.value
   if (typeof props.field.referenceLabel === 'function') {
     return props.field.referenceLabel(props.value)
   }
@@ -215,7 +220,7 @@ const badgeIcon = computed(() => badgeDescriptor.value.icon)
 
 // JSON formatted
 const jsonValue = computed(() => {
-  if (isEmpty.value) return '-'
+  if (isEmpty.value) return emptyText.value
   try {
     return JSON.stringify(props.value, null, 2)
   } catch {
@@ -232,7 +237,7 @@ const imageStyle = computed(() => ({
 
 <template>
   <!-- Empty value -->
-  <span v-if="isEmpty" class="show-display show-display--empty">-</span>
+  <span v-if="isEmpty" class="show-display show-display--empty">{{ emptyText }}</span>
 
   <!-- Text -->
   <span v-else-if="displayType === 'text'" class="show-display show-display--text">

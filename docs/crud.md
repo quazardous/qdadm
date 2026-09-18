@@ -558,6 +558,18 @@ createApp({ layouts: { list: MyListLayout, form: MyFormLayout, show: MyShowLayou
 | `reference` | Router link to related entity |
 | `date` | Formatted date string |
 
+An empty value (`null`, `undefined`, `''`) shows `-`. Set another marker for the
+whole app on the kernel, or for one field with `emptyText`:
+
+```js
+new Kernel({ display: { emptyPlaceholder: '—' } })
+
+fields: { elected_at: { type: 'date', emptyText: 'not judged yet' } }
+```
+
+The kernel option also applies to the formatters in `@quazardous/qdadm/utils`
+(`formatDate`, `formatNumber`…), so list columns show the same marker.
+
 ### ShowPage slots
 
 | Slot | Purpose |
@@ -759,6 +771,7 @@ ctx.entity('books', new EntityManager({
 | `min` / `max` | `number` | Number fields: bounds of the input |
 | `step` | `number` | Number fields: increment of the input |
 | `validate` | `(value, formData) => string \| null` | Custom validator |
+| `emptyText` | `string` | Shown in detail pages for an empty value (default: the kernel's `display.emptyPlaceholder`, `-`) |
 | `nullSort` | `'first' \| 'last' \| 'low' \| 'high'` | Null placement when locally sorted (default `'last'`; `'low'` = null behaves as the smallest value — right for "last seen" dates). Manager-level `nullSort` option sets the default for all fields |
 
 ---
