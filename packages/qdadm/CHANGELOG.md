@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.31.0
+
+### Minor Changes
+
+- 22956d1: feat(display): the marker for an empty value is configurable. `new Kernel({ display: { emptyPlaceholder: '—' } })` sets it for detail pages and for the formatters in `@quazardous/qdadm/utils`, and a field's `emptyText` overrides it. `setEmptyPlaceholder` / `getEmptyPlaceholder` are exported from `/utils`. The default stays `'-'`.
+- e11febc: feat(live): an entity's live policy can differ per screen and per change kind. `live.refresh` accepts `{ list, show }`, each rule being `'mounted'`, `false` or the kinds that trigger a reload (`['created', 'deleted']`). A list can stop reloading on every update while detail pages keep following their record. An event a screen ignores neither reloads nor flashes the badge. The scalar form is unchanged.
+
 ## 2.30.0
 
 ### Minor Changes
