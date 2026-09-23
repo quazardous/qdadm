@@ -10,7 +10,9 @@
  * There is no page-level opt-in, deliberately. The gate is upstream: only an
  * entity the app declared in `sse.entities` ever produces a remote event, so an
  * app with no live backend sees no behaviour change and has no flag to forget.
- * What the entity does about it is its own policy (`live` on the manager).
+ * What the entity does about it is its own policy (`live` on the manager) —
+ * which may differ per screen and per change kind (#2971); the page builders
+ * only say which screen they are.
  *
  * @experimental Shape may change in a minor release — see docs/API_STABILITY.md.
  */
@@ -33,10 +35,17 @@ export interface UseLiveEntityOptions {
    * notification badge's flash.
    */
   onEvent?: () => void
+  /**
+   * Which screen this is, to pick its rule when the entity's `live.refresh`
+   * is set per screen (#2971). Without it, a per-screen policy means `'mounted'`.
+   */
+  screen?: 'list' | 'show'
 }
 
+type RefreshRule = 'mounted' | false | string[]
+
 interface LivePolicy {
-  refresh?: 'mounted' | false
+  refresh?: RefreshRule | { list?: RefreshRule; show?: RefreshRule }
   coalesceMs?: number
 }
 
@@ -62,9 +71,15 @@ export function useLiveEntity(
   if (!signals || !entityName) return () => {}
 
   const policy = (manager as { live?: LivePolicy } | null | undefined)?.live ?? {}
-  // `refresh: false` — invalidation still happened upstream, the screen just
-  // does not chase it. Subscribing would only burn a listener.
-  if (policy.refresh === false) return () => {}
+  const refresh = policy.refresh
+  const rule: RefreshRule = refresh !== null && typeof refresh === 'object' && !Array.isArray(refresh)
+    ? (options.screen ? refresh[options.screen] : undefined) ?? 'mounted'
+    : refresh ?? 'mounted'
+  // `false` — invalidation still happened upstream, the screen just does not
+  // chase it. Subscribing would only burn a listener.
+  if (rule === false) return () => {}
+  // An array names the change kinds worth a reload (#2971).
+  const kinds = Array.isArray(rule) ? new Set(rule) : null
 
   const coalesceMs = policy.coalesceMs ?? 300
   let timer: ReturnType<typeof setTimeout> | null = null
@@ -114,6 +129,7 @@ export function useLiveEntity(
     const payload = (event.data || {}) as {
       entity?: string
       id?: string | number
+      action?: string
       source?: string
     }
 
@@ -134,6 +150,10 @@ export function useLiveEntity(
         return
       }
     }
+
+    // A kind this screen ignores is not news to it: no cue, no reload. An event
+    // carrying no kind is an update, as the live router reports it by default.
+    if (kinds && !kinds.has(payload.action ?? 'updated')) return
 
     options.onEvent?.()
 

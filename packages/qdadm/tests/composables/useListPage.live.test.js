@@ -197,3 +197,51 @@ describe('useListPage — live refresh wiring', () => {
     wrapper.unmount()
   })
 })
+
+describe('useListPage — a per-screen, per-kind policy (#2971)', () => {
+  beforeEach(() => vi.useFakeTimers())
+  afterEach(() => {
+    vi.useRealTimers()
+    vi.clearAllMocks()
+  })
+
+  async function reloadsOn(live, event) {
+    const manager = createManager(live)
+    const signals = createSignalBus()
+    const { wrapper } = mountList(manager, signals)
+    await vi.runOnlyPendingTimersAsync()
+    await flushPromises()
+    const afterMount = manager.query.mock.calls.length
+    signals.emit('entity:data-invalidate', event)
+    await vi.advanceTimersByTimeAsync(1000)
+    await flushPromises()
+    wrapper.unmount()
+    return manager.query.mock.calls.length > afterMount
+  }
+
+  it('stays put with list: false, whatever show says', async () => {
+    expect(await reloadsOn({ refresh: { list: false, show: 'mounted' } }, remote())).toBe(false)
+    expect(await reloadsOn({ refresh: { list: false } }, remote({ action: 'created' }))).toBe(false)
+  })
+
+  it("keeps reloading when only show is silenced — a screen left out keeps 'mounted'", async () => {
+    expect(await reloadsOn({ refresh: { show: false } }, remote())).toBe(true)
+  })
+
+  it('reloads only for the kinds it lists', async () => {
+    const live = { refresh: { list: ['created', 'deleted'] } }
+    expect(await reloadsOn(live, remote({ action: 'updated' }))).toBe(false)
+    expect(await reloadsOn(live, remote({ action: 'created' }))).toBe(true)
+    expect(await reloadsOn(live, remote({ action: 'deleted' }))).toBe(true)
+  })
+
+  it('counts an event with no kind as an update', async () => {
+    const event = { entity: 'runs', source: 'remote' }
+    expect(await reloadsOn({ refresh: { list: ['created'] } }, event)).toBe(false)
+    expect(await reloadsOn({ refresh: { list: ['updated'] } }, event)).toBe(true)
+  })
+
+  it('takes a scalar kinds array for every screen', async () => {
+    expect(await reloadsOn({ refresh: ['created'] }, remote())).toBe(false)
+  })
+})

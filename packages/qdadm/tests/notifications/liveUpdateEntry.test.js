@@ -157,3 +157,31 @@ describe('an entity that describes its own live updates (#2685)', () => {
     expect(describeUpdate).toHaveBeenCalledWith(expect.objectContaining({ version: 0 }), expect.objectContaining({ version: 1 }))
   })
 })
+
+describe('a detail page under a per-screen live policy (#2971)', () => {
+  beforeEach(() => vi.spyOn(console, 'warn').mockImplementation(() => {}))
+  afterEach(() => vi.restoreAllMocks())
+
+  async function onEvent(live, event) {
+    const store = createNotificationStore()
+    const signals = createSignalBus()
+    const get = vi.fn().mockResolvedValue({ id: 7, title: 'Dune' })
+    mountShow({ store, signals, get, live: { coalesceMs: 0, ...live } })
+    await flushPromises()
+    signals.emit('entity:data-invalidate', { entity: 'offers', id: 7, source: 'remote', ...event })
+    await flushPromises()
+    return { reloaded: get.mock.calls.length > 1, flashed: store.isFlashing.value }
+  }
+
+  it('keeps following its record when the list is silenced', async () => {
+    expect(await onEvent({ refresh: { list: false } }, { action: 'updated' })).toEqual({ reloaded: true, flashed: true })
+  })
+
+  it('neither flashes nor reloads for a kind it ignores', async () => {
+    expect(await onEvent({ refresh: { show: ['deleted'] } }, { action: 'updated' })).toEqual({ reloaded: false, flashed: false })
+  })
+
+  it('stays put with show: false', async () => {
+    expect(await onEvent({ refresh: { list: 'mounted', show: false } }, {})).toEqual({ reloaded: false, flashed: false })
+  })
+})

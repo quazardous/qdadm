@@ -361,6 +361,7 @@ export function useEntityItemShowPage<T = Record<string, unknown>>(
     notifications.addNotification({ severity: 'info', keep: 'short', ...to, ...entry })
   }, {
     id: () => entityId.value,
+    screen: 'show',
     // The update has arrived: say so on the badge at once — before the reload is
     // coalesced, let alone finished (#2679).
     onEvent: () => notifications.flash(),

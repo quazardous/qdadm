@@ -18,6 +18,7 @@ import type { HookRegistry } from '../hooks/HookRegistry'
 import type { EntityManager } from './EntityManager'
 import type { RouteStatePersister } from '../routeState'
 import type { NewNotification } from '../notifications/NotificationStore'
+import type { LiveEntityAction } from '../kernel/LiveEntityRouter'
 
 // ============ INTERNAL TYPES ============
 
@@ -224,8 +225,13 @@ export interface LiveEntityPolicy {
   /**
    * `'mounted'` (default) — a screen currently showing this entity reloads.
    * `false` — invalidate the cache only; the screen updates next time it asks.
+   * An array of change kinds — reload only for those (`['created', 'deleted']`:
+   * rows came or went). An event carrying no kind counts as `'updated'`.
+   *
+   * One rule applies to every screen; `{ list, show }` sets it per screen
+   * (#2971), a screen left out keeping `'mounted'`.
    */
-  refresh?: 'mounted' | false
+  refresh?: LiveRefreshRule | LiveRefreshPolicy
   /**
    * Window (ms) over which a burst of events collapses into a single reload.
    * Default 300. `0` reloads on every event — rarely what you want.
@@ -244,6 +250,15 @@ export interface LiveEntityPolicy {
    * Do not mutate `before` or `after`: they are the page's own records.
    */
   describeUpdate?: (before: EntityRecord, after: EntityRecord) => LiveUpdateEntry | null | undefined
+}
+
+/** What a screen does about a change made elsewhere (#2971). */
+export type LiveRefreshRule = 'mounted' | false | LiveEntityAction[]
+
+/** `LiveEntityPolicy.refresh` per screen (#2971): the list pages and the detail pages. */
+export interface LiveRefreshPolicy {
+  list?: LiveRefreshRule
+  show?: LiveRefreshRule
 }
 
 /** The notification entry `LiveEntityPolicy.describeUpdate` asks for (#2685). */

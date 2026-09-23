@@ -123,12 +123,42 @@ new EntityManager({
 
 | Option | Default | Meaning |
 |---|---|---|
-| `refresh` | `'mounted'` | A screen showing this entity reloads itself. `false` invalidates only — the screen updates next time it asks. |
+| `refresh` | `'mounted'` | A screen showing this entity reloads itself. `false` invalidates only — the screen updates next time it asks. An array of kinds (`['created', 'deleted']`) reloads only for those. `{ list, show }` sets a rule per screen, see below. |
 | `coalesceMs` | `300` | Window over which a burst collapses into a single reload. `0` reloads on every frame, which is rarely what you want. |
 | `describeUpdate` | — | Whether a detail page's live reload is worth a notification entry, and what it says. See below. |
 
 The defaults suit most entities; declare a policy only where they don't. A
 heavy list is the usual reason to set `refresh: false`.
+
+### A rule per screen and per change kind
+
+A list and a detail page of the same entity rarely want the same thing. While
+a batch runs, the backend reports every job it acknowledges: the list of jobs
+would reload under the user every few seconds, while the page of one job must
+keep showing its progress. Give each screen its own rule:
+
+```js
+new EntityManager({
+  name: 'jobs',
+  live: {
+    refresh: {
+      list: ['created', 'deleted'],   // reload when rows come or go, not on every update
+      show: 'mounted',                // the detail page follows its record (the default)
+    },
+  },
+})
+```
+
+- A rule is `'mounted'`, `false`, or the change kinds that trigger a reload:
+  `'created'`, `'updated'`, `'deleted'`.
+- A screen left out of `{ list, show }` keeps `'mounted'`.
+- The kind comes from the live event (`entity:created`, `entity:updated`,
+  `entity:deleted`, or the frame's `action`). An event carrying none counts as
+  `'updated'`.
+- An event a screen ignores is not news to it: a detail page neither reloads nor
+  flashes the badge for it.
+- The scalar form still sets one rule for every screen: `refresh: false` silences
+  both.
 
 ### Saying what an update means
 

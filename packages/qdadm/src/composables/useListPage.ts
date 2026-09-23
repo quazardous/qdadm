@@ -1227,7 +1227,7 @@ export function useListPage<T = unknown>(config: UseListPageOptions<T>): UseList
         keptKeys.has((item as Record<string, unknown>)[resolvedDataKey])
       ) as T[]
     }
-  })
+  }, { screen: 'list' })
 
   // ============ UTILITIES ============
   // Browser-locale by default (unified policy — see utils/formatters).
