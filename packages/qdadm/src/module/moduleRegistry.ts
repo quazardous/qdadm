@@ -74,7 +74,16 @@ export interface ModuleRoute {
  * Navigation item
  */
 export interface NavItem {
-  route: string
+  route?: string
+  /**
+   * A link out of the app instead of a route (#3675) — exactly one of `route`
+   * and `href`. An absolute URL opens in a new tab unless `target` says otherwise.
+   */
+  href?: string
+  /** Where an `href` entry opens: default `_blank` for an absolute URL, same tab otherwise. */
+  target?: string
+  /** An `href` entry is shown only to whoever is granted this attribute. */
+  permission?: string
   label: string
   icon?: string
   entity?: string
@@ -209,6 +218,13 @@ const registry = {
    * @param item - { section, route, icon, label, exact? }
    */
   addNavItem(item: NavItemWithSection): void {
+    // An entry is a route or a link out, never both, never neither (#3675):
+    // an ambiguous one fails at boot rather than quietly in the menu.
+    if (!item.route === !item.href) {
+      throw new Error(
+        `[qdadm] nav item "${item.label}" in "${item.section}" needs exactly one of route and href`
+      )
+    }
     const { section, ...navItem } = item
     if (!navSections.has(section)) {
       navSections.set(section, [])

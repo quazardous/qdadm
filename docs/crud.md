@@ -131,6 +131,24 @@ ctx.routes('books/stats', [
 ctx.navItem({ section: 'Library', route: 'book-stats', icon: 'pi pi-chart-bar', label: 'Stats' })
 ```
 
+### Links to other tools
+
+A menu entry can point out of the app — a BI dashboard, monitoring, a database
+admin — with `href` instead of `route`:
+
+```js
+ctx.navItem({ section: 'Admin', label: 'BI (Metabase)', icon: 'pi pi-chart-bar',
+              href: 'https://bi.example.com' })
+ctx.navItem({ section: 'Admin', label: 'Adminer', icon: 'pi pi-database',
+              href: 'https://db.example.com', permission: 'tools:adminer' })
+```
+
+- An entry takes exactly one of `route` and `href`; both or neither throws at boot.
+- An absolute URL opens in a new tab (`rel="noopener noreferrer"`), marked with a
+  small icon; a relative one stays in the same tab. `target` overrides both.
+- A link is never the active entry, and has no entity guard: `permission` hides
+  it from whoever is not granted that attribute.
+
 ---
 
 ## List Page

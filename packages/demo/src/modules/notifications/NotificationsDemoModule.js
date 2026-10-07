@@ -23,6 +23,9 @@ export class NotificationsDemoModule extends Module {
       },
     ])
     ctx.navItem({ section: 'Features', route: 'notifications-demo', icon: 'pi pi-bell', label: 'Notifications' })
+    // A link out of the app (#3675): opens in a new tab, never the active entry.
+    ctx.navItem({ section: 'Features', href: 'https://github.com/quazardous/qdadm', icon: 'pi pi-github', label: 'qdadm on GitHub' })
+    ctx.navItem({ section: 'Features', href: 'https://github.com/quazardous/tvty', icon: 'pi pi-github', label: 'tvty on GitHub' })
   }
 }
 

@@ -26,7 +26,19 @@ type Orchestrator = OrchestratorLike
  */
 export interface NavItem {
   label: string
-  route: string
+  route?: string
+  /**
+   * A link out of the app instead of a route (#3675) — exactly one of `route`
+   * and `href`. An absolute URL opens in a new tab unless `target` says otherwise.
+   */
+  href?: string
+  /** Where an `href` entry opens: default `_blank` for an absolute URL, same tab otherwise. */
+  target?: string
+  /** An `href` entry is shown only to whoever is granted this attribute. */
+  permission?: string
+  /** Set on `href` entries by `navSections`: opens outside the app in another tab. */
+  external?: boolean
+  rel?: string
   icon?: string
   entity?: string
   exact?: boolean
@@ -79,6 +91,8 @@ export function useNavigation(): UseNavigationReturn {
   const router = useRouter()
   const orchestrator = inject<Orchestrator | null>('qdadmOrchestrator', null)
   const hooks = inject<HookRegistry | null>('qdadmHooks', null)
+  // null default: an app without security shows every link (#3675).
+  const securityChecker = inject<{ isGranted(attribute: string, subject?: unknown): boolean } | null>('qdadmSecurityChecker', null)
 
   // i18n integration — labels resolve through nav.sections.* / nav.routes.*
   const { i18n: kernelI18n, locale: i18nLocale } = useI18n()
@@ -96,13 +110,17 @@ export function useNavigation(): UseNavigationReturn {
    * Check if user can access a nav item: canList() when it opens a list route, canRead() otherwise
    */
   function canAccessNavItem(item: NavItem): boolean {
+    // A link out has no page to guard: only its own permission, if any (#3675).
+    if (item.href) {
+      return !item.permission || !securityChecker || securityChecker.isGranted(item.permission)
+    }
     if (!item.entity || !orchestrator) return true
     const manager = orchestrator.get(item.entity)
     if (!manager) return true
     // A menu entry is shown to whoever may do what its page does (#2497): a
     // ctx.crud() entry opens a list, so it follows `list`. A route that
     // declares no action, or is not registered, keeps `read`.
-    if (routeAction(item.route) === 'list' && manager.canList) return manager.canList()
+    if (item.route && routeAction(item.route) === 'list' && manager.canList) return manager.canList()
     return manager.canRead()
   }
 
@@ -125,6 +143,21 @@ export function useNavigation(): UseNavigationReturn {
       isReady.value = true
     }
   })
+
+  /**
+   * A link out of the app as the renderers draw it (#3675): an absolute URL
+   * opens in a new tab, without handing it this window.
+   */
+  function linkItem(item: NavItem): NavItem {
+    const absolute = /^([a-z][a-z\d+.-]*:|\/\/)/i.test(item.href!)
+    const target = item.target ?? (absolute ? '_blank' : undefined)
+    return {
+      ...item,
+      ...(target ? { target } : {}),
+      external: target === '_blank',
+      ...(target === '_blank' ? { rel: 'noopener noreferrer' } : {}),
+    }
+  }
 
   /**
    * Resolve a label through i18n with the given convention key, falling back
@@ -153,7 +186,7 @@ export function useNavigation(): UseNavigationReturn {
         title: resolveNavLabel(`nav.sections.${section.title}`, section.title),
         items: section.items
           .filter((item) => canAccessNavItem(item))
-          .map((item) => ({
+          .map((item) => (item.href ? linkItem(item) : {
             ...item,
             label: resolveNavLabel(`nav.routes.${item.route}`, item.label),
           })),
@@ -166,6 +199,8 @@ export function useNavigation(): UseNavigationReturn {
    * Uses semantic breadcrumb only - no route segment deduction
    */
   function isNavActive(item: NavItem): boolean {
+    // A link out never stands for the page on screen (#3675).
+    if (item.href) return false
     // Exact match mode
     if (item.exact) {
       return route.name === item.route
@@ -199,6 +234,7 @@ export function useNavigation(): UseNavigationReturn {
    * Handle nav click - force navigation if on same route with query params
    */
   function handleNavClick(event: Event, item: NavItem): void {
+    if (item.href) return
     if (route.name === item.route && Object.keys(route.query).length > 0) {
       event.preventDefault()
       router.push({ name: item.route })

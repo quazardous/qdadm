@@ -110,17 +110,29 @@ watch(() => route?.path, () => {
         ></i>
       </div>
       <div class="nav-section-items" :class="{ 'nav-section-collapsed': !isSectionExpanded(section) }">
-        <RouterLink
-          v-for="item in section.items"
-          :key="item.route"
-          :to="{ name: item.route }"
-          class="nav-item"
-          :class="{ 'nav-item-active': isNavActive(item) }"
-          @click="handleNavClick($event, item)"
-        >
-          <i :class="item.icon"></i>
-          <span>{{ item.label }}</span>
-        </RouterLink>
+        <template v-for="item in section.items" :key="item.route ?? item.href">
+          <a
+            v-if="item.href"
+            :href="item.href"
+            :target="item.target"
+            :rel="item.rel"
+            class="nav-item nav-item-link"
+          >
+            <i :class="item.icon"></i>
+            <span>{{ item.label }}</span>
+            <span v-if="item.external" class="pi pi-external-link nav-item-external" aria-label="opens in a new tab"></span>
+          </a>
+          <RouterLink
+            v-else
+            :to="{ name: item.route }"
+            class="nav-item"
+            :class="{ 'nav-item-active': isNavActive(item) }"
+            @click="handleNavClick($event, item)"
+          >
+            <i :class="item.icon"></i>
+            <span>{{ item.label }}</span>
+          </RouterLink>
+        </template>
       </div>
     </div>
   </nav>

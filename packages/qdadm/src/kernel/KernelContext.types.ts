@@ -87,7 +87,17 @@ export type DeferredFactory = () => Promise<void>
 /** Navigation item configuration */
 export interface NavItem {
   section: string
-  route: string
+  /** Route name — exactly one of `route` and `href`. */
+  route?: string
+  /**
+   * A link out of the app instead of a route (#3675) — exactly one of `route`
+   * and `href`. An absolute URL opens in a new tab unless `target` says otherwise.
+   */
+  href?: string
+  /** Where an `href` entry opens: default `_blank` for an absolute URL, same tab otherwise. */
+  target?: string
+  /** An `href` entry is shown only to whoever is granted this attribute. */
+  permission?: string
   label: string
   icon?: string
   exact?: boolean

@@ -197,7 +197,7 @@ See [crud.md](./crud.md) for complete documentation: list, form, show, children,
 | `ctx.entity(name, manager)` | Register entity manager |
 | `ctx.crud(path, components, options)` | Register CRUD routes + nav |
 | `ctx.routes(path, routes, options)` | Register custom routes |
-| `ctx.navItem(config)` | Add navigation item |
+| `ctx.navItem(config)` | Add navigation item (`route`, or `href` for a link out) |
 | `ctx.zone(name)` | Define zone |
 | `ctx.block(zone, config)` | Add block to zone |
 | `ctx.signals` | Access SignalBus |
