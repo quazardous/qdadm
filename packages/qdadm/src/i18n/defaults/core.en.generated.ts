@@ -97,6 +97,24 @@ export default `core:
     newEvents: "{count} new events"
     oldestFirst: Oldest first
     newestFirst: Newest first
+  # PayloadViewer / PayloadDiff (#4112)
+  payload:
+    headers: "Headers ({count})"
+    headerRow: First row is a header
+    copy: Copy
+    copied: Copied to the clipboard
+    copyFailed: Could not copy
+    download: Download
+    showAll: "Show all {count} rows"
+    binary: "Binary content, {size}. First bytes:"
+    malformed: "Not valid {format} ({error}), shown as text"
+    expected: Expected
+    captured: Captured
+    identical: Identical
+    unchanged: "{count} unchanged lines"
+    showSame: "Show {count} unchanged rows"
+    inline: Inline
+    split: Side by side
 # The breadcrumb's View↔Edit toggle (useNavContext).
 breadcrumb:
   view: View

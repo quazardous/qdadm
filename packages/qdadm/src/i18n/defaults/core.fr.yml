@@ -95,6 +95,24 @@ core:
     newEvents: "{count} nouveaux événements"
     oldestFirst: Plus anciens d'abord
     newestFirst: Plus récents d'abord
+  # PayloadViewer / PayloadDiff (#4112)
+  payload:
+    headers: "En-têtes ({count})"
+    headerRow: La première ligne est un en-tête
+    copy: Copier
+    copied: Copié dans le presse-papiers
+    copyFailed: Copie impossible
+    download: Télécharger
+    showAll: "Afficher les {count} lignes"
+    binary: "Contenu binaire, {size}. Premiers octets :"
+    malformed: "{format} invalide ({error}), affiché comme texte"
+    expected: Attendu
+    captured: Capturé
+    identical: Identiques
+    unchanged: "{count} lignes inchangées"
+    showSame: "Afficher les {count} lignes inchangées"
+    inline: En ligne
+    split: Côte à côte
 # The breadcrumb's View↔Edit toggle (useNavContext).
 breadcrumb:
   view: Voir
