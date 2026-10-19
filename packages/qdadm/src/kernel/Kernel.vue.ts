@@ -3,6 +3,8 @@ import {
   h,
   defineComponent,
   ref,
+  shallowRef,
+  markRaw,
   onErrorCaptured,
   type App,
   type Component,
@@ -43,7 +45,10 @@ export function getQdadmDebugBarRef(): Ref<Component | null> {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const w = typeof window !== 'undefined' ? (window as any) : null
   if (w && w[QDADM_DEBUG_BAR_GLOBAL_KEY]) return w[QDADM_DEBUG_BAR_GLOBAL_KEY]
-  const r = ref<Component | null>(null)
+  // Shallow (#4117): a deep ref turns the component into a reactive proxy,
+  // and Vue warns "received a Component that was made a reactive object" on
+  // every render of the bar.
+  const r = shallowRef<Component | null>(null)
   if (w) w[QDADM_DEBUG_BAR_GLOBAL_KEY] = r
   return r
 }
@@ -56,7 +61,9 @@ export const qdadmDebugBarRef: Ref<Component | null> = getQdadmDebugBarRef()
  * constructor). Equivalent to `getQdadmDebugBarRef().value = component`.
  */
 export function setQdadmDebugBar(component: Component | null): void {
-  getQdadmDebugBarRef().value = component
+  // markRaw as well: the ref on window may be a deep one left by an older
+  // copy of this module (HMR keeps it across versions).
+  getQdadmDebugBarRef().value = component ? markRaw(component) : null
 }
 
 /**
