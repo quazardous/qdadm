@@ -23,7 +23,10 @@ export interface UseListFiltersDeps {
   /** Entity name used for the registry lookup. */
   entityName: string
   /** EntityManager (needs .request for optionsEndpoint mode). */
-  manager: { request: (method: string, endpoint: string) => Promise<unknown> }
+  manager: {
+    request: (method: string, endpoint: string) => Promise<unknown>
+    storage?: { supportsPathRequests?: boolean } | null
+  }
   /** Orchestrator, forwarded to FilterQuery for optionsEntity mode. */
   orchestrator: QueryOrchestratorLike | null | undefined
   /** Loaded list items (source for optionsFromCache mode). */
@@ -184,9 +187,31 @@ export function useListFilters(deps: UseListFiltersDeps): UseListFiltersReturn {
     )
   }
 
+  const warnedEndpoints = new Set<string>()
+
+  /**
+   * An `optionsEndpoint` filter on a storage that cannot run a path request
+   * (#4069) — an `SdkStorage` without its `request` option. The load fails
+   * later, behind a dropdown reading "No available options"; said here, by
+   * name, where the declaration can still be fixed.
+   */
+  function warnIfEndpointUnreachable(name: string, filterConfig: FilterOptions): void {
+    if (!filterConfig?.optionsEndpoint) return
+    if (manager?.storage?.supportsPathRequests !== false) return
+    if (warnedEndpoints.has(name)) return
+    warnedEndpoints.add(name)
+    console.warn(
+      `[qdadm] Filter "${name}" on "${entityName}" loads its options from an ` +
+        `endpoint, but this entity's storage cannot run a path request, so the ` +
+        `dropdown will stay empty. Give the SdkStorage a request option, or ` +
+        `pass the filter its options directly.`
+    )
+  }
+
   function addFilter(name: string, filterConfig: FilterOptions): void {
     warnIfReservedName(name)
     warnIfUnknownType(name, filterConfig?.type)
+    warnIfEndpointUnreachable(name, filterConfig)
     filtersMap.value.set(name, {
       name,
       type: 'select',

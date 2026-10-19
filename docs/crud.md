@@ -210,6 +210,10 @@ Override per page with the `subtitle` option (`null` suppresses it).
 // Options from another entity
 list.addFilter('genre', { optionsEntity: 'genres', optionLabel: 'name' })
 
+// Options from an endpoint of this entity (GET distinct/<name>, or a path)
+// On an SdkStorage this needs its `request` option — see the README's storage adapters
+list.addFilter('run_id', { optionsEndpoint: true })
+
 // Options extracted from current data
 list.addFilter('author', { optionsFromCache: true })
 

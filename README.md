@@ -161,6 +161,8 @@ new ApiStorage({ endpoint: '/api/books', client: axiosInstance })
 new SdkStorage({ sdk: myGeneratedSdk, methods: { list: 'getBooks', get: 'getBook' } })
 ```
 
+A generated SDK has no method for an arbitrary path, so `manager.request('GET', 'distinct/status')` (and an `optionsEndpoint` filter) needs a `request` option: `request: (method, url, o, sdk) => sdk.client.request({ method, url, query: o.params, body: o.data }).then((r) => r.data)`.
+
 ### Parent-child entities
 
 ```js

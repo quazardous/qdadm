@@ -72,4 +72,6 @@ export type {
   SdkResponseFormat,
   SdkMethods,
   SdkStorageOptions,
+  SdkPathRequest,
+  SdkPathRequestOptions,
 } from './SdkStorage'

@@ -62,6 +62,29 @@ export interface SdkMethods<T extends EntityRecord = EntityRecord> {
   [key: string]: SdkMethodConfig<T> | undefined
 }
 
+/** The options of a path request, as `EntityManager.request` passes them. */
+export interface SdkPathRequestOptions {
+  data?: unknown
+  params?: Record<string, unknown>
+  headers?: Record<string, string>
+}
+
+/**
+ * How a path request (`'GET', 'distinct/status'`) reaches the backend (#4069).
+ *
+ * A generated SDK has no method for an arbitrary path, and no reliable way
+ * to tell its base URL or this entity's endpoint, so the app supplies it —
+ * usually through the SDK's own client.
+ */
+export type SdkPathRequest = (
+  method: string,
+  path: string,
+  options: SdkPathRequestOptions,
+  sdk: SdkInstance
+) => Promise<unknown>
+
+const HTTP_METHODS = new Set(['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS'])
+
 /**
  * SdkStorage options
  */
@@ -74,6 +97,8 @@ export interface SdkStorageOptions<T extends EntityRecord = EntityRecord> {
   transforms?: Partial<Record<string, SdkMethodTransforms<T>>>
   responseFormat?: SdkResponseFormat | null
   clientSidePagination?: boolean
+  /** Runs `request(method, path, options)` calls — `optionsEndpoint` filters among them. */
+  request?: SdkPathRequest | null
 }
 
 /**
@@ -101,6 +126,7 @@ export class SdkStorage<T extends EntityRecord = EntityRecord> extends IStorage<
   protected _transformResponse: SdkGlobalResponseTransform<T> | null
   protected _transforms: Partial<Record<string, SdkMethodTransforms<T>>>
   protected _responseFormat: SdkResponseFormat | null
+  protected _pathRequest: SdkPathRequest | null
 
   constructor(options: SdkStorageOptions<T> = {}) {
     super()
@@ -113,6 +139,7 @@ export class SdkStorage<T extends EntityRecord = EntityRecord> extends IStorage<
       transforms = {},
       responseFormat = null,
       clientSidePagination = false,
+      request = null,
     } = options
 
     this._sdk = sdk
@@ -123,6 +150,12 @@ export class SdkStorage<T extends EntityRecord = EntityRecord> extends IStorage<
     this._transforms = transforms
     this._responseFormat = responseFormat
     this.clientSidePagination = clientSidePagination
+    this._pathRequest = request
+  }
+
+  /** Whether `request(method, path)` can run, i.e. a `request` option was given. */
+  get supportsPathRequests(): boolean {
+    return this._pathRequest !== null
   }
 
   get sdk(): SdkInstance {
@@ -335,7 +368,26 @@ export class SdkStorage<T extends EntityRecord = EntityRecord> extends IStorage<
     await this._execute('delete', pathParams)
   }
 
-  async request<R = unknown>(methodName: string, params: unknown = {}): Promise<R> {
+  /**
+   * Two calls share this name. `request('GET', 'distinct/status', options)` is
+   * the path request every storage answers, the one `EntityManager.request`
+   * makes; it goes through the `request` option. `request('getStats', params)`
+   * calls a configured method or an SDK method by name.
+   *
+   * Told apart by the verb: no SDK method is called `GET`, and before #4069
+   * the path form looked one up and failed with "SDK method 'GET' not found".
+   */
+  async request<R = unknown>(methodName: string, params: unknown = {}, options: SdkPathRequestOptions = {}): Promise<R> {
+    if (HTTP_METHODS.has(methodName) && typeof params === 'string') {
+      if (!this._pathRequest) {
+        throw new Error(
+          `SdkStorage cannot run ${methodName} '${params}': a generated SDK has no method for a path. ` +
+            `Pass a request option, e.g. request: (method, url, o, sdk) => sdk.client.request({ method, url, query: o.params, body: o.data })`
+        )
+      }
+      return (await this._pathRequest(methodName, params, options, this.sdk)) as R
+    }
+
     if (this._methods[methodName]) {
       return (await this._execute(methodName, params)) as R
     }
