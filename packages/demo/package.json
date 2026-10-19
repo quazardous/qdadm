@@ -12,19 +12,20 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "axios": "^1.7.0",
-    "@quazardous/qdadm": "*",
-    "vue": "^3.5.13",
-    "vue-router": "^4.5.0",
-    "primevue": "^4.2.5",
     "@primeuix/themes": "^1.0.0",
-    "primeicons": "^7.0.0",
+    "@quazardous/qdadm": "*",
+    "axios": "^1.7.0",
     "pinia": "^2.3.0",
-    "vanilla-jsoneditor": "^3.13.0"
+    "postal-mime": "3.0.1",
+    "primeicons": "^7.0.0",
+    "primevue": "^4.2.5",
+    "vanilla-jsoneditor": "^3.13.0",
+    "vue": "^3.5.13",
+    "vue-router": "^4.5.0"
   },
   "devDependencies": {
+    "@quazardous/qdadm-mcp": "*",
     "@vitejs/plugin-vue": "^5.2.1",
-    "vite": "^6.0.0",
-    "@quazardous/qdadm-mcp": "*"
+    "vite": "^6.0.0"
   }
 }

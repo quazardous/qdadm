@@ -10,6 +10,7 @@
   "devDependencies": {
     "@types/node": "^22.0.0",
     "pinia": "^2.3.0",
+    "postal-mime": "^3.0.1",
     "primevue": "^4.2.5",
     "typescript": "^5.9.3",
     "vanilla-jsoneditor": "^3.13.0",

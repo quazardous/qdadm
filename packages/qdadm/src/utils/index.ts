@@ -59,5 +59,18 @@ export {
   type DiffOp,
 } from './payload'
 
+// Captured emails (#4113); raw MIME parsing is in '@quazardous/qdadm/email'
+export {
+  emailDocument,
+  fromMailpit,
+  formatAddresses,
+  EMAIL_SANDBOX,
+  type ParsedEmail,
+  type EmailAddress,
+  type EmailAttachment,
+  type EmailParser,
+  type MailpitMessage,
+} from './email'
+
 // Type exports
 export type { KeyValuePair, LanguageObject } from './transformers'

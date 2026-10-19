@@ -113,6 +113,27 @@ core:
     showSame: "Afficher les {count} lignes inchangées"
     inline: En ligne
     split: Côte à côte
+  # EmailPreview (#4113)
+  email:
+    from: De
+    to: À
+    cc: Cc
+    replyTo: Répondre à
+    date: Date
+    noSubject: (sans objet)
+    allHeaders: "Tous les en-têtes ({count})"
+    noParser: "Un message brut demande un parser : passer parseMime de @quazardous/qdadm/email. La source est affichée."
+    tab:
+      html: HTML
+      text: Texte
+      source: Source
+    imagesBlocked: "{count} images distantes bloquées"
+    loadImages: Charger les images
+    blockImages: Bloquer les images
+    empty: Ce mail n'a pas de contenu
+    unnamed: (sans nom)
+    inline: intégrée
+    download: Télécharger
 # The breadcrumb's View↔Edit toggle (useNavContext).
 breadcrumb:
   view: Voir
