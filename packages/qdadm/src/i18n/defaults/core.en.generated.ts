@@ -71,6 +71,24 @@ export default `core:
     notRegistered: not registered
     remove: Remove
     via: "via {origin}"
+  # LogStream (#4110)
+  log:
+    streaming: Streaming
+    done: Complete
+    stopped: Stopped
+    failed: "Failed: {error}"
+    lines: "{count} lines"
+    search: Search the log
+    previous: Previous match
+    next: Next match
+    onlyMatches: Only matching lines
+    errors: "{count} errors"
+    firstError: Go to the next error line
+    wrap: Wrap long lines
+    follow: Follow the end of the log
+    download: Download the log
+    newLines: "{count} new lines, resume"
+    empty: No output yet
 # The breadcrumb's View↔Edit toggle (useNavContext).
 breadcrumb:
   view: View

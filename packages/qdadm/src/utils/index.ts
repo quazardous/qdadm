@@ -40,5 +40,8 @@ export {
   isEqual,
 } from './transformers'
 
+// ANSI escapes in logs (#4110)
+export { parseAnsiLine, stripAnsi, ansiStyleToCss, type AnsiStyle, type AnsiSegment } from './ansi'
+
 // Type exports
 export type { KeyValuePair, LanguageObject } from './transformers'

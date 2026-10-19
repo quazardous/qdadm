@@ -15,6 +15,7 @@ import { SettingsModule } from '../modules/settings/SettingsModule'
 import { FavoritesModule } from '../modules/favorites/FavoritesModule'
 import { JsonPlaceholderModule } from '../modules/jsonplaceholder/JsonPlaceholderModule'
 import { NotificationsDemoModule } from '../modules/notifications/NotificationsDemoModule'
+import { OpsDemoModule } from '../modules/ops/OpsDemoModule'
 
 export const moduleDefs = [
   SecurityModule,
@@ -26,7 +27,8 @@ export const moduleDefs = [
   SettingsModule,
   FavoritesModule,
   JsonPlaceholderModule,
-  NotificationsDemoModule
+  NotificationsDemoModule,
+  OpsDemoModule
 ]
 
 export const modulesOptions = {

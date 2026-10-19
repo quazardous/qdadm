@@ -327,6 +327,16 @@ export {
   type LayoutMeta,
 } from './composables/useLayoutResolver'
 export { useSSEBridge, type UseSSEBridgeReturn } from './composables/useSSEBridge'
+export {
+  useLogStream,
+  type LogSource,
+  type LogLine,
+  type LogPollResult,
+  type LogPushApi,
+  type LogStreamStatus,
+  type UseLogStreamOptions,
+  type UseLogStreamReturn,
+} from './composables/useLogStream'
 
 // Route-state persistence (#2146) — where a route remembers what it shows.
 export {

@@ -71,6 +71,24 @@ export default `core:
     notRegistered: non enregistrée
     remove: Retirer
     via: "via {origin}"
+  # LogStream (#4110)
+  log:
+    streaming: En cours
+    done: Terminé
+    stopped: Arrêté
+    failed: "Échec : {error}"
+    lines: "{count} lignes"
+    search: Chercher dans le log
+    previous: Occurrence précédente
+    next: Occurrence suivante
+    onlyMatches: Seulement les lignes trouvées
+    errors: "{count} erreurs"
+    firstError: Aller à la ligne d'erreur suivante
+    wrap: Couper les lignes longues
+    follow: Suivre la fin du log
+    download: Télécharger le log
+    newLines: "{count} nouvelles lignes, reprendre"
+    empty: Rien pour l'instant
 # The breadcrumb's View↔Edit toggle (useNavContext).
 breadcrumb:
   view: Voir

@@ -111,6 +111,16 @@ export {
 } from './useLayoutResolver'
 export { useSSEBridge, type UseSSEBridgeReturn } from './useSSEBridge'
 export {
+  useLogStream,
+  type LogSource,
+  type LogLine,
+  type LogPollResult,
+  type LogPushApi,
+  type LogStreamStatus,
+  type UseLogStreamOptions,
+  type UseLogStreamReturn,
+} from './useLogStream'
+export {
   useDeferred,
   useDeferredValue,
   DEFERRED_INJECTION_KEY,
