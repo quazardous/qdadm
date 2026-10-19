@@ -255,6 +255,7 @@ ctx.block('books-list-header', { id: 'export-btn', component: ExportButton, weig
 - [Production facts](docs/production.md) - Bundle size, client-side SPA (no SSR)
 - [Testing](docs/testing.md) - Test an entity and a page with Vitest
 - [LogStream](docs/log-stream.md) - Live tail of a task log: follow, pause, search, ANSI colours
+- [EntityTimeline](docs/timeline.md) - One entity's history across actors: filter, details, durations, live
 - [Sign-in with an OIDC provider](docs/auth-oidc.md) - Keycloak, Auth0, Google: code + PKCE, your backend issues the session
 - [QDADM_CREDO](docs/QDADM_CREDO.md) - Philosophy & patterns
 - [Contributing](CONTRIBUTING.md) - Setup, quality gates, release flow

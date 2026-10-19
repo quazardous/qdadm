@@ -87,6 +87,14 @@ core:
     download: Télécharger le log
     newLines: "{count} nouvelles lignes, reprendre"
     empty: Rien pour l'instant
+  # EntityTimeline (#4111)
+  timeline:
+    actors: Filtrer par acteur
+    loading: Chargement…
+    empty: Rien ne s'est encore passé
+    newEvents: "{count} nouveaux événements"
+    oldestFirst: Plus anciens d'abord
+    newestFirst: Plus récents d'abord
 # The breadcrumb's View↔Edit toggle (useNavContext).
 breadcrumb:
   view: Voir

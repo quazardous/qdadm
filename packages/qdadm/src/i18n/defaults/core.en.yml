@@ -87,6 +87,14 @@ core:
     download: Download the log
     newLines: "{count} new lines, resume"
     empty: No output yet
+  # EntityTimeline (#4111)
+  timeline:
+    actors: Filter by actor
+    loading: Loading…
+    empty: Nothing happened yet
+    newEvents: "{count} new events"
+    oldestFirst: Oldest first
+    newestFirst: Newest first
 # The breadcrumb's View↔Edit toggle (useNavContext).
 breadcrumb:
   view: View

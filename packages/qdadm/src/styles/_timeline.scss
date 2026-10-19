@@ -1,0 +1,229 @@
+/**
+ * EntityTimeline (#4111)
+ * One column; each event's marker carries its actor's colour (--qd-actor).
+ */
+
+@use 'variables' as *;
+
+.qd-timeline {
+  position: relative;
+  min-width: 0;
+}
+
+.qd-timeline-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.qd-timeline-actors,
+.qd-timeline-gaps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.375rem;
+}
+
+.qd-timeline-gaps {
+  margin-left: auto;
+}
+
+.qd-timeline-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.125rem 0.625rem;
+  border: 1px solid var(--qd-actor);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--qd-actor) 14%, transparent);
+  color: var(--p-text-color);
+  font-size: $font-size-xs;
+  cursor: pointer;
+
+  i {
+    color: var(--qd-actor);
+    font-size: 0.75rem;
+  }
+
+  &--off {
+    opacity: 0.45;
+    background: transparent;
+    text-decoration: line-through;
+  }
+}
+
+.qd-timeline-gap-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.125rem 0.625rem;
+  border-radius: 999px;
+  background: var(--p-surface-100);
+  font-size: $font-size-xs;
+}
+
+.qd-timeline-error {
+  color: var(--p-red-500);
+  margin-bottom: 0.5rem;
+}
+
+.qd-timeline-empty {
+  color: var(--p-text-muted-color);
+  font-style: italic;
+  padding: 0.5rem 0;
+}
+
+.qd-timeline-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.qd-timeline-day {
+  margin: 0.75rem 0 0.25rem;
+  font-size: $font-size-xs;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--p-text-muted-color);
+
+  &:first-child {
+    margin-top: 0;
+  }
+}
+
+.qd-timeline-event {
+  position: relative;
+  display: flex;
+  gap: 0.75rem;
+  padding: 0 0 0.75rem;
+
+  // The rail
+  &::before {
+    content: '';
+    position: absolute;
+    left: 0.875rem;
+    top: 1.75rem;
+    bottom: 0;
+    width: 2px;
+    background: var(--p-surface-200);
+  }
+
+  &:last-child::before {
+    display: none;
+  }
+
+  &--fresh .qd-timeline-content {
+    animation: qd-timeline-flash 2.5s ease-out;
+  }
+}
+
+@keyframes qd-timeline-flash {
+  0% {
+    background: color-mix(in srgb, var(--p-primary-color) 22%, transparent);
+  }
+  100% {
+    background: transparent;
+  }
+}
+
+.qd-timeline-since {
+  position: absolute;
+  left: 2.5rem;
+  top: -0.7rem;
+  font-size: 0.6875rem;
+  color: var(--p-text-muted-color);
+}
+
+.qd-timeline-marker {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: 50%;
+  background: var(--qd-actor);
+  color: #fff;
+  font-size: 0.8125rem;
+  z-index: 1;
+}
+
+.qd-timeline-content {
+  flex: 1;
+  min-width: 0;
+  border-radius: $radius-sm;
+}
+
+.qd-timeline-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.25rem 0.625rem;
+  width: 100%;
+  padding: 0.25rem 0.375rem;
+  border: none;
+  border-radius: $radius-sm;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+
+  &:is(button) {
+    cursor: pointer;
+
+    &:hover {
+      background: var(--p-surface-100);
+    }
+  }
+}
+
+.qd-timeline-title {
+  font-weight: 600;
+
+  .qd-timeline-event--danger & {
+    color: var(--p-red-600);
+  }
+  .qd-timeline-event--warn & {
+    color: var(--p-orange-600);
+  }
+  .qd-timeline-event--success & {
+    color: var(--p-green-600);
+  }
+}
+
+.qd-timeline-actor {
+  font-size: $font-size-xs;
+  color: var(--qd-actor);
+  font-weight: 500;
+}
+
+.qd-timeline-time {
+  margin-left: auto;
+  font-size: $font-size-xs;
+  color: var(--p-text-muted-color);
+  font-variant-numeric: tabular-nums;
+}
+
+.qd-timeline-chevron {
+  font-size: 0.75rem;
+  color: var(--p-text-muted-color);
+}
+
+.qd-timeline-detail {
+  padding: 0.5rem 0.375rem 0.25rem;
+}
+
+.qd-timeline-absolute {
+  font-size: $font-size-xs;
+  color: var(--p-text-muted-color);
+  margin-bottom: 0.5rem;
+}
+
+.qd-timeline-new {
+  position: absolute;
+  left: 50%;
+  bottom: 0.75rem;
+  transform: translateX(-50%);
+}
