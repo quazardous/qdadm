@@ -1,0 +1,212 @@
+/**
+ * TaskRunner (#4114): follow dialog, typed confirmation, sidebar tray
+ */
+
+@use 'variables' as *;
+
+.qd-task-head {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+  font-size: $font-size-sm;
+}
+
+.qd-task-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.125rem 0.625rem;
+  border-radius: 999px;
+  font-weight: 600;
+  background: var(--p-blue-50);
+  color: var(--p-blue-700);
+
+  &--succeeded { background: var(--p-green-50); color: var(--p-green-700); }
+  &--failed { background: var(--p-red-50); color: var(--p-red-700); }
+  &--cancelled { background: var(--p-surface-100); color: var(--p-text-muted-color); }
+}
+
+.qd-task-elapsed,
+.qd-task-id {
+  color: var(--p-text-muted-color);
+  font-variant-numeric: tabular-nums;
+}
+
+.qd-task-id {
+  margin-left: auto;
+  font-family: $font-family-mono;
+  font-size: $font-size-xs;
+}
+
+.qd-task-progress {
+  height: 0.75rem;
+}
+
+.qd-task-step {
+  margin-top: 0.375rem;
+  color: var(--p-text-muted-color);
+  font-size: $font-size-sm;
+}
+
+.qd-task-log {
+  margin-top: 0.75rem;
+}
+
+.qd-task-error,
+.qd-task-warning {
+  margin-top: 0.75rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: $radius-sm;
+  font-size: $font-size-sm;
+  overflow-wrap: anywhere;
+}
+
+.qd-task-error {
+  background: var(--p-red-50);
+  color: var(--p-red-800);
+}
+
+.qd-task-warning {
+  background: var(--p-orange-50);
+  color: var(--p-orange-800);
+}
+
+.qd-task-result {
+  margin-top: 0.75rem;
+}
+
+.qd-task-dialog .p-dialog-footer {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.qd-task-spacer {
+  flex: 1;
+}
+
+.qd-task-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  font-size: $font-size-sm;
+}
+
+.qd-task-confirm-message {
+  margin: 0 0 0.75rem;
+}
+
+.qd-task-confirm-label {
+  display: block;
+  margin-bottom: 0.375rem;
+  font-size: $font-size-sm;
+}
+
+.qd-task-confirm-input {
+  width: 100%;
+  font-family: $font-family-mono;
+}
+
+// --- Tray (in the sidebar) ---
+
+.qd-task-tray {
+  padding: 0.25rem 0.75rem;
+}
+
+.qd-task-tray-button {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.5rem 0.625rem;
+  border: 1px solid var(--p-surface-200);
+  border-radius: $radius-sm;
+  background: var(--p-surface-0);
+  color: inherit;
+  font: inherit;
+  font-size: $font-size-sm;
+  cursor: pointer;
+
+  &--busy {
+    border-color: var(--p-primary-color);
+  }
+
+  &:hover {
+    background: var(--p-surface-50);
+  }
+}
+
+.qd-task-tray-label {
+  flex: 1;
+  text-align: left;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.qd-task-tray-count {
+  min-width: 1.25rem;
+  padding: 0 0.375rem;
+  border-radius: 999px;
+  background: var(--p-primary-color);
+  color: var(--p-primary-contrast-color);
+  font-size: $font-size-xs;
+  font-weight: 700;
+  text-align: center;
+}
+
+.qd-task-list {
+  list-style: none;
+  margin: 0 0 0.25rem;
+  padding: 0;
+  min-width: 18rem;
+  max-width: 24rem;
+}
+
+.qd-task-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.375rem 0.5rem;
+  border: none;
+  border-radius: $radius-sm;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: $font-size-sm;
+  text-align: left;
+  cursor: pointer;
+
+  &:hover {
+    background: var(--p-surface-100);
+  }
+
+  &--succeeded i { color: var(--p-green-600); }
+  &--failed i { color: var(--p-red-600); }
+  &--cancelled i { color: var(--p-text-muted-color); }
+}
+
+.qd-task-item-label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.qd-task-item-state {
+  color: var(--p-text-muted-color);
+  font-size: $font-size-xs;
+  white-space: nowrap;
+}
+
+.sidebar--collapsed .qd-task-tray {
+  padding: 0.25rem;
+
+  .qd-task-tray-label {
+    display: none;
+  }
+}

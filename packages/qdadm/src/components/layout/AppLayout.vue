@@ -24,6 +24,8 @@ import { useNavContext, type BreadcrumbItem, type NavLinkItem } from '../../comp
 import QdButton from '../base/QdButton.vue'
 import Breadcrumb from 'primevue/breadcrumb'
 import UnsavedChangesDialog from '../dialogs/UnsavedChangesDialog.vue'
+import TaskHost from '../tasks/TaskHost.vue'
+import TaskTray from '../tasks/TaskTray.vue'
 import SidebarBox from './SidebarBox.vue'
 import Zone from './Zone.vue'
 import NavlinksGroup from './NavlinksGroup.vue'
@@ -345,6 +347,9 @@ const showBreadcrumb = computed<boolean>(() => {
         <slot name="sidebar-after-nav"></slot>
       </div>
 
+      <!-- Running tasks (#4114): shown while there is one -->
+      <TaskTray />
+
       <SidebarBox
         v-if="authEnabled"
         id="user-zone"
@@ -420,6 +425,9 @@ const showBreadcrumb = computed<boolean>(() => {
 
     <!-- Notification panel (rendered outside sidebar, follows sidebar position) -->
     <Zone name="_app:notifications" />
+
+    <!-- Task follow dialog and typed confirmations (#4114) -->
+    <TaskHost />
 
     <!-- Unsaved Changes Dialog (auto-rendered when a form registers guardDialog) -->
     <UnsavedChangesDialog

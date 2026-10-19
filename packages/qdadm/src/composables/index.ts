@@ -120,6 +120,7 @@ export {
   type UseLogStreamOptions,
   type UseLogStreamReturn,
 } from './useLogStream'
+export { useTaskRunner, taskAction } from '../tasks/useTaskRunner'
 export {
   useDeferred,
   useDeferredValue,

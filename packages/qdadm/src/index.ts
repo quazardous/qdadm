@@ -406,6 +406,17 @@ export { useSidebarState, SIDEBAR_COLLAPSED_KEY } from './composables/useSidebar
 // COMPONENTS
 // ════════════════════════════════════════════════════════════════════════════
 export * from './components/index'
+export { useTaskRunner, taskAction } from './tasks/useTaskRunner'
+export {
+  getTaskStore,
+  registerTaskKind,
+  type TaskRun,
+  type TaskStatus,
+  type TaskKind,
+  type TaskFollow,
+  type TaskConfirm,
+  type RunOptions,
+} from './tasks/taskStore'
 
 // ════════════════════════════════════════════════════════════════════════════
 // MODULE SYSTEM (excluding types that conflict)

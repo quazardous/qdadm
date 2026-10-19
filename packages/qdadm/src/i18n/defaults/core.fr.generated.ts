@@ -136,6 +136,26 @@ export default `core:
     unnamed: (sans nom)
     inline: intégrée
     download: Télécharger
+  # TaskRunner (#4114)
+  task:
+    status:
+      starting: Démarrage
+      queued: En attente
+      running: En cours
+      succeeded: Terminée
+      failed: Échouée
+      cancelled: Annulée
+    cancel: Annuler la tâche
+    close: Fermer
+    background: Continuer en arrière-plan
+    open: Ouvrir la tâche
+    readError: "Lecture de la tâche impossible ({error}), nouvel essai"
+    start: Lancer
+    dontStart: Ne pas lancer
+    typeToConfirm: "Taper {value} pour confirmer"
+    tray: "{count} tâches en cours"
+    trayDone: Tâches récentes
+    clear: Effacer les terminées
 # The breadcrumb's View↔Edit toggle (useNavContext).
 breadcrumb:
   view: Voir
