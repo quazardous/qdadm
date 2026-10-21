@@ -34,7 +34,7 @@ export class NotificationModule extends Module {
   static override requires: string[] = []
   static override priority = 5 // Before toast-bridge (10) to intercept first
 
-  static override styles = () => import('./styles.scss')
+  static override styles = () => import('./styles.css')
 
   async connect(ctx: KernelContext): Promise<void> {
     // Define notification zones

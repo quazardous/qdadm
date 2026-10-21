@@ -28,7 +28,11 @@ cd my-admin
 npm install
 npm install @quazardous/qdadm primevue @primeuix/themes primeicons vue-router pinia
 npm install -D vanilla-jsoneditor  # only if you import @quazardous/qdadm/editors
+npm install -D sass-embedded       # only if you import @quazardous/qdadm/styles/scss
 ```
+
+qdadm ships its styles as CSS, so an app builds without sass. Install sass
+only to compile qdadm's SCSS yourself, for example to override its variables.
 
 > The package is **`@quazardous/qdadm`** (scoped) — plain `qdadm` on npm is a
 > different, unmaintained package.

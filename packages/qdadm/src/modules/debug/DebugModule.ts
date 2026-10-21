@@ -89,7 +89,9 @@ export class DebugModule extends Module {
   static override moduleName = 'debug'
   static override requires: string[] = []
   static override priority = 1000
-  static styles = () => import('./styles.scss')
+  // Compiled from styles.scss by `npm run gen:debug-css` (#4140): apps load CSS,
+  // never sass. A test fails when the two drift apart.
+  static styles = () => import('./styles.generated.css')
 
   declare options: DebugModuleOptions
   private _bridge: DebugBridge | null = null

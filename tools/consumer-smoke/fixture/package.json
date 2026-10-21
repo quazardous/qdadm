@@ -3,12 +3,13 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
-  "description": "Consumer smoke fixture (#1024): typechecks the PACKED qdadm tarball the way a real strict-TS consumer does. @quazardous/qdadm is installed by tools/consumer-smoke/run.sh from `npm pack`, never from a link. vanilla-jsoneditor is declared here on purpose (#1901): it is an optional peer of qdadm, so a fixture that imports /editors must ask for it the way a consumer who chose the editor would.",
+  "description": "Consumer smoke fixture (#1024): typechecks the PACKED qdadm tarball the way a real strict-TS consumer does. @quazardous/qdadm is installed by tools/consumer-smoke/run.sh from `npm pack`, never from a link. vanilla-jsoneditor is declared here on purpose (#1901): it is an optional peer of qdadm, so a fixture that imports /editors must ask for it the way a consumer who chose the editor would. @vitejs/plugin-vue is here for the vite build step (#4140); sass is deliberately absent, since an app must build without it.",
   "scripts": {
     "smoke": "vue-tsc --noEmit -p tsconfig.json"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
+    "@vitejs/plugin-vue": "5.2.4",
     "pinia": "^2.3.0",
     "postal-mime": "^3.0.1",
     "primevue": "^4.2.5",

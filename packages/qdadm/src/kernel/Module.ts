@@ -71,12 +71,13 @@ export class Module {
 
   /**
    * Path to module styles (relative import or absolute)
-   * Set in subclass to auto-load CSS/SCSS when module connects.
+   * Set in subclass to auto-load CSS when module connects. Ship CSS, not SCSS:
+   * an app should not need sass to load a module (#4140).
    * Styles are loaded once and cached.
    *
    * @example
    * class DebugModule extends Module {
-   *   static styles = () => import('./styles.scss')
+   *   static styles = () => import('./styles.css')
    * }
    */
   static styles: (() => Promise<unknown>) | null = null

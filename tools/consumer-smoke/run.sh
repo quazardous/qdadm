@@ -104,4 +104,39 @@ node --input-type=module -e "
   console.log('[consumer-smoke]   vite resolved the config with', plugins.length, 'qdadm plugins')
 "
 
-echo "[consumer-smoke] OK — the packed tarball typechecks AND loads as a strict consumer"
+# A real production build, with no sass installed (#4140). Typechecking and
+# loading the config both passed while every app's `vite build` died on a
+# module that lazy-loaded a .scss file. Only a build walks the dynamic imports.
+echo "[consumer-smoke] vite build of an app, without sass..."
+node --input-type=module -e "
+  import { createRequire } from 'node:module'
+  const req = createRequire(process.cwd() + '/')
+  for (const name of ['sass', 'sass-embedded']) {
+    let found = null
+    try { found = req.resolve(name) } catch {}
+    if (found) throw new Error(name + ' is installed in the fixture: the build would not prove an app can do without it')
+  }
+"
+mkdir -p build-app
+cat > build-app/index.html <<'SMOKE_HTML'
+<!doctype html>
+<html><head><meta charset="utf-8"></head><body><div id="app"></div><script type="module" src="./main.js"></script></body></html>
+SMOKE_HTML
+cat > build-app/main.js <<'SMOKE_MAIN'
+// What an app pulls in: the kernel (which injects NotificationModule), the
+// debug bar module, and the stylesheet. The build follows their lazy imports.
+import { Kernel } from '@quazardous/qdadm'
+import { DebugModule } from '@quazardous/qdadm/modules/debug'
+import '@quazardous/qdadm/styles'
+console.log(Kernel, DebugModule)
+SMOKE_MAIN
+cat > vite.build.config.js <<'SMOKE_BUILD'
+import vue from '@vitejs/plugin-vue'
+import { qdadmVitePlugin } from '@quazardous/qdadm/vite'
+export default { root: 'build-app', logLevel: 'warn', plugins: [vue(), qdadmVitePlugin()], build: { outDir: 'dist', emptyOutDir: true } }
+SMOKE_BUILD
+npx vite build --config vite.build.config.js
+ls build-app/dist/assets/*.css >/dev/null || { echo "[consumer-smoke] the build emitted no CSS" >&2; exit 1; }
+echo "[consumer-smoke]   built: $(ls build-app/dist/assets | wc -l) assets, no sass needed"
+
+echo "[consumer-smoke] OK — the packed tarball typechecks, loads AND builds as a strict consumer"
