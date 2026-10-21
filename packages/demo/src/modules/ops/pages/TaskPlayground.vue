@@ -32,6 +32,19 @@ const destroy = taskAction((box) => ({
   confirm: { typed: box, message: `The box ${box}, its database and its files are deleted. This cannot be undone.`, accept: 'Destroy' },
   open: false,
 }))
+
+// A reversible gesture: a plain confirmation, no name to type (#4147).
+const lastReset = ref(null)
+function reset() {
+  const box = name.value.trim() || 'box'
+  tasks.run({
+    kind: 'demo-create-box',
+    label: `Fresh database on ${box}`,
+    start: () => createTask('reset', { box }),
+    confirm: { message: `The database of ${box} is replaced by last night's dump.`, accept: 'Reset' },
+    onSettled: (run) => (lastReset.value = `${run.label}: ${run.status}`),
+  })
+}
 </script>
 
 <template>
@@ -47,7 +60,9 @@ const destroy = taskAction((box) => ({
           <InputText v-model="name" size="small" aria-label="Box name" />
           <Button size="small" icon="pi pi-play" label="Create" @click="create(false)" />
           <Button size="small" severity="danger" outlined icon="pi pi-bolt" label="Create (the restore fails)" @click="create(true)" />
+          <Button size="small" severity="secondary" outlined icon="pi pi-refresh" label="Fresh database" @click="reset" />
         </div>
+        <p v-if="lastReset" class="hint last-reset">onSettled: {{ lastReset }}</p>
       </template>
     </Card>
 

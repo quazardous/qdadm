@@ -73,6 +73,9 @@ once with `useLogStream(source, options)` and pass it as `:stream`.
 | `download-raw` | `false` | keep the ANSI escapes in the download |
 | `max-lines` | `100000` | |
 
+It emits `done` when the source reports the end of the log, e.g. to re-read
+the task record at once (the TaskRunner dialog does).
+
 The panel stays dark in both themes. Its colours are CSS variables on
 `.qd-log-stream` (`--qd-log-bg`, `--qd-log-fg`, `--qd-log-muted`,
 `--qd-log-mark`, `--qd-log-error-bg`).

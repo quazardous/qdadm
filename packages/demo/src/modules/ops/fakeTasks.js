@@ -6,10 +6,11 @@
  * picks it up where it is, as it would against a real worker.
  */
 const KEY = 'qdadm-demo:tasks'
-const DURATION = { create: 20_000, destroy: 6_000 }
+const DURATION = { create: 20_000, destroy: 6_000, reset: 5_000 }
 const STEPS = {
   create: ['Allocating the box', 'Cloning the ref', 'Installing dependencies', 'Restoring the database', 'Starting services'],
   destroy: ['Stopping services', 'Dropping the database', 'Releasing the box'],
+  reset: ['Dropping the database', 'Restoring the dump', 'Running migrations'],
 }
 
 function load() {
@@ -49,7 +50,7 @@ function stateAt(task, now) {
   if (task.fail && progress > 62) return { status: 'failed', progress, step, elapsed, error: 'pg_restore: error: could not execute query: relation "orders_sku_idx" already exists' }
   if (task.cancelledAt) return { status: 'cancelled', progress, step, elapsed }
   if (progress >= 100) {
-    return { status: 'done', progress: 100, step: 'Done', elapsed, result: task.type === 'create' ? { box: task.box, url: `https://${task.box}.stagebox.test`, db: 'refreshed 2026-10-19 06:00' } : { box: task.box, freed: '38 GB' } }
+    return { status: 'done', progress: 100, step: 'Done', elapsed, result: task.type === 'create' ? { box: task.box, url: `https://${task.box}.stagebox.test`, db: 'refreshed 2026-10-19 06:00' } : task.type === 'reset' ? { box: task.box, dump: '2026-10-21 06:00' } : { box: task.box, freed: '38 GB' } }
   }
   return { status: 'in_progress', progress, step, elapsed }
 }

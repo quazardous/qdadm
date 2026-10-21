@@ -69,7 +69,7 @@ const elapsed = computed(() => {
       <div v-if="run.step" class="qd-task-step">{{ run.step }}</div>
 
       <LogStream v-if="logSource" :key="run.id" class="qd-task-log" :source="logSource" height="16rem"
-        error-pattern="error|fatal|failed" />
+        error-pattern="error|fatal|failed" @done="store.poke(run.id)" />
 
       <div v-if="run.status === 'failed' && run.error" class="qd-task-error"><i class="pi pi-exclamation-triangle" /> {{ run.error }}</div>
       <div v-else-if="!final && run.error" class="qd-task-warning">{{ t('core.task.readError', { error: run.error }) }}</div>

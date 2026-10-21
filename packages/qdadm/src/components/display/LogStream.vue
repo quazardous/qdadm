@@ -58,6 +58,11 @@ const props = withDefaults(defineProps<Props>(), {
   maxLines: 100_000,
 })
 
+const emit = defineEmits<{
+  /** The source reported the end of the log. */
+  done: []
+}>()
+
 const { t } = useI18n()
 
 const log: UseLogStreamReturn =
@@ -271,6 +276,12 @@ function download(): void {
 }
 
 // --- Status ---
+
+watch(
+  () => log.status.value,
+  (status) => status === 'done' && emit('done'),
+  { immediate: true }
+)
 
 const statusLabel = computed(() => {
   switch (log.status.value) {

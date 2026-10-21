@@ -53,6 +53,8 @@ export interface TaskKind {
   to?: (taskId: string | number) => unknown
   /** Toast when it ends. Default true. */
   notify?: boolean
+  /** Called once the run ends, whatever the outcome (read `run.status`). */
+  onSettled?: (run: TaskRun) => void
 }
 
 export interface TaskConfirm {
@@ -61,6 +63,8 @@ export interface TaskConfirm {
   typed?: string
   /** Label of the confirm button. */
   accept?: string
+  /** Severity of the confirm button. Default `danger` when `typed` is set, `primary` otherwise. */
+  severity?: 'primary' | 'secondary' | 'success' | 'info' | 'warn' | 'danger' | 'contrast'
 }
 
 export interface RunOptions extends Partial<TaskKind> {
@@ -87,6 +91,8 @@ export interface TaskRun {
   startedAt: number
   endedAt: number | null
   cancelling: boolean
+  /** Settles with the run once it ends: succeeded, failed or cancelled (it never rejects). */
+  finished: Promise<TaskRun>
 }
 
 interface TaskHostDeps {
@@ -150,6 +156,7 @@ function createTaskStore() {
   const defs = new Map<string, TaskKind>()
   const stops = new Map<string, () => void>()
   const pokes = new Map<string, () => void>()
+  const settles = new Map<string, (run: TaskRun) => void>()
   let deps: TaskHostDeps = {}
   let restored = false
 
@@ -188,8 +195,9 @@ function createTaskStore() {
   // --- Runs ---
 
   function addRun(partial: Partial<TaskRun> & Pick<TaskRun, 'label'>): TaskRun {
+    const id = partial.id ?? `task-${Date.now().toString(36)}-${++seq}`
     const run: TaskRun = {
-      id: partial.id ?? `task-${Date.now().toString(36)}-${++seq}`,
+      id,
       kind: partial.kind ?? null,
       label: partial.label,
       taskId: partial.taskId ?? null,
@@ -201,6 +209,8 @@ function createTaskStore() {
       startedAt: partial.startedAt ?? Date.now(),
       endedAt: null,
       cancelling: false,
+      // A promise is not made reactive: run.finished stays the raw promise.
+      finished: new Promise<TaskRun>((resolve) => settles.set(id, resolve)),
     }
     state.runs.unshift(run)
     // Keep every active run, and the most recent finished ones.
@@ -223,6 +233,13 @@ function createTaskStore() {
     pokes.delete(id)
     persist()
     notifyEnd(run)
+    settles.get(id)?.(run)
+    settles.delete(id)
+    try {
+      defs.get(id)?.onSettled?.(run)
+    } catch (err) {
+      console.error(`[qdadm] Task "${run.label}": onSettled threw`, err)
+    }
   }
 
   function notifyEnd(run: TaskRun): void {
@@ -397,6 +414,7 @@ function createTaskStore() {
     stops.delete(id)
     pokes.delete(id)
     defs.delete(id)
+    settles.delete(id)
     const i = state.runs.findIndex((r) => r.id === id)
     if (i !== -1) state.runs.splice(i, 1)
     if (state.openId === id) state.openId = null
@@ -424,6 +442,8 @@ function createTaskStore() {
     dismiss,
     clearFinished,
     open: (id: string | null) => (state.openId = id),
+    /** Read the run's task record now, instead of at the next poll (a log that just ended, a page that knows better). */
+    poke: (id: string) => pokes.get(id)?.(),
     registerTaskKind,
     answerConfirm,
     attach,
@@ -434,6 +454,7 @@ function createTaskStore() {
       for (const stop of stops.values()) stop()
       stops.clear()
       pokes.clear()
+      settles.clear()
       defs.clear()
       kinds.clear()
       state.runs.splice(0)

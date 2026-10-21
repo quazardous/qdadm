@@ -144,6 +144,36 @@ describe('task store (#4114)', () => {
     await vi.advanceTimersByTimeAsync(1000)
     expect(sessionStorage.getItem('qdadm:tasks')).toBeNull()
   })
+  it('settles run.finished and calls onSettled once the run ends (#4147)', async () => {
+    vi.useFakeTimers()
+    const api = backend()
+    const onSettled = vi.fn()
+    const run = await store.run({ label: 'Refresh db', start: api.start, task: { get: api.get, intervalMs: 1000 }, onSettled })
+    let settled = null
+    run.finished.then((r) => (settled = r))
+    await vi.advanceTimersByTimeAsync(1000)
+    expect(settled).toBeNull()
+    api.set(1, { status: 'failed', error: 'dump not found' })
+    await vi.advanceTimersByTimeAsync(1000)
+    expect(settled).toMatchObject({ status: 'failed', error: 'dump not found' })
+    expect(onSettled).toHaveBeenCalledTimes(1)
+    expect(onSettled.mock.calls[0][0].status).toBe('failed')
+
+    // A start that fails settles too.
+    const broken = await store.run({ label: 'B', start: async () => { throw new Error('409') }, task: { get: vi.fn() } })
+    await expect(broken.finished).resolves.toMatchObject({ status: 'failed', error: '409' })
+  })
+
+  it('reads the record at once when poked, without waiting for the poll (#4147)', async () => {
+    vi.useFakeTimers()
+    const api = backend()
+    await store.run({ label: 'Load ref', start: api.start, task: { get: api.get, intervalMs: 60_000 } })
+    await vi.advanceTimersByTimeAsync(0)
+    api.set(1, { status: 'done' })
+    store.poke(store.state.runs[0].id)
+    await vi.advanceTimersByTimeAsync(0)
+    expect(store.state.runs[0].status).toBe('succeeded')
+  })
 })
 
 describe('task components (#4114)', () => {
@@ -215,6 +245,39 @@ describe('task components (#4114)', () => {
     await nextTick()
     expect(document.querySelector('.qd-task-step')).toBeNull()
     expect(store.state.runs[0].status).toBe('running') // closing the dialog stops nothing
+    wrapper.unmount()
+  })
+
+  it('confirms without typing, with a primary button unless told otherwise (#4147)', async () => {
+    const wrapper = mountHost()
+    const api = backend()
+    const pending = store.run({ label: 'Roll back', start: api.start, task: { get: api.get }, confirm: { message: 'Back to the previous ref.' } })
+    await flushPromises()
+    expect(document.querySelector('#qd-task-typed')).toBeNull()
+    const accept = document.querySelector('.p-dialog .p-dialog-footer button:last-child')
+    expect(accept.disabled).toBe(false)
+    expect(accept.className).not.toContain('p-button-danger')
+    accept.click()
+    expect((await pending).label).toBe('Roll back')
+    expect(api.start).toHaveBeenCalledTimes(1)
+    wrapper.unmount()
+  })
+
+  it('re-reads the task as soon as its log ends (#4147)', async () => {
+    const wrapper = mountHost()
+    const api = backend()
+    let ended = false
+    await store.run({
+      label: 'Create box b2',
+      start: api.start,
+      task: { get: api.get, intervalMs: 60_000 },
+      log: () => ({ poll: async () => ({ lines: ended ? ['ready'] : [], done: ended }), intervalMs: 20 }),
+    })
+    await vi.waitFor(() => expect(api.get).toHaveBeenCalledTimes(1))
+    api.set(1, { status: 'done' })
+    ended = true
+    await vi.waitFor(() => expect(store.state.runs[0].status).toBe('succeeded'))
+    expect(api.get).toHaveBeenCalledTimes(2)
     wrapper.unmount()
   })
 })

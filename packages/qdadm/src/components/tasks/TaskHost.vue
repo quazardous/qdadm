@@ -27,12 +27,13 @@ const typed = ref('')
 watch(pending, () => (typed.value = ''))
 const expected = computed(() => pending.value?.confirm.typed ?? null)
 const confirmable = computed(() => expected.value === null || typed.value === expected.value)
+const severity = computed(() => pending.value?.confirm.severity ?? (expected.value !== null ? 'danger' : 'primary'))
 </script>
 
 <template>
   <TaskDialog :run-id="store.state.openId" @close="store.open(null)" />
   <SimpleDialog :visible="!!pending" :title="pending?.label ?? ''" :confirm-label="pending?.confirm.accept ?? t('core.task.start')"
-    confirm-severity="danger" :confirm-disabled="!confirmable" :cancel-label="t('core.task.dontStart')"
+    :confirm-severity="severity" :confirm-disabled="!confirmable" :cancel-label="t('core.task.dontStart')"
     @confirm="store.answerConfirm(true)" @cancel="store.answerConfirm(false)"
     @update:visible="(v: boolean) => !v && pending && store.answerConfirm(false)">
     <p v-if="pending?.confirm.message" class="qd-task-confirm-message">{{ pending.confirm.message }}</p>

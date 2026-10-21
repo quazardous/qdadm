@@ -30,6 +30,23 @@ run fails at once with that reason.
 `run()` opens the follow dialog (unless `open: false`) and resolves with the
 run as soon as the task is queued. The run then moves on by itself.
 
+## When it ends
+
+`run.finished` settles with the run once it ends, whatever the outcome: read
+`run.status` (`succeeded`, `failed` or `cancelled`); it never rejects. Or pass
+`onSettled(run)`, which a registered kind can carry too, so it also fires
+for a run followed again after a reload:
+
+```js
+const run = await tasks.run({ label: 'Read the boxes', start, task: { entity: 'tasks' } })
+const done = await run?.finished
+if (done?.status === 'succeeded') await boxes.refresh()
+
+tasks.run({ label: 'Refresh db', start, task: { entity: 'tasks' }, onSettled: () => list.refresh() })
+```
+
+The run itself is reactive too: a `watch` on `run.status` works.
+
 ## Following
 
 `task` says how to read the task record:
@@ -56,6 +73,10 @@ record is read at once, and polling becomes a 10 s fallback. Otherwise the
 record is polled. A read that fails is retried, with longer and longer
 waits, and does not end the run.
 
+The dialog re-reads the record as soon as the task's log ends, so the status
+does not lag behind a log that already says it is done. Anything else that
+knows the task moved can do the same: `getTaskStore().poke(run.id)`.
+
 ## The dialog
 
 - The status, the time elapsed, and the task id.
@@ -73,11 +94,18 @@ When a task ends, a toast says so (`notify: false` turns that off). A
 failure stays in the notification history, and the toast leads to the
 task's page.
 
-## Dangerous tasks
+## Asking first
 
-`confirm: { typed, message?, accept? }` asks before starting. The user must
-type `typed` (a box name, an environment) before the start button
-enables. If they decline, nothing starts and `run()` resolves with null.
+`confirm: { message?, typed?, accept?, severity? }` asks before starting. If
+the user declines, nothing starts and `run()` resolves with null.
+
+- Without `typed`, it is a plain confirmation: the message, a start button
+  (`accept` labels it) and a cancel button. For a gesture that is reversible
+  but worth a second look: a rollback, a fresh database.
+- With `typed` (a box name, an environment), the user must type it before
+  the start button enables. For what cannot be undone.
+
+The start button is red with `typed`, plain without; `severity` sets it.
 
 ## Actions
 
@@ -117,7 +145,7 @@ registered kind live as long as the page.
 ## Where the dialogs live
 
 `AppLayout` mounts the tray in the sidebar and a `TaskHost`, which renders
-the follow dialog and the typed confirmation. An app with its own layout
+the follow dialog and the confirmations. An app with its own layout
 mounts `<TaskHost />` once near its root, and `<TaskTray />` where it wants
 it. Without a host, a task that needs a confirmation does not start (a
 warning says why).
