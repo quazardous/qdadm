@@ -15,6 +15,7 @@ export default `core:
     submit: Valider
     reset: Réinitialiser
     back: Retour
+    view: Voir
     next: Suivant
     previous: Précédent
     close: Fermer
@@ -48,6 +49,9 @@ export default `core:
     created: Créé
     updated: Modifié
     confirmDelete: Êtes-vous sûr de vouloir supprimer cet élément ?
+    confirmDeleteTitle: Confirmer la suppression
+    confirmDeleteItem: "Supprimer {entity} « {label} » ?"
+    confirmDeleteThis: "Êtes-vous sûr de vouloir supprimer cet élément ({entity}) ?"
   errors:
     required: Requis
     tooShort: Trop court (min {min})
@@ -77,24 +81,24 @@ export default `core:
     done: Terminé
     stopped: Arrêté
     failed: "Échec : {error}"
-    lines: "{count} lignes"
+    lines: "{count} ligne | {count} lignes"
     search: Chercher dans le log
     previous: Occurrence précédente
     next: Occurrence suivante
     onlyMatches: Seulement les lignes trouvées
-    errors: "{count} erreurs"
+    errors: "{count} erreur | {count} erreurs"
     firstError: Aller à la ligne d'erreur suivante
     wrap: Couper les lignes longues
     follow: Suivre la fin du log
     download: Télécharger le log
-    newLines: "{count} nouvelles lignes, reprendre"
+    newLines: "{count} nouvelle ligne, reprendre | {count} nouvelles lignes, reprendre"
     empty: Rien pour l'instant
   # EntityTimeline (#4111)
   timeline:
     actors: Filtrer par acteur
     loading: Chargement…
     empty: Rien ne s'est encore passé
-    newEvents: "{count} nouveaux événements"
+    newEvents: "{count} nouvel événement | {count} nouveaux événements"
     oldestFirst: Plus anciens d'abord
     newestFirst: Plus récents d'abord
   # PayloadViewer / PayloadDiff (#4112)
@@ -105,14 +109,14 @@ export default `core:
     copied: Copié dans le presse-papiers
     copyFailed: Copie impossible
     download: Télécharger
-    showAll: "Afficher les {count} lignes"
+    showAll: "Afficher {count} ligne | Afficher les {count} lignes"
     binary: "Contenu binaire, {size}. Premiers octets :"
     malformed: "{format} invalide ({error}), affiché comme texte"
     expected: Attendu
     captured: Capturé
     identical: Identiques
-    unchanged: "{count} lignes inchangées"
-    showSame: "Afficher les {count} lignes inchangées"
+    unchanged: "{count} ligne inchangée | {count} lignes inchangées"
+    showSame: "Afficher {count} ligne inchangée | Afficher les {count} lignes inchangées"
     inline: En ligne
     split: Côte à côte
   # EmailPreview (#4113)
@@ -129,7 +133,7 @@ export default `core:
       html: HTML
       text: Texte
       source: Source
-    imagesBlocked: "{count} images distantes bloquées"
+    imagesBlocked: "{count} image distante bloquée | {count} images distantes bloquées"
     loadImages: Charger les images
     blockImages: Bloquer les images
     empty: Ce mail n'a pas de contenu
@@ -153,11 +157,19 @@ export default `core:
     start: Lancer
     dontStart: Ne pas lancer
     typeToConfirm: "Taper {value} pour confirmer"
-    tray: "{count} tâches en cours"
+    tray: "{count} tâche en cours | {count} tâches en cours"
     trayDone: Tâches récentes
     clear: Effacer les terminées
-# The breadcrumb's View↔Edit toggle (useNavContext).
+  # NotFoundPage
+  notFound:
+    title: Page introuvable
+    message: La page demandée n'existe pas ou a été déplacée.
+    home: Retour à l'accueil
+# The breadcrumb (useBreadcrumb, useNavContext, PageNav).
 breadcrumb:
+  home: Accueil
+  dashboard: Tableau de bord
+  details: Détails
   view: Voir
   edit: Modifier
 `

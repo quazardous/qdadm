@@ -198,3 +198,17 @@ describe('I18n — dump', () => {
     expect(dumped.core).toBeUndefined()
   })
 })
+
+describe('I18n — plural forms in the core bundle (#4147)', () => {
+  it('reads the singular for one, by the locale rules', async () => {
+    const fr = new I18n({ defaultLocale: 'fr' })
+    await fr.bootstrap()
+    expect(fr.t('core.task.tray', { count: 1 })).toBe('1 tâche en cours')
+    expect(fr.t('core.task.tray', { count: 0 })).toBe('0 tâche en cours')
+    expect(fr.t('core.log.lines', { count: 12 })).toBe('12 lignes')
+    const en = new I18n()
+    await en.bootstrap()
+    expect(en.t('core.log.errors', { count: 1 })).toBe('1 error')
+    expect(en.t('core.log.errors', { count: 0 })).toBe('0 errors')
+  })
+})

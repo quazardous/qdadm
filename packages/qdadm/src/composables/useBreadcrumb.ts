@@ -2,6 +2,7 @@ import { computed, inject, type ComputedRef, type Ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useSemanticBreadcrumb, type SemanticBreadcrumbItem } from './useSemanticBreadcrumb'
 import { useStackHydrator, type HydratedLevel } from '../chain/useStackHydrator'
+import { useI18n } from '../i18n/useI18n'
 
 /**
  * Breadcrumb display item
@@ -59,14 +60,21 @@ export function useBreadcrumb(options: UseBreadcrumbOptions = {}): UseBreadcrumb
   // Get hydrator for parent entity labels
   const hydrator = useStackHydrator()
 
-  // Default label mapping
-  const defaultLabelMap: Record<string, string> = {
-    home: 'Home',
-    dashboard: 'Dashboard',
-    create: 'Create',
-    edit: 'Edit',
-    show: 'View',
-    delete: 'Delete',
+  // Default labels, from the i18n catalog (a custom labelMap entry wins)
+  const { tOr } = useI18n()
+  const defaultLabels: Record<string, [string, string]> = {
+    home: ['breadcrumb.home', 'Home'],
+    dashboard: ['breadcrumb.dashboard', 'Dashboard'],
+    create: ['core.actions.create', 'Create'],
+    edit: ['core.actions.edit', 'Edit'],
+    show: ['core.actions.view', 'View'],
+    delete: ['core.actions.delete', 'Delete'],
+  }
+  function label(key: string): string | undefined {
+    const custom = options.labelMap?.[key]
+    if (custom) return custom
+    const def = defaultLabels[key]
+    return def ? tOr(def[0], def[1]) : undefined
   }
 
   // Default icon mapping for entities
@@ -80,7 +88,6 @@ export function useBreadcrumb(options: UseBreadcrumbOptions = {}): UseBreadcrumb
   }
 
   // Merge with custom mappings
-  const labelMap = { ...defaultLabelMap, ...options.labelMap }
   const iconMap = { ...defaultIconMap, ...options.iconMap }
 
   /**
@@ -133,7 +140,7 @@ export function useBreadcrumb(options: UseBreadcrumbOptions = {}): UseBreadcrumb
     if (item.kind === 'route') {
       // Generic route
       const routeName = item.route!
-      displayItem.label = item.label || labelMap[routeName] || capitalize(routeName)
+      displayItem.label = item.label || label(routeName) || capitalize(routeName)
       displayItem.to = isLast ? null : routeExists(routeName) ? { name: routeName } : null
       if (routeName === 'home') {
         displayItem.icon = 'pi pi-home'
@@ -144,7 +151,7 @@ export function useBreadcrumb(options: UseBreadcrumbOptions = {}): UseBreadcrumb
 
       if (item.kind === 'entity-list') {
         // Entity list - use plural label
-        displayItem.label = labelMap[entityName] || capitalize(entityName)
+        displayItem.label = label(entityName) || capitalize(entityName)
         displayItem.icon = index === 1 ? iconMap[entityName] || null : null
         const routeName = getEntityRouteName(entityName, item.kind)
         displayItem.to = isLast ? null : routeExists(routeName) ? { name: routeName } : null
@@ -177,7 +184,7 @@ export function useBreadcrumb(options: UseBreadcrumbOptions = {}): UseBreadcrumb
         }
       } else if (item.kind === 'entity-create') {
         // Create page - label as action
-        displayItem.label = labelMap.create || 'Create'
+        displayItem.label = label('create')!
       }
     }
 
@@ -190,7 +197,7 @@ export function useBreadcrumb(options: UseBreadcrumbOptions = {}): UseBreadcrumb
   function getHomeItem(): BreadcrumbDisplayItem | null {
     if (!homeRouteName || !routeExists(homeRouteName)) return null
     return {
-      label: labelMap.home || 'Home',
+      label: label('home')!,
       to: { name: homeRouteName },
       icon: 'pi pi-home',
     }
@@ -237,7 +244,7 @@ export function useBreadcrumb(options: UseBreadcrumbOptions = {}): UseBreadcrumb
    */
   function setBreadcrumb(items: BreadcrumbDisplayItem[]): BreadcrumbDisplayItem[] {
     const homeItem: BreadcrumbDisplayItem = {
-      label: labelMap.home || 'Home',
+      label: label('home')!,
       to: { name: homeRouteName! },
       icon: 'pi pi-home',
     }

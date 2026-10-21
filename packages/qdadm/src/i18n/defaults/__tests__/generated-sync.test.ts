@@ -45,7 +45,7 @@ describe('i18n default providers — generated/.yml sync', () => {
     const provider = createDefaultCoreProvider()
     const en = (await provider.load('en')) as BreadcrumbBundle
     const fr = (await provider.load('fr')) as BreadcrumbBundle
-    expect(en.breadcrumb).toEqual({ view: 'View', edit: 'Edit' })
-    expect(fr.breadcrumb).toEqual({ view: 'Voir', edit: 'Modifier' })
+    expect(en.breadcrumb).toEqual({ home: 'Home', dashboard: 'Dashboard', details: 'Details', view: 'View', edit: 'Edit' })
+    expect(fr.breadcrumb).toEqual({ home: 'Accueil', dashboard: 'Tableau de bord', details: 'Détails', view: 'Voir', edit: 'Modifier' })
   })
 })

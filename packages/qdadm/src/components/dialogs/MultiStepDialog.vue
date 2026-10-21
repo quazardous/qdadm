@@ -39,10 +39,10 @@
  *   - loading: boolean - shows loading state on submit button
  *   - width: string - dialog width (default: '800px')
  *   - linear: boolean - require validation before next step (default: true)
- *   - submitLabel: string - label for submit button (default: 'Submit')
- *   - cancelLabel: string - label for cancel button (default: 'Cancel')
- *   - nextLabel: string - label for next button (default: 'Next')
- *   - backLabel: string - label for back button (default: 'Back')
+ *   - submitLabel: string - label for submit button (default: core.actions.submit)
+ *   - cancelLabel: string - label for cancel button (default: core.actions.cancel)
+ *   - nextLabel: string - label for next button (default: core.actions.next)
+ *   - backLabel: string - label for back button (default: core.actions.back)
  *   - showBackOnFirst: boolean - show back button on first step (default: false)
  *   - hideStepIndicator: boolean - hide the step indicator (default: false)
  *
@@ -59,6 +59,7 @@
 import { computed, watch, type PropType } from 'vue'
 import Dialog from 'primevue/dialog'
 import QdButton from '../base/QdButton.vue'
+import { useI18n } from '../../i18n/useI18n'
 import Stepper from 'primevue/stepper'
 import StepList from 'primevue/steplist'
 import Step from 'primevue/step'
@@ -87,6 +88,8 @@ export interface SlotActions {
   submit: () => void
   cancel: () => void
 }
+
+const { tOr } = useI18n()
 
 const props = defineProps({
   visible: {
@@ -120,19 +123,19 @@ const props = defineProps({
   },
   submitLabel: {
     type: String,
-    default: 'Submit'
+    default: ''
   },
   cancelLabel: {
     type: String,
-    default: 'Cancel'
+    default: ''
   },
   nextLabel: {
     type: String,
-    default: 'Next'
+    default: ''
   },
   backLabel: {
     type: String,
-    default: 'Back'
+    default: ''
   },
   showBackOnFirst: {
     type: Boolean,
@@ -286,7 +289,7 @@ const slotActions = computed<SlotActions>(() => ({
                   <!-- Back button -->
                   <QdButton
                     v-if="!isFirstStep || showBackOnFirst"
-                    :label="backLabel"
+                    :label="backLabel || tOr('core.actions.back', 'Back')"
                     icon="pi pi-arrow-left"
                     severity="secondary"
                     @click="goPrev"
@@ -295,7 +298,7 @@ const slotActions = computed<SlotActions>(() => ({
 
                   <!-- Cancel button -->
                   <QdButton
-                    :label="cancelLabel"
+                    :label="cancelLabel || tOr('core.actions.cancel', 'Cancel')"
                     severity="secondary"
                     @click="cancel"
                     :disabled="loading"
@@ -304,7 +307,7 @@ const slotActions = computed<SlotActions>(() => ({
                   <!-- Next button (not on last step) -->
                   <QdButton
                     v-if="!isLastStep"
-                    :label="nextLabel"
+                    :label="nextLabel || tOr('core.actions.next', 'Next')"
                     icon="pi pi-arrow-right"
                     iconPos="right"
                     @click="goNext"
@@ -314,7 +317,7 @@ const slotActions = computed<SlotActions>(() => ({
                   <!-- Submit button (only on last step) -->
                   <QdButton
                     v-if="isLastStep"
-                    :label="submitLabel"
+                    :label="submitLabel || tOr('core.actions.submit', 'Submit')"
                     icon="pi pi-check"
                     @click="submit"
                     :loading="loading"

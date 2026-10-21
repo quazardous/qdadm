@@ -6,8 +6,10 @@
  */
 import { computed, type ComputedRef } from 'vue'
 import { useRouter, type RouteRecordName } from 'vue-router'
+import { useI18n } from '../../i18n/useI18n'
 
 const router = useRouter()
+const { tOr } = useI18n()
 
 const homeRoute: ComputedRef<RouteRecordName | string> = computed(() => {
   // Find home route (first route or named 'home'/'dashboard')
@@ -29,11 +31,11 @@ function goHome(): void {
   <div class="not-found-page">
     <div class="not-found-content">
       <div class="not-found-code">404</div>
-      <h1>Page not found</h1>
-      <p>The page you're looking for doesn't exist or has been moved.</p>
+      <h1>{{ tOr('core.notFound.title', 'Page not found') }}</h1>
+      <p>{{ tOr('core.notFound.message', "The page you're looking for doesn't exist or has been moved.") }}</p>
       <button class="home-link" @click="goHome">
         <i class="pi pi-home"></i>
-        Back to Home
+        {{ tOr('core.notFound.home', 'Back to Home') }}
       </button>
     </div>
   </div>

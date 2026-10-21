@@ -31,6 +31,7 @@ import { requireDeleteConfirmation } from './confirmDelete'
 import { useDirtyState } from './useDirtyState'
 import { useUnsavedChangesGuard, type GuardDialogState } from './useUnsavedChangesGuard'
 import { useBreadcrumb } from './useBreadcrumb'
+import { useI18n } from '../i18n/useI18n'
 import {
   useEntityItemPage,
   type CreateContext,
@@ -130,6 +131,7 @@ export function useEntityItemFormPage<T extends Record<string, unknown> = Record
   const router = useRouter()
   const route = useRoute()
   const confirm = useConfirm() as ConfirmService
+  const { tOr } = useI18n()
   const debug = inject<boolean>('qdadmDebug', false)
   // Loads show as activity on the notification badge (#2677); a no-op without notifications.
   const notifications = useNotifications()
@@ -441,8 +443,8 @@ export function useEntityItemFormPage<T extends Record<string, unknown> = Record
   function confirmDelete(): void {
     const label = manager.getEntityLabel(data.value) || entityId.value
     requireDeleteConfirmation(confirm, {
-      message: `Delete ${entityName} "${label}"?`,
-      header: 'Confirm Delete',
+      message: tOr('core.messages.confirmDeleteItem', 'Delete {entity} "{label}"?', { entity: entityName, label: String(label) }),
+      header: tOr('core.messages.confirmDeleteTitle', 'Confirm Delete'),
       accept: remove,
     })
   }
@@ -766,7 +768,7 @@ export function useEntityItemFormPage<T extends Record<string, unknown> = Record
   }
 
   function addDeleteAction(options: AddDeleteActionOptions = {}): void {
-    const { label = 'Delete' } = options
+    const { label = tOr('core.actions.delete', 'Delete') } = options
 
     addAction('delete', {
       label,
@@ -798,13 +800,14 @@ export function useEntityItemFormPage<T extends Record<string, unknown> = Record
   const pageTitle = computed(() => {
     if (isEdit.value) {
       const label = entityLabel.value
-      return label ? `Edit ${entityName}: ${label}` : `Edit ${entityName}`
+      const action = tOr('core.actions.edit', 'Edit')
+      return label ? `${action} ${entityName}: ${label}` : `${action} ${entityName}`
     }
-    return `Create ${entityName}`
+    return `${tOr('core.actions.create', 'Create')} ${entityName}`
   })
 
   const pageTitleParts = computed<PageTitleParts>(() => ({
-    action: isEdit.value ? 'Edit' : 'Create',
+    action: isEdit.value ? tOr('core.actions.edit', 'Edit') : tOr('core.actions.create', 'Create'),
     entityName,
     entityLabel: isEdit.value ? entityLabel.value : undefined,
   }))

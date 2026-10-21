@@ -20,7 +20,7 @@
 
 export * from './types'
 export { MessagesRegistry } from './MessagesRegistry'
-export { Resolver, snakeCaseToTitle } from './Resolver'
+export { Resolver, snakeCaseToTitle, interpolate, pluralForm } from './Resolver'
 export { InlineTranslationProvider } from './InlineTranslationProvider'
 export { STRATEGIES, resolveStrategy, defineStrategy } from './strategies'
 export { I18N_SIGNALS, type I18nSignal } from './signals'

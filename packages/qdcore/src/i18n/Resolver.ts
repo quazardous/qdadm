@@ -105,7 +105,7 @@ export class Resolver {
       if (raw !== undefined) {
         const resolved = this._resolveValueAlias(raw, locale, steps, trace)
         if (resolved !== undefined) {
-          return { result: interpolate(resolved, params), hit: true, steps }
+          return { result: interpolate(resolved, params, locale), hit: true, steps }
         }
         // value alias chain ended in a miss — fall through to pattern aliases
       }
@@ -131,7 +131,7 @@ export class Resolver {
         steps.push({ kind: 'snake-case-fallback', field: fieldName, result })
       }
       this._options.onMissing?.(initialKey, locale)
-      return { result: interpolate(result, params), hit: false, steps }
+      return { result: interpolate(result, params, locale), hit: false, steps }
     }
 
     // Step 6: miss
@@ -262,10 +262,43 @@ function applyCaptures(target: string, captures: string[]): string {
   })
 }
 
-/** Replace `{name}` placeholders with params. Missing params stay as-is. */
-function interpolate(template: string, params?: TranslateParams): string {
+const pluralRules = new Map<string, Intl.PluralRules>()
+
+function pluralRulesFor(locale: string): Intl.PluralRules {
+  let rules = pluralRules.get(locale)
+  if (!rules) {
+    try {
+      rules = new Intl.PluralRules(locale)
+    } catch {
+      rules = new Intl.PluralRules('en')
+    }
+    pluralRules.set(locale, rules)
+  }
+  return rules
+}
+
+/**
+ * Pick the plural form of a message for `count`. A message with plural forms
+ * separates them with ` | `: `one | other`, or `zero | one | other`. The
+ * form follows the locale's rules (`Intl.PluralRules`): French reads 0 and 1
+ * as singular, English only 1. A message without ` | `, or a call without a
+ * numeric `count`, is left as written.
+ */
+export function pluralForm(template: string, count: unknown, locale = 'en'): string {
+  if (typeof count !== 'number' || !template.includes(' | ')) return template
+  const forms = template.split(' | ')
+  if (forms.length === 3 && count === 0) return forms[0]!
+  const [one, other] = forms.length >= 3 ? [forms[1]!, forms[2]!] : [forms[0]!, forms[1]!]
+  return pluralRulesFor(locale).select(count) === 'one' ? one : other
+}
+
+/**
+ * Replace `{name}` placeholders with params, after picking the plural form
+ * for `params.count`. Missing params stay as-is.
+ */
+export function interpolate(template: string, params?: TranslateParams, locale = 'en'): string {
   if (!params) return template
-  return template.replace(/\{(\w+)\}/g, (full, name) => {
+  return pluralForm(template, params.count, locale).replace(/\{(\w+)\}/g, (full, name) => {
     const v = params[name]
     return v === undefined || v === null ? full : String(v)
   })

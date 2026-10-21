@@ -19,6 +19,7 @@ import { computed, watch, inject, type Ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { getSiblingRoutes, getChildRoutes, routeParamsSatisfied, type ModuleRoute, type ParentConfig } from '../../module/moduleRegistry'
 import { useOrchestrator } from '../../orchestrator/useOrchestrator.js'
+import { useI18n } from '../../i18n/useI18n'
 import type { EntityManager } from '../../entity/EntityManager'
 import type { EntityRecord } from '../../types'
 
@@ -39,6 +40,7 @@ const props = defineProps<{
 const route = useRoute()
 const router = useRouter()
 const { getManager } = useOrchestrator()
+const { tOr } = useI18n()
 
 // Parent config from route meta
 const parentConfig = computed<ParentConfig | undefined>(() => route.meta?.parent as ParentConfig | undefined)
@@ -156,7 +158,7 @@ const allNavlinks = computed<NavLink[]>(() => {
 
       // Details link to parent item page
       const detailsLink: NavLink = {
-        label: 'Details',
+        label: tOr('breadcrumb.details', 'Details'),
         to: { name: parentRouteName ?? undefined, params: { [parentManager.idField]: parentId } },
         active: isOnParentRoute
       }
@@ -172,7 +174,7 @@ const allNavlinks = computed<NavLink[]>(() => {
     // Details link is optional since breadcrumb already shows current page
     if (props.showDetailsLink) {
       const detailsLink: NavLink = {
-        label: 'Details',
+        label: tOr('breadcrumb.details', 'Details'),
         to: { name: route.name as string | undefined, params: route.params as Record<string, unknown> },
         active: true
       }

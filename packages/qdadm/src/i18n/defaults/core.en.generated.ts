@@ -15,6 +15,7 @@ export default `core:
     submit: Submit
     reset: Reset
     back: Back
+    view: View
     next: Next
     previous: Previous
     close: Close
@@ -48,6 +49,9 @@ export default `core:
     created: Created
     updated: Updated
     confirmDelete: Are you sure you want to delete this item?
+    confirmDeleteTitle: Confirm Delete
+    confirmDeleteItem: 'Delete {entity} "{label}"?'
+    confirmDeleteThis: Are you sure you want to delete this {entity}?
   errors:
     required: Required
     tooShort: Too short (min {min})
@@ -77,24 +81,24 @@ export default `core:
     done: Complete
     stopped: Stopped
     failed: "Failed: {error}"
-    lines: "{count} lines"
+    lines: "{count} line | {count} lines"
     search: Search the log
     previous: Previous match
     next: Next match
     onlyMatches: Only matching lines
-    errors: "{count} errors"
+    errors: "{count} error | {count} errors"
     firstError: Go to the next error line
     wrap: Wrap long lines
     follow: Follow the end of the log
     download: Download the log
-    newLines: "{count} new lines, resume"
+    newLines: "{count} new line, resume | {count} new lines, resume"
     empty: No output yet
   # EntityTimeline (#4111)
   timeline:
     actors: Filter by actor
     loading: Loading…
     empty: Nothing happened yet
-    newEvents: "{count} new events"
+    newEvents: "{count} new event | {count} new events"
     oldestFirst: Oldest first
     newestFirst: Newest first
   # PayloadViewer / PayloadDiff (#4112)
@@ -105,14 +109,14 @@ export default `core:
     copied: Copied to the clipboard
     copyFailed: Could not copy
     download: Download
-    showAll: "Show all {count} rows"
+    showAll: "Show {count} row | Show all {count} rows"
     binary: "Binary content, {size}. First bytes:"
     malformed: "Not valid {format} ({error}), shown as text"
     expected: Expected
     captured: Captured
     identical: Identical
-    unchanged: "{count} unchanged lines"
-    showSame: "Show {count} unchanged rows"
+    unchanged: "{count} unchanged line | {count} unchanged lines"
+    showSame: "Show {count} unchanged row | Show {count} unchanged rows"
     inline: Inline
     split: Side by side
   # EmailPreview (#4113)
@@ -129,7 +133,7 @@ export default `core:
       html: HTML
       text: Text
       source: Source
-    imagesBlocked: "{count} remote images blocked"
+    imagesBlocked: "{count} remote image blocked | {count} remote images blocked"
     loadImages: Load images
     blockImages: Block images
     empty: This email has no body
@@ -153,11 +157,19 @@ export default `core:
     start: Start
     dontStart: Do not start
     typeToConfirm: "Type {value} to confirm"
-    tray: "{count} running tasks"
+    tray: "{count} running task | {count} running tasks"
     trayDone: Recent tasks
     clear: Clear finished
-# The breadcrumb's View↔Edit toggle (useNavContext).
+  # NotFoundPage
+  notFound:
+    title: Page not found
+    message: The page you're looking for doesn't exist or has been moved.
+    home: Back to Home
+# The breadcrumb (useBreadcrumb, useNavContext, PageNav).
 breadcrumb:
+  home: Home
+  dashboard: Dashboard
+  details: Details
   view: View
   edit: Edit
 `

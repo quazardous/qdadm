@@ -153,7 +153,7 @@ export function useNavContext(_options: UseNavContextOptions = {}): UseNavContex
   const hydrator = useStackHydrator()
 
   // i18n for the mode-toggle labels (no-op shim outside a kernel)
-  const { i18n: kernelI18n, locale: i18nLocale } = useI18n()
+  const { tOr, locale: i18nLocale } = useI18n()
 
   function getManager(entityName: string): EntityManager | null {
     return orchestrator?.get(entityName) ?? null
@@ -224,7 +224,7 @@ export function useNavContext(_options: UseNavContextOptions = {}): UseNavContex
           type: 'create',
           entity: item.entity,
           manager,
-          label: 'Create',
+          label: tOr('core.actions.create', 'Create'),
           routeName: manager ? `${manager.routePrefix}-create` : null,
         })
       } else if (item.kind === 'route') {
@@ -302,7 +302,7 @@ export function useNavContext(_options: UseNavContextOptions = {}): UseNavContex
   const homeItem = computed(() => {
     if (!homeRouteName || !routeExists(homeRouteName)) return null
     return {
-      label: homeRouteName === 'dashboard' ? 'Dashboard' : 'Home',
+      label: homeRouteName === 'dashboard' ? breadcrumbLabel('dashboard', 'Dashboard') : breadcrumbLabel('home', 'Home'),
       to: { name: homeRouteName },
       icon: 'pi pi-home',
     }
@@ -461,9 +461,7 @@ export function useNavContext(_options: UseNavContextOptions = {}): UseNavContex
 
   /** Resolve a `breadcrumb.*` label from the i18n catalog, with fallback. */
   function breadcrumbLabel(key: string, fallback: string): string {
-    const trace = kernelI18n?.resolve(`breadcrumb.${key}`)
-    if (trace?.hit) return trace.result
-    return fallback
+    return tOr(`breadcrumb.${key}`, fallback)
   }
 
   function toggleLabel(target: 'show' | 'edit'): string {

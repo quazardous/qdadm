@@ -39,6 +39,7 @@ import { useRouter, useRoute, type Router } from 'vue-router'
 import { useNotifications } from '../notifications/NotificationStore'
 import { useConfirm } from 'primevue/useconfirm'
 import { requireDeleteConfirmation } from './confirmDelete'
+import { useI18n } from '../i18n/useI18n'
 import {
   useEntityItemPage,
   type ParentConfig,
@@ -270,6 +271,7 @@ export function useEntityItemShowPage<T = Record<string, unknown>>(
 
   const router: Router = useRouter()
   const confirm = useConfirm() as ConfirmService
+  const { tOr } = useI18n()
 
   // Lazy action state (declared before base so onLoadSuccess wrapper can reference it)
   const lazyActionsMap = ref<Map<string, LazyActionConfig>>(new Map())
@@ -441,7 +443,7 @@ export function useEntityItemShowPage<T = Record<string, unknown>>(
   }
 
   function addEditAction(editOptions: { label?: string; icon?: string } = {}): UseEntityItemShowPageReturn<T> {
-    const { label = 'Edit', icon = 'pi pi-pencil' } = editOptions
+    const { label = tOr('core.actions.edit', 'Edit'), icon = 'pi pi-pencil' } = editOptions
     return addAction({
       name: 'edit',
       label,
@@ -455,7 +457,7 @@ export function useEntityItemShowPage<T = Record<string, unknown>>(
   function addDeleteAction(
     deleteOptions: { label?: string; icon?: string; confirm?: boolean } = {}
   ): UseEntityItemShowPageReturn<T> {
-    const { label = 'Delete', icon = 'pi pi-trash', confirm: confirmDelete = true } = deleteOptions
+    const { label = tOr('core.actions.delete', 'Delete'), icon = 'pi pi-trash', confirm: confirmDelete = true } = deleteOptions
     return addAction({
       name: 'delete',
       label,
@@ -464,8 +466,8 @@ export function useEntityItemShowPage<T = Record<string, unknown>>(
       onClick: () => {
         if (confirmDelete) {
           requireDeleteConfirmation(confirm, {
-            message: `Are you sure you want to delete this ${manager.label || entity}?`,
-            header: 'Confirm Delete',
+            message: tOr('core.messages.confirmDeleteThis', 'Are you sure you want to delete this {entity}?', { entity: manager.label || entity }),
+            header: tOr('core.messages.confirmDeleteTitle', 'Confirm Delete'),
             accept: () => deleteEntity(),
           })
         } else {
@@ -477,7 +479,7 @@ export function useEntityItemShowPage<T = Record<string, unknown>>(
   }
 
   function addBackAction(backOptions: { label?: string; icon?: string; route?: string } = {}): UseEntityItemShowPageReturn<T> {
-    const { label = 'Back', icon = 'pi pi-arrow-left', route: backRoute } = backOptions
+    const { label = tOr('core.actions.back', 'Back'), icon = 'pi pi-arrow-left', route: backRoute } = backOptions
     return addAction({
       name: 'back',
       label,
@@ -532,7 +534,7 @@ export function useEntityItemShowPage<T = Record<string, unknown>>(
   // ============ PAGE TITLE ============
 
   const titleParts = computed<PageTitleParts>(() => ({
-    action: 'View',
+    action: tOr('core.actions.view', 'View'),
     entityName: manager.label || entity,
     entityLabel: entityLabel.value || undefined,
   }))

@@ -151,7 +151,7 @@ export function useListPage<T = unknown>(config: UseListPageOptions<T>): UseList
   const isMobile = ref(window.innerWidth < 768)
 
   // i18n integration — column headers resolve via entities.{entity}.fields.{field}
-  const { i18n: kernelI18n, locale: i18nLocale } = useI18n()
+  const { i18n: kernelI18n, locale: i18nLocale, tOr } = useI18n()
 
   // Get EntityManager via orchestrator (#1193 — canonical injection: one
   // error-message source; erased to this file's Read-tier view)
@@ -1059,8 +1059,11 @@ export function useListPage<T = unknown>(config: UseListPageOptions<T>): UseList
   function confirmDelete(item: unknown, labelField = 'name'): void {
     const itemRecord = item as Record<string, unknown>
     requireDeleteConfirmation(confirm, {
-      message: `Delete ${entityName} "${itemRecord[labelField] || itemRecord[resolvedDataKey]}"?`,
-      header: 'Confirm Delete',
+      message: tOr('core.messages.confirmDeleteItem', 'Delete {entity} "{label}"?', {
+        entity: entityName,
+        label: String(itemRecord[labelField] || itemRecord[resolvedDataKey]),
+      }),
+      header: tOr('core.messages.confirmDeleteTitle', 'Confirm Delete'),
       accept: () => deleteItem(item, labelField),
     })
   }
@@ -1243,7 +1246,7 @@ export function useListPage<T = unknown>(config: UseListPageOptions<T>): UseList
   function addViewAction(options: Partial<ActionConfig> = {}): void {
     addAction('view', {
       icon: 'pi pi-eye',
-      tooltip: 'View',
+      tooltip: tOr('core.actions.view', 'View'),
       onClick: options.onClick || goToShow,
       ...options,
     })
@@ -1252,7 +1255,7 @@ export function useListPage<T = unknown>(config: UseListPageOptions<T>): UseList
   function addEditAction(options: Partial<ActionConfig> = {}): void {
     addAction('edit', {
       icon: 'pi pi-pencil',
-      tooltip: 'Edit',
+      tooltip: tOr('core.actions.edit', 'Edit'),
       onClick: options.onClick || goToEdit,
       visible: (row) => manager.canUpdate(row),
       ...options,
@@ -1263,7 +1266,7 @@ export function useListPage<T = unknown>(config: UseListPageOptions<T>): UseList
     const labelField = options.labelField || 'name'
     addAction('delete', {
       icon: 'pi pi-trash',
-      tooltip: 'Delete',
+      tooltip: tOr('core.actions.delete', 'Delete'),
       severity: 'danger',
       onClick: (row) => confirmDelete(row, labelField),
       visible: (row) => manager.canDelete(row),

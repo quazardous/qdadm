@@ -10,6 +10,7 @@ import { defineComponent, h, ref } from 'vue'
 import { createRouter, createMemoryHistory } from 'vue-router'
 import { useNavContext } from '../../src/composables/useNavContext'
 import { I18N_INJECTION_KEY } from '../../src/i18n/useI18n'
+import { I18n } from '../../src/i18n/I18n'
 
 const Stub = { template: '<div />' }
 
@@ -49,7 +50,7 @@ function createManager(overrides = {}) {
   }
 }
 
-async function mountNav(router, { manager = createManager(), path = '/bots/1', i18n = null } = {}) {
+async function mountNav(router, { manager = createManager(), path = '/bots/1', i18n = null, home = null } = {}) {
   await router.push(path)
   await router.isReady()
 
@@ -66,6 +67,7 @@ async function mountNav(router, { manager = createManager(), path = '/bots/1', i
     qdadmStackHydrator: { getLevels: () => [] },
   }
   if (i18n) provide[I18N_INJECTION_KEY] = i18n
+  if (home) provide.qdadmHomeRoute = home
 
   const wrapper = mount(Harness, { global: { plugins: [router], provide } })
   await flushPromises()
@@ -225,5 +227,17 @@ describe('useNavContext modeLinks on child pages (#1353)', () => {
     const { nav } = await mountNav(createChildRouter(), { path: '/bots' })
 
     expect(nav.modeLinks.value).toEqual([])
+  })
+})
+
+describe('useNavContext labels follow the i18n locale (#4147)', () => {
+  it('reads Home and Create from the catalog, English without a kernel', async () => {
+    const i18n = new I18n({ defaultLocale: 'fr' })
+    await i18n.bootstrap()
+    const fr = await mountNav(createTestRouter(), { path: '/bots/create', i18n, home: 'home' })
+    expect(fr.nav.breadcrumb.value.map((c) => c.label)).toEqual(['Accueil', 'Bots', 'Créer'])
+
+    const en = await mountNav(createTestRouter(), { path: '/bots/create', home: 'home' })
+    expect(en.nav.breadcrumb.value.map((c) => c.label)).toEqual(['Home', 'Bots', 'Create'])
   })
 })
