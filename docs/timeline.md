@@ -52,8 +52,9 @@ returning `{ id?, at, actor?, title, kind?, severity? }`:
 - **Detail**: with a `#detail="{ event, item }"` slot, every event expands
   into it. Drop a payload viewer, an email preview or a link there. Without
   the slot, events are not clickable.
-- **Gaps**: `gaps` set to `true` shows the time since the previous event
-  (among the visible ones). A list of `{ label, from, to }` shows named
+- **Gaps**: `gaps` set to `true` shows, above each event, the time between
+  it and the event above it (among the visible ones), in either order. The
+  first event under a day separator has none: the date says it. A list of `{ label, from, to }` shows named
   durations above the timeline, from the first event matching `from` to the
   first one after it matching `to`; "—" until both have happened.
 

@@ -66,7 +66,16 @@ describe('EntityTimeline (#4111)', () => {
 
   it('shows the time since the previous event, and named durations', () => {
     const wrapper = mountTimeline({ events: EVENTS, gaps: true })
-    expect(wrapper.findAll('.qd-timeline-since').map((e) => e.text())).toEqual(['+2 min 30 s', '+16 h 57 min', '+1 h'])
+    // Under a day separator the gap is left out: the date says it.
+    expect(wrapper.findAll('.qd-timeline-since').map((e) => e.text())).toEqual(['+2 min 30 s', '+1 h'])
+
+    // Newest first: each gap still reads from the row above it, and the
+    // first event of a day carries none, so nothing sits over the date (#4147).
+    const desc = mountTimeline({ events: EVENTS, gaps: true, order: 'desc' })
+    const rows = desc.findAll('.qd-timeline-list > li').map((li) =>
+      li.classes('qd-timeline-day') ? 'day' : `${li.find('.qd-timeline-title').text()}${li.find('.qd-timeline-since').exists() ? ` ${li.find('.qd-timeline-since').text()}` : ''}`
+    )
+    expect(rows).toEqual(['day', 'Label requested', 'Ready to ship +1 h', 'day', 'Order imported', 'Order injected +2 min 30 s'])
 
     const named = mountTimeline({
       events: EVENTS,

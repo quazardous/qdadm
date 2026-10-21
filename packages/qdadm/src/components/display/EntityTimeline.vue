@@ -258,20 +258,22 @@ const fullFormat = computed(() => new Intl.DateTimeFormat(locale.value, { dateSt
 
 const rows = computed<Row[]>(() => {
   const visible = chronological.value.filter((e) => !e.item.actor || !hiddenActors.value.has(e.item.actor))
-  const withSince = visible.map((entry, i) => ({
-    entry,
-    since: props.gaps === true && i > 0 ? duration(entry.time - visible[i - 1]!.time) : null,
-  }))
-  const ordered = currentOrder.value === 'desc' ? [...withSince].reverse() : withSince
+  const ordered = currentOrder.value === 'desc' ? [...visible].reverse() : visible
   const out: Row[] = []
   let lastDay = ''
-  for (const { entry, since } of ordered) {
+  let previous: (typeof visible)[number] | null = null
+  for (const entry of ordered) {
     const day = dayFormat.value.format(entry.time)
-    if (day !== lastDay) {
+    const newDay = day !== lastDay
+    if (newDay) {
       out.push({ type: 'day', key: `day:${day}`, day })
       lastDay = day
     }
+    // The gap sits above an event and reads from the row above it, in either
+    // order. Under a day separator it is left out: the date says it.
+    const since = props.gaps === true && previous && !newDay ? duration(Math.abs(entry.time - previous.time)) : null
     out.push({ type: 'event', key: entry.key, entry, since })
+    previous = entry
   }
   return out
 })
