@@ -1,5 +1,18 @@
 # Changelog
 
+## 2.34.0
+
+### Minor Changes
+
+- e6ac16e: i18n (#4147): the breadcrumb (Home, Dashboard, Create), PageNav's Details tab, the list, form and show page actions and titles (View, Edit, Delete, Back), the delete confirmations, MultiStepDialog buttons and NotFoundPage read the catalog (en + fr); a label passed by the app still wins. Messages with a count have singular and plural forms ("1 tâche en cours"). New `tOr(key, fallback, params?)` on `useI18n()`.
+- 0f8cc94: TaskRunner (#4147): `run.finished` settles with the run once it ends, and `onSettled(run)` (run option or task kind) is called then. The follow dialog re-reads the task record as soon as its log ends (`LogStream` emits `done`; `getTaskStore().poke(id)` does the same for anything else). `confirm` without `typed` is a plain confirmation, with a primary button; `confirm.severity` sets it.
+
+### Patch Changes
+
+- b55877a: EntityTimeline (#4147): with `gaps`, each gap reads from the row above it in either order, and the first event under a day separator has none, so it no longer sits over the date in `desc`.
+- Updated dependencies [e6ac16e]
+  - @quazardous/qdcore@1.3.0
+
 ## 2.33.1
 
 ### Patch Changes
