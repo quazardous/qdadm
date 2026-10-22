@@ -51,7 +51,11 @@ export interface AppConfig {
   shortName?: string
   logo?: string | null
   logoSmall?: string | null
-  favicon?: string | null
+  /**
+   * The page icon. Default: the page's own `link[rel~=icon]` is kept, the
+   * qdadm logo is added only when it has none. `false` / `null`: never touch it.
+   */
+  favicon?: string | false | null
   version?: string | null
   theme?: AppTheme
   /** The signed-in user's profile page (#4157). */
@@ -109,6 +113,22 @@ export interface QdadmPlugin {
 /**
  * Creates the qdadm plugin with the given configuration
  */
+/**
+ * Set the page icon (#4166). An explicit `favicon` wins; without one, the
+ * page's own `link[rel~=icon]` stays (index.html, or set in JS before the
+ * mount) and the qdadm logo is only a fallback; `false` / `null` leave the
+ * head alone.
+ */
+export function applyFavicon(favicon: string | false | null | undefined, doc: Document = document): void {
+  if (favicon === false || favicon === null) return
+  const existing = doc.querySelector("link[rel~='icon']")
+  if (!favicon && existing) return
+  const link = existing || doc.createElement('link')
+  link.setAttribute('rel', 'icon')
+  link.setAttribute('href', favicon || qdadmLogo)
+  if (!existing) doc.head.appendChild(link)
+}
+
 export function createQdadm(options: QdadmOptions): QdadmPlugin {
   return {
     install(app: App) {
@@ -151,7 +171,6 @@ export function createQdadm(options: QdadmOptions): QdadmPlugin {
         shortName: 'Admin',
         logo: null,
         logoSmall: null,
-        favicon: qdadmLogo,
         version: null,
         theme: {
           primary: '#3B82F6',
@@ -243,16 +262,7 @@ export function createQdadm(options: QdadmOptions): QdadmPlugin {
         }
       }
 
-      // Appliquer le favicon
-      if (appConfig.favicon) {
-        const existingLink = document.querySelector("link[rel~='icon']")
-        const link = existingLink || document.createElement('link')
-        link.setAttribute('rel', 'icon')
-        link.setAttribute('href', appConfig.favicon)
-        if (!existingLink) {
-          document.head.appendChild(link)
-        }
-      }
+      applyFavicon(appConfig.favicon)
     }
   }
 }
