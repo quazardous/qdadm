@@ -67,9 +67,10 @@ const unreadLabel = computed(() => (unread.value > 99 ? '99+' : String(unread.va
 }
 
 /* Work in progress: a ring around the logo. */
+/* Inside the logo's circle: outside it, the ring ran past the sidebar edge. */
 .notification-badge-ring {
   position: absolute;
-  inset: -0.25rem;
+  inset: 2px;
   border-radius: 50%;
   border: 2px solid transparent;
   border-top-color: var(--p-primary-color, #3b82f6);
