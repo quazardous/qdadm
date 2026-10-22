@@ -15,10 +15,19 @@
  */
 import { RouterLink, useRouter, type RouteLocationRaw } from 'vue-router'
 import { useNotifications } from './NotificationStore'
-import type { Notification, NotificationSeverity } from './NotificationStore'
+import type { Notification, NotificationSeverity, StatusItem } from './NotificationStore'
+import { useI18n } from '../i18n/useI18n'
 
 const store = useNotifications()
 const router = useRouter()
+const { tOr } = useI18n()
+
+/** A status item with `onClick` (#4171) runs it; one with `to` is a link. Both close the panel. */
+function openStatus(item: StatusItem): void {
+  if (!item.onClick && !item.to) return
+  store.close()
+  item.onClick?.()
+}
 
 /** An entry is read when clicked; one with a `to` also takes the user there (#2677). */
 function openNotification(notif: Notification): void {
@@ -48,11 +57,11 @@ function formatTime(timestamp: number): string {
   const diffMs = now.getTime() - date.getTime()
   const diffMins = Math.floor(diffMs / 60000)
 
-  if (diffMins < 1) return 'just now'
-  if (diffMins < 60) return `${diffMins}m ago`
+  if (diffMins < 1) return tOr('core.notifications.justNow', 'just now')
+  if (diffMins < 60) return tOr('core.notifications.minutesAgo', '{count}m ago', { count: diffMins })
 
   const diffHours = Math.floor(diffMins / 60)
-  if (diffHours < 24) return `${diffHours}h ago`
+  if (diffHours < 24) return tOr('core.notifications.hoursAgo', '{count}h ago', { count: diffHours })
 
   return date.toLocaleDateString()
 }
@@ -69,7 +78,7 @@ function formatTime(timestamp: number): string {
         <button
           v-if="store.unreadCount.value > 0"
           class="notification-toolbar-btn"
-          title="Mark all read"
+          :title="tOr('core.notifications.markAllRead', 'Mark all read')"
           @click="store.markAllRead()"
         >
           <i class="pi pi-check-circle" />
@@ -77,14 +86,14 @@ function formatTime(timestamp: number): string {
         <button
           v-if="store.notifications.value.length > 0"
           class="notification-toolbar-btn"
-          title="Clear all"
+          :title="tOr('core.notifications.clearAll', 'Clear all')"
           @click="store.clearNotifications()"
         >
           <i class="pi pi-trash" />
         </button>
         <button
           class="notification-toolbar-btn notification-toolbar-close"
-          title="Close"
+          :title="tOr('core.notifications.close', 'Close')"
           @click="store.close()"
         >
           <i class="pi pi-times" />
@@ -104,13 +113,14 @@ function formatTime(timestamp: number): string {
           class="notification-status-item"
           :class="[
             `notification-status-item--${item.severity}`,
-            { 'notification-status-item--link': !!item.to }
+            { 'notification-status-item--link': !!item.to || !!item.onClick }
           ]"
-          @click="item.to ? store.close() : undefined"
+          :role="item.onClick && !item.to ? 'button' : undefined"
+          @click="openStatus(item)"
         >
           <i :class="item.icon || statusIcons[item.severity]" />
           <span class="notification-status-label">{{ item.label }}</span>
-          <i v-if="item.to" class="pi pi-chevron-right notification-status-arrow" />
+          <i v-if="item.to || item.onClick" class="pi pi-chevron-right notification-status-arrow" />
           <span v-else-if="item.count != null" class="notification-status-count">{{ item.count }}</span>
         </component>
       </div>
@@ -142,7 +152,7 @@ function formatTime(timestamp: number): string {
           </div>
           <button
             class="notification-item-dismiss"
-            title="Dismiss"
+            :title="tOr('core.notifications.dismiss', 'Dismiss')"
             @click.stop="store.removeNotification(notif.id)"
           >
             <i class="pi pi-times" />
@@ -155,7 +165,7 @@ function formatTime(timestamp: number): string {
           class="notification-panel-empty"
         >
           <i class="pi pi-bell" />
-          <span>No notifications</span>
+          <span>{{ tOr('core.notifications.empty', 'No notifications') }}</span>
         </div>
       </div>
     </div>

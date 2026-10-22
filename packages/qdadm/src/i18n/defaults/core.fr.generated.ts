@@ -174,6 +174,19 @@ export default `core:
     invalidCredentials: Identifiants invalides
     configError: Erreur de configuration
     noAuthAdapter: Aucun adaptateur d'authentification configuré
+  # NotificationPanel and NotificationBadge (#4171)
+  notifications:
+    title: Notifications
+    unread: "Notifications, {count} non lue | Notifications, {count} non lues"
+    loading: Chargement
+    markAllRead: Tout marquer comme lu
+    clearAll: Tout effacer
+    close: Fermer
+    dismiss: Retirer
+    empty: Aucune notification
+    justNow: à l'instant
+    minutesAgo: "il y a {count} min"
+    hoursAgo: "il y a {count} h"
   # NotFoundPage
   notFound:
     title: Page introuvable

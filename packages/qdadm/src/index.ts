@@ -408,6 +408,7 @@ export { useSidebarState, SIDEBAR_COLLAPSED_KEY } from './composables/useSidebar
 // ════════════════════════════════════════════════════════════════════════════
 export * from './components/index'
 export { useTaskRunner, taskAction } from './tasks/useTaskRunner'
+export { useTaskNotifications, useTaskTrayVisible, type TasksConfig } from './tasks/useTaskNotifications'
 export {
   getTaskStore,
   registerTaskKind,

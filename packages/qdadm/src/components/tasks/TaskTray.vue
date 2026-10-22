@@ -10,8 +10,11 @@ import Popover from 'primevue/popover'
 import QdButton from '../base/QdButton.vue'
 import { useI18n } from '../../i18n/useI18n'
 import { getTaskStore } from '../../tasks/taskStore'
+import { useTaskTrayVisible } from '../../tasks/useTaskNotifications'
 
 const store = getTaskStore()
+// With the notification zone on, running tasks show there instead (#4171)
+const visible = useTaskTrayVisible()
 const { t } = useI18n()
 const popover = ref<InstanceType<typeof Popover> | null>(null)
 
@@ -29,7 +32,7 @@ const icon = (status: string) =>
 </script>
 
 <template>
-  <div v-if="runs.length" class="qd-task-tray">
+  <div v-if="visible && runs.length" class="qd-task-tray">
     <button type="button" class="qd-task-tray-button" :class="{ 'qd-task-tray-button--busy': activeCount > 0 }"
       :aria-label="t('core.task.tray', { count: activeCount })" @click="popover?.toggle($event)">
       <i :class="activeCount ? 'pi pi-spin pi-cog' : 'pi pi-check'" />

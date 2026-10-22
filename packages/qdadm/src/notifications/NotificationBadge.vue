@@ -14,8 +14,10 @@
  */
 import { computed } from 'vue'
 import { useNotifications } from './NotificationStore'
+import { useI18n } from '../i18n/useI18n'
 
 const store = useNotifications()
+const { tOr } = useI18n()
 
 const unread = computed(() => store.unreadCount.value)
 const unreadLabel = computed(() => (unread.value > 99 ? '99+' : String(unread.value)))
@@ -26,10 +28,10 @@ const unreadLabel = computed(() => (unread.value > 99 ? '99+' : String(unread.va
     class="notification-badge-zone"
     :class="{ 'notification-badge-zone--alert': store.hasAlert.value || unread > 0 }"
     role="button"
-    :aria-label="unread > 0 ? `Notifications, ${unread} unread` : 'Notifications'"
+    :aria-label="unread > 0 ? tOr('core.notifications.unread', 'Notifications, {count} unread', { count: unread }) : tOr('core.notifications.title', 'Notifications')"
     @click.stop.prevent="store.toggle()"
   >
-    <span v-if="store.isBusy.value" class="notification-badge-ring" role="progressbar" aria-label="Loading" />
+    <span v-if="store.isBusy.value" class="notification-badge-ring" role="progressbar" :aria-label="tOr('core.notifications.loading', 'Loading')" />
     <span v-if="store.isFlashing.value" class="notification-badge-flash" aria-hidden="true" />
     <span v-if="unread > 0" class="notification-badge-count">{{ unreadLabel }}</span>
   </div>

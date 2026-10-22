@@ -134,4 +134,8 @@ updateStatus('overdue', { label: '2 books overdue', count: 2 })
 removeStatus('overdue')
 ```
 
+`onClick` instead of `to` makes the item a button: the panel closes and the
+callback runs (running tasks use it to reopen their dialog, see
+[TaskRunner](tasks.md#with-notifications-on)).
+
 A `warn` or `error` status also makes the logo blink.

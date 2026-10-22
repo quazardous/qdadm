@@ -76,6 +76,8 @@ export interface StatusItem {
   icon?: string
   /** Route location for navigation (vue-router LocationAsRelativeRaw) */
   to?: { name: string; params?: Record<string, unknown>; query?: Record<string, unknown> }
+  /** Called on click, then the panel closes (#4171): reopen a dialog, run an action. */
+  onClick?: () => void
 }
 
 export interface NotificationStoreConfig {

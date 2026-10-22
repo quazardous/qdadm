@@ -120,10 +120,11 @@
   gap: 0.5rem;
   width: 100%;
   padding: 0.5rem 0.625rem;
-  border: 1px solid var(--p-surface-200);
+  // Sidebar colours, like SidebarBox: the sidebar is dark whatever the theme (#4171)
+  border: 1px solid var(--p-surface-700, #334155);
   border-radius: $radius-sm;
-  background: var(--p-surface-0);
-  color: inherit;
+  background: transparent;
+  color: var(--p-surface-200, #e2e8f0);
   font: inherit;
   font-size: $font-size-sm;
   cursor: pointer;
@@ -133,7 +134,7 @@
   }
 
   &:hover {
-    background: var(--p-surface-50);
+    background: var(--p-surface-700, #334155);
   }
 }
 
@@ -205,6 +206,11 @@
 
 .sidebar--collapsed .qd-task-tray {
   padding: 0.25rem;
+
+  .qd-task-tray-button {
+    justify-content: center;
+    padding: 0.5rem 0.25rem;
+  }
 
   .qd-task-tray-label {
     display: none;

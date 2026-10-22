@@ -54,7 +54,7 @@ function reset() {
       <template #content>
         <p class="hint">
           A worker takes about 20 s. The dialog follows it: status, progress, step, live log. Close it and the task goes on
-          in the sidebar tray; reload the page and it is still followed. Cancel stops it on the backend.
+          in the notification zone (the logo badge, then the panel); reload the page and it is still followed. Cancel stops it on the backend.
         </p>
         <div class="row">
           <InputText v-model="name" size="small" aria-label="Box name" />
@@ -69,7 +69,7 @@ function reset() {
     <Card>
       <template #title>Destroy a box</template>
       <template #content>
-        <p class="hint">A dangerous task: its name must be typed first. It runs in the tray, without the dialog.</p>
+        <p class="hint">A dangerous task: its name must be typed first. It runs in the background, without the dialog.</p>
         <ul class="boxes">
           <li v-for="box in boxes" :key="box">
             <code>{{ box }}</code>

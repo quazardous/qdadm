@@ -174,6 +174,19 @@ export default `core:
     invalidCredentials: Invalid credentials
     configError: Configuration Error
     noAuthAdapter: No auth adapter configured
+  # NotificationPanel and NotificationBadge (#4171)
+  notifications:
+    title: Notifications
+    unread: "Notifications, {count} unread"
+    loading: Loading
+    markAllRead: Mark all read
+    clearAll: Clear all
+    close: Close
+    dismiss: Dismiss
+    empty: No notifications
+    justNow: just now
+    minutesAgo: "{count}m ago"
+    hoursAgo: "{count}h ago"
   # NotFoundPage
   notFound:
     title: Page not found

@@ -150,5 +150,15 @@ mounts `<TaskHost />` once near its root, and `<TaskTray />` where it wants
 it. Without a host, a task that needs a confirmation does not start (a
 warning says why).
 
+## With notifications on
+
+When the [notification zone](notifications.md) is on, it takes over from
+the tray: each running task is a status item of the panel (label and
+progress; a click reopens its dialog), the logo badge shows its activity
+ring until the task ends, and the end is an entry of the history (with its
+`to`, it opens the task's page). The tray is then hidden; the Kernel option
+`tasks: { tray: true }` shows it anyway, `tray: false` hides it without
+notifications too. `TaskHost` does this, so a custom layout gets it as well.
+
 The demo has a page for it: Features → Tasks. Create a box, close the
 dialog, reload, cancel one, make one fail, destroy one.

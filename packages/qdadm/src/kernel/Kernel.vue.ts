@@ -362,6 +362,8 @@ export function applyVueMethods(KernelClass: { prototype: Kernel }): void {
       app.provide('qdadmPermissionRegistry', this.permissionRegistry)
     }
 
+    app.provide('qdadmTasksConfig', this.options.tasks ?? {})
+
     // Create and provide notification store if notifications are enabled
     if (this.options.notifications?.enabled) {
       this.notificationStore = createNotificationStore({

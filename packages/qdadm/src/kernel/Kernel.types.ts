@@ -273,6 +273,8 @@ export interface KernelOptions {
   routeState?: string | RouteStatePersister
   debugBar?: DebugBarConfig
   notifications?: NotificationsConfig
+  /** TaskRunner UI (#4171). `tray`: show TaskTray in the sidebar; default only when notifications are off. */
+  tasks?: { tray?: boolean }
   /** App-wide display defaults (#2772). */
   display?: {
     /** What a missing value shows, in detail pages and formatters. Default `'-'`. */

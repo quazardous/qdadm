@@ -14,8 +14,11 @@ import TaskDialog from './TaskDialog.vue'
 import { useI18n } from '../../i18n/useI18n'
 import { useTaskRunner } from '../../tasks/useTaskRunner'
 import { getTaskStore } from '../../tasks/taskStore'
+import { useTaskNotifications } from '../../tasks/useTaskNotifications'
 
 useTaskRunner()
+// Running tasks in the notification zone, when it is on (#4171)
+useTaskNotifications()
 const store = getTaskStore()
 const { t } = useI18n()
 
