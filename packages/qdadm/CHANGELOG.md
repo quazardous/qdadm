@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.36.1
+
+### Patch Changes
+
+- 6049a7c: The notification badge's activity ring (background work in progress) sits inside the logo's circle instead of around it, where it ran past the sidebar edge.
+
 ## 2.36.0
 
 ### Minor Changes
