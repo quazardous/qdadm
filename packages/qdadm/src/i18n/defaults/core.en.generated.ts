@@ -162,6 +162,18 @@ export default `core:
     tray: "{count} running task | {count} running tasks"
     trayDone: Recent tasks
     clear: Clear finished
+  # LoginPage (#4168)
+  login:
+    username: Username
+    password: Password
+    submit: Sign In
+    or: or
+    welcome: Welcome
+    loggedInAs: "Logged in as {name}"
+    failed: Login Failed
+    invalidCredentials: Invalid credentials
+    configError: Configuration Error
+    noAuthAdapter: No auth adapter configured
   # NotFoundPage
   notFound:
     title: Page not found

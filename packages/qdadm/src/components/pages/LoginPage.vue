@@ -23,6 +23,7 @@ import Card from 'primevue/card'
 import InputText from 'primevue/inputtext'
 import Password from 'primevue/password'
 import QdButton from '../base/QdButton.vue'
+import { useI18n } from '../../i18n/useI18n'
 import type { OrchestratorLike } from '../../entity/EntityManager.interface'
 
 /**
@@ -97,25 +98,25 @@ const props = defineProps({
     default: null
   },
   /**
-   * Username field label
+   * Username field label (default: core.login.username)
    */
   usernameLabel: {
-    type: String,
-    default: 'Username'
+    type: String as PropType<string | null>,
+    default: null
   },
   /**
-   * Password field label
+   * Password field label (default: core.login.password)
    */
   passwordLabel: {
-    type: String,
-    default: 'Password'
+    type: String as PropType<string | null>,
+    default: null
   },
   /**
-   * Submit button label
+   * Submit button label (default: core.login.submit)
    */
   submitLabel: {
-    type: String,
-    default: 'Sign In'
+    type: String as PropType<string | null>,
+    default: null
   },
   /**
    * Route to redirect after successful login
@@ -145,6 +146,13 @@ const props = defineProps({
   emitSignal: {
     type: Boolean,
     default: true
+  },
+  /**
+   * Success toast ("Welcome / Logged in as …") after login
+   */
+  welcomeToast: {
+    type: Boolean,
+    default: true
   }
 })
 
@@ -157,16 +165,23 @@ const router = useRouter()
 const authAdapter = inject<AuthAdapter | null>('authAdapter', null)
 const orchestrator = inject<Orchestrator | null>('qdadmOrchestrator', null)
 const appConfig = inject<AppConfig>('qdadmApp', {})
+const { tOr } = useI18n()
 
 const username = ref<string>(props.defaultUsername)
 const password = ref<string>(props.defaultPassword)
 const loading = ref<boolean>(false)
 
+const labels = computed(() => ({
+  username: props.usernameLabel ?? tOr('core.login.username', 'Username'),
+  password: props.passwordLabel ?? tOr('core.login.password', 'Password'),
+  submit: props.submitLabel ?? tOr('core.login.submit', 'Sign In'),
+}))
+
 const displayTitle = computed<string>(() => props.title || appConfig.name || 'Admin')
 
 async function handleLogin(): Promise<void> {
   if (!authAdapter?.login) {
-    orchestrator?.toast.error('Configuration Error', 'No auth adapter configured', 'LoginPage')
+    orchestrator?.toast.error(tOr('core.login.configError', 'Configuration Error'), tOr('core.login.noAuthAdapter', 'No auth adapter configured'), 'LoginPage')
     return
   }
 
@@ -179,11 +194,13 @@ async function handleLogin(): Promise<void> {
 
     // Emit auth:login signal for debug bar and other listeners
     orchestrator?.signals?.emit('auth:login', { user: result.user })
-    orchestrator?.toast.success(
-      'Welcome',
-      `Logged in as ${result.user?.username || result.user?.email || username.value}`,
-      'LoginPage'
-    )
+    if (props.welcomeToast) {
+      orchestrator?.toast.success(
+        tOr('core.login.welcome', 'Welcome'),
+        tOr('core.login.loggedInAs', 'Logged in as {name}', { name: result.user?.username || result.user?.email || username.value }),
+        'LoginPage'
+      )
+    }
 
     emit('login', result)
     router.push(props.redirectTo)
@@ -194,14 +211,14 @@ async function handleLogin(): Promise<void> {
     const message = axiosError.response?.data?.error?.message
       || axiosError.response?.data?.message
       || axiosError.message
-      || 'Invalid credentials'
+      || tOr('core.login.invalidCredentials', 'Invalid credentials')
 
     orchestrator?.signals?.emit('auth:login:error', {
       username: username.value,
       error: message,
       status: axiosError.response?.status
     })
-    orchestrator?.toast.error('Login Failed', message, 'LoginPage')
+    orchestrator?.toast.error(tOr('core.login.failed', 'Login Failed'), message, 'LoginPage')
 
     emit('error', error)
   } finally {
@@ -225,7 +242,7 @@ async function handleLogin(): Promise<void> {
       <template #content>
         <form @submit.prevent="handleLogin" class="qdadm-login-form" autocomplete="off">
           <div class="qdadm-login-field">
-            <label for="qdadm-username">{{ usernameLabel }}</label>
+            <label for="qdadm-username">{{ labels.username }}</label>
             <InputText
               v-model="username"
               id="qdadm-username"
@@ -235,7 +252,7 @@ async function handleLogin(): Promise<void> {
             />
           </div>
           <div class="qdadm-login-field">
-            <label for="qdadm-password">{{ passwordLabel }}</label>
+            <label for="qdadm-password">{{ labels.password }}</label>
             <Password
               v-model="password"
               inputId="qdadm-password"
@@ -247,7 +264,7 @@ async function handleLogin(): Promise<void> {
           </div>
           <QdButton
             type="submit"
-            :label="submitLabel"
+            :label="labels.submit"
             icon="pi pi-sign-in"
             class="w-full"
             :loading="loading"
@@ -256,7 +273,7 @@ async function handleLogin(): Promise<void> {
                and the footer, which is where users look for them. Rendered
                only when filled, so the divider never shows on its own. -->
           <div v-if="$slots.alternatives" class="qdadm-login-alternatives">
-            <div class="qdadm-login-divider"><span>or</span></div>
+            <div class="qdadm-login-divider"><span>{{ tOr('core.login.or', 'or') }}</span></div>
             <slot name="alternatives"></slot>
           </div>
 

@@ -162,6 +162,18 @@ export default `core:
     tray: "{count} tâche en cours | {count} tâches en cours"
     trayDone: Tâches récentes
     clear: Effacer les terminées
+  # LoginPage (#4168)
+  login:
+    username: Identifiant
+    password: Mot de passe
+    submit: Se connecter
+    or: ou
+    welcome: Bienvenue
+    loggedInAs: "Connecté en tant que {name}"
+    failed: Échec de la connexion
+    invalidCredentials: Identifiants invalides
+    configError: Erreur de configuration
+    noAuthAdapter: Aucun adaptateur d'authentification configuré
   # NotFoundPage
   notFound:
     title: Page introuvable
