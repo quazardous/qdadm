@@ -1,5 +1,17 @@
 # Changelog
 
+## 2.36.0
+
+### Minor Changes
+
+- 82a514e: LoginPage reads its strings from the catalogue (`core.login.*`, English and French): field labels, submit button, the "or" divider and the welcome, failure and configuration toasts. Explicit `usernameLabel` / `passwordLabel` / `submitLabel` props still win. New `welcomeToast` prop (default `true`): `false` drops the "Welcome / Logged in as …" toast (#4168).
+- 8cd8cec: Running tasks show in the notification zone when it is on: a status item per task (a click reopens its dialog) and the badge activity ring until it ends; TaskTray is then hidden, `tasks: { tray: true | false }` in the Kernel options forces it. Status items take an `onClick`. TaskTray uses the sidebar colours (it was a white box on the dark sidebar). The notification panel and badge strings come from the catalogue (`core.notifications.*`, English and French) (#4171).
+
+### Patch Changes
+
+- 5ffdd62: The page icon declared by the app (`<link rel="icon">` in `index.html`, or set in JS before the mount) is no longer replaced by the qdadm logo when `app.favicon` is not set; the logo is only a fallback for a page without an icon. An explicit `app.favicon` still wins, and `favicon: false` leaves the head alone (#4166).
+- ae5e207: TaskRunner: the `useTaskRunner` JSDoc example and the `run()` JSDoc now say that `run()` resolves once the task has started, not when it ends, and show `await run?.finished` and `onSettled` for its outcome (#4167).
+
 ## 2.35.0
 
 ### Minor Changes
