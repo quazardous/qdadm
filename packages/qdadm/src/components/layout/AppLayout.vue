@@ -16,9 +16,10 @@ import { ref, watch, onMounted, onUnmounted, computed, inject, provide, useSlots
 import { SIDEBAR_COLLAPSED_KEY } from '../../composables/useSidebarState'
 import { RouterLink, RouterView, useRouter, useRoute } from 'vue-router'
 import { useNavigation, type NavSection } from '../../composables/useNavigation'
-import { prettifyRole } from '../../utils/formatters'
 import { useApp } from '../../composables/useApp'
 import { useAuth } from '../../composables/useAuth'
+import { useUserBox } from '../../composables/useUserBox'
+import { useI18n } from '../../i18n/useI18n'
 import { useGuardDialog, GUARD_DIALOG_HOST } from '../../composables/useGuardStore'
 import { useNavContext, type BreadcrumbItem, type NavLinkItem } from '../../composables/useNavContext'
 import QdButton from '../base/QdButton.vue'
@@ -45,14 +46,6 @@ interface SignalBus {
   [key: string]: unknown
 }
 
-interface UserData {
-  username?: string
-  name?: string
-  email?: string
-  role?: string
-  [key: string]: unknown
-}
-
 const features = inject<FeaturesConfig>('qdadmFeatures', { poweredBy: true, breadcrumb: true })
 const homeRoute = inject<string>('qdadmHomeRoute', 'home')
 
@@ -68,7 +61,9 @@ const app = useApp()
 // nested in a plain object stays a ref object (always truthy) in v-if (#1382)
 const appVersion = app.version
 const { navSections, isNavActive, sectionHasActiveItem, handleNavClick } = useNavigation()
-const { user, logout, authEnabled } = useAuth()
+const { logout, authEnabled } = useAuth()
+const { displayName: userDisplayName, subtitle: userSubtitle, initials: userInitials, avatarUrl, avatarFailed, userRoute, userLink } = useUserBox()
+const { tOr } = useI18n()
 const signals = inject<SignalBus | null>('qdadmSignals', null)
 
 // LocalStorage key for collapsed sections state (namespaced by app)
@@ -201,25 +196,6 @@ watch(() => route.path, () => {
   }
 })
 
-const userInitials = computed<string>(() => {
-  const userData = user.value as UserData | null
-  const username = userData?.username
-  if (!username) return '?'
-  return username.substring(0, 2).toUpperCase()
-})
-
-const userDisplayName = computed<string>(() => {
-  const userData = user.value as UserData | null
-  return userData?.username || userData?.name || 'User'
-})
-
-const userSubtitle = computed<string>(() => {
-  const userData = user.value as UserData | null
-  if (userData?.email) return userData.email
-  // raw ROLE_* constants are ugly by default — prettify (#1388)
-  return userData?.role ? prettifyRole(userData.role) : ''
-})
-
 async function handleLogout(): Promise<void> {
   logout()
   await router.push({ name: 'login' })
@@ -350,16 +326,47 @@ const showBreadcrumb = computed<boolean>(() => {
       <!-- Running tasks (#4114): shown while there is one -->
       <TaskTray />
 
+      <!-- With app.userRoute (#4157): name and avatar open the profile, only the glyph logs out -->
       <SidebarBox
-        v-if="authEnabled"
+        v-if="authEnabled && userRoute"
+        id="user-zone"
+        class="user-zone--linked"
+        :title="userDisplayName"
+        :subtitle="userSubtitle"
+      >
+        <template #icon>
+          <button
+            type="button"
+            class="user-zone-logout"
+            :aria-label="tOr('core.actions.logout', 'Logout')"
+            v-tooltip.top="tOr('core.actions.logout', 'Logout')"
+            @click="handleLogout"
+          >
+            <i class="pi pi-sign-out"></i>
+          </button>
+        </template>
+        <component
+          :is="userLink!.is === 'a' ? 'a' : RouterLink"
+          v-bind="userLink!.attrs"
+          class="user-zone-link"
+          :aria-label="`${userDisplayName} — ${tOr('core.actions.profile', 'My profile')}`"
+          v-tooltip.top="tOr('core.actions.profile', 'My profile')"
+        >
+          <img v-if="avatarUrl" class="user-avatar user-avatar--image" :src="avatarUrl" alt="" referrerpolicy="no-referrer" @error="avatarFailed" />
+          <span v-else class="user-avatar">{{ userInitials }}</span>
+        </component>
+      </SidebarBox>
+      <SidebarBox
+        v-else-if="authEnabled"
         id="user-zone"
         icon="pi-sign-out"
         :title="userDisplayName"
         :subtitle="userSubtitle"
         @click="handleLogout"
-        v-tooltip.top="'Logout'"
+        v-tooltip.top="tOr('core.actions.logout', 'Logout')"
       >
-        <div class="user-avatar">{{ userInitials }}</div>
+        <img v-if="avatarUrl" class="user-avatar user-avatar--image" :src="avatarUrl" alt="" referrerpolicy="no-referrer" @error="avatarFailed" />
+        <div v-else class="user-avatar">{{ userInitials }}</div>
       </SidebarBox>
 
       <SidebarBox v-if="features.poweredBy" id="powered-by">
@@ -665,7 +672,55 @@ const showBreadcrumb = computed<boolean>(() => {
   transition: opacity 0.1s ease 0.2s;
 }
 
+#user-zone .user-avatar--image {
+  object-fit: cover;
+}
+
+/* With app.userRoute (#4157): the link covers the text and the avatar,
+   the glyph on the left stays the logout button */
+#user-zone.user-zone--linked {
+  cursor: default;
+}
+
+#user-zone .user-zone-link {
+  position: absolute;
+  inset: 0 0 0 2.25rem;
+  color: inherit;
+  border-radius: var(--fad-radius-sm, 4px);
+}
+
+#user-zone .user-zone-link:focus-visible {
+  outline: 2px solid var(--p-primary-color, #3b82f6);
+  outline-offset: -2px;
+}
+
+#user-zone.user-zone--linked:has(.user-zone-link.router-link-active) {
+  background: var(--p-surface-700, #334155);
+}
+
+#user-zone .user-zone-logout {
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+#user-zone .user-zone-logout:hover,
+#user-zone .user-zone-logout:focus-visible {
+  color: var(--p-surface-0, #fff);
+  background: var(--p-surface-600, #475569);
+}
+
 /* Avatar: disappear IMMEDIATELY when closing */
+.sidebar--collapsed #user-zone .user-zone-link,
 .sidebar--collapsed #user-zone .user-avatar {
   opacity: 0;
   visibility: hidden;
@@ -974,6 +1029,7 @@ const showBreadcrumb = computed<boolean>(() => {
   }
 
   .sidebar.sidebar--collapsed #user-zone .user-avatar,
+  .sidebar.sidebar--collapsed #user-zone .user-zone-link,
   .sidebar.sidebar--collapsed .sidebar-box-content {
     opacity: 1;
     width: auto;

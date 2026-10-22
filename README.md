@@ -260,6 +260,7 @@ ctx.block('books-list-header', { id: 'export-btn', component: ExportButton, weig
 - [EmailPreview](docs/email-preview.md) - A captured email in a sandboxed frame: HTML, text, source, headers, attachments
 - [TaskRunner](docs/tasks.md) - Long backend tasks: queue, follow live or by polling, cancel, typed confirmation, running-tasks tray
 - [Sign-in with an OIDC provider](docs/auth-oidc.md) - Keycloak, Auth0, Google: code + PKCE, your backend issues the session
+- [Sidebar user box](docs/user-box.md) - Profile link on the user name and avatar, avatar picture
 - [QDADM_CREDO](docs/QDADM_CREDO.md) - Philosophy & patterns
 - [Contributing](CONTRIBUTING.md) - Setup, quality gates, release flow
 

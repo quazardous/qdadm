@@ -45,7 +45,7 @@ class DemoSessionAuthAdapter extends LocalStorageSessionAuthAdapter {
     }
 
     const token = btoa(`${user.id}:${Date.now()}`)
-    const userData = { id: user.id, username: user.username, role: user.role }
+    const userData = { id: user.id, username: user.username, role: user.role, avatar: user.avatar }
 
     this.setSession(token, userData)
     this.persist()

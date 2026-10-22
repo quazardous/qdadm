@@ -89,7 +89,15 @@ const kernel = new Kernel({
   },
 
   // Branding
-  app: { name: 'Book Manager', shortName: 'BM', version },
+  app: {
+    name: 'Book Manager',
+    shortName: 'BM',
+    version,
+    // Sidebar user box (#4157): the name and avatar open the profile page,
+    // the glyph logs out. The fixtures keep avatar paths relative to the base.
+    userRoute: 'profile',
+    userAvatar: (user) => (user.avatar ? import.meta.env.BASE_URL + user.avatar : null),
+  },
 
   // Features: View↔Edit toggle on the breadcrumb terminal (#1332) —
   // see it on Books (show ↔ edit pair); permission-gated by canUpdate

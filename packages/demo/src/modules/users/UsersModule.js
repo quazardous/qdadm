@@ -124,6 +124,11 @@ export class UsersModule extends Module {
     }, {
       nav: { section: 'Security', icon: 'pi pi-users' }
     })
+
+    // The signed-in user's page, linked from the sidebar user box (app.userRoute, #4157)
+    ctx.routes('me', [
+      { path: 'profile', name: 'profile', component: () => import('./pages/ProfilePage.vue'), meta: { title: 'My profile' } },
+    ])
   }
 }
 

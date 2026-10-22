@@ -5,7 +5,8 @@
  */
 
 import type { App } from 'vue'
-import type { Router, RouteLocationNormalized, NavigationGuardNext } from 'vue-router'
+import type { Router, RouteLocationNormalized, RouteLocationRaw, NavigationGuardNext } from 'vue-router'
+import type { UserAvatarResolver } from './composables/useUserBox'
 import { Orchestrator } from './orchestrator/Orchestrator'
 import { EntityManager } from './entity/EntityManager'
 import qdadmLogo from './assets/logo.svg'
@@ -53,6 +54,10 @@ export interface AppConfig {
   favicon?: string | null
   version?: string | null
   theme?: AppTheme
+  /** The signed-in user's profile page (#4157). */
+  userRoute?: RouteLocationRaw | null
+  /** The sidebar avatar picture (#4157). */
+  userAvatar?: UserAvatarResolver | null
   [key: string]: unknown
 }
 

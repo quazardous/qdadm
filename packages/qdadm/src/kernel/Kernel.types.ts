@@ -4,7 +4,7 @@
  * Extracted from Kernel.ts for maintainability.
  */
 import type { Component } from 'vue'
-import type { RouteRecordRaw } from 'vue-router'
+import type { RouteLocationRaw, RouteRecordRaw } from 'vue-router'
 import type { SignalBus } from './SignalBus'
 import type { RoutesConfig } from './EventRouter'
 import type { EntityManager } from '../entity/EntityManager'
@@ -14,6 +14,7 @@ import type { GrantJudge } from '../entity/auth/SecurityChecker'
 import type { I18nOptions } from '../i18n/types'
 import type { ApiClientSource } from '../api/apiClient'
 import type { RouteStatePersister } from '../routeState'
+import type { UserAvatarResolver } from '../composables/useUserBox'
 
 /**
  * Auth adapter interface (app-level authentication)
@@ -45,6 +46,10 @@ export interface AppConfig {
   version?: string
   logo?: string
   theme?: string
+  /** The signed-in user's profile page, an app route or an absolute URL: the sidebar name and avatar link to it, the glyph logs out (#4157). */
+  userRoute?: RouteLocationRaw | string
+  /** The sidebar avatar picture; default `user.avatar` or `user.avatarUrl`, initials when none (#4157). */
+  userAvatar?: UserAvatarResolver
 }
 
 /**

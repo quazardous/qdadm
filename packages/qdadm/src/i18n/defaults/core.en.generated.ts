@@ -26,6 +26,8 @@ export default `core:
     refresh: Refresh
     export: Export
     import: Import
+    logout: Logout
+    profile: My profile
   tooltips:
     saveAndContinue: Save and continue editing
     saveAndReturn: Save and return to list

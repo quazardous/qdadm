@@ -263,6 +263,7 @@ export {
 } from './composables/usePageTitle'
 export { useApp, type UseAppReturn } from './composables/useApp'
 export { useAuth, type UseAuthReturn } from './composables/useAuth'
+export { useUserBox, resolveUserAvatar, isExternalUserLink, type UseUserBoxReturn, type UserAvatarResolver, type UserBoxUser } from './composables/useUserBox'
 export { useSecurity, type UseSecurityReturn } from './composables/useSecurity'
 export {
   useEntityItemPage,

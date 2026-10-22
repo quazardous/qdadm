@@ -7,41 +7,16 @@
  *
  * This component is used when auth is enabled.
  */
-import { computed, type ComputedRef } from 'vue'
-import { useRouter } from 'vue-router'
-import { prettifyRole } from '../../../utils/formatters'
+import { useRouter, RouterLink } from 'vue-router'
 import { useAuth } from '../../../composables/useAuth'
+import { useUserBox } from '../../../composables/useUserBox'
+import { useI18n } from '../../../i18n/useI18n'
 import QdButton from '../../base/QdButton.vue'
 
-interface UserData {
-  username?: string
-  name?: string
-  email?: string
-  role?: string
-  [key: string]: unknown
-}
-
 const router = useRouter()
-const { user, logout, authEnabled } = useAuth()
-
-// Cast user to expected shape (useAuth returns unknown)
-const userData = computed<UserData | null>(() => user.value as UserData | null)
-
-const userInitials: ComputedRef<string> = computed(() => {
-  const username = userData.value?.username
-  if (!username) return '?'
-  return username.substring(0, 2).toUpperCase()
-})
-
-const userDisplayName: ComputedRef<string> = computed(() => {
-  return userData.value?.username || userData.value?.name || 'User'
-})
-
-const userSubtitle: ComputedRef<string> = computed(() => {
-  if (userData.value?.email) return userData.value.email
-  // raw ROLE_* constants are ugly by default — prettify (#1388)
-  return userData.value?.role ? prettifyRole(userData.value.role) : ''
-})
+const { logout, authEnabled } = useAuth()
+const { displayName: userDisplayName, subtitle: userSubtitle, initials: userInitials, avatarUrl, avatarFailed, userLink } = useUserBox()
+const { tOr } = useI18n()
 
 function handleLogout(): void {
   logout()
@@ -51,18 +26,28 @@ function handleLogout(): void {
 
 <template>
   <div v-if="authEnabled" class="default-user-info">
-    <div class="user-avatar">{{ userInitials }}</div>
-    <div class="user-details">
-      <div class="user-name">{{ userDisplayName }}</div>
-      <div class="user-role">{{ userSubtitle }}</div>
-    </div>
+    <!-- With app.userRoute (#4157): avatar and name open the profile -->
+    <component
+      :is="!userLink ? 'div' : userLink.is === 'a' ? 'a' : RouterLink"
+      v-bind="userLink ? { ...userLink.attrs, title: tOr('core.actions.profile', 'My profile') } : {}"
+      class="user-identity"
+      :class="{ 'user-identity--link': userLink }"
+    >
+      <img v-if="avatarUrl" class="user-avatar user-avatar--image" :src="avatarUrl" alt="" referrerpolicy="no-referrer" @error="avatarFailed" />
+      <div v-else class="user-avatar">{{ userInitials }}</div>
+      <div class="user-details">
+        <div class="user-name">{{ userDisplayName }}</div>
+        <div class="user-role">{{ userSubtitle }}</div>
+      </div>
+    </component>
     <QdButton
       icon="pi pi-sign-out"
       severity="secondary"
       text
       rounded
+      :aria-label="tOr('core.actions.logout', 'Logout')"
       @click="handleLogout"
-      v-tooltip.top="'Logout'"
+      v-tooltip.top="tOr('core.actions.logout', 'Logout')"
     />
   </div>
 </template>
@@ -80,7 +65,26 @@ function handleLogout(): void {
   border-top: 1px solid var(--p-surface-700, #334155);
 }
 
+.user-identity {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex: 1;
+  min-width: 0;
+  color: inherit;
+  text-decoration: none;
+}
+
+.user-identity--link {
+  border-radius: 6px;
+}
+
+.user-identity--link:hover .user-name {
+  text-decoration: underline;
+}
+
 .user-avatar {
+  flex-shrink: 0;
   width: 36px;
   height: 36px;
   border-radius: 50%;
@@ -91,6 +95,10 @@ function handleLogout(): void {
   font-size: 0.875rem;
   font-weight: 600;
   color: var(--p-surface-0, white);
+}
+
+.user-avatar--image {
+  object-fit: cover;
 }
 
 .user-details {
