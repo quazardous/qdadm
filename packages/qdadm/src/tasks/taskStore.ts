@@ -366,9 +366,10 @@ function createTaskStore() {
   }
 
   /**
-   * Start a task and follow it. Resolves with the run once the task is
-   * queued (or null when the confirmation was declined); the run itself
-   * moves on in the store.
+   * Start a task and follow it. Resolves with the run once the task has
+   * started (queued), NOT when it ends, or with null when the confirmation
+   * was declined. The run moves on in the store: await `run.finished` (or
+   * pass `onSettled`) for its outcome.
    */
   async function run(options: RunOptions): Promise<TaskRun | null> {
     const base = options.kind ? kinds.get(options.kind) : undefined

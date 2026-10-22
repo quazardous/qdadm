@@ -3,7 +3,9 @@
  *
  * ```ts
  * const tasks = useTaskRunner()
- * tasks.run({
+ * // run() resolves once the task has STARTED (queued), not when it ends;
+ * // it resolves with null when the user declines the confirmation.
+ * const run = await tasks.run({
  *   label: `Create box ${name}`,
  *   start: () => api.post('/boxes', { name }).then((r) => r.data),   // → { task_id }
  *   task: { entity: 'tasks' },                                     // follow the task record
@@ -11,6 +13,12 @@
  *   cancel: (id) => api.post(`/tasks/${id}/cancel`),
  *   to: (id) => ({ name: 'task-show', params: { id } }),
  * })
+ * // The end: run.finished settles with the final run, whatever the outcome
+ * const end = await run?.finished
+ * if (end?.status === 'failed') console.warn(end.error)
+ *
+ * // Or react to the end without awaiting it (also fires after a reload resume)
+ * tasks.run({ label: 'Refresh db', start, task: { entity: 'tasks' }, onSettled: () => list.refresh() })
  *
  * // As a row action, with a typed confirmation
  * list.addAction('destroy', {
@@ -34,6 +42,7 @@ export function useTaskRunner() {
     signals: inject('qdadmSignals', null),
   })
   return {
+    /** Start a task. Resolves once it has started (or null when declined); await `run.finished` for its end. */
     run: store.run,
     cancel: store.cancel,
     dismiss: store.dismiss,
