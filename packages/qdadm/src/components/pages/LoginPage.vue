@@ -23,6 +23,7 @@ import Card from 'primevue/card'
 import InputText from 'primevue/inputtext'
 import Password from 'primevue/password'
 import QdButton from '../base/QdButton.vue'
+import AppBanner from '../layout/AppBanner.vue'
 import { useI18n } from '../../i18n/useI18n'
 import type { OrchestratorLike } from '../../entity/EntityManager.interface'
 
@@ -229,6 +230,8 @@ async function handleLogin(): Promise<void> {
 
 <template>
   <div class="qdadm-login-page">
+    <!-- Which environment this is, before login too (#4200) -->
+    <AppBanner />
     <Card class="qdadm-login-card">
       <template #title>
         <div class="qdadm-login-header">
@@ -312,6 +315,8 @@ async function handleLogin(): Promise<void> {
  */
 .qdadm-login-page {
   min-height: 100vh;
+  padding-top: var(--qd-banner-height, 0px);
+  box-sizing: border-box;
   display: flex;
   align-items: center;
   justify-content: center;

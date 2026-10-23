@@ -97,6 +97,11 @@ const kernel = new Kernel({
     // the glyph logs out. The fixtures keep avatar paths relative to the base.
     userRoute: 'profile',
     userAvatar: (user) => (user.avatar ? import.meta.env.BASE_URL + user.avatar : null),
+    // Top strip (#4200): which environment this is, e.g.
+    // VITE_DEMO_BANNER="STAGING — sandbox data" VITE_DEMO_BANNER_SEVERITY=warn npm run dev
+    banner: import.meta.env.VITE_DEMO_BANNER
+      ? { id: 'env', text: import.meta.env.VITE_DEMO_BANNER, severity: import.meta.env.VITE_DEMO_BANNER_SEVERITY || 'warn' }
+      : null,
   },
 
   // Features: View↔Edit toggle on the breadcrumb terminal (#1332) —

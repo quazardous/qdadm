@@ -8,6 +8,7 @@
 export { default as QdButton } from './base/QdButton.vue'
 export { default as QdMessage } from './base/QdMessage.vue'
 export { default as AppLayout } from './layout/AppLayout.vue'
+export { default as AppBanner } from './layout/AppBanner.vue'
 export { default as BaseLayout } from './layout/BaseLayout.vue'
 export { default as PageLayout } from './layout/PageLayout.vue'
 export { default as PageHeader } from './layout/PageHeader.vue'

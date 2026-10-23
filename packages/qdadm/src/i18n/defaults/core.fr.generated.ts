@@ -187,6 +187,13 @@ export default `core:
     justNow: à l'instant
     minutesAgo: "il y a {count} min"
     hoursAgo: "il y a {count} h"
+  # AppBanner (#4200)
+  banner:
+    label: Bandeau d'information
+    previous: Message précédent
+    next: Message suivant
+    position: "{index} sur {count}"
+    close: Fermer ce message
   # NotFoundPage
   notFound:
     title: Page introuvable

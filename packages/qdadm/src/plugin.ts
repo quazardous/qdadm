@@ -7,6 +7,7 @@
 import type { App } from 'vue'
 import type { Router, RouteLocationNormalized, RouteLocationRaw, NavigationGuardNext } from 'vue-router'
 import type { UserAvatarResolver } from './composables/useUserBox'
+import type { AppBannerConfig } from './composables/useAppBanner'
 import { Orchestrator } from './orchestrator/Orchestrator'
 import { EntityManager } from './entity/EntityManager'
 import qdadmLogo from './assets/logo.svg'
@@ -62,6 +63,8 @@ export interface AppConfig {
   userRoute?: RouteLocationRaw | null
   /** The sidebar avatar picture (#4157). */
   userAvatar?: UserAvatarResolver | null
+  /** The strip above the layout and the login page (#4200). */
+  banner?: AppBannerConfig
   [key: string]: unknown
 }
 

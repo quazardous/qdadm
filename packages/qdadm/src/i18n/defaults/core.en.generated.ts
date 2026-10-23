@@ -187,6 +187,13 @@ export default `core:
     justNow: just now
     minutesAgo: "{count}m ago"
     hoursAgo: "{count}h ago"
+  # AppBanner (#4200)
+  banner:
+    label: Environment notice
+    previous: Previous message
+    next: Next message
+    position: "{index} of {count}"
+    close: Close this message
   # NotFoundPage
   notFound:
     title: Page not found

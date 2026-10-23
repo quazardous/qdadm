@@ -29,6 +29,7 @@ import TaskHost from '../tasks/TaskHost.vue'
 import TaskTray from '../tasks/TaskTray.vue'
 import SidebarBox from './SidebarBox.vue'
 import Zone from './Zone.vue'
+import AppBanner from './AppBanner.vue'
 import NavlinksGroup from './NavlinksGroup.vue'
 import qdadmLogo from '../../assets/logo.svg'
 import { version as qdadmVersion } from '../../../package.json'
@@ -252,6 +253,11 @@ const showBreadcrumb = computed<boolean>(() => {
 
 <template>
   <div class="app-layout">
+    <!-- Top strip (#4200): the layout starts below it, see --qd-banner-height -->
+    <AppBanner v-slot="{ message }">
+      <slot name="banner" :message="message">{{ message.text }}</slot>
+    </AppBanner>
+
     <!-- Mobile overlay -->
     <div
       class="sidebar-overlay"
@@ -470,6 +476,9 @@ const showBreadcrumb = computed<boolean>(() => {
 .app-layout {
   display: flex;
   min-height: 100vh;
+  /* Below the AppBanner strip, when there is one (#4200) */
+  padding-top: var(--qd-banner-height, 0px);
+  box-sizing: border-box;
   font-family: var(--fad-font-family);
 }
 
@@ -484,7 +493,7 @@ const showBreadcrumb = computed<boolean>(() => {
   display: flex;
   flex-direction: column;
   position: fixed;
-  top: 0;
+  top: var(--qd-banner-height, 0px);
   left: 0;
   bottom: 0;
   z-index: 100;
@@ -627,7 +636,7 @@ const showBreadcrumb = computed<boolean>(() => {
   flex: 1;
   margin-left: var(--fad-sidebar-width);
   background: var(--p-surface-50, #f8fafc);
-  min-height: 100vh;
+  min-height: calc(100vh - var(--qd-banner-height, 0px));
   display: flex;
   flex-direction: column;
   transition: margin-left var(--fad-transition-slow);
@@ -933,7 +942,7 @@ const showBreadcrumb = computed<boolean>(() => {
   background: var(--p-surface-0, white);
   border-bottom: 1px solid var(--p-surface-200, #e2e8f0);
   position: sticky;
-  top: 0;
+  top: var(--qd-banner-height, 0px);
   z-index: 50;
   height: var(--fad-header-height);
 }
@@ -981,8 +990,8 @@ const showBreadcrumb = computed<boolean>(() => {
     box-shadow: none;
     /* Mobile: fullscreen */
     width: 100vw !important;
-    height: 100dvh;
-    max-height: 100dvh;
+    height: calc(100dvh - var(--qd-banner-height, 0px));
+    max-height: calc(100dvh - var(--qd-banner-height, 0px));
     overflow-y: auto;
   }
 

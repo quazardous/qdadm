@@ -15,6 +15,7 @@ import type { I18nOptions } from '../i18n/types'
 import type { ApiClientSource } from '../api/apiClient'
 import type { RouteStatePersister } from '../routeState'
 import type { UserAvatarResolver } from '../composables/useUserBox'
+import type { AppBannerConfig } from '../composables/useAppBanner'
 
 /**
  * Auth adapter interface (app-level authentication)
@@ -50,6 +51,8 @@ export interface AppConfig {
   userRoute?: RouteLocationRaw | string
   /** The sidebar avatar picture; default `user.avatar` or `user.avatarUrl`, initials when none (#4157). */
   userAvatar?: UserAvatarResolver
+  /** The strip above the layout and the login page: one message, a list, or a function returning either (#4200). */
+  banner?: AppBannerConfig
 }
 
 /**

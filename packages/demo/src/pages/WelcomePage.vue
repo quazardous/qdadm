@@ -4,7 +4,7 @@
  *
  * Showcases qdadm's modular architecture and key features.
  */
-import { usePageTitle, qdadmLogo } from '@quazardous/qdadm'
+import { usePageTitle, qdadmLogo, useAppBanner } from '@quazardous/qdadm'
 import Card from 'primevue/card'
 import Button from 'primevue/button'
 import Tag from 'primevue/tag'
@@ -13,6 +13,14 @@ import { useRouter } from 'vue-router'
 usePageTitle('qdadm Demo')
 
 const router = useRouter()
+
+// Top strip (#4200): each click queues a closable message
+const banner = useAppBanner()
+let bannerCount = 0
+function pushBanner() {
+  bannerCount++
+  banner.show({ text: `Message ${bannerCount}, pushed with useAppBanner().show(): close it to see the next one`, closable: true })
+}
 
 function openGitHub() {
   window.open('https://github.com/quazardous/qdadm', '_blank')
@@ -119,6 +127,7 @@ function navigateTo(route) {
       <div class="welcome-actions">
         <Button label="Browse Demo" icon="pi pi-play" @click="navigateTo('book')" />
         <Button label="GitHub" icon="pi pi-github" severity="secondary" outlined @click="openGitHub" />
+        <Button label="Top banner" icon="pi pi-megaphone" severity="secondary" outlined @click="pushBanner" />
       </div>
     </div>
 

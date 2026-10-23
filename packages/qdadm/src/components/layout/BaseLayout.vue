@@ -34,6 +34,7 @@ import { useSlots, provide, ref } from 'vue'
 import { RouterView } from 'vue-router'
 import ConfirmDialog from 'primevue/confirmdialog'
 import Zone from './Zone.vue'
+import AppBanner from './AppBanner.vue'
 import { LAYOUT_ZONES } from '../../zones/zones'
 import { useGuardDialog, GUARD_DIALOG_HOST } from '../../composables/useGuardStore'
 import UnsavedChangesDialog from '../dialogs/UnsavedChangesDialog.vue'
@@ -64,6 +65,11 @@ provide('qdadmNavlinksOverride', navlinksOverride)
 
 <template>
   <div class="base-layout">
+    <!-- Top strip (#4200): the layout starts below it, see --qd-banner-height -->
+    <AppBanner v-slot="{ message }">
+      <slot name="banner" :message="message">{{ message.text }}</slot>
+    </AppBanner>
+
     <!-- Sidebar (contains header, menu, user-info, footer) -->
     <aside class="sidebar">
       <!-- Header zone: branding, logo -->
@@ -146,6 +152,8 @@ provide('qdadmNavlinksOverride', navlinksOverride)
 .base-layout {
   display: flex;
   min-height: 100vh;
+  padding-top: var(--qd-banner-height, 0px);
+  box-sizing: border-box;
 }
 
 .sidebar {
@@ -155,7 +163,7 @@ provide('qdadmNavlinksOverride', navlinksOverride)
   display: flex;
   flex-direction: column;
   position: fixed;
-  top: 0;
+  top: var(--qd-banner-height, 0px);
   left: 0;
   bottom: 0;
   z-index: 100;
@@ -165,7 +173,7 @@ provide('qdadmNavlinksOverride', navlinksOverride)
   flex: 1;
   margin-left: var(--fad-sidebar-width, 18rem);
   background: var(--p-surface-50, #f8fafc);
-  min-height: 100vh;
+  min-height: calc(100vh - var(--qd-banner-height, 0px));
   display: flex;
   flex-direction: column;
 }
