@@ -4,8 +4,10 @@
  * The widgets an ops cockpit needs on top of entity CRUD, each on a page you
  * can play with: a live task log (#4110), an entity's history across actors (#4111),
  * messages in their own format and their diff (#4112), captured emails (#4113),
- * long backend tasks followed to the end (#4114), a live YAML configuration (#4303).
+ * long backend tasks followed to the end (#4114), a live YAML configuration (#4303),
+ * a card dashboard each user arranges (#4320).
  */
+import { defineAsyncComponent } from 'vue'
 import { Module, registerTaskKind } from '@quazardous/qdadm'
 import { getTask, cancelTask, readLog } from './fakeTasks'
 
@@ -56,12 +58,36 @@ export class OpsDemoModule extends Module {
         meta: { layout: 'page' },
       },
       {
+        path: 'dashboard',
+        name: 'ops-dashboard',
+        component: () => import('./pages/DashboardPlayground.vue'),
+        meta: { layout: 'page' },
+      },
+      {
         path: 'timeline',
         name: 'ops-timeline',
         component: () => import('./pages/TimelinePlayground.vue'),
         meta: { layout: 'page' },
       },
     ])
+    // The dashboard's cards (#4320): plain blocks, shown by a classic Zone or by
+    // CardsDashboard alike. `card` only adds what arranging needs; the others
+    // take their title from their `title` prop.
+    ctx.zone('ops-dashboard')
+    const DemoCard = defineAsyncComponent(() => import('./pages/DemoCard.vue'))
+    const cards = [
+      ['sales', { title: 'Sales', value: '€ 48 210', text: 'This month, +12 %', icon: 'pi pi-euro' }, { required: true, span: 2 }],
+      ['orders', { title: 'Orders', value: '1 284', text: '37 waiting for shipping', icon: 'pi pi-shopping-cart' }, {}],
+      ['stock', { title: 'Low stock', value: '9', text: 'SKUs under their minimum', icon: 'pi pi-box' }, {}],
+      ['alerts', { title: 'Alerts', value: '2', text: 'A feed failed, a task is stuck', icon: 'pi pi-bell' }, { pinned: true }],
+      ['news', { title: 'News', text: 'Release notes and announcements', icon: 'pi pi-megaphone' }, { fixed: true }],
+      ['visitors', { title: 'Visitors', value: '6 932', text: 'Today, all stores', icon: 'pi pi-users' }, {}],
+      ['tasks', { title: 'Tasks', value: '4', text: 'Running in the background', icon: 'pi pi-cog' }, {}],
+    ]
+    cards.forEach(([id, props, card], i) => {
+      ctx.block('ops-dashboard', { id, component: DemoCard, props, weight: (i + 1) * 10, ...(Object.keys(card).length ? { card } : {}) })
+    })
+    ctx.navItem({ section: 'Features', route: 'ops-dashboard', icon: 'pi pi-th-large', label: 'Dashboard' })
     ctx.navItem({ section: 'Features', route: 'ops-log-stream', icon: 'pi pi-align-left', label: 'Log stream' })
     ctx.navItem({ section: 'Features', route: 'ops-timeline', icon: 'pi pi-history', label: 'Timeline' })
     ctx.navItem({ section: 'Features', route: 'ops-payloads', icon: 'pi pi-code', label: 'Payloads' })

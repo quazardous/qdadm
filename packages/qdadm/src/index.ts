@@ -382,6 +382,15 @@ export {
   type UseAppBannerReturn,
 } from './composables/useAppBanner'
 export {
+  useCardsArrangement,
+  reconcileArrangement,
+  defaultArrangement,
+  type CardDef,
+  type CardsArrangement,
+  type CardsGroups,
+  type UseCardsArrangementReturn,
+} from './composables/useCardsArrangement'
+export {
   useUserImpersonator,
   type UseUserImpersonatorOptions,
   type UseUserImpersonatorReturn,
@@ -476,6 +485,7 @@ export {
   type ZoneDetailInfo,
   type ZoneInspection,
   type ZoneRegistryOptions,
+  type BlockCard,
   // BlockConfig - already exported from kernel
 } from './zones/ZoneRegistry'
 export {

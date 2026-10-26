@@ -22,6 +22,10 @@
  *   <!-- Optional: Override specific zones via slots -->
  * </DashboardLayout>
  *
+ * customizable (#4320): the widgets zone's blocks become cards each user
+ * arranges (CardsDashboard):
+ *   <DashboardLayout customizable />
+ *
  * Or register blocks via ZoneRegistry:
  *   registry.registerBlock(DASHBOARD_ZONES.STATS, {
  *     component: StatsWidget,
@@ -32,7 +36,13 @@
 import { useSlots } from 'vue'
 import BaseLayout from './BaseLayout.vue'
 import Zone from './Zone.vue'
+import CardsDashboard from './CardsDashboard.vue'
 import { DASHBOARD_ZONES } from '../../zones/zones'
+
+defineProps<{
+  /** The widgets zone as cards each user reorders, hides and pins (#4320) */
+  customizable?: boolean
+}>()
 
 const slots = useSlots()
 </script>
@@ -54,7 +64,8 @@ const slots = useSlots()
           <slot name="widgets" />
         </section>
         <section v-else class="dashboard-widgets">
-          <Zone :name="DASHBOARD_ZONES.WIDGETS" />
+          <CardsDashboard v-if="customizable" :zone="DASHBOARD_ZONES.WIDGETS" />
+          <Zone v-else :name="DASHBOARD_ZONES.WIDGETS" />
         </section>
 
         <!-- Recent activity zone: activity log, recent changes -->

@@ -81,6 +81,24 @@ export interface WrapperInfo {
 /**
  * Block configuration
  */
+/**
+ * A block as a dashboard card (#4320): read by CardsDashboard, ignored by a
+ * classic Zone, so the same block works in both. The block's `id` is the
+ * card's key in the user's saved arrangement; every field here is optional.
+ */
+export interface BlockCard {
+  /** Names the card in the hidden tray and in announcements (an i18n key works); default: the block's `title` prop, else its id */
+  title?: string
+  /** Always shown: the user cannot hide it */
+  required?: boolean
+  /** Stays at its default place: the user cannot move it */
+  fixed?: boolean
+  /** Pinned at the top by default; the user can unpin it */
+  pinned?: boolean
+  /** Columns it spans, 1 to 3 (default 1) */
+  span?: number
+}
+
 export interface BlockConfig {
   /** Vue component to render */
   component: Component
@@ -102,6 +120,8 @@ export interface BlockConfig {
   wraps?: string | null
   /** Wrappers applied to this block */
   wrappers?: WrapperInfo[]
+  /** As a dashboard card (#4320) */
+  card?: BlockCard | null
 }
 
 /**
@@ -118,6 +138,7 @@ interface InternalBlock {
   after: string | null
   wraps: string | null
   wrappers?: WrapperInfo[]
+  card: BlockCard | null
 }
 
 /**
@@ -380,6 +401,7 @@ export class ZoneRegistry {
       before: blockConfig.before ?? null,
       after: blockConfig.after ?? null,
       wraps: blockConfig.wraps ?? null,
+      card: blockConfig.card ?? null,
     }
 
     // Update wrap graph for cycle detection (wrap operation only)
@@ -611,6 +633,7 @@ export class ZoneRegistry {
             before: block.before,
             after: block.after,
             wraps: block.wraps,
+            card: block.card,
             wrappers: allWrappers.map((w) => ({
               component: w.component,
               props: w.props,
@@ -638,12 +661,13 @@ export class ZoneRegistry {
     }
 
     // Clean up internal operation fields for external consumers
-    const cleaned: BlockConfig[] = result.map(({ component, weight, props, id, wrappers }) => ({
+    const cleaned: BlockConfig[] = result.map(({ component, weight, props, id, wrappers, card }) => ({
       component,
       weight,
       props,
       id,
       ...(wrappers ? { wrappers } : {}),
+      ...(card ? { card } : {}),
     }))
 
     // Cache the result

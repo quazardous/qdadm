@@ -1,0 +1,140 @@
+/**
+ * CardsDashboard (#4320): an auto grid of cards, an edit bar on each card in
+ * edit mode, the hidden cards' tray.
+ */
+
+.qd-cards-dashboard {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.qd-cards-toolbar {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+
+.qd-cards-grid {
+  container-type: inline-size;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(var(--qd-card-min, 18rem), 100%), 1fr));
+  gap: 1rem;
+}
+
+.qd-cards-slot {
+  grid-column: span var(--qd-card-span, 1);
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+
+  > :not(.qd-cards-bar) {
+    flex: 1;
+  }
+}
+
+// Too narrow for a wide card: it takes one column like the others
+@container (max-width: 40rem) {
+  .qd-cards-slot {
+    grid-column: auto;
+  }
+}
+
+.qd-cards-editing .qd-cards-slot {
+  outline: 1px dashed var(--p-content-border-color, #d1d5db);
+  outline-offset: 4px;
+  border-radius: var(--p-content-border-radius, 6px);
+}
+
+.qd-cards-editing .qd-cards-pinned {
+  outline-color: var(--p-primary-color);
+}
+
+.qd-cards-dragging {
+  opacity: 0.6;
+  outline: 2px solid var(--p-primary-color) !important;
+}
+
+.qd-cards-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  margin-bottom: 0.5rem;
+  font-size: 0.875rem;
+  color: var(--p-text-muted-color, #6b7280);
+}
+
+.qd-cards-title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.qd-cards-handle,
+.qd-cards-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border: 1px solid transparent;
+  border-radius: var(--p-content-border-radius, 6px);
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+
+  &:hover {
+    background: var(--p-content-hover-background, rgba(0, 0, 0, 0.04));
+    color: var(--p-text-color);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--p-primary-color);
+    outline-offset: 1px;
+  }
+}
+
+// The page must not scroll under a finger that drags
+.qd-cards-handle {
+  cursor: grab;
+  touch-action: none;
+}
+
+.qd-cards-dragging .qd-cards-handle {
+  cursor: grabbing;
+}
+
+.qd-cards-on {
+  color: var(--p-primary-color);
+}
+
+.qd-cards-tray {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem;
+  border: 1px dashed var(--p-content-border-color, #d1d5db);
+  border-radius: var(--p-content-border-radius, 6px);
+}
+
+.qd-cards-tray-label {
+  font-weight: 500;
+  font-size: 0.875rem;
+}
+
+.qd-cards-tray-empty {
+  font-size: 0.875rem;
+  color: var(--p-text-muted-color, #6b7280);
+}
+
+.qd-cards-sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}

@@ -177,6 +177,26 @@ core:
     providerHome: Manage my account
     localFallback: Use a local account instead
     noSso: No sign-in flow configured for this button
+  # CardsDashboard (#4320)
+  cardsDashboard:
+    customise: Customise
+    done: Done
+    reset: Reset
+    resetDone: Default arrangement restored
+    hidden: Hidden cards
+    noneHidden: None
+    move: "Move {title}"
+    moved: "{title}: card {position} of {total}"
+    help: Arrow keys move the card, Home and End to the start or the end
+    dragCancelled: Move cancelled
+    pin: "Pin {title} at the top"
+    unpin: "Unpin {title}"
+    pinnedOne: "{title} pinned at the top"
+    unpinnedOne: "{title} unpinned"
+    hide: "Hide {title}"
+    hiddenOne: "{title} hidden"
+    restore: "Show {title}"
+    restoredOne: "{title} shown"
   # NotificationPanel and NotificationBadge (#4171)
   notifications:
     title: Notifications

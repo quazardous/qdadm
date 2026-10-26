@@ -21,6 +21,7 @@ avoids reaching for a hand-rolled `DataTable` where a compliant `ListPage` would
 | Custom (non-entity) tab on a detail view | A free block attached to a parent | **Child page** | `useChildPage` + `PageLayout`, via `ctx.childPage(parent, name, opts)` | [crud.md#child-page-non-entity](./crud.md#child-page-non-entity) |
 | Form with tabs / custom blocks | A rich layout inside a form | **Form + groups** | `FormPage` `#fields` slot + `FieldGroups` (`layout: 'tabs'`/`'accordion'`) | [crud.md#fieldgroups-layouts](./crud.md#fieldgroups-layouts) |
 | Dashboard / report / viewer | Not a CRUD entity | **Custom (off-credo)** | `PageLayout` + hand-rolled `DataTable`/`Card`, via `ctx.routes()` | [crud.md#ctxroutes](./crud.md#ctxroutes) |
+| Card dashboard | Cards each user arranges | — | Zone blocks + `CardsDashboard` (or `DashboardLayout customizable`) | [dashboard.md](./dashboard.md) |
 | Custom action (row or header) | Open a dialog, trigger a command… | — | `addAction` / `addHeaderAction` (free `onClick`, not necessarily routing) | [crud.md#builder-methods](./crud.md#builder-methods) |
 
 ---

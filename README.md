@@ -260,6 +260,7 @@ ctx.block('books-list-header', { id: 'export-btn', component: ExportButton, weig
 - [PayloadViewer and PayloadDiff](docs/payloads.md) - XML, JSON, CSV, form, text and binary messages, masked, and their diff
 - [EmailPreview](docs/email-preview.md) - A captured email in a sandboxed frame: HTML, text, source, headers, attachments
 - [TaskRunner](docs/tasks.md) - Long backend tasks: queue, follow live or by polling, cancel, typed confirmation, running-tasks tray
+- [Card dashboards](docs/dashboard.md) - Cards each user reorders, hides and pins (kept in the browser); the same cards in a classic zone
 - [YAML editors](docs/forms.md#yaml-family) - Live YAML configuration: text and form views that keep comments, check, diff, reason, conflict, history
 - [Sign-in with an OIDC provider](docs/auth-oidc.md) - Keycloak, Auth0, Google: code + PKCE, your backend issues the session
 - [Branding](docs/branding.md) - App name, logo, page icon (`app.favicon`), top banner (`app.banner`)

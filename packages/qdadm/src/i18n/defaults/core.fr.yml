@@ -177,6 +177,26 @@ core:
     providerHome: Gérer mon compte
     localFallback: Utiliser un compte local
     noSso: Aucun parcours de connexion configuré pour ce bouton
+  # CardsDashboard (#4320)
+  cardsDashboard:
+    customise: Personnaliser
+    done: Terminé
+    reset: Réinitialiser
+    resetDone: Disposition par défaut rétablie
+    hidden: Cartes masquées
+    noneHidden: Aucune
+    move: "Déplacer {title}"
+    moved: "{title} : carte {position} sur {total}"
+    help: Les flèches déplacent la carte, Début et Fin vers le début ou la fin
+    dragCancelled: Déplacement annulé
+    pin: "Épingler {title} en haut"
+    unpin: "Désépingler {title}"
+    pinnedOne: "{title} épinglée en haut"
+    unpinnedOne: "{title} désépinglée"
+    hide: "Masquer {title}"
+    hiddenOne: "{title} masquée"
+    restore: "Afficher {title}"
+    restoredOne: "{title} affichée"
   # NotificationPanel and NotificationBadge (#4171)
   notifications:
     title: Notifications

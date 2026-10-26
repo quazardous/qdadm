@@ -11,6 +11,7 @@ export {
   type BlockOperation,
   type WrapperInfo,
   type BlockConfig,
+  type BlockCard,
   type ZoneConfig,
   type ZoneDefineOptions,
   type ZoneListInfo,
