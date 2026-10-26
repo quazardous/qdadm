@@ -114,7 +114,12 @@ Custom non-CRUD pages. **For entities, prefer `ctx.crud`** — raw routes skip t
 breadcrumb/active-stack wiring (see the note above). If you genuinely need a
 custom entity route, pass the meta yourself via the third argument:
 `ctx.routes(path, routes, { entity: 'botPools' })` (`RouteOptions` also accepts
-`parent`, `label`, `layout`).
+`parent`, `label`, `layout` and `permission`).
+
+A page only some users may open declares a permission: the router refuses it to
+the others (see [Security](security.md#which-permission-a-page-needs)).
+`ctx.routes(path, routes, { permission: 'admin:settings' })` sets it on every route
+of the group; a route's own `meta.permission` wins.
 
 ```js
 ctx.routes('books/stats', [
@@ -129,16 +134,17 @@ ctx.routes('books/stats', [
 ])
 
 ctx.navItem({ section: 'Library', route: 'book-stats', icon: 'pi pi-chart-bar', label: 'Stats' })
-ctx.navItem({ section: 'Admin', route: 'settings', icon: 'pi pi-cog', label: 'Settings',
-              permission: 'admin:settings' })
+ctx.navItem({ section: 'Admin', route: 'settings', icon: 'pi pi-cog', label: 'Settings' })
 ```
 
-- `permission` hides the entry from whoever is not granted that attribute; the
+- A route entry follows its route's `meta.permission`: hidden from whoever the
+  router would refuse. Its own `permission` replaces that for the menu only. The
   entry stays active on its route and the pages under it.
 - `entity` does two things: it shows the entry to whoever may list or read that
   entity, and makes it active on that entity's pages only. Use it for an entry
   that opens the entity, `permission` for any other page. With both, both must pass.
-- Hiding an entry does not guard its page: the URL still opens.
+- The page is guarded by its route's permission, not by the menu: an entry's own
+  `permission` hides it without refusing the URL.
 
 ### Links to other tools
 

@@ -253,21 +253,50 @@ export function applyRoutingMethods(KernelClass: { prototype: Kernel }): void {
       // allowed pass-through; a failing access check must fail CLOSED,
       // not silently allow (#1190).
       const orchestrator = this.orchestrator
-      if (!entity || !orchestrator || !orchestrator.isRegistered(entity)) return
+      const entityToCheck = !!entity && !!orchestrator && orchestrator.isRegistered(entity)
+
+      // Page permissions (#4332): every matched record's meta.permission, so a
+      // parent's covers its children; a list needs every entry. Without a
+      // security checker (an app without security) nothing is checked, as for
+      // the menu.
+      const permissions = to.matched.flatMap((record: RouteRecordNormalized) => {
+        const p = record.meta.permission
+        return (Array.isArray(p) ? p : [p]).filter((x): x is string => typeof x === 'string' && x !== '')
+      })
+      const checker = this.securityChecker
+      const permissionsToCheck = permissions.length > 0 && !!checker
+
+      if (!entityToCheck && !permissionsToCheck) return
+
+      const checkPermissions = (): { path: string } | undefined => {
+        if (!permissionsToCheck) return undefined
+        try {
+          const missing = permissions.find((p) => !checker!.isGranted(p))
+          if (missing === undefined) return undefined
+          console.warn(`[qdadm] Access denied to ${to.path} (permission: ${missing})`)
+          orchestrator?.toast.error('Access Denied', "You don't have permission to access this page", 'Kernel')
+          this.signals!.emit('auth:access-denied', { path: to.path, permission: missing })
+          return { path: '/' }
+        } catch (err) {
+          console.error(`[qdadm] Permission check failed for ${to.path} — denying navigation:`, err)
+          return { path: '/' }
+        }
+      }
 
       // The action the route declares (#2497): a list route is governed by
       // `list`. A route that declares none — any custom page — checks `read`.
       const action = to.meta?.entityAction === 'list' ? 'list' : 'read'
 
       const checkEntity = (): { path: string } | undefined => {
+        if (!entityToCheck) return undefined
         try {
-          const manager = orchestrator.get(entity)
+          const manager = orchestrator!.get(entity!)
           const allowed = manager && (action === 'list' ? manager.canList() : manager.canRead())
           if (manager && !allowed) {
             console.warn(
               `[qdadm] Access denied to ${to.path} (entity: ${entity}, action: ${action})`
             )
-            orchestrator.toast.error(
+            orchestrator!.toast.error(
               'Access Denied',
               `You don't have permission to access ${manager.labelPlural || entity}`,
               'Kernel'
@@ -294,12 +323,13 @@ export function applyRoutingMethods(KernelClass: { prototype: Kernel }): void {
       // miss would fall through to an empty role matrix and read as a refusal:
       // wait for its answers instead of deciding early. Still fail closed — a
       // judge that rejects or never settles denies.
+      const decide = (): { path: string } | undefined => checkPermissions() ?? checkEntity()
       const judge = this.securityChecker?.grant
-      if (typeof judge?.ready !== 'function') return checkEntity()
+      if (typeof judge?.ready !== 'function') return decide()
       const timeoutMs = this.options.security?.readyTimeoutMs ?? 10_000
-      return waitForJudge(judge as { ready(): Promise<void> }, timeoutMs).then(checkEntity, (reason: Error) => {
+      return waitForJudge(judge as { ready(): Promise<void> }, timeoutMs).then(decide, (reason: Error) => {
         console.error(
-          `[qdadm] security.grant never became ready for ${to.path} (entity: ${entity}): ${reason.message} — denying navigation`
+          `[qdadm] security.grant never became ready for ${to.path}: ${reason.message} — denying navigation`
         )
         return { path: '/' }
       })

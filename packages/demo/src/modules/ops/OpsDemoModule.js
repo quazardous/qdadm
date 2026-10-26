@@ -49,7 +49,8 @@ export class OpsDemoModule extends Module {
         path: 'tasks',
         name: 'ops-tasks',
         component: () => import('./pages/TaskPlayground.vue'),
-        meta: { layout: 'page' },
+        // The router refuses the page without it (#4332); its menu entry follows
+        meta: { layout: 'page', permission: 'admin:ops:tasks' },
       },
       {
         path: 'yaml-config',
@@ -92,8 +93,9 @@ export class OpsDemoModule extends Module {
     ctx.navItem({ section: 'Features', route: 'ops-timeline', icon: 'pi pi-history', label: 'Timeline' })
     ctx.navItem({ section: 'Features', route: 'ops-payloads', icon: 'pi pi-code', label: 'Payloads' })
     ctx.navItem({ section: 'Features', route: 'ops-emails', icon: 'pi pi-envelope', label: 'Emails' })
-    // Gated by a permission, not an entity (#4318): lights on its own page
-    ctx.navItem({ section: 'Features', route: 'ops-tasks', icon: 'pi pi-cog', label: 'Tasks', permission: 'admin:ops:tasks' })
+    // Gated by its route's permission, not an entity (#4318, #4332): hidden from
+    // whoever may not open the page, and lit on its own page
+    ctx.navItem({ section: 'Features', route: 'ops-tasks', icon: 'pi pi-cog', label: 'Tasks' })
     ctx.navItem({ section: 'Features', route: 'ops-yaml-config', icon: 'pi pi-file-edit', label: 'YAML config' })
   }
 }

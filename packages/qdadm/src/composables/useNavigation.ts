@@ -112,7 +112,11 @@ export function useNavigation(): UseNavigationReturn {
   function canAccessNavItem(item: NavItem): boolean {
     // Its own permission, on any entry (#3675, #4318): a link out has nothing
     // else to check, a route entry no longer needs `entity` to follow rights.
-    if (item.permission && securityChecker && !securityChecker.isGranted(item.permission)) return false
+    // Without one, a route entry takes its route's (#4332), so the menu shows
+    // what the router guard lets through.
+    const permissions = item.permission ?? (item.route ? routePermission(item.route) : undefined)
+    const required = (Array.isArray(permissions) ? permissions : [permissions]).filter((p): p is string => !!p)
+    if (securityChecker && required.some((p) => !securityChecker.isGranted(p))) return false
     if (item.href || !item.entity || !orchestrator) return true
     const manager = orchestrator.get(item.entity)
     if (!manager) return true
@@ -121,6 +125,17 @@ export function useNavigation(): UseNavigationReturn {
     // declares no action, or is not registered, keeps `read`.
     if (item.route && routeAction(item.route) === 'list' && manager.canList) return manager.canList()
     return manager.canRead()
+  }
+
+  function routePermission(name: string): string | string[] | undefined {
+    try {
+      return router.resolve({ name }).matched.flatMap((r) => {
+        const p = r.meta?.permission as string | string[] | undefined
+        return p === undefined ? [] : Array.isArray(p) ? p : [p]
+      })
+    } catch {
+      return undefined
+    }
   }
 
   function routeAction(name: string): string | undefined {

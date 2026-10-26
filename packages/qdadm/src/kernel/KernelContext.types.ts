@@ -132,6 +132,8 @@ export interface RouteOptions {
   parent?: ParentConfig
   label?: string
   layout?: string
+  /** Every route of the group needs it to open (#4332), unless a route declares its own `meta.permission` */
+  permission?: string | string[]
 }
 
 /** Parent route configuration */

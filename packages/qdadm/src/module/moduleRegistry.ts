@@ -50,6 +50,8 @@ export interface ModuleRouteMeta {
   navLabel?: string
   layout?: 'list' | 'form' | 'dashboard' | 'base' | string
   title?: string
+  /** Who may open the page (#4332): enforced by the router guard; a list needs every entry */
+  permission?: string | string[]
   [key: string]: unknown
 }
 
@@ -113,6 +115,8 @@ export interface AddRoutesOptions {
   parent?: ParentConfig
   label?: string
   layout?: 'list' | 'form' | 'dashboard' | 'base' | string
+  /** Every route of the group needs it (#4332), unless a route declares its own */
+  permission?: string | string[]
 }
 
 /**
@@ -192,7 +196,7 @@ const registry = {
     moduleRoutes: (ModuleRoute | RouteRecordRaw)[],
     options: AddRoutesOptions = {}
   ): void {
-    const { entity, parent, label, layout } = options
+    const { entity, parent, label, layout, permission } = options
     const prefixedRoutes = moduleRoutes.map((route) => {
       const r = route as ModuleRoute
       const routePath = r.path || ''
@@ -207,6 +211,7 @@ const registry = {
           ...(label && { navLabel: label }),
           // Layout can be set per-route or inherited from options
           ...((routeLayout || layout) && { layout: routeLayout || layout }),
+          ...(r.meta?.permission === undefined && permission !== undefined && { permission }),
         },
       } as ModuleRoute
     })

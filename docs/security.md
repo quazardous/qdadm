@@ -377,7 +377,16 @@ class BooksManager extends EntityManager {
 
 ### Which permission a page needs
 
-The route guard and the menu check what the page does:
+A page that is not an entity's declares its own: `meta.permission` on the route
+(a string, or a list that needs every entry), or `ctx.routes(path, routes,
+{ permission })` for a group. The router guard refuses it to whoever is not
+granted: an "Access Denied" toast, the `auth:access-denied` signal with
+`{ path, permission }`, and back to `/`. A parent route's permission covers its
+children. The guard waits for a judge's `ready()` and fails closed, as for
+entities; without a security checker nothing is checked. A route menu entry
+follows its route's permission, so the menu shows what the router lets through.
+
+For an entity page, the route guard and the menu check what the page does:
 
 | Route | Checks | Permission |
 |---|---|---|
