@@ -91,6 +91,9 @@ core:
     wrap: Wrap long lines
     follow: Follow the end of the log
     download: Download the log
+    copy: Copy the whole log
+    copied: "Copied ({count} line) | Copied ({count} lines)"
+    copyFailed: "Copy failed: {error}"
     newLines: "{count} new line, resume | {count} new lines, resume"
     empty: No output yet
   # EntityTimeline (#4111)

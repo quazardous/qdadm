@@ -14,6 +14,7 @@ import { getTaskStore, registerTaskKind } from '../../src/tasks/taskStore'
 import { configureTasks, resetTaskUi, resolveTaskUi, TASK_DIALOG_DEFAULTS } from '../../src/tasks/taskUi'
 import TaskHost from '../../src/components/tasks/TaskHost.vue'
 import TaskTray from '../../src/components/tasks/TaskTray.vue'
+import LogStream from '../../src/components/display/LogStream.vue'
 
 const store = getTaskStore()
 const api = () => ({ start: vi.fn(async () => ({ task_id: 7 })), get: vi.fn(async () => ({ id: 7, status: 'running', progress: 40 })) })
@@ -58,6 +59,15 @@ describe('TaskDialog customised (#4334)', () => {
     await flushPromises()
     expect(document.querySelector('.qd-task-before-log .app-slot').textContent).toBe('from the app')
     expect(document.querySelector('.qd-task-after-log .summary').textContent).toBe('deliver: Deliver v2')
+  })
+
+  it('the log downloads under the kind and the task (#4344)', async () => {
+    const backend = api()
+    registerTaskKind('deliver', { task: { get: backend.get, intervalMs: 60_000 }, log: () => ({ lines: ['one'] }) })
+    wrapper = mountHost()
+    await store.run({ label: 'Deliver v2', kind: 'deliver', start: backend.start })
+    await flushPromises()
+    expect(wrapper.findComponent(LogStream).props('filename')).toBe('deliver-7.log')
   })
 
   it("the host's own slots win over the configured components", async () => {

@@ -45,6 +45,12 @@ const run = computed(() => (props.runId ? store.state.runs.find((r) => r.id === 
 const def = computed(() => (props.runId ? store.definition(props.runId) : undefined))
 const final = computed(() => (run.value ? store.isFinal(run.value.status) : false))
 const logSource = computed(() => (run.value?.taskId != null && def.value?.log ? def.value.log(run.value.taskId) : null))
+/** The log's download name: the kind and the task, e.g. "deploy-42.log" */
+const logFilename = computed(() => {
+  const r = run.value
+  const name = `${r?.kind ?? 'task'}-${r?.taskId ?? r?.id ?? 'log'}`.replace(/[^\w.-]+/g, '_')
+  return `${name}.log`
+})
 const link = computed(() => (run.value?.taskId != null && def.value?.to ? def.value.to(run.value.taskId) : null))
 const canCancel = computed(() => !!def.value?.cancel && !final.value && run.value?.taskId != null)
 const resultIsObject = computed(() => run.value?.result !== null && typeof run.value?.result === 'object')
@@ -238,7 +244,7 @@ onBeforeUnmount(() => {
           <component :is="slotComponent('before-log')!" v-bind="slotProps" />
         </slot>
       </div>
-      <LogStream v-if="logSource" :key="run.id" class="qd-task-log" :source="logSource" height="16rem"
+      <LogStream v-if="logSource" :key="run.id" class="qd-task-log" :source="logSource" :filename="logFilename" height="16rem"
         error-pattern="error|fatal|failed" @done="store.poke(run.id)" />
       <div v-if="has('after-log')" class="qd-task-after-log">
         <slot name="after-log" v-bind="slotProps">

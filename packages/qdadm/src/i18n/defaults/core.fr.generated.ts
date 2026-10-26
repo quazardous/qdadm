@@ -93,6 +93,9 @@ export default `core:
     wrap: Couper les lignes longues
     follow: Suivre la fin du log
     download: Télécharger le log
+    copy: Copier tout le log
+    copied: "Copié ({count} ligne) | Copié ({count} lignes)"
+    copyFailed: "Échec de la copie : {error}"
     newLines: "{count} nouvelle ligne, reprendre | {count} nouvelles lignes, reprendre"
     empty: Rien pour l'instant
   # EntityTimeline (#4111)

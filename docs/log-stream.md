@@ -3,7 +3,7 @@
 `LogStream` shows a backend log as it is written (a box being created, a
 database being refreshed), then the whole log once the task is done. It has
 the controls an ops screen needs: follow the end, pause, search, jump to
-errors, wrap, download. It fits in a `ShowPage` and in a dialog.
+errors, wrap, copy, download. It fits in a `ShowPage` and in a dialog.
 
 ```vue
 <LogStream
@@ -48,6 +48,12 @@ once with `useLogStream(source, options)` and pass it as `:stream`.
 - **Errors**: lines matching `error-pattern` are tinted and counted, and the
   toolbar button goes from one to the next.
 - **Timestamps**: a `timestamp-pattern` at the start of a line is dimmed.
+- **Copy**: every line received at the click goes to the clipboard as plain
+  text, one per line, without escapes or line numbers, whatever the search
+  filter or the scroll shows. The toolbar says "Copied (N lines)", or why the
+  copy failed. Without the clipboard API (a page served over plain http), it
+  uses the browser's copy command instead. The component exposes `copy()`,
+  which resolves to the number of lines copied (0 on failure).
 - **Download**: the whole buffer as text, without escapes. With
   `download-raw`, the escapes are kept.
 - **Long logs**: without wrapping, only the rows on screen are rendered, so
@@ -74,7 +80,8 @@ once with `useLogStream(source, options)` and pass it as `:stream`.
 | `max-lines` | `100000` | |
 
 It emits `done` when the source reports the end of the log, e.g. to re-read
-the task record at once (the TaskRunner dialog does).
+the task record at once (the TaskRunner dialog does, and names the download
+`<kind>-<task id>.log`).
 
 The panel stays dark in both themes. Its colours are CSS variables on
 `.qd-log-stream` (`--qd-log-bg`, `--qd-log-fg`, `--qd-log-muted`,

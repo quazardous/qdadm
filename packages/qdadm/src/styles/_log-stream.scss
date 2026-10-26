@@ -75,6 +75,19 @@
   font-variant-numeric: tabular-nums;
 }
 
+.qd-log-copy-status {
+  color: var(--p-green-600);
+  font-size: $font-size-xs;
+
+  &:empty {
+    display: none;
+  }
+
+  &--error {
+    color: var(--p-red-500);
+  }
+}
+
 .qd-log-search {
   display: inline-flex;
   align-items: center;

@@ -10,6 +10,8 @@
  *
  * - follow: on by default; scrolling up pauses it, scrolling back to the end
  *   (or End, or the "new lines" button) resumes it.
+ * - Copy puts every line received on the clipboard, as plain text: not just
+ *   the rows on screen or the ones a search keeps (#4344).
  * - Without wrapping, only the rows on screen are rendered (fixed line
  *   height), so a log of tens of thousands of lines scrolls freely. With
  *   wrapping, rows have no fixed height: every row is in the DOM and the
@@ -275,6 +277,54 @@ function download(): void {
   setTimeout(() => URL.revokeObjectURL(url), 0)
 }
 
+// --- Copy (#4344) ---
+
+const copyStatus = ref<{ ok: boolean; text: string } | null>(null)
+let copyTimer: ReturnType<typeof setTimeout> | null = null
+
+/** Without navigator.clipboard (a page served over plain http): a selected textarea */
+function copyByCommand(text: string): void {
+  const area = document.createElement('textarea')
+  area.value = text
+  area.setAttribute('readonly', '')
+  area.style.position = 'fixed'
+  area.style.opacity = '0'
+  document.body.appendChild(area)
+  const focused = document.activeElement as HTMLElement | null
+  area.select()
+  try {
+    if (!document.execCommand?.('copy')) throw new Error('the browser refused to copy')
+  } finally {
+    area.remove()
+    focused?.focus?.()
+  }
+}
+
+/** Every line received at this moment, as plain text; resolves to the line count. */
+async function copy(): Promise<number> {
+  // Taken now: lines streaming in during the write are not part of it
+  const lines = log.lines.value.map((l) => l.text)
+  const text = lines.join('\n')
+  try {
+    try {
+      if (!navigator.clipboard?.writeText) throw new Error('no clipboard on this page (it needs HTTPS)')
+      await navigator.clipboard.writeText(text)
+    } catch (err) {
+      try {
+        copyByCommand(text)
+      } catch {
+        throw err
+      }
+    }
+    copyStatus.value = { ok: true, text: t('core.log.copied', { count: lines.length }) }
+  } catch (err) {
+    copyStatus.value = { ok: false, text: t('core.log.copyFailed', { error: (err as Error)?.message ?? String(err) }) }
+  }
+  if (copyTimer) clearTimeout(copyTimer)
+  copyTimer = setTimeout(() => (copyStatus.value = null), copyStatus.value.ok ? 3000 : 6000)
+  return copyStatus.value.ok ? lines.length : 0
+}
+
 // --- Status ---
 
 watch(
@@ -311,9 +361,12 @@ onMounted(() => {
   if (following.value) scrollToEnd()
 })
 
-onBeforeUnmount(() => resizeObserver?.disconnect())
+onBeforeUnmount(() => {
+  resizeObserver?.disconnect()
+  if (copyTimer) clearTimeout(copyTimer)
+})
 
-defineExpose({ log, resume, reveal })
+defineExpose({ log, resume, reveal, copy })
 </script>
 
 <template>
@@ -347,6 +400,10 @@ defineExpose({ log, resume, reveal })
         :aria-pressed="wrapping" v-tooltip.top="t('core.log.wrap')" @click="toggleWrap" />
       <QdButton icon="pi pi-angle-double-down" rounded size="small" :text="!following" :aria-label="t('core.log.follow')"
         :aria-pressed="following" v-tooltip.top="t('core.log.follow')" @click="toggleFollow" />
+      <span class="qd-log-copy-status" :class="copyStatus && !copyStatus.ok ? 'qd-log-copy-status--error' : ''"
+        role="status" aria-live="polite">{{ copyStatus?.text ?? '' }}</span>
+      <QdButton class="qd-log-copy" icon="pi pi-copy" text rounded size="small" :disabled="!log.lines.value.length"
+        :aria-label="t('core.log.copy')" v-tooltip.top="t('core.log.copy')" @click="copy" />
       <QdButton icon="pi pi-download" text rounded size="small" :disabled="!log.lines.value.length"
         :aria-label="t('core.log.download')" v-tooltip.top="t('core.log.download')" @click="download" />
     </div>
