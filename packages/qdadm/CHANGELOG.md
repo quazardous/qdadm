@@ -1,5 +1,15 @@
 # Changelog
 
+## 2.38.0
+
+### Minor Changes
+
+- c8d8170: Nav: `permission` gates a `route` entry too, not only an `href` one (#4318). A page that is not an entity's no longer needs `entity` to follow rights, so its entry lights on its own page and its children instead of on the entity's list.
+- 715a408: YAML editors (#4303), in a new `@quazardous/qdadm/editors/yaml` subpath on `@quazardous/vanilla-yamleditor` (an optional peer):
+  - `VanillaYamlEditor`: v-model on a YAML text, with a text view and a form view built from a JSON Schema. Edits keep the file's comments and formatting.
+  - `YamlConfigEditor`: edits a live configuration end to end: server check, before/after diff, required reason, save against the revision, a conflict view on 409, history and restore.
+  - `restYamlAdapter`: speaks the REST contract for both.
+
 ## 2.37.0
 
 ### Minor Changes
