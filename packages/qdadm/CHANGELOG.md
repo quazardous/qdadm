@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.41.0
+
+### Minor Changes
+
+- 420e8fd: Sessions module (#4336): `SessionsModule` (or `createSessionsModule`) beats every 30 s while the tab is visible and someone is signed in, shows "Also signed in: X (since 10 min)" in the app banner while others are here, and adds a Sessions page under a permission: who is signed in, the paged sign-in history with a notice when it is incomplete, and Close on a session with a required reason. It runs over a `SessionsAdapter`; `restSessionsAdapter(base)` speaks the HTTP contract (heartbeat, list, history, close), with `historyNotice` to map a server's own field.
+- 8903005: TaskRunner (#4334): the follow dialog moves by its title bar, resizes by its corner (the log follows) and goes full screen (Escape leaves full screen first); its size, position and full screen are kept per app and restored, clamped to the screen; under 640px it is unchanged. Customisable without a qdadm release: `configureTasks({ dialog, slots, component, tray })` for the app, the same `dialog`, `slots` and `component` on a task kind, then a page's props. TaskDialog has `header`, `before-log`, `after-log` and `actions` slots (with `result`), a kind or the app can replace the dialog, and the tray row takes an `item` slot or component.
+
 ## 2.40.0
 
 ### Minor Changes
