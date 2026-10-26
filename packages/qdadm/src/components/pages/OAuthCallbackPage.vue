@@ -1,3 +1,12 @@
+<script lang="ts">
+/**
+ * One completion per callback (#4329): the attempt is consumed on read, so a
+ * second mount of the same callback (any app remount) must await the first
+ * instead of calling completeLogin again. Keyed by code and state.
+ */
+const completions = new Map<string, Promise<{ user?: unknown; redirectTo: string }>>()
+</script>
+
 <script setup lang="ts">
 /**
  * OAuth callback landing page (#1775).
@@ -32,7 +41,10 @@ interface OAuthCapableAdapter {
   completeLogin: (
     query: Record<string, string | undefined>
   ) => Promise<{ user?: unknown; redirectTo: string }>
+  isAuthenticated?: () => boolean
 }
+
+type Completion = Promise<{ user?: unknown; redirectTo: string }>
 
 interface SignalsLike {
   emit?: (signal: string, payload?: unknown) => unknown
@@ -75,15 +87,31 @@ onMounted(async () => {
       ])
     ) as Record<string, string | undefined>
 
-    const result = await authAdapter.completeLogin(query)
+    const key = query.code ? `${query.code}|${query.state ?? ''}` : null
+    let completion: Completion | undefined = key ? completions.get(key) : undefined
+    const first = !completion
+    if (!completion) {
+      completion = authAdapter.completeLogin(query)
+      if (key) completions.set(key, completion)
+    }
+    const result = await completion
+    const target = result.redirectTo || props.fallbackRedirect
 
+    // Navigate, THEN signal (#4329): auth:login remounts the whole app, and on
+    // the callback route that remount would run this page again
+    await router.replace(target)
+    if (!first) return // the first mount signals
     // Same signal the password form emits, so debug bar, SSE bridge and any
     // listener see one authentication event whichever door was used.
     signals?.emit?.('auth:login', { user: result.user })
     emit('success', result)
-
-    await router.replace(result.redirectTo || props.fallbackRedirect)
   } catch (err) {
+    // Back on a used callback while signed in (reload, back button): nothing to
+    // refuse, the session is there
+    if (authAdapter.isAuthenticated?.()) {
+      await router.replace(props.fallbackRedirect)
+      return
+    }
     error.value = (err as Error)?.message ?? 'Sign-in failed'
     signals?.emit?.('auth:login:error', { error: error.value })
     emit('error', err)
