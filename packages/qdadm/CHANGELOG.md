@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.42.0
+
+### Minor Changes
+
+- cc09e67: CardsDashboard: the app chooses where arrangements are kept (#4338), with the `storage` prop or `configureDashboards({ storage })`. A storage has `load(key)` and `save(key, arrangement | null)`, sync or async, so a dashboard can follow the account across devices. `localStorage` stays the default. An async load holds the cards back for a short grace (`loadGrace`, 150 ms), so a quick answer shows without a flash of the default order. A failed load keeps the defaults. An edit is saved once, on Done (or Reset), instead of at each move. A failed save shows a toast and keeps the edit open. `useCardsArrangement` takes `{ storage, autoSave, loadGrace }`; `commit()` and `reset()` now return a promise.
+- bac343e: LogStream: a Copy button puts the whole log on the clipboard (#4344). It copies every line received at the click, as plain text, whatever the search filter or the scroll shows, and says "Copied (N lines)", or why the copy failed. On a page without the clipboard API (plain http) it falls back to the browser's copy command. `copy()` is exposed too. The task dialog's log now downloads as `<kind>-<task id>.log`.
+
 ## 2.41.0
 
 ### Minor Changes
