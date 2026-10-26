@@ -200,6 +200,10 @@ export default `core:
     hiddenOne: "{title} masquée"
     restore: "Afficher {title}"
     restoredOne: "{title} affichée"
+    show: Afficher
+    trayView: Afficher les cartes masquées en
+    viewCards: Cartes
+    viewCompact: Compact
   # NotificationPanel and NotificationBadge (#4171)
   notifications:
     title: Notifications

@@ -112,12 +112,18 @@
 
 .qd-cards-tray {
   display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.5rem;
+  flex-direction: column;
+  gap: 0.75rem;
   padding: 0.75rem;
   border: 1px dashed var(--p-content-border-color, #d1d5db);
   border-radius: var(--p-content-border-radius, 6px);
+}
+
+.qd-cards-tray-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
 }
 
 .qd-cards-tray-label {
@@ -128,6 +134,49 @@
 .qd-cards-tray-empty {
   font-size: 0.875rem;
   color: var(--p-text-muted-color, #6b7280);
+}
+
+// Cards / Compact, a two-option switch
+.qd-cards-tray-view {
+  display: inline-flex;
+  margin-left: auto;
+  border: 1px solid var(--p-content-border-color, #d1d5db);
+  border-radius: var(--p-content-border-radius, 6px);
+  overflow: hidden;
+}
+
+.qd-cards-tray-view-option {
+  padding: 0.25rem 0.625rem;
+  border: 0;
+  background: transparent;
+  color: var(--p-text-muted-color, #6b7280);
+  font: inherit;
+  font-size: 0.8125rem;
+  cursor: pointer;
+
+  &[aria-pressed='true'] {
+    background: var(--p-primary-color);
+    color: var(--p-primary-contrast-color, #fff);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--p-primary-color);
+    outline-offset: -2px;
+  }
+}
+
+.qd-cards-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+// A hidden card, whole: dimmed and inert, only its "Show" acts
+.qd-cards-hidden .qd-cards-hidden-body {
+  flex: 1;
+  opacity: 0.45;
+  filter: grayscale(0.6);
+  pointer-events: none;
 }
 
 .qd-cards-sr {

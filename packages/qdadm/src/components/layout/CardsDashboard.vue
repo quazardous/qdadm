@@ -20,7 +20,7 @@
  * mouse, touch or pen), pin and hide on each card, and the hidden cards'
  * tray with Reset. Outside it, only the cards show.
  */
-import { computed, inject, nextTick, onBeforeUnmount, ref, h, defineComponent, type Component, type VNode } from 'vue'
+import { computed, inject, nextTick, onBeforeUnmount, ref, watch, h, defineComponent, type Component, type VNode } from 'vue'
 import QdButton from '../base/QdButton.vue'
 import { DASHBOARD_ZONES } from '../../zones/zones'
 import { useAuth } from '../../composables/useAuth'
@@ -38,8 +38,10 @@ const props = withDefaults(
     minCardWidth?: string
     /** Show the "Customise" button */
     editable?: boolean
+    /** How the edit mode's tray shows hidden cards by default: whole, or as chips; the user's toggle wins */
+    hiddenView?: 'cards' | 'compact'
   }>(),
-  { zone: DASHBOARD_ZONES.WIDGETS, id: null, minCardWidth: '18rem', editable: true }
+  { zone: DASHBOARD_ZONES.WIDGETS, id: null, minCardWidth: '18rem', editable: true, hiddenView: 'cards' }
 )
 
 const registry = inject<ZoneRegistry | null>('qdadmZoneRegistry', null)
@@ -75,6 +77,27 @@ const storageKey = computed(() => `qdadm.dashboard.${props.id ?? props.zone}.${u
 const state = useCardsArrangement(storageKey, cards)
 
 const editing = ref(false)
+
+// The hidden tray's view (#4320): whole cards or chips, the user's choice kept beside the arrangement
+const trayKey = computed(() => `${storageKey.value}.tray`)
+function readTray(): 'cards' | 'compact' {
+  try {
+    const v = globalThis.localStorage?.getItem(trayKey.value)
+    return v === 'cards' || v === 'compact' ? v : props.hiddenView
+  } catch {
+    return props.hiddenView
+  }
+}
+const trayView = ref<'cards' | 'compact'>(readTray())
+watch(trayKey, () => (trayView.value = readTray()))
+function setTrayView(view: 'cards' | 'compact'): void {
+  trayView.value = view
+  try {
+    globalThis.localStorage?.setItem(trayKey.value, view)
+  } catch {
+    // No storage: the choice lasts the page
+  }
+}
 const announcement = ref('')
 const root = ref<HTMLElement | null>(null)
 
@@ -305,22 +328,65 @@ function render(block: BlockConfig): Component {
       </div>
     </div>
 
-    <div v-if="editing" class="qd-cards-tray">
-      <span class="qd-cards-tray-label">{{ tOr('core.cardsDashboard.hidden', 'Hidden cards') }}</span>
-      <span v-if="!state.groups.value.hidden.length" class="qd-cards-tray-empty">{{ tOr('core.cardsDashboard.noneHidden', 'None') }}</span>
-      <QdButton
-        v-for="c in state.groups.value.hidden"
-        :key="c.id"
-        type="button"
-        size="small"
-        outlined
-        rounded
-        icon="pi pi-eye"
-        class="qd-cards-restore"
-        :label="title(c)"
-        :aria-label="tOr('core.cardsDashboard.restore', 'Show {title}', { title: title(c) })"
-        @click="restore(c)"
-      />
+    <div v-if="editing" class="qd-cards-tray" :class="`qd-cards-tray-${trayView}`">
+      <div class="qd-cards-tray-head">
+        <span class="qd-cards-tray-label">{{ tOr('core.cardsDashboard.hidden', 'Hidden cards') }}</span>
+        <span v-if="!state.groups.value.hidden.length" class="qd-cards-tray-empty">{{ tOr('core.cardsDashboard.noneHidden', 'None') }}</span>
+        <div class="qd-cards-tray-view" role="group" :aria-label="tOr('core.cardsDashboard.trayView', 'Show hidden cards as')">
+          <button
+            v-for="view in (['cards', 'compact'] as const)"
+            :key="view"
+            type="button"
+            class="qd-cards-tray-view-option"
+            :aria-pressed="trayView === view"
+            @click="setTrayView(view)"
+          >
+            {{ view === 'cards' ? tOr('core.cardsDashboard.viewCards', 'Cards') : tOr('core.cardsDashboard.viewCompact', 'Compact') }}
+          </button>
+        </div>
+      </div>
+      <!-- Whole cards: the same grid, dimmed and inert; only "Show" acts -->
+      <div v-if="trayView === 'cards' && state.groups.value.hidden.length" class="qd-cards-grid" :style="{ '--qd-card-min': minCardWidth }">
+        <div
+          v-for="c in state.groups.value.hidden"
+          :key="c.id"
+          class="qd-cards-slot qd-cards-hidden"
+          :style="{ '--qd-card-span': span(c) }"
+          :data-hidden-card-id="c.id"
+        >
+          <div class="qd-cards-bar">
+            <span class="qd-cards-title">{{ title(c) }}</span>
+            <QdButton
+              type="button"
+              size="small"
+              text
+              icon="pi pi-eye"
+              class="qd-cards-restore"
+              :label="tOr('core.cardsDashboard.show', 'Show')"
+              :aria-label="tOr('core.cardsDashboard.restore', 'Show {title}', { title: title(c) })"
+              @click="restore(c)"
+            />
+          </div>
+          <div class="qd-cards-hidden-body" inert>
+            <component :is="render(blockById.get(c.id)!)" v-bind="blockById.get(c.id)!.props ?? {}" />
+          </div>
+        </div>
+      </div>
+      <div v-else-if="trayView === 'compact'" class="qd-cards-chips">
+        <QdButton
+          v-for="c in state.groups.value.hidden"
+          :key="c.id"
+          type="button"
+          size="small"
+          outlined
+          rounded
+          icon="pi pi-eye"
+          class="qd-cards-restore"
+          :label="title(c)"
+          :aria-label="tOr('core.cardsDashboard.restore', 'Show {title}', { title: title(c) })"
+          @click="restore(c)"
+        />
+      </div>
     </div>
 
     <span :id="`qd-cards-help-${zone}`" class="qd-cards-sr">{{ tOr('core.cardsDashboard.help', 'Arrow keys move the card, Home and End to the start or the end') }}</span>

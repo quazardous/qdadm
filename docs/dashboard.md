@@ -43,10 +43,15 @@ ctx.block('home-cards', { id: 'news', component: NewsCard, weight: 30, card: { t
 | `id` | the zone's name | The dashboard's name in the storage key |
 | `minCardWidth` | `18rem` | The narrowest a card gets before the grid drops a column |
 | `editable` | `true` | Show the "Customise" button |
+| `hiddenView` | `'cards'` | How the tray shows hidden cards by default: `'cards'` (whole) or `'compact'` (chips) |
 
 "Customise" opens edit mode: a bar on each card with a handle, pin and hide, then
-the tray of hidden cards (a chip restores one in its old place), "Reset" and
-"Done". Outside edit mode only the cards show.
+the tray of hidden cards, "Reset" and "Done". Outside edit mode only the cards show.
+
+The tray shows the hidden cards whole, dimmed and inert, in the same grid; or,
+with its Cards / Compact switch, as one chip each. "Show" restores a card in its
+old place. The user's choice of view is kept beside the arrangement
+(`qdadm.dashboard.<id>.<user>.tray`); `hiddenView` sets it until they choose.
 
 Moving a card:
 

@@ -50,7 +50,7 @@ function mountDashboard(props = {}) {
   return wrapper
 }
 
-const order = (w) => w.findAll('.qd-cards-slot').map((s) => s.attributes('data-card-id'))
+const order = (w) => w.findAll('.qd-cards-slot[data-card-id]').map((s) => s.attributes('data-card-id'))
 const slot = (w, id) => w.find(`[data-card-id="${id}"]`)
 const button = (w, text) => w.findAll('button').find((b) => b.text() === text)
 const status = (w) => w.find('[role=status]').text()
@@ -105,6 +105,37 @@ describe('CardsDashboard (#4320)', () => {
     await chip.trigger('click')
     await flushPromises()
     expect(order(w)).toEqual(['alerts', 'sales', 'stock', 'news'])
+  })
+
+  it('the tray shows hidden cards whole, inert; Compact turns them into chips, remembered per user', async () => {
+    const w = mountDashboard()
+    await button(w, 'Customise').trigger('click')
+    await slot(w, 'stock').find('[aria-label="Hide Stock"]').trigger('click')
+    await flushPromises()
+    const hidden = w.find('[data-hidden-card-id="stock"]')
+    expect(hidden.find('.body').text()).toBe('Stock')
+    expect(hidden.find('.qd-cards-hidden-body').attributes()).toHaveProperty('inert')
+    expect(w.find('.qd-cards-chips').exists()).toBe(false)
+
+    await w.findAll('.qd-cards-tray-view-option').find((b) => b.text() === 'Compact').trigger('click')
+    expect(w.find('[data-hidden-card-id="stock"]').exists()).toBe(false)
+    expect(w.find('.qd-cards-chips [aria-label="Show Stock"]').exists()).toBe(true)
+    expect(localStorage.getItem(`${KEY}.tray`)).toBe('compact')
+    w.unmount()
+
+    const again = mountDashboard()
+    await button(again, 'Customise').trigger('click')
+    expect(again.find('.qd-cards-chips').exists()).toBe(true)
+    // Show restores from either view
+    await again.find('.qd-cards-chips [aria-label="Show Stock"]').trigger('click')
+    await flushPromises()
+    expect(order(again)).toContain('stock')
+  })
+
+  it('hiddenView sets the default view', async () => {
+    const w = mountDashboard({ hiddenView: 'compact' })
+    await button(w, 'Customise').trigger('click')
+    expect(w.findAll('.qd-cards-tray-view-option').find((b) => b.text() === 'Compact').attributes('aria-pressed')).toBe('true')
   })
 
   it('pins and unpins; reset brings the default back and clears storage', async () => {

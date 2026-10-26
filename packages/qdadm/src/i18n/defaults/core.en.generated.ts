@@ -200,6 +200,10 @@ export default `core:
     hiddenOne: "{title} hidden"
     restore: "Show {title}"
     restoredOne: "{title} shown"
+    show: Show
+    trayView: Show hidden cards as
+    viewCards: Cards
+    viewCompact: Compact
   # NotificationPanel and NotificationBadge (#4171)
   notifications:
     title: Notifications
