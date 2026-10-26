@@ -129,7 +129,16 @@ ctx.routes('books/stats', [
 ])
 
 ctx.navItem({ section: 'Library', route: 'book-stats', icon: 'pi pi-chart-bar', label: 'Stats' })
+ctx.navItem({ section: 'Admin', route: 'settings', icon: 'pi pi-cog', label: 'Settings',
+              permission: 'admin:settings' })
 ```
+
+- `permission` hides the entry from whoever is not granted that attribute; the
+  entry stays active on its route and the pages under it.
+- `entity` does two things: it shows the entry to whoever may list or read that
+  entity, and makes it active on that entity's pages only. Use it for an entry
+  that opens the entity, `permission` for any other page. With both, both must pass.
+- Hiding an entry does not guard its page: the URL still opens.
 
 ### Links to other tools
 
@@ -146,8 +155,8 @@ ctx.navItem({ section: 'Admin', label: 'Adminer', icon: 'pi pi-database',
 - An entry takes exactly one of `route` and `href`; both or neither throws at boot.
 - An absolute URL opens in a new tab (`rel="noopener noreferrer"`), marked with a
   small icon; a relative one stays in the same tab. `target` overrides both.
-- A link is never the active entry, and has no entity guard: `permission` hides
-  it from whoever is not granted that attribute.
+- A link is never the active entry, and has no entity guard: `permission` alone
+  decides who sees it.
 
 ---
 

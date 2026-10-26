@@ -34,7 +34,7 @@ export interface NavItem {
   href?: string
   /** Where an `href` entry opens: default `_blank` for an absolute URL, same tab otherwise. */
   target?: string
-  /** An `href` entry is shown only to whoever is granted this attribute. */
+  /** The entry is shown only to whoever is granted this attribute (`route` or `href`). */
   permission?: string
   /** Set on `href` entries by `navSections`: opens outside the app in another tab. */
   external?: boolean
@@ -110,11 +110,10 @@ export function useNavigation(): UseNavigationReturn {
    * Check if user can access a nav item: canList() when it opens a list route, canRead() otherwise
    */
   function canAccessNavItem(item: NavItem): boolean {
-    // A link out has no page to guard: only its own permission, if any (#3675).
-    if (item.href) {
-      return !item.permission || !securityChecker || securityChecker.isGranted(item.permission)
-    }
-    if (!item.entity || !orchestrator) return true
+    // Its own permission, on any entry (#3675, #4318): a link out has nothing
+    // else to check, a route entry no longer needs `entity` to follow rights.
+    if (item.permission && securityChecker && !securityChecker.isGranted(item.permission)) return false
+    if (item.href || !item.entity || !orchestrator) return true
     const manager = orchestrator.get(item.entity)
     if (!manager) return true
     // A menu entry is shown to whoever may do what its page does (#2497): a

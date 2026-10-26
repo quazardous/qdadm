@@ -82,7 +82,7 @@ export interface NavItem {
   href?: string
   /** Where an `href` entry opens: default `_blank` for an absolute URL, same tab otherwise. */
   target?: string
-  /** An `href` entry is shown only to whoever is granted this attribute. */
+  /** The entry is shown only to whoever is granted this attribute (`route` or `href`). */
   permission?: string
   label: string
   icon?: string
