@@ -16,13 +16,19 @@
  *       <p>Demo accounts: admin, user</p>
  *     </template>
  *   </LoginPage>
+ *
+ * Identity provider first (#4321): the SSO button leads, the local form is a
+ * fallback (open, collapsed or hidden):
+ *   <LoginPage :sso="{ label: 'Sign in with Acme' }" local-fallback="collapsed"
+ *              :provider-home="{ label: 'My Acme account', href: 'https://id.acme.test' }" />
  */
-import { ref, inject, computed, type PropType, type Component } from 'vue'
+import { ref, inject, computed, nextTick, type PropType, type Component } from 'vue'
 import { useRouter } from 'vue-router'
 import Card from 'primevue/card'
 import InputText from 'primevue/inputtext'
 import Password from 'primevue/password'
 import QdButton from '../base/QdButton.vue'
+import QdMessage from '../base/QdMessage.vue'
 import AppBanner from '../layout/AppBanner.vue'
 import { useI18n } from '../../i18n/useI18n'
 import type { OrchestratorLike } from '../../entity/EntityManager.interface'
@@ -32,7 +38,30 @@ import type { OrchestratorLike } from '../../entity/EntityManager.interface'
  */
 interface AuthAdapter {
   login: (credentials: { username: string; password: string }) => Promise<LoginResult>
+  /** Redirect-based adapters (OAuthCodeAdapter): starts the provider's flow. */
+  beginLogin?: (redirectTo?: string) => Promise<void>
 }
+
+/**
+ * The identity provider's button (#4321). `href` navigates (a server redirect),
+ * `start` runs the app's own flow; with neither, the auth adapter's
+ * `beginLogin()` is called.
+ */
+export interface LoginSso {
+  label?: string
+  icon?: string
+  href?: string
+  start?: () => Promise<void>
+}
+
+/** A link to the provider's own portal (password, two-factor), in a new tab. */
+export interface LoginProviderHome {
+  label: string
+  href: string
+}
+
+/** Where the local form stands next to the SSO button. */
+export type LoginLocalFallback = 'open' | 'collapsed' | 'hidden'
 
 /**
  * Login result from auth adapter
@@ -154,6 +183,41 @@ const props = defineProps({
   welcomeToast: {
     type: Boolean,
     default: true
+  },
+  /** The identity provider's button, first on the page (#4321). */
+  sso: {
+    type: Object as PropType<LoginSso | null>,
+    default: null
+  },
+  /** A link to the provider's portal, beside the SSO button. */
+  providerHome: {
+    type: Object as PropType<LoginProviderHome | null>,
+    default: null
+  },
+  /** With `sso`: the local form shown, behind a disclosure, or not at all. */
+  localFallback: {
+    type: String as PropType<LoginLocalFallback>,
+    default: 'open'
+  },
+  /** The disclosure's label (default: core.login.localFallback) */
+  localFallbackLabel: {
+    type: String as PropType<string | null>,
+    default: null
+  },
+  /** A line under the title */
+  subtitle: {
+    type: String as PropType<string | null>,
+    default: null
+  },
+  /** The organisation's logo (image URL), small, beside the app's icon */
+  brandLogo: {
+    type: String as PropType<string | null>,
+    default: null
+  },
+  /** An error to show above the SSO button, e.g. the provider's `?error=` on return */
+  error: {
+    type: String as PropType<string | null>,
+    default: null
   }
 })
 
@@ -179,6 +243,41 @@ const labels = computed(() => ({
 }))
 
 const displayTitle = computed<string>(() => props.title || appConfig.name || 'Admin')
+
+// Identity provider first (#4321). 'hidden' needs an SSO button, or there is no way in.
+if (props.localFallback === 'hidden' && !props.sso) {
+  console.warn('[qdadm] LoginPage: localFallback "hidden" needs `sso`; the local form stays shown')
+}
+const localMode = computed<LoginLocalFallback>(() => (props.sso ? props.localFallback : 'open'))
+const localOpen = ref<boolean>(localMode.value !== 'collapsed')
+const ssoLoading = ref<boolean>(false)
+const ssoError = ref<string | null>(null)
+const shownError = computed<string | null>(() => ssoError.value ?? props.error)
+const ssoLabel = computed<string>(() => props.sso?.label ?? tOr('core.login.sso', 'Sign in with your organisation'))
+
+async function openLocal(): Promise<void> {
+  localOpen.value = true
+  await nextTick()
+  document.getElementById('qdadm-username')?.focus()
+}
+
+async function handleSso(): Promise<void> {
+  const sso = props.sso
+  if (!sso || sso.href) return // an href is a plain link
+  ssoError.value = null
+  ssoLoading.value = true
+  try {
+    if (sso.start) await sso.start()
+    else if (authAdapter?.beginLogin) await authAdapter.beginLogin(props.redirectTo)
+    else throw new Error(tOr('core.login.noSso', 'No sign-in flow configured for this button'))
+  } catch (err) {
+    ssoError.value = err instanceof Error ? err.message : String(err)
+    emit('error', err)
+  } finally {
+    // A redirect leaves the page; anything else hands the button back
+    ssoLoading.value = false
+  }
+}
 
 async function handleLogin(): Promise<void> {
   if (!authAdapter?.login) {
@@ -239,11 +338,65 @@ async function handleLogin(): Promise<void> {
             <component v-if="logo" :is="logo" class="qdadm-login-logo" />
             <i v-else :class="icon" class="qdadm-login-icon"></i>
           </slot>
-          <h1>{{ displayTitle }}</h1>
+          <div class="qdadm-login-titles">
+            <h1>{{ displayTitle }}</h1>
+            <p v-if="subtitle" class="qdadm-login-subtitle">{{ subtitle }}</p>
+          </div>
+          <slot name="brand">
+            <img v-if="brandLogo" :src="brandLogo" alt="" class="qdadm-login-brand" />
+          </slot>
         </div>
       </template>
       <template #content>
-        <form @submit.prevent="handleLogin" class="qdadm-login-form" autocomplete="off">
+        <!-- Identity provider first (#4321): its button leads, the local form is the fallback -->
+        <div v-if="sso" class="qdadm-login-sso">
+          <QdMessage v-if="shownError" severity="error" :closable="false" class="qdadm-login-error">{{ shownError }}</QdMessage>
+          <QdButton
+            v-if="sso.href"
+            as="a"
+            :href="sso.href"
+            :label="ssoLabel"
+            :icon="sso.icon ?? 'pi pi-sign-in'"
+            class="w-full qdadm-login-sso-button"
+          />
+          <QdButton
+            v-else
+            type="button"
+            :label="ssoLabel"
+            :icon="sso.icon ?? 'pi pi-sign-in'"
+            class="w-full qdadm-login-sso-button"
+            :loading="ssoLoading"
+            @click="handleSso"
+          />
+          <a
+            v-if="providerHome"
+            :href="providerHome.href"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="qdadm-login-provider-home"
+          >{{ providerHome.label || tOr('core.login.providerHome', 'Manage my account') }} <i class="pi pi-external-link" aria-hidden="true"></i></a>
+          <div v-if="localMode === 'open'" class="qdadm-login-divider"><span>{{ tOr('core.login.or', 'or') }}</span></div>
+          <QdButton
+            v-else-if="localMode === 'collapsed'"
+            type="button"
+            text
+            size="small"
+            class="qdadm-login-fallback-toggle"
+            :icon="localOpen ? 'pi pi-chevron-down' : 'pi pi-chevron-right'"
+            :label="localFallbackLabel ?? tOr('core.login.localFallback', 'Use a local account instead')"
+            :aria-expanded="String(localOpen)"
+            aria-controls="qdadm-login-local"
+            @click="localOpen ? (localOpen = false) : openLocal()"
+          />
+        </div>
+        <form
+          v-if="localMode !== 'hidden'"
+          v-show="localOpen"
+          id="qdadm-login-local"
+          @submit.prevent="handleLogin"
+          class="qdadm-login-form"
+          autocomplete="off"
+        >
           <div class="qdadm-login-field">
             <label for="qdadm-username">{{ labels.username }}</label>
             <InputText
@@ -275,19 +428,86 @@ async function handleLogin(): Promise<void> {
           <!-- Alternative sign-ins (#1775): SSO buttons go between the form
                and the footer, which is where users look for them. Rendered
                only when filled, so the divider never shows on its own. -->
+          <template v-if="!sso">
+            <div v-if="$slots.alternatives" class="qdadm-login-alternatives">
+              <div class="qdadm-login-divider"><span>{{ tOr('core.login.or', 'or') }}</span></div>
+              <slot name="alternatives"></slot>
+            </div>
+
+            <slot name="footer"></slot>
+          </template>
+        </form>
+        <!-- With sso the form may be collapsed or absent: what follows it stays shown -->
+        <div v-if="sso && ($slots.alternatives || $slots.footer)" class="qdadm-login-after">
           <div v-if="$slots.alternatives" class="qdadm-login-alternatives">
-            <div class="qdadm-login-divider"><span>{{ tOr('core.login.or', 'or') }}</span></div>
             <slot name="alternatives"></slot>
           </div>
-
           <slot name="footer"></slot>
-        </form>
+        </div>
       </template>
     </Card>
   </div>
 </template>
 
 <style scoped>
+.qdadm-login-sso {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.qdadm-login-error {
+  margin: 0;
+}
+
+.qdadm-login-provider-home {
+  align-self: center;
+  font-size: 0.875rem;
+  color: var(--p-primary-color);
+  text-decoration: none;
+}
+
+.qdadm-login-provider-home:hover {
+  text-decoration: underline;
+}
+
+.qdadm-login-provider-home .pi {
+  font-size: 0.75rem;
+}
+
+.qdadm-login-fallback-toggle {
+  align-self: center;
+}
+
+.qdadm-login-titles {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+  min-width: 0;
+}
+
+.qdadm-login-subtitle {
+  margin: 0;
+  font-size: 0.875rem;
+  font-weight: 400;
+  color: var(--p-text-muted-color, #6b7280);
+}
+
+.qdadm-login-brand {
+  height: 1.5rem;
+  width: auto;
+  margin-left: auto;
+  opacity: 0.9;
+}
+
+.qdadm-login-after {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
 .qdadm-login-alternatives {
   display: flex;
   flex-direction: column;

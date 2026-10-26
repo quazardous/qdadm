@@ -36,6 +36,32 @@ ctx.routes('/auth', [{
 }])
 ```
 
+### The login page: identity provider first
+
+`LoginPage` puts the provider's button first and keeps the local account as a fallback:
+
+```vue
+<LoginPage
+  :sso="{ label: 'Sign in with Acme' }"
+  local-fallback="collapsed"
+  :provider-home="{ label: 'My Acme account', href: 'https://id.acme.example' }"
+  subtitle="Staff hub"
+  brand-logo="/acme.svg"
+  :error="route.query.error_description"
+/>
+```
+
+- `sso`: `{ label, icon, href, start }`. `href` navigates (a server redirect),
+  `start()` runs the app's flow; with neither, the button calls the auth
+  adapter's `beginLogin(redirectTo)`, as `OAuthCodeAdapter` has. An error it
+  throws is shown above the button.
+- `localFallback`: `'open'` (the form below an "or", the default),
+  `'collapsed'` (behind a disclosure) or `'hidden'`. `'hidden'` needs `sso`.
+- `providerHome`: a link to the provider's portal (password, two-factor), in a new tab.
+- `subtitle`, `brandLogo` (the organisation's logo, small, beside the app's icon;
+  slot `brand` for anything else), `error` (e.g. the provider's error on return).
+- The `alternatives` and `footer` slots stay shown when the form is collapsed or hidden.
+
 ## Backend
 
 The HTTP contract is [the Google guide's](auth-google.md#the-backend-contract):

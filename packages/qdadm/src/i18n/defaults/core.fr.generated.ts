@@ -174,6 +174,11 @@ export default `core:
     invalidCredentials: Identifiants invalides
     configError: Erreur de configuration
     noAuthAdapter: Aucun adaptateur d'authentification configuré
+    # Identity provider first (#4321)
+    sso: Se connecter avec votre organisation
+    providerHome: Gérer mon compte
+    localFallback: Utiliser un compte local
+    noSso: Aucun parcours de connexion configuré pour ce bouton
   # NotificationPanel and NotificationBadge (#4171)
   notifications:
     title: Notifications

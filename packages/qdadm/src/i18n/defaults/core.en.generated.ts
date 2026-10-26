@@ -174,6 +174,11 @@ export default `core:
     invalidCredentials: Invalid credentials
     configError: Configuration Error
     noAuthAdapter: No auth adapter configured
+    # Identity provider first (#4321)
+    sso: Sign in with your organisation
+    providerHome: Manage my account
+    localFallback: Use a local account instead
+    noSso: No sign-in flow configured for this button
   # NotificationPanel and NotificationBadge (#4171)
   notifications:
     title: Notifications

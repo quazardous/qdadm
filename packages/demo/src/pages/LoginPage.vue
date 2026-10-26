@@ -5,9 +5,24 @@
  * Available accounts (password = username):
  *   - admin (role: admin) - Full access to all features
  *   - bob, june (role: user) - Limited access, own loans only
+ *
+ * /login?sso=1 shows the identity-provider-first mode (#4321): the demo has
+ * no provider, so its button only reports that, and the local form is the
+ * collapsed fallback.
  */
-
+import { computed } from 'vue'
+import { useRoute } from 'vue-router'
 import { LoginPage, qdadmLogo } from '@quazardous/qdadm'
+
+const route = useRoute()
+const ssoMode = computed(() => route.query.sso === '1')
+const sso = {
+  label: 'Sign in with Demo ID',
+  start: async () => {
+    await new Promise((resolve) => setTimeout(resolve, 400))
+    throw new Error('The demo has no identity provider: use a local account')
+  },
+}
 </script>
 
 <template>
@@ -17,6 +32,14 @@ import { LoginPage, qdadmLogo } from '@quazardous/qdadm'
       icon="pi pi-book"
       defaultUsername="admin"
       defaultPassword="admin"
+      v-bind="ssoMode ? {
+        sso,
+        localFallback: 'collapsed',
+        providerHome: { label: 'My Demo ID account', href: 'https://github.com/quazardous/qdadm' },
+        subtitle: 'Staff sign-in',
+        brandLogo: qdadmLogo,
+        error: route.query.sso_error || null,
+      } : {}"
     >
       <template #footer>
         <div class="demo-hint">

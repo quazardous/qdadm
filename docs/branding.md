@@ -10,6 +10,8 @@ app: {
 }
 ```
 
+The login page can also show the organisation's logo and a subtitle (`brandLogo`, `subtitle`), see [the login page](auth-oidc.md#the-login-page-identity-provider-first).
+
 ## Page icon: `app.favicon`
 
 | `app.favicon` | Page icon |
