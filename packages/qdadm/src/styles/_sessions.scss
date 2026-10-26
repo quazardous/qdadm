@@ -1,0 +1,106 @@
+/**
+ * SessionsPage (#4336): who is signed in, the history, Close with a reason.
+ */
+
+.qd-sessions {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.qd-sessions-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.qd-sessions-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+
+  th {
+    text-align: left;
+    font-weight: 600;
+    color: var(--p-text-muted-color);
+    padding: 0.5rem;
+    border-bottom: 1px solid var(--p-content-border-color);
+    white-space: nowrap;
+  }
+
+  td {
+    padding: 0.5rem;
+    border-bottom: 1px solid var(--p-content-border-color);
+    vertical-align: middle;
+  }
+}
+
+.qd-sessions-mine td {
+  background: var(--p-highlight-background, rgba(16, 185, 129, 0.06));
+}
+
+.qd-sessions-badge {
+  margin-left: 0.375rem;
+  padding: 0 0.375rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  background: var(--p-primary-color);
+  color: var(--p-primary-contrast-color, #fff);
+}
+
+.qd-sessions-origin {
+  color: var(--p-text-muted-color);
+  font-size: 0.8125rem;
+  max-width: 22rem;
+  overflow-wrap: anywhere;
+}
+
+.qd-sessions-actions {
+  text-align: right;
+}
+
+.qd-sessions-event {
+  padding: 0.0625rem 0.5rem;
+  border-radius: 999px;
+  background: var(--p-content-hover-background);
+  white-space: nowrap;
+}
+
+.qd-sessions-event--refused .qd-sessions-event,
+.qd-sessions-event--closed .qd-sessions-event {
+  background: var(--p-red-50);
+  color: var(--p-red-700);
+}
+
+.qd-sessions-empty {
+  margin: 0;
+  color: var(--p-text-muted-color);
+}
+
+.qd-sessions-notice {
+  margin-bottom: 0.75rem;
+}
+
+.qd-sessions-pager {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.qd-sessions-reason-label {
+  display: block;
+  margin-bottom: 0.5rem;
+}
+
+.qd-sessions-reason {
+  width: 100%;
+}
+
+// Narrow screens: the tables scroll inside their card
+@media (max-width: 640px) {
+  .qd-sessions-card .p-card-content {
+    overflow-x: auto;
+  }
+}

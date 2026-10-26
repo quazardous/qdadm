@@ -202,6 +202,39 @@ core:
     trayView: Afficher les cartes masquées en
     viewCards: Cartes
     viewCompact: Compact
+  # SessionsModule (#4336)
+  sessions:
+    title: Sessions
+    banner: "Aussi connecté : {list}"
+    bannerOne: "{name} (depuis {since})"
+    present: Connectés maintenant
+    refresh: Rafraîchir
+    nobody: Personne n'est connecté.
+    who: Qui
+    via: Via
+    since: Depuis
+    seen: Vu
+    tabs: Onglets
+    origin: Origine
+    mine: vous
+    close: Fermer
+    closeTitle: "Fermer la session de {name}"
+    reasonPrompt: Pourquoi ? Le motif va dans l'historique.
+    cancel: Annuler
+    history: Historique
+    noHistory: Pas encore d'historique.
+    when: Quand
+    event:
+      login: Connexion
+      logout: Déconnexion
+      refused: Refus
+      closed: Fermeture
+      expired: Expiration
+    by: Par
+    reason: Motif
+    source: Source
+    newer: Plus récent
+    older: Plus ancien
   # NotificationPanel and NotificationBadge (#4171)
   notifications:
     title: Notifications

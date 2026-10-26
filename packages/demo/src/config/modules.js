@@ -16,6 +16,8 @@ import { FavoritesModule } from '../modules/favorites/FavoritesModule'
 import { JsonPlaceholderModule } from '../modules/jsonplaceholder/JsonPlaceholderModule'
 import { NotificationsDemoModule } from '../modules/notifications/NotificationsDemoModule'
 import { OpsDemoModule } from '../modules/ops/OpsDemoModule'
+import { SessionsModule } from '@quazardous/qdadm'
+import { fakeSessionsAdapter } from '../modules/ops/fakeSessions'
 
 export const moduleDefs = [
   SecurityModule,
@@ -28,7 +30,14 @@ export const moduleDefs = [
   FavoritesModule,
   JsonPlaceholderModule,
   NotificationsDemoModule,
-  OpsDemoModule
+  OpsDemoModule,
+  // Who else is here, and the sign-in history (#4336), over a fake server
+  new SessionsModule({
+    adapter: fakeSessionsAdapter,
+    permission: 'admin:sessions',
+    bannerSeverity: 'warn',
+    nav: { section: 'Security' },
+  })
 ]
 
 export const modulesOptions = {

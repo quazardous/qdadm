@@ -66,6 +66,12 @@ export class OpsDemoModule extends Module {
         meta: { layout: 'page' },
       },
       {
+        path: 'sessions-sim',
+        name: 'ops-sessions-sim',
+        component: () => import('./pages/SessionsPlayground.vue'),
+        meta: { layout: 'page' },
+      },
+      {
         path: 'timeline',
         name: 'ops-timeline',
         component: () => import('./pages/TimelinePlayground.vue'),
@@ -90,6 +96,7 @@ export class OpsDemoModule extends Module {
       ctx.block('ops-dashboard', { id, component: DemoCard, props, weight: (i + 1) * 10, ...(Object.keys(card).length ? { card } : {}) })
     })
     ctx.navItem({ section: 'Features', route: 'ops-dashboard', icon: 'pi pi-th-large', label: 'Dashboard' })
+    ctx.navItem({ section: 'Features', route: 'ops-sessions-sim', icon: 'pi pi-users', label: 'Sessions demo' })
     ctx.navItem({ section: 'Features', route: 'ops-log-stream', icon: 'pi pi-align-left', label: 'Log stream' })
     ctx.navItem({ section: 'Features', route: 'ops-timeline', icon: 'pi pi-history', label: 'Timeline' })
     ctx.navItem({ section: 'Features', route: 'ops-payloads', icon: 'pi pi-code', label: 'Payloads' })

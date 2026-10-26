@@ -431,6 +431,24 @@ export * from './components/index'
 export { useTaskRunner, taskAction } from './tasks/useTaskRunner'
 export { useTaskNotifications, useTaskTrayVisible, type TasksConfig } from './tasks/useTaskNotifications'
 export {
+  SessionsModule,
+  createSessionsModule,
+  getSessionsRuntime,
+  sinceText,
+  SESSIONS_BANNER_ID,
+  type SessionsModuleOptions,
+  type SessionsLabel,
+} from './sessions/SessionsModule'
+export {
+  restSessionsAdapter,
+  type SessionsAdapter,
+  type SessionPresence,
+  type SessionInfo,
+  type SessionHistoryEntry,
+  type RestSessionsAdapterOptions,
+} from './sessions/sessionsAdapter'
+export { createPresence, tabId, type Presence, type PresenceOptions } from './sessions/presence'
+export {
   configureTasks,
   getTaskUi,
   resolveTaskUi,

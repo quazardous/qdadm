@@ -202,6 +202,39 @@ core:
     trayView: Show hidden cards as
     viewCards: Cards
     viewCompact: Compact
+  # SessionsModule (#4336)
+  sessions:
+    title: Sessions
+    banner: "Also signed in: {list}"
+    bannerOne: "{name} (since {since})"
+    present: Signed in now
+    refresh: Refresh
+    nobody: Nobody is signed in.
+    who: Who
+    via: Via
+    since: Since
+    seen: Last seen
+    tabs: Tabs
+    origin: Origin
+    mine: you
+    close: Close
+    closeTitle: "Close the session of {name}"
+    reasonPrompt: Why? It goes into the history.
+    cancel: Cancel
+    history: History
+    noHistory: No history yet.
+    when: When
+    event:
+      login: Signed in
+      logout: Signed out
+      refused: Refused
+      closed: Closed
+      expired: Expired
+    by: By
+    reason: Reason
+    source: Source
+    newer: Newer
+    older: Older
   # NotificationPanel and NotificationBadge (#4171)
   notifications:
     title: Notifications
