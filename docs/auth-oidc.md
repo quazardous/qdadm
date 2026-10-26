@@ -62,6 +62,29 @@ ctx.routes('/auth', [{
   slot `brand` for anything else), `error` (e.g. the provider's error on return).
 - The `alternatives` and `footer` slots stay shown when the form is collapsed or hidden.
 
+Every text of the page can be replaced through `labels`, with a string or a
+function called at render (so it follows the locale, a ref or the route):
+
+```vue
+<LoginPage
+  :sso="{}"
+  :labels="{
+    sso: () => t('auth.signInWith', { idp: idpName }),
+    localSection: 'Staff without an Acme account',
+    loggedInAs: ({ params }) => `Hello ${params.name}`,
+  }"
+/>
+```
+
+- Keys: `username`, `password`, `submit`, `or`, `sso`, `providerHome`,
+  `localSection`, `localFallback`, `welcome`, `loggedInAs`, `failed`,
+  `invalidCredentials`, `noSso`, `configError`, `noAuthAdapter`.
+- A string takes `{name}` placeholders; a function gets `{ t, params }`.
+- `labels` wins over the single props (`usernameLabel`, `sso.label`…), which win
+  over the catalogue (`core.login.<key>`).
+- `localSection` titles the local form in `open` mode (default "Alternative
+  login"); `''` gives back the bare "or".
+
 ## Backend
 
 The HTTP contract is [the Google guide's](auth-google.md#the-backend-contract):

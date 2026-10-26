@@ -173,9 +173,10 @@ core:
     configError: Configuration Error
     noAuthAdapter: No auth adapter configured
     # Identity provider first (#4321)
-    sso: Sign in with your organisation
-    providerHome: Manage my account
-    localFallback: Use a local account instead
+    sso: Sign in
+    providerHome: My account
+    localFallback: Alternative login
+    localSection: Alternative login
     noSso: No sign-in flow configured for this button
   # CardsDashboard (#4320)
   cardsDashboard:

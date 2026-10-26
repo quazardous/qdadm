@@ -31,6 +31,7 @@ import QdButton from '../base/QdButton.vue'
 import QdMessage from '../base/QdMessage.vue'
 import AppBanner from '../layout/AppBanner.vue'
 import { useI18n } from '../../i18n/useI18n'
+import type { TranslateParams } from '../../i18n'
 import type { OrchestratorLike } from '../../entity/EntityManager.interface'
 
 /**
@@ -56,12 +57,27 @@ export interface LoginSso {
 
 /** A link to the provider's own portal (password, two-factor), in a new tab. */
 export interface LoginProviderHome {
-  label: string
+  /** Default: core.login.providerHome ("My account") */
+  label?: string
   href: string
 }
 
 /** Where the local form stands next to the SSO button. */
 export type LoginLocalFallback = 'open' | 'collapsed' | 'hidden'
+
+/**
+ * A text of the page (#4326): a string (static, `{name}` placeholders work) or
+ * a function called at render (dynamic: it follows the locale, a ref, the route).
+ */
+export type LoginLabel =
+  | string
+  | ((ctx: { t: (key: string, fallback: string, params?: TranslateParams) => string; params: TranslateParams }) => string)
+
+/** Every text of LoginPage, each one overridable. */
+export type LoginLabelKey =
+  | 'username' | 'password' | 'submit' | 'or' | 'sso' | 'providerHome'
+  | 'localSection' | 'localFallback' | 'welcome' | 'loggedInAs' | 'failed'
+  | 'invalidCredentials' | 'noSso' | 'configError' | 'noAuthAdapter'
 
 /**
  * Login result from auth adapter
@@ -218,6 +234,15 @@ const props = defineProps({
   error: {
     type: String as PropType<string | null>,
     default: null
+  },
+  /**
+   * Any text of the page (#4326), static or dynamic. Wins over the single
+   * label props, which win over the i18n catalogue (core.login.*).
+   * `localSection: ''` drops the open local form's title for the bare "or".
+   */
+  labels: {
+    type: Object as PropType<Partial<Record<LoginLabelKey, LoginLabel>> | null>,
+    default: null
   }
 })
 
@@ -236,10 +261,22 @@ const username = ref<string>(props.defaultUsername)
 const password = ref<string>(props.defaultPassword)
 const loading = ref<boolean>(false)
 
-const labels = computed(() => ({
-  username: props.usernameLabel ?? tOr('core.login.username', 'Username'),
-  password: props.passwordLabel ?? tOr('core.login.password', 'Password'),
-  submit: props.submitLabel ?? tOr('core.login.submit', 'Sign In'),
+/**
+ * A text of the page: `labels[key]`, else the single prop given, else the
+ * catalogue (core.login.<key>), else the built-in default.
+ */
+function label(key: LoginLabelKey, fallback: string, single?: string | null, params: TranslateParams = {}): string {
+  const custom = props.labels?.[key]
+  if (typeof custom === 'function') return custom({ t: tOr, params })
+  if (typeof custom === 'string') return custom.replace(/\{(\w+)\}/g, (m, name) => (name in params ? String(params[name]) : m))
+  if (single != null) return single
+  return tOr(`core.login.${key}`, fallback, params)
+}
+
+const texts = computed(() => ({
+  username: label('username', 'Username', props.usernameLabel),
+  password: label('password', 'Password', props.passwordLabel),
+  submit: label('submit', 'Sign In', props.submitLabel),
 }))
 
 const displayTitle = computed<string>(() => props.title || appConfig.name || 'Admin')
@@ -253,7 +290,9 @@ const localOpen = ref<boolean>(localMode.value !== 'collapsed')
 const ssoLoading = ref<boolean>(false)
 const ssoError = ref<string | null>(null)
 const shownError = computed<string | null>(() => ssoError.value ?? props.error)
-const ssoLabel = computed<string>(() => props.sso?.label ?? tOr('core.login.sso', 'Sign in with your organisation'))
+const ssoLabel = computed<string>(() => label('sso', 'Sign in', props.sso?.label))
+// The open local form's title, in place of the bare "or"; '' keeps the "or"
+const localSection = computed<string>(() => label('localSection', 'Alternative login'))
 
 async function openLocal(): Promise<void> {
   localOpen.value = true
@@ -269,7 +308,7 @@ async function handleSso(): Promise<void> {
   try {
     if (sso.start) await sso.start()
     else if (authAdapter?.beginLogin) await authAdapter.beginLogin(props.redirectTo)
-    else throw new Error(tOr('core.login.noSso', 'No sign-in flow configured for this button'))
+    else throw new Error(label('noSso', 'No sign-in flow configured for this button'))
   } catch (err) {
     ssoError.value = err instanceof Error ? err.message : String(err)
     emit('error', err)
@@ -281,7 +320,7 @@ async function handleSso(): Promise<void> {
 
 async function handleLogin(): Promise<void> {
   if (!authAdapter?.login) {
-    orchestrator?.toast.error(tOr('core.login.configError', 'Configuration Error'), tOr('core.login.noAuthAdapter', 'No auth adapter configured'), 'LoginPage')
+    orchestrator?.toast.error(label('configError', 'Configuration Error'), label('noAuthAdapter', 'No auth adapter configured'), 'LoginPage')
     return
   }
 
@@ -296,8 +335,8 @@ async function handleLogin(): Promise<void> {
     orchestrator?.signals?.emit('auth:login', { user: result.user })
     if (props.welcomeToast) {
       orchestrator?.toast.success(
-        tOr('core.login.welcome', 'Welcome'),
-        tOr('core.login.loggedInAs', 'Logged in as {name}', { name: result.user?.username || result.user?.email || username.value }),
+        label('welcome', 'Welcome'),
+        label('loggedInAs', 'Logged in as {name}', null, { name: result.user?.username || result.user?.email || username.value }),
         'LoginPage'
       )
     }
@@ -311,14 +350,14 @@ async function handleLogin(): Promise<void> {
     const message = axiosError.response?.data?.error?.message
       || axiosError.response?.data?.message
       || axiosError.message
-      || tOr('core.login.invalidCredentials', 'Invalid credentials')
+      || label('invalidCredentials', 'Invalid credentials')
 
     orchestrator?.signals?.emit('auth:login:error', {
       username: username.value,
       error: message,
       status: axiosError.response?.status
     })
-    orchestrator?.toast.error(tOr('core.login.failed', 'Login Failed'), message, 'LoginPage')
+    orchestrator?.toast.error(label('failed', 'Login Failed'), message, 'LoginPage')
 
     emit('error', error)
   } finally {
@@ -374,8 +413,10 @@ async function handleLogin(): Promise<void> {
             target="_blank"
             rel="noopener noreferrer"
             class="qdadm-login-provider-home"
-          >{{ providerHome.label || tOr('core.login.providerHome', 'Manage my account') }} <i class="pi pi-external-link" aria-hidden="true"></i></a>
-          <div v-if="localMode === 'open'" class="qdadm-login-divider"><span>{{ tOr('core.login.or', 'or') }}</span></div>
+          >{{ label('providerHome', 'My account', providerHome.label || null) }} <i class="pi pi-external-link" aria-hidden="true"></i></a>
+          <div v-if="localMode === 'open'" class="qdadm-login-divider" :class="{ 'qdadm-login-section': localSection }">
+            <span>{{ localSection || label('or', 'or') }}</span>
+          </div>
           <QdButton
             v-else-if="localMode === 'collapsed'"
             type="button"
@@ -383,7 +424,7 @@ async function handleLogin(): Promise<void> {
             size="small"
             class="qdadm-login-fallback-toggle"
             :icon="localOpen ? 'pi pi-chevron-down' : 'pi pi-chevron-right'"
-            :label="localFallbackLabel ?? tOr('core.login.localFallback', 'Use a local account instead')"
+            :label="label('localFallback', 'Alternative login', localFallbackLabel)"
             :aria-expanded="String(localOpen)"
             aria-controls="qdadm-login-local"
             @click="localOpen ? (localOpen = false) : openLocal()"
@@ -398,7 +439,7 @@ async function handleLogin(): Promise<void> {
           autocomplete="off"
         >
           <div class="qdadm-login-field">
-            <label for="qdadm-username">{{ labels.username }}</label>
+            <label for="qdadm-username">{{ texts.username }}</label>
             <InputText
               v-model="username"
               id="qdadm-username"
@@ -408,7 +449,7 @@ async function handleLogin(): Promise<void> {
             />
           </div>
           <div class="qdadm-login-field">
-            <label for="qdadm-password">{{ labels.password }}</label>
+            <label for="qdadm-password">{{ texts.password }}</label>
             <Password
               v-model="password"
               inputId="qdadm-password"
@@ -420,7 +461,7 @@ async function handleLogin(): Promise<void> {
           </div>
           <QdButton
             type="submit"
-            :label="labels.submit"
+            :label="texts.submit"
             icon="pi pi-sign-in"
             class="w-full"
             :loading="loading"
@@ -430,7 +471,7 @@ async function handleLogin(): Promise<void> {
                only when filled, so the divider never shows on its own. -->
           <template v-if="!sso">
             <div v-if="$slots.alternatives" class="qdadm-login-alternatives">
-              <div class="qdadm-login-divider"><span>{{ tOr('core.login.or', 'or') }}</span></div>
+              <div class="qdadm-login-divider"><span>{{ label('or', 'or') }}</span></div>
               <slot name="alternatives"></slot>
             </div>
 
@@ -520,6 +561,11 @@ async function handleLogin(): Promise<void> {
   gap: 0.75rem;
   color: var(--p-text-muted-color, #6b7280);
   font-size: 0.875rem;
+}
+
+.qdadm-login-section {
+  font-weight: 500;
+  color: var(--p-text-color);
 }
 
 .qdadm-login-divider::before,

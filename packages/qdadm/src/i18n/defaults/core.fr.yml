@@ -173,9 +173,10 @@ core:
     configError: Erreur de configuration
     noAuthAdapter: Aucun adaptateur d'authentification configuré
     # Identity provider first (#4321)
-    sso: Se connecter avec votre organisation
-    providerHome: Gérer mon compte
-    localFallback: Utiliser un compte local
+    sso: Se connecter
+    providerHome: Mon compte
+    localFallback: Login alternatif
+    localSection: Login alternatif
     noSso: Aucun parcours de connexion configuré pour ce bouton
   # CardsDashboard (#4320)
   cardsDashboard:

@@ -8,7 +8,7 @@
  *
  * /login?sso=1 shows the identity-provider-first mode (#4321): the demo has
  * no provider, so its button only reports that, and the local form is the
- * collapsed fallback.
+ * collapsed fallback; with &open=1 it is shown under its title (#4326).
  */
 import { computed } from 'vue'
 import { useRoute } from 'vue-router'
@@ -34,7 +34,7 @@ const sso = {
       defaultPassword="admin"
       v-bind="ssoMode ? {
         sso,
-        localFallback: 'collapsed',
+        localFallback: route.query.open === '1' ? 'open' : 'collapsed',
         providerHome: { label: 'My Demo ID account', href: 'https://github.com/quazardous/qdadm' },
         subtitle: 'Staff sign-in',
         brandLogo: qdadmLogo,
