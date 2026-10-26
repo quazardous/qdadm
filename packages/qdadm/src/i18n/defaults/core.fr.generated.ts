@@ -185,6 +185,8 @@ export default `core:
     noSso: Aucun parcours de connexion configuré pour ce bouton
   # CardsDashboard (#4320)
   cardsDashboard:
+    saveFailed: La disposition n'a pas pu être enregistrée
+    saveFailedDetail: Elle reste telle qu'affichée ; réessayez.
     customise: Personnaliser
     done: Terminé
     reset: Réinitialiser

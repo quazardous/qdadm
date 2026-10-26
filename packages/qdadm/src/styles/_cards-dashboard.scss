@@ -22,6 +22,12 @@
   gap: 1rem;
 }
 
+// An async arrangement in its grace (#4338): held back, room kept, so the
+// saved order shows without a jump from the default one
+.qd-cards-grid.qd-cards-loading {
+  visibility: hidden;
+}
+
 .qd-cards-slot {
   grid-column: span var(--qd-card-span, 1);
   display: flex;

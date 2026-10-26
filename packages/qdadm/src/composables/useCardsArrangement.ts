@@ -1,6 +1,7 @@
 /**
  * useCardsArrangement — the user's arrangement of a card dashboard (#4320):
- * order, hidden, pinned, kept in localStorage per dashboard and per user.
+ * order, hidden, pinned, kept per dashboard and per user in a storage the app
+ * may provide (#4338: the server, per account); localStorage by default.
  *
  * The saved arrangement is reconciled with the cards the app declares on every
  * load: unknown ids are dropped, a new card takes its default place, a
@@ -8,7 +9,7 @@
  *
  * The functions are pure; the composable wraps them with a ref and storage.
  */
-import { computed, ref, watch, type ComputedRef, type Ref } from 'vue'
+import { computed, onScopeDispose, ref, watch, type ComputedRef, type Ref } from 'vue'
 import type { BlockCard } from '../zones/ZoneRegistry'
 
 /** A card as the dashboard knows it: its id and its declaration, in default order. */
@@ -152,69 +153,204 @@ export function setHidden(arrangement: CardsArrangement, cards: CardDef[], id: s
   return { ...arrangement, hidden: hidden ? [...arrangement.hidden, id] : arrangement.hidden.filter((h) => h !== id) }
 }
 
-function readStorage(key: string): unknown {
-  try {
-    const raw = globalThis.localStorage?.getItem(key)
-    return raw ? JSON.parse(raw) : null
-  } catch {
-    return null
-  }
+/**
+ * Where arrangements are kept (#4338). `load` may answer at once (localStorage)
+ * or with a promise (a server); whatever it gives back is reconciled with the
+ * declared cards, so an old or partial shape is fine. `save(key, null)`: back
+ * to the defaults.
+ */
+export interface CardsArrangementStorage {
+  load(key: string): unknown | Promise<unknown>
+  save(key: string, arrangement: CardsArrangement | null): void | Promise<void>
 }
 
-function writeStorage(key: string, value: CardsArrangement | null): void {
-  try {
-    if (value) globalThis.localStorage?.setItem(key, JSON.stringify(value))
-    else globalThis.localStorage?.removeItem(key)
-  } catch {
-    // No storage (private window, quota, blocked): the arrangement lasts the page
-  }
+/** The default storage: localStorage; no storage at all (private window, blocked): the arrangement lasts the page */
+export const localArrangementStorage: CardsArrangementStorage = {
+  load(key) {
+    try {
+      const raw = globalThis.localStorage?.getItem(key)
+      return raw ? JSON.parse(raw) : null
+    } catch {
+      return null
+    }
+  },
+  save(key, value) {
+    try {
+      if (value) globalThis.localStorage?.setItem(key, JSON.stringify(value))
+      else globalThis.localStorage?.removeItem(key)
+    } catch {
+      // Quota or blocked: the arrangement lasts the page
+    }
+  },
+}
+
+const isThenable = (v: unknown): v is PromiseLike<unknown> => !!v && typeof (v as { then?: unknown }).then === 'function'
+
+export interface UseCardsArrangementOptions {
+  /** The storage, or a getter read at each load and save (default: localArrangementStorage) */
+  storage?: CardsArrangementStorage | (() => CardsArrangementStorage)
+  /** Save at each change (default true); false: only `commit()` and `reset()` save */
+  autoSave?: boolean
+  /** Ms an async load may take while `loading` holds the cards back (default 150) */
+  loadGrace?: number
+  /** A load or a save failed (default: a console warning) */
+  onError?: (op: 'load' | 'save', error: unknown) => void
 }
 
 export interface UseCardsArrangementReturn {
   arrangement: Ref<CardsArrangement>
   groups: ComputedRef<CardsGroups>
+  /** An async load is in its grace: hold the cards back rather than show the defaults */
+  loading: Ref<boolean>
+  saving: Ref<boolean>
+  /** What is shown differs from what the storage holds */
+  dirty: ComputedRef<boolean>
   move: (id: string, toIndex: number) => boolean
   pin: (id: string, pinned: boolean) => boolean
   hide: (id: string, hidden: boolean) => boolean
   /** Replace the arrangement without saving (a drag in progress) */
   preview: (next: CardsArrangement) => void
-  /** Save what is shown */
-  commit: () => void
-  reset: () => void
+  /** Save what is shown; false when the storage failed */
+  commit: () => Promise<boolean>
+  /** Back to the defaults, in the storage too; false when the storage failed */
+  reset: () => Promise<boolean>
 }
 
 /**
- * @param storageKey - the localStorage key (dashboard and user in it)
+ * @param storageKey - the storage key (dashboard and user in it)
  * @param cards - the declared cards, in default order
  */
-export function useCardsArrangement(storageKey: Ref<string>, cards: Ref<CardDef[]>): UseCardsArrangementReturn {
-  const arrangement = ref<CardsArrangement>(reconcileArrangement(readStorage(storageKey.value), cards.value))
-  // A new user or a changed set of cards: read again, reconciled
-  watch([storageKey, cards], () => {
-    arrangement.value = reconcileArrangement(readStorage(storageKey.value), cards.value)
+export function useCardsArrangement(
+  storageKey: Ref<string>,
+  cards: Ref<CardDef[]>,
+  options: UseCardsArrangementOptions = {}
+): UseCardsArrangementReturn {
+  const storage = (): CardsArrangementStorage =>
+    (typeof options.storage === 'function' ? options.storage() : options.storage) ?? localArrangementStorage
+  const autoSave = options.autoSave ?? true
+  const onError =
+    options.onError ?? ((op, err) => console.warn(`[qdadm] CardsDashboard: the arrangement could not ${op === 'load' ? 'be loaded' : 'be saved'}:`, err))
+
+  /** What the storage holds, as it gave it (reconciled again when the cards change) */
+  let stored: unknown = null
+  /** The user changed something since the last load: a late answer must not undo it */
+  let touched = false
+  let loadToken = 0
+  let graceTimer: ReturnType<typeof setTimeout> | null = null
+
+  const arrangement = ref<CardsArrangement>(defaultArrangement(cards.value))
+  const savedJson = ref(JSON.stringify(arrangement.value))
+  const loading = ref(false)
+  const saving = ref(false)
+  const dirty = computed(() => JSON.stringify(arrangement.value) !== savedJson.value)
+
+  function settle(raw: unknown): void {
+    stored = raw
+    arrangement.value = reconcileArrangement(raw, cards.value)
+    savedJson.value = JSON.stringify(arrangement.value)
+  }
+
+  function stopGrace(): void {
+    if (graceTimer) clearTimeout(graceTimer)
+    graceTimer = null
+    loading.value = false
+  }
+
+  function load(): void {
+    const token = ++loadToken
+    const key = storageKey.value
+    touched = false
+    stopGrace()
+    let answer: unknown
+    try {
+      answer = storage().load(key)
+    } catch (err) {
+      onError('load', err)
+      settle(null)
+      return
+    }
+    if (!isThenable(answer)) return settle(answer)
+    // Async: the defaults wait out the grace, then show until the answer
+    settle(null)
+    loading.value = true
+    graceTimer = setTimeout(stopGrace, options.loadGrace ?? 150)
+    Promise.resolve(answer).then(
+      (raw) => {
+        if (token !== loadToken) return // another key since
+        stopGrace()
+        if (touched) {
+          stored = raw
+          savedJson.value = JSON.stringify(reconcileArrangement(raw, cards.value))
+        } else settle(raw)
+      },
+      (err) => {
+        if (token !== loadToken) return
+        stopGrace()
+        onError('load', err)
+      }
+    )
+  }
+
+  load()
+  // A new user: load again
+  watch(storageKey, load)
+  // A changed set of cards: reconciled again, from what is shown if the user changed it
+  watch(cards, () => {
+    const saved = reconcileArrangement(stored, cards.value)
+    savedJson.value = JSON.stringify(saved)
+    arrangement.value = touched ? reconcileArrangement(arrangement.value, cards.value) : saved
   })
+  onScopeDispose(() => {
+    loadToken++
+    stopGrace()
+  })
+
+  async function write(value: CardsArrangement | null): Promise<boolean> {
+    const key = storageKey.value
+    saving.value = true
+    try {
+      await storage().save(key, value)
+      if (key === storageKey.value) {
+        stored = value
+        savedJson.value = JSON.stringify(value ?? defaultArrangement(cards.value))
+      }
+      return true
+    } catch (err) {
+      onError('save', err)
+      return false
+    } finally {
+      saving.value = false
+    }
+  }
+
   const groups = computed(() => groupCards(arrangement.value, cards.value))
 
   const apply = (next: CardsArrangement): boolean => {
     if (next === arrangement.value) return false
+    touched = true
     arrangement.value = next
-    writeStorage(storageKey.value, next)
+    if (autoSave) void write(next)
     return true
   }
 
   return {
     arrangement,
     groups,
+    loading,
+    saving,
+    dirty,
     move: (id, toIndex) => apply(moveCard(arrangement.value, cards.value, id, toIndex)),
     pin: (id, pinned) => apply(setPinned(arrangement.value, cards.value, id, pinned)),
     hide: (id, hidden) => apply(setHidden(arrangement.value, cards.value, id, hidden)),
     preview: (next) => {
+      touched = true
       arrangement.value = next
     },
-    commit: () => writeStorage(storageKey.value, arrangement.value),
+    commit: () => write(arrangement.value),
     reset: () => {
-      writeStorage(storageKey.value, null)
+      touched = true
       arrangement.value = defaultArrangement(cards.value)
+      return write(null)
     },
   }
 }

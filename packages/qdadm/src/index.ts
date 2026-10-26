@@ -385,11 +385,15 @@ export {
   useCardsArrangement,
   reconcileArrangement,
   defaultArrangement,
+  localArrangementStorage,
+  type CardsArrangementStorage,
+  type UseCardsArrangementOptions,
   type CardDef,
   type CardsArrangement,
   type CardsGroups,
   type UseCardsArrangementReturn,
 } from './composables/useCardsArrangement'
+export { configureDashboards, getDashboardsConfig, resetDashboards, type DashboardsOptions } from './dashboard/dashboardConfig'
 export {
   useUserImpersonator,
   type UseUserImpersonatorOptions,

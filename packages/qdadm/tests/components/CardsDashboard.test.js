@@ -4,7 +4,7 @@
  *
  * Run: npm test
  */
-import { describe, it, expect, beforeEach, afterEach } from 'vitest'
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
 import { defineComponent, h } from 'vue'
 import CardsDashboard from '../../src/components/layout/CardsDashboard.vue'
@@ -12,6 +12,7 @@ import DashboardLayout from '../../src/components/layout/DashboardLayout.vue'
 import Zone from '../../src/components/layout/Zone.vue'
 import { ZoneRegistry } from '../../src/zones/ZoneRegistry'
 import { DASHBOARD_ZONES } from '../../src/zones/zones'
+import { configureDashboards, resetDashboards } from '../../src/dashboard/dashboardConfig'
 
 const Card = (label) => defineComponent({ name: `Card${label}`, render: () => h('div', { class: 'body' }, label) })
 const KEY = `qdadm.dashboard.${DASHBOARD_ZONES.WIDGETS}.bob`
@@ -27,12 +28,13 @@ function makeRegistry() {
 }
 
 let wrapper
-function mountDashboard(props = {}) {
+function mountDashboard(props = {}, provide = {}) {
   wrapper = mount(CardsDashboard, {
     props,
     attachTo: document.body,
     global: {
       provide: {
+        ...provide,
         qdadmZoneRegistry: makeRegistry(),
         qdadmFeatures: { auth: true },
         authAdapter: { user: { username: 'bob' }, isAuthenticated: () => true, login: async () => ({}), logout() {}, getCurrentUser: async () => null },
@@ -40,9 +42,9 @@ function mountDashboard(props = {}) {
       stubs: {
         QdButton: {
           inheritAttrs: false,
-          props: ['label'],
+          props: ['label', 'loading'],
           emits: ['click'],
-          template: '<button v-bind="$attrs" @click="$emit(\'click\')">{{ label }}</button>',
+          template: '<button v-bind="$attrs" :data-loading="loading || undefined" @click="$emit(\'click\')">{{ label }}</button>',
         },
       },
     },
@@ -56,7 +58,11 @@ const button = (w, text) => w.findAll('button').find((b) => b.text() === text)
 const status = (w) => w.find('[role=status]').text()
 
 beforeEach(() => localStorage.clear())
-afterEach(() => wrapper?.unmount())
+afterEach(() => {
+  wrapper?.unmount()
+  resetDashboards()
+  vi.useRealTimers()
+})
 
 describe('CardsDashboard (#4320)', () => {
   it('renders the cards, pinned first, with no edit controls outside edit mode', () => {
@@ -86,8 +92,13 @@ describe('CardsDashboard (#4320)', () => {
     expect(order(w)).toEqual(['alerts', 'stock', 'sales', 'news'])
     expect(document.activeElement).toBe(slot(w, 'stock').find('.qd-cards-handle').element)
     expect(status(w)).toBe('Stock: card 1 of 3')
+    // Saved when the edit ends (#4338), not at each move
+    expect(localStorage.getItem(KEY)).toBeNull()
+    await button(w, 'Done').trigger('click')
+    await flushPromises()
     expect(JSON.parse(localStorage.getItem(KEY)).order.indexOf('stock')).toBeLessThan(JSON.parse(localStorage.getItem(KEY)).order.indexOf('sales'))
     // End: the last place, but the fixed card keeps its index (the last one)
+    await button(w, 'Customise').trigger('click')
     await slot(w, 'stock').find('.qd-cards-handle').trigger('keydown', { key: 'End' })
     await flushPromises()
     expect(order(w)).toEqual(['alerts', 'sales', 'stock', 'news'])
@@ -186,5 +197,124 @@ describe('CardsDashboard (#4320)', () => {
     })
     expect(wrapper.find('.qd-cards-dashboard').exists()).toBe(true)
     expect(wrapper.findAll('.qd-cards-slot')).toHaveLength(4)
+  })
+})
+
+/** A server-like storage: answers after `delay` ms, records each save */
+function fakeServer(initial = {}, { delay = 50, failLoad = false, failSave = false } = {}) {
+  const data = new Map(Object.entries(initial))
+  const saves = []
+  const later = (fn) => new Promise((resolve, reject) => setTimeout(() => { try { resolve(fn()) } catch (e) { reject(e) } }, delay))
+  return {
+    data,
+    saves,
+    failSave,
+    load: vi.fn((key) => later(() => { if (failLoad) throw new Error('503'); return data.get(key) ?? null })),
+    save: vi.fn(function (key, arrangement) {
+      return later(() => {
+        if (this.failSave) throw new Error('503')
+        saves.push([key, arrangement && JSON.parse(JSON.stringify(arrangement))])
+        if (arrangement) data.set(key, JSON.parse(JSON.stringify(arrangement)))
+        else data.delete(key)
+      })
+    }),
+  }
+}
+
+describe('CardsDashboard storage (#4338)', () => {
+  const SAVED = { v: 1, order: ['stock', 'sales', 'news', 'alerts'], hidden: [], pinned: [] }
+
+  it('an answer within the grace: the saved order shows, never the default one', async () => {
+    vi.useFakeTimers()
+    const server = fakeServer({ [KEY]: SAVED }, { delay: 50 })
+    const w = mountDashboard({ storage: server })
+    expect(w.find('.qd-cards-grid').classes()).toContain('qd-cards-loading')
+    await vi.advanceTimersByTimeAsync(60)
+    expect(w.find('.qd-cards-grid').classes()).not.toContain('qd-cards-loading')
+    expect(order(w)).toEqual(['stock', 'sales', 'news', 'alerts'])
+    expect(server.load).toHaveBeenCalledWith(KEY)
+  })
+
+  it('a slow answer: the default order after the grace, then the saved one', async () => {
+    vi.useFakeTimers()
+    configureDashboards({ storage: fakeServer({ [KEY]: SAVED }, { delay: 600 }), loadGrace: 100 })
+    const w = mountDashboard()
+    await vi.advanceTimersByTimeAsync(150)
+    expect(w.find('.qd-cards-grid').classes()).not.toContain('qd-cards-loading')
+    expect(order(w)).toEqual(['alerts', 'sales', 'stock', 'news'])
+    await vi.advanceTimersByTimeAsync(500)
+    expect(order(w)).toEqual(['stock', 'sales', 'news', 'alerts'])
+  })
+
+  it('a failed load keeps the defaults', async () => {
+    vi.useFakeTimers()
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const w = mountDashboard({ storage: fakeServer({}, { failLoad: true }) })
+    await vi.advanceTimersByTimeAsync(100)
+    expect(order(w)).toEqual(['alerts', 'sales', 'stock', 'news'])
+    expect(warn).toHaveBeenCalled()
+    warn.mockRestore()
+  })
+
+  it('an edit saves once, on Done; Done with nothing changed saves nothing; Reset saves null', async () => {
+    vi.useFakeTimers()
+    const server = fakeServer({}, { delay: 20 })
+    const w = mountDashboard({ storage: server })
+    await vi.advanceTimersByTimeAsync(30)
+    await button(w, 'Customise').trigger('click')
+    for (const key of ['ArrowUp', 'ArrowUp', 'End']) {
+      await slot(w, 'stock').find('.qd-cards-handle').trigger('keydown', { key })
+    }
+    await slot(w, 'stock').find('[aria-label="Hide Stock"]').trigger('click')
+    expect(server.save).not.toHaveBeenCalled()
+    await button(w, 'Done').trigger('click')
+    expect(button(w, 'Done').attributes('data-loading')).toBe('true')
+    await vi.advanceTimersByTimeAsync(30)
+    expect(server.saves).toEqual([[KEY, expect.objectContaining({ hidden: ['stock'] })]])
+    expect(button(w, 'Customise')).toBeTruthy()
+
+    await button(w, 'Customise').trigger('click')
+    await button(w, 'Done').trigger('click')
+    await vi.advanceTimersByTimeAsync(30)
+    expect(server.save).toHaveBeenCalledTimes(1)
+
+    await button(w, 'Customise').trigger('click')
+    await button(w, 'Reset').trigger('click')
+    await vi.advanceTimersByTimeAsync(30)
+    expect(server.saves.at(-1)).toEqual([KEY, null])
+    expect(order(w)).toEqual(['alerts', 'sales', 'stock', 'news'])
+  })
+
+  it('a failed save: a toast, the arrangement as shown, the edit still open', async () => {
+    vi.useFakeTimers()
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const toast = { error: vi.fn() }
+    const server = fakeServer({}, { delay: 10 })
+    server.failSave = true
+    const w = mountDashboard({ storage: server }, { qdadmOrchestrator: { toast } })
+    await vi.advanceTimersByTimeAsync(20)
+    await button(w, 'Customise').trigger('click')
+    await slot(w, 'stock').find('[aria-label="Hide Stock"]').trigger('click')
+    await button(w, 'Done').trigger('click')
+    await vi.advanceTimersByTimeAsync(20)
+    expect(toast.error).toHaveBeenCalledWith('Could not save the arrangement', expect.any(String), 'CardsDashboard')
+    expect(order(w)).toEqual(['alerts', 'sales', 'news'])
+    expect(button(w, 'Done')).toBeTruthy()
+    // Back up: Done again saves
+    server.failSave = false
+    await button(w, 'Done').trigger('click')
+    await vi.advanceTimersByTimeAsync(20)
+    expect(server.saves).toHaveLength(1)
+    warn.mockRestore()
+  })
+
+  it('an answer after the user started arranging does not undo it', async () => {
+    vi.useFakeTimers()
+    const w = mountDashboard({ storage: fakeServer({ [KEY]: SAVED }, { delay: 500 }), loadGrace: 50 })
+    await vi.advanceTimersByTimeAsync(60)
+    await button(w, 'Customise').trigger('click')
+    await slot(w, 'stock').find('[aria-label="Hide Stock"]').trigger('click')
+    await vi.advanceTimersByTimeAsync(500)
+    expect(order(w)).toEqual(['alerts', 'sales', 'news'])
   })
 })

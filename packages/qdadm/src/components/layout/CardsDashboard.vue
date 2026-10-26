@@ -1,8 +1,10 @@
 <script setup lang="ts">
 /**
  * CardsDashboard — a zone's blocks as cards each user arranges (#4320):
- * reorder (drag or keyboard), hide, pin at the top. The arrangement is kept in
- * localStorage per dashboard and per user (useCardsArrangement).
+ * reorder (drag or keyboard), hide, pin at the top. The arrangement is kept
+ * per dashboard and per user, in localStorage or in the storage the app
+ * provides (`storage` prop or configureDashboards, #4338), saved once when an
+ * edit ends (Done, Reset).
  *
  * A card is any block with an id, so one block serves both a classic Zone and
  * this dashboard. Its optional `card` field adds the title and what the app
@@ -25,7 +27,15 @@ import QdButton from '../base/QdButton.vue'
 import { DASHBOARD_ZONES } from '../../zones/zones'
 import { useAuth } from '../../composables/useAuth'
 import { useI18n } from '../../i18n/useI18n'
-import { useCardsArrangement, moveCard, type CardDef, type CardsArrangement } from '../../composables/useCardsArrangement'
+import {
+  useCardsArrangement,
+  moveCard,
+  localArrangementStorage,
+  type CardDef,
+  type CardsArrangement,
+  type CardsArrangementStorage,
+} from '../../composables/useCardsArrangement'
+import { getDashboardsConfig } from '../../dashboard/dashboardConfig'
 import type { ZoneRegistry, BlockConfig } from '../../zones/ZoneRegistry'
 
 const props = withDefaults(
@@ -40,14 +50,19 @@ const props = withDefaults(
     editable?: boolean
     /** How the edit mode's tray shows hidden cards by default: whole, or as chips; the user's toggle wins */
     hiddenView?: 'cards' | 'compact'
+    /** Where the arrangement is kept (default: configureDashboards's, else localStorage) */
+    storage?: CardsArrangementStorage | null
+    /** Ms an async load may take before the default order shows (default 150) */
+    loadGrace?: number | null
   }>(),
-  { zone: DASHBOARD_ZONES.WIDGETS, id: null, minCardWidth: '18rem', editable: true, hiddenView: 'cards' }
+  { zone: DASHBOARD_ZONES.WIDGETS, id: null, minCardWidth: '18rem', editable: true, hiddenView: 'cards', storage: null, loadGrace: null }
 )
 
 const registry = inject<ZoneRegistry | null>('qdadmZoneRegistry', null)
 const version = registry?.getVersionRef?.()
 const { user } = useAuth()
 const { tOr } = useI18n()
+const orchestrator = inject<{ toast: { error: (summary: string, detail?: string, source?: string) => void } } | null>('qdadmOrchestrator', null)
 
 const blocks = computed<BlockConfig[]>(() => {
   if (version) void version.value
@@ -74,9 +89,25 @@ const userKey = computed(() => {
   return String(u?.id ?? u?.username ?? 'anonymous')
 })
 const storageKey = computed(() => `qdadm.dashboard.${props.id ?? props.zone}.${userKey.value}`)
-const state = useCardsArrangement(storageKey, cards)
+const state = useCardsArrangement(storageKey, cards, {
+  storage: () => props.storage ?? getDashboardsConfig().storage ?? localArrangementStorage,
+  autoSave: false,
+  loadGrace: props.loadGrace ?? getDashboardsConfig().loadGrace,
+})
 
 const editing = ref(false)
+
+function saveFailed(): void {
+  const text = tOr('core.cardsDashboard.saveFailed', 'Could not save the arrangement')
+  announce(text)
+  orchestrator?.toast.error(text, tOr('core.cardsDashboard.saveFailedDetail', 'It stays as shown; try again.'), 'CardsDashboard')
+}
+
+/** Done: one save for the whole edit; on failure the edit stays open to try again */
+async function finish(): Promise<void> {
+  if (state.dirty.value && !(await state.commit())) return saveFailed()
+  editing.value = false
+}
 
 // The hidden tray's view (#4320): whole cards or chips, the user's choice kept beside the arrangement
 const trayKey = computed(() => `${storageKey.value}.tray`)
@@ -159,8 +190,8 @@ function restore(c: CardDef): void {
   void focusHandle(c.id)
 }
 
-function reset(): void {
-  state.reset()
+async function reset(): Promise<void> {
+  if (!(await state.reset())) return saveFailed()
   announce(tOr('core.cardsDashboard.resetDone', 'Default arrangement restored'))
 }
 
@@ -214,7 +245,6 @@ function onPointerUp(): void {
   const c = dragged
   if (!c) return
   stopDrag()
-  state.commit()
   announcePosition(c)
 }
 
@@ -232,7 +262,11 @@ function onDragKey(event: KeyboardEvent): void {
   if (event.key === 'Escape' && dragged) cancelDrag()
 }
 
-onBeforeUnmount(stopDrag)
+onBeforeUnmount(() => {
+  stopDrag()
+  // Left in the middle of an edit: keep what was arranged
+  if (editing.value && state.dirty.value) void state.commit()
+})
 
 // A block with wrappers renders through them, as in Zone
 function render(block: BlockConfig): Component {
@@ -261,9 +295,17 @@ function render(block: BlockConfig): Component {
           text
           icon="pi pi-undo"
           :label="tOr('core.cardsDashboard.reset', 'Reset')"
+          :disabled="state.saving.value"
           @click="reset"
         />
-        <QdButton type="button" size="small" icon="pi pi-check" :label="tOr('core.cardsDashboard.done', 'Done')" @click="editing = false" />
+        <QdButton
+          type="button"
+          size="small"
+          icon="pi pi-check"
+          :label="tOr('core.cardsDashboard.done', 'Done')"
+          :loading="state.saving.value"
+          @click="finish"
+        />
       </template>
       <QdButton
         v-else
@@ -276,7 +318,7 @@ function render(block: BlockConfig): Component {
       />
     </div>
 
-    <div class="qd-cards-grid" :style="{ '--qd-card-min': minCardWidth }">
+    <div class="qd-cards-grid" :class="{ 'qd-cards-loading': state.loading.value }" :aria-busy="state.loading.value || undefined" :style="{ '--qd-card-min': minCardWidth }">
       <div
         v-for="c in visible"
         :key="c.id"

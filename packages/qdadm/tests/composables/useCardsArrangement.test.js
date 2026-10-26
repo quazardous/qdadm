@@ -4,7 +4,7 @@
  *
  * Run: npm test
  */
-import { describe, it, expect, beforeEach } from 'vitest'
+import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { ref, nextTick } from 'vue'
 import {
   defaultArrangement,
@@ -121,5 +121,32 @@ describe('useCardsArrangement', () => {
     } finally {
       Object.defineProperty(globalThis, 'localStorage', original)
     }
+  })
+})
+
+describe('useCardsArrangement storage (#4338)', () => {
+  it('a stale answer for another key is dropped', async () => {
+    const resolvers = {}
+    const storage = { load: (key) => new Promise((r) => (resolvers[key] = r)), save: () => {} }
+    const key = ref('k.bob')
+    const s = useCardsArrangement(key, ref(CARDS), { storage, loadGrace: 0 })
+    key.value = 'k.june'
+    await nextTick()
+    resolvers['k.june'](null)
+    resolvers['k.bob']({ v: 1, order: ['e', 'a', 'b', 'c'], hidden: [], pinned: [] })
+    await new Promise((r) => setTimeout(r))
+    expect(ids(s.groups.value.rest)).toEqual(['a', 'b', 'c', 'e'])
+  })
+
+  it('autoSave: false saves only on commit; dirty tells what is unsaved', async () => {
+    const save = vi.fn()
+    const s = useCardsArrangement(ref('k'), ref(CARDS), { storage: { load: () => null, save }, autoSave: false })
+    expect(s.dirty.value).toBe(false)
+    s.move('e', 0)
+    expect(save).not.toHaveBeenCalled()
+    expect(s.dirty.value).toBe(true)
+    expect(await s.commit()).toBe(true)
+    expect(save).toHaveBeenCalledTimes(1)
+    expect(s.dirty.value).toBe(false)
   })
 })

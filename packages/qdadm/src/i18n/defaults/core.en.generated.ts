@@ -185,6 +185,8 @@ export default `core:
     noSso: No sign-in flow configured for this button
   # CardsDashboard (#4320)
   cardsDashboard:
+    saveFailed: Could not save the arrangement
+    saveFailedDetail: It stays as shown; try again.
     customise: Customise
     done: Done
     reset: Reset

@@ -44,6 +44,8 @@ ctx.block('home-cards', { id: 'news', component: NewsCard, weight: 30, card: { t
 | `minCardWidth` | `18rem` | The narrowest a card gets before the grid drops a column |
 | `editable` | `true` | Show the "Customise" button |
 | `hiddenView` | `'cards'` | How the tray shows hidden cards by default: `'cards'` (whole) or `'compact'` (chips) |
+| `storage` | `configureDashboards`'s, else `localStorage` | Where the arrangement is kept (see below) |
+| `loadGrace` | `150` | Ms an async load may take before the default order shows |
 
 "Customise" opens edit mode: a bar on each card with a handle, pin and hide, then
 the tray of hidden cards, "Reset" and "Done". Outside edit mode only the cards show.
@@ -65,10 +67,44 @@ Moving a card:
 
 ## Saved arrangement
 
-Each user's arrangement is kept in `localStorage` under
-`qdadm.dashboard.<id>.<user>` (the auth user's id or username, else
-`anonymous`) as `{ v, order, hidden, pinned }`. Without storage (private
-window, blocked) the arrangement lasts the page.
+Each user's arrangement is kept under the key `qdadm.dashboard.<id>.<user>`
+(the auth user's id or username, else `anonymous`) as
+`{ v, order, hidden, pinned }`, in `localStorage` by default. Without storage
+(private window, blocked) the arrangement lasts the page.
+
+It is saved once, when the edit ends: "Done" saves it if anything changed,
+"Reset" clears it. Leaving the page in the middle of an edit saves it too.
+
+### Storage
+
+To keep it with the account, on the server, give a storage: once for the app,
+or per dashboard with the `storage` prop.
+
+```js
+import { configureDashboards } from '@quazardous/qdadm'
+
+configureDashboards({
+  storage: {
+    load: (key) => api.get(`/me/dashboards/${key}`).then((r) => r.data, () => null),
+    save: (key, arrangement) =>
+      arrangement ? api.put(`/me/dashboards/${key}`, arrangement) : api.delete(`/me/dashboards/${key}`),
+  },
+})
+```
+
+- `load(key)` returns the arrangement, `null`, or a promise of either.
+  Whatever it gives back is reconciled (below), so the server may store it as
+  an opaque JSON blob.
+- `save(key, arrangement)` gets `null` on "Reset": back to the defaults.
+- While an async load runs, the cards are held back for `loadGrace` ms. An answer
+  within it shows straight away; a later one replaces the default order when it
+  lands. An answer that comes after the user started arranging is not applied.
+  A failed load keeps the defaults, with a console warning.
+- A failed save shows a toast, keeps the arrangement as shown and the edit open;
+  "Done" tries again.
+- The tray's Cards / Compact choice stays in `localStorage`: it belongs to the
+  browser, not to the arrangement.
+- `localArrangementStorage` is the default storage, to wrap or fall back on.
 
 On every load it is reconciled with the declared cards:
 
@@ -77,5 +113,7 @@ On every load it is reconciled with the declared cards:
 - a `required` card is never hidden, a `fixed` card is back at its default place;
 - an unknown version starts from the default.
 
-`useCardsArrangement(storageKey, cards)` is the same logic without the UI, and
+`useCardsArrangement(storageKey, cards, { storage, autoSave, loadGrace })` is
+the same logic without the UI (it saves at each change unless
+`autoSave: false`, then on `commit()` and `reset()`), and
 `reconcileArrangement()` the reconciliation alone.
