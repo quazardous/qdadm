@@ -431,6 +431,15 @@ export * from './components/index'
 export { useTaskRunner, taskAction } from './tasks/useTaskRunner'
 export { useTaskNotifications, useTaskTrayVisible, type TasksConfig } from './tasks/useTaskNotifications'
 export {
+  configureTasks,
+  getTaskUi,
+  resolveTaskUi,
+  TASK_DIALOG_DEFAULTS,
+  type TaskDialogOptions,
+  type TaskDialogSlotName,
+  type TaskUiOptions,
+} from './tasks/taskUi'
+export {
   getTaskStore,
   registerTaskKind,
   type TaskRun,

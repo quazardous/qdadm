@@ -23,7 +23,8 @@ export class OpsDemoModule extends Module {
       cancel: cancelTask,
       log: (id) => ({ poll: (from) => readLog(id, from), intervalMs: 500 }),
     }
-    registerTaskKind('demo-create-box', kind)
+    // A kind's own slot in the follow dialog (#4334)
+    registerTaskKind('demo-create-box', { ...kind, slots: { 'after-log': defineAsyncComponent(() => import('./pages/BoxSummary.vue')) } })
     registerTaskKind('demo-destroy-box', { ...kind, cancel: undefined })
 
     ctx.routes('ops-demo', [

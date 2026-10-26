@@ -94,6 +94,55 @@ When a task ends, a toast says so (`notify: false` turns that off). A
 failure stays in the notification history, and the toast leads to the
 task's page.
 
+### The window
+
+The dialog moves by its title bar, resizes by its corner (the log follows the
+height) and goes full screen with its header button. Escape leaves full screen
+first, then closes. Its size, position and full screen are kept per app in
+`localStorage` (`qdadm.tasks.dialog.<app>`) and come back at the next open,
+clamped to the screen. Under 640px it stays a 96vw dialog that neither moves
+nor resizes.
+
+### Customising
+
+Options come in layers: qdadm's defaults, then the app's, then the task kind's,
+then a page's own `<TaskDialog>` props.
+
+```js
+import { configureTasks, registerTaskKind } from '@quazardous/qdadm'
+
+// Once, at boot
+configureTasks({
+  dialog: { width: '56rem', modal: false },
+  slots: { 'after-log': DeliverySummary },
+  tray: { item: MyTrayRow },
+})
+
+// Per kind
+registerTaskKind('deploy', { task, log, dialog: { maximizable: false }, slots: { actions: RollbackButton } })
+registerTaskKind('migrate', { task, component: MigrationDialog })
+```
+
+| `dialog` option | Default | |
+|---|---|---|
+| `width` | `46rem` | |
+| `modal` | `true` | |
+| `draggable` | `true` | Move by the title bar |
+| `resizable` | `true` | Resize by the corner |
+| `maximizable` | `true` | Full screen button |
+| `rememberLayout` | `true` | Keep size, position and full screen |
+| `position` | centre | PrimeVue Dialog position |
+| `class` | | Extra class on the dialog |
+
+- **Slots:** `header`, `before-log`, `after-log`, `actions` (beside Cancel and
+  Close) and `result`, each given `{ run, kind, final }`. An app passes them as
+  components (`slots`). A page that renders `<TaskDialog>` or `<TaskHost>` itself
+  can also use template slots, which win.
+- **A dialog of your own:** `component` renders instead of `TaskDialog`. It gets
+  `{ runId, options }`, emits `close`, and reads the run with `getTaskStore()`.
+  The TaskRunner still does the queue, the following, the tray and the resume.
+- **The tray row:** `tray.item`, or `TaskTray`'s `item` slot, gets `{ run }`.
+
 ## Asking first
 
 `confirm: { message?, typed?, accept?, severity? }` asks before starting. If

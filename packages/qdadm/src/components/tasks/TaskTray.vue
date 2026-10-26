@@ -3,16 +3,19 @@
  * TaskTray - the running tasks, in the sidebar (#4114)
  *
  * Shown while there is a run to show. Each run reopens its dialog; finished
- * ones can be cleared.
+ * ones can be cleared. A row's content can be replaced (#4334): the `item`
+ * slot, or `configureTasks({ tray: { item } })`, gets `{ run }`.
  */
 import { computed, ref } from 'vue'
 import Popover from 'primevue/popover'
 import QdButton from '../base/QdButton.vue'
 import { useI18n } from '../../i18n/useI18n'
 import { getTaskStore } from '../../tasks/taskStore'
+import { getTaskUi } from '../../tasks/taskUi'
 import { useTaskTrayVisible } from '../../tasks/useTaskNotifications'
 
 const store = getTaskStore()
+const taskUi = getTaskUi()
 // With the notification zone on, running tasks show there instead (#4171)
 const visible = useTaskTrayVisible()
 const { t } = useI18n()
@@ -43,11 +46,16 @@ const icon = (status: string) =>
       <ul class="qd-task-list">
         <li v-for="r in runs" :key="r.id">
           <button type="button" class="qd-task-item" :class="`qd-task-item--${r.status}`" @click="openRun(r.id)">
-            <i :class="icon(r.status)" />
-            <span class="qd-task-item-label">{{ r.label }}</span>
-            <span class="qd-task-item-state">
-              {{ r.progress !== null && !store.isFinal(r.status) ? `${Math.round(r.progress)} %` : t(`core.task.status.${r.status}`) }}
-            </span>
+            <slot name="item" :run="r">
+              <component :is="taskUi.tray.item" v-if="taskUi.tray?.item" :run="r" />
+              <template v-else>
+                <i :class="icon(r.status)" />
+                <span class="qd-task-item-label">{{ r.label }}</span>
+                <span class="qd-task-item-state">
+                  {{ r.progress !== null && !store.isFinal(r.status) ? `${Math.round(r.progress)} %` : t(`core.task.status.${r.status}`) }}
+                </span>
+              </template>
+            </slot>
           </button>
         </li>
       </ul>

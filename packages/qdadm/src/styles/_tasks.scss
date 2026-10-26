@@ -49,8 +49,45 @@
   font-size: $font-size-sm;
 }
 
+// The content is a column: the log takes what the window leaves (#4334)
+.qd-task-dialog .p-dialog-content {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
 .qd-task-log {
   margin-top: 0.75rem;
+  flex: 1 1 16rem;
+  min-height: 8rem;
+  display: flex;
+  flex-direction: column;
+
+  // The viewport fills the log under its toolbar, whatever the window's height
+  .qd-log-viewport {
+    flex: 1 1 auto;
+    min-height: 0;
+    height: auto !important;
+  }
+}
+
+.qd-task-before-log,
+.qd-task-after-log {
+  margin-top: 0.75rem;
+}
+
+.qd-task-header {
+  flex: 1;
+  min-width: 0;
+}
+
+// Resize by the corner; PrimeVue has none of its own
+.qd-task-dialog--resizable {
+  resize: both;
+  overflow: hidden;
+  min-width: min(24rem, 96vw);
+  min-height: 16rem;
 }
 
 .qd-task-error,

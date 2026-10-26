@@ -6,6 +6,10 @@
  * dangerous task. AppLayout mounts one; an app with its own layout mounts
  * it once, near the root. Without a host, a task that asks for confirmation
  * does not start.
+ *
+ * The follow dialog is TaskDialog, or the `component` the run's kind or the
+ * app gives (#4334), with props `{ runId, options }` and a `close` event. The
+ * host's slots go to TaskDialog.
  */
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import InputText from 'primevue/inputtext'
@@ -14,6 +18,7 @@ import TaskDialog from './TaskDialog.vue'
 import { useI18n } from '../../i18n/useI18n'
 import { useTaskRunner } from '../../tasks/useTaskRunner'
 import { getTaskStore } from '../../tasks/taskStore'
+import { resolveTaskUi } from '../../tasks/taskUi'
 import { useTaskNotifications } from '../../tasks/useTaskNotifications'
 
 useTaskRunner()
@@ -25,6 +30,12 @@ const { t } = useI18n()
 store.state.hosts++
 onBeforeUnmount(() => store.state.hosts--)
 
+// The open run's dialog: a replacement from its kind or the app, else TaskDialog
+const dialogComponent = computed(() => {
+  const id = store.state.openId
+  return (id ? resolveTaskUi(store.definition(id)).component : resolveTaskUi().component) ?? TaskDialog
+})
+
 const pending = computed(() => store.state.pendingConfirm)
 const typed = ref('')
 watch(pending, () => (typed.value = ''))
@@ -34,7 +45,11 @@ const severity = computed(() => pending.value?.confirm.severity ?? (expected.val
 </script>
 
 <template>
-  <TaskDialog :run-id="store.state.openId" @close="store.open(null)" />
+  <component :is="dialogComponent" :run-id="store.state.openId" :options="null" @close="store.open(null)">
+    <template v-for="(_, name) in $slots" #[name]="slotProps">
+      <slot :name="name" v-bind="slotProps ?? {}" />
+    </template>
+  </component>
   <SimpleDialog :visible="!!pending" :title="pending?.label ?? ''" :confirm-label="pending?.confirm.accept ?? t('core.task.start')"
     :confirm-severity="severity" :confirm-disabled="!confirmable" :cancel-label="t('core.task.dontStart')"
     @confirm="store.answerConfirm(true)" @cancel="store.answerConfirm(false)"
