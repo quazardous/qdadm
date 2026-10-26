@@ -1,0 +1,111 @@
+/**
+ * VanillaYamlEditor (#4303): the vanilla-yamleditor variables mapped to the
+ * PrimeVue theme, light and dark (.dark-mode).
+ */
+
+.qd-yaml-editor .vye {
+  --vye-font: inherit;
+  --vye-bg: var(--p-content-background, #fff);
+  --vye-fg: var(--p-text-color, #1f2937);
+  --vye-muted: var(--p-text-muted-color, #6b7280);
+  --vye-border: var(--p-content-border-color, #e5e7eb);
+  --vye-panel: var(--p-surface-50, #f8fafc);
+  --vye-gutter-bg: var(--p-surface-50, #f8fafc);
+  --vye-accent: var(--p-primary-color, #3b82f6);
+  --vye-accent-fg: var(--p-primary-contrast-color, #fff);
+  --vye-input-bg: var(--p-form-field-background, #fff);
+  --vye-radius: var(--p-form-field-border-radius, 6px);
+  --vye-error: var(--p-red-600, #dc2626);
+  --vye-error-bg: var(--p-red-50, #fef2f2);
+}
+
+.dark-mode .qd-yaml-editor .vye {
+  --vye-panel: var(--p-surface-800, #1e293b);
+  --vye-gutter-bg: var(--p-surface-800, #1e293b);
+  --vye-error: var(--p-red-400, #f87171);
+  --vye-error-bg: color-mix(in srgb, var(--p-red-400, #f87171) 12%, transparent);
+  --vye-active-line: rgba(147, 197, 253, 0.07);
+  --vye-tok-key: #93c5fd;
+  --vye-tok-string: #86efac;
+  --vye-tok-number: #fcd34d;
+  --vye-tok-bool: #d8b4fe;
+  --vye-tok-comment: #9ca3af;
+  --vye-tok-meta: #f9a8d4;
+}
+
+/* YamlConfigEditor */
+.qd-yaml-config {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.qd-yaml-config-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.qd-yaml-config-state {
+  margin-right: auto;
+  color: var(--p-text-muted-color);
+  font-size: 0.875rem;
+}
+
+.qd-yaml-config-state--dirty {
+  color: var(--p-orange-600, #ea580c);
+}
+
+.qd-yaml-config-reason {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin-top: 0.75rem;
+}
+
+.qd-yaml-history {
+  display: grid;
+  grid-template-columns: minmax(12rem, 18rem) 1fr;
+  gap: 0.75rem;
+  min-height: 20rem;
+}
+
+.qd-yaml-history-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  overflow: auto;
+  max-height: 32rem;
+}
+
+.qd-yaml-history-entry {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.15rem;
+  padding: 0.5rem;
+  border: 1px solid var(--p-content-border-color);
+  border-radius: 6px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.qd-yaml-history-entry--active {
+  border-color: var(--p-primary-color);
+  background: color-mix(in srgb, var(--p-primary-color) 8%, transparent);
+}
+
+.qd-yaml-history-meta {
+  color: var(--p-text-muted-color);
+  font-size: 0.8125rem;
+}
+
+@media (max-width: 767px) {
+  .qd-yaml-history {
+    grid-template-columns: 1fr;
+  }
+}

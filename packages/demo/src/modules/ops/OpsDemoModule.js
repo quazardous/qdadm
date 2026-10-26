@@ -4,7 +4,7 @@
  * The widgets an ops cockpit needs on top of entity CRUD, each on a page you
  * can play with: a live task log (#4110), an entity's history across actors (#4111),
  * messages in their own format and their diff (#4112), captured emails (#4113),
- * long backend tasks followed to the end (#4114).
+ * long backend tasks followed to the end (#4114), a live YAML configuration (#4303).
  */
 import { Module, registerTaskKind } from '@quazardous/qdadm'
 import { getTask, cancelTask, readLog } from './fakeTasks'
@@ -50,6 +50,12 @@ export class OpsDemoModule extends Module {
         meta: { layout: 'page' },
       },
       {
+        path: 'yaml-config',
+        name: 'ops-yaml-config',
+        component: () => import('./pages/YamlConfigPlayground.vue'),
+        meta: { layout: 'page' },
+      },
+      {
         path: 'timeline',
         name: 'ops-timeline',
         component: () => import('./pages/TimelinePlayground.vue'),
@@ -62,6 +68,7 @@ export class OpsDemoModule extends Module {
     ctx.navItem({ section: 'Features', route: 'ops-emails', icon: 'pi pi-envelope', label: 'Emails' })
     // Gated by a permission, not an entity (#4318): lights on its own page
     ctx.navItem({ section: 'Features', route: 'ops-tasks', icon: 'pi pi-cog', label: 'Tasks', permission: 'admin:ops:tasks' })
+    ctx.navItem({ section: 'Features', route: 'ops-yaml-config', icon: 'pi pi-file-edit', label: 'YAML config' })
   }
 }
 

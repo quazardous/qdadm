@@ -36,6 +36,7 @@
     "./composables": "./src/composables/index.ts",
     "./components": "./src/components/index.ts",
     "./editors": "./src/editors/index.ts",
+    "./editors/yaml": "./src/editors/yaml.ts",
     "./email": "./src/email/index.ts",
     "./module": "./src/module/index.ts",
     "./utils": "./src/utils/index.ts",
@@ -75,7 +76,8 @@
     "vite": "^5.0.0 || ^6.0.0 || ^7.0.0 || ^8.0.0",
     "vue": "^3.3.0",
     "vue-router": "^4.0.0 || ^5.0.0",
-    "postal-mime": ">=3.0.0"
+    "postal-mime": ">=3.0.0",
+    "@quazardous/vanilla-yamleditor": "^0.1.0"
   },
   "peerDependenciesMeta": {
     "vanilla-jsoneditor": {
@@ -92,6 +94,9 @@
     },
     "postal-mime": {
       "optional": true
+    },
+    "@quazardous/vanilla-yamleditor": {
+      "optional": true
     }
   },
   "keywords": [
@@ -107,6 +112,7 @@
   "devDependencies": {
     "@eslint/js": "^9.39.2",
     "@primeuix/themes": "^1.0.0",
+    "@quazardous/vanilla-yamleditor": "https://github.com/quazardous/vanilla-yamleditor/releases/download/v0.1.0/quazardous-vanilla-yamleditor-0.1.0.tgz",
     "@types/node": "^25.0.6",
     "@vitejs/plugin-vue": "^6.0.0",
     "@vue/test-utils": "^2.4.6",

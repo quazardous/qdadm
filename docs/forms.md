@@ -262,6 +262,66 @@ the slot (e.g. cascading `Select`s + add-button + chips fed by a manager method,
 for composite values like `module:type`). The contract is only "binds the same
 `v-model`".
 
+### YAML family
+
+For configuration files edited live: `@quazardous/qdadm/editors/yaml`, on
+[`@quazardous/vanilla-yamleditor`](https://github.com/quazardous/vanilla-yamleditor) (an optional peer).
+Its edits keep the file as written: comments, key order, quoting and indentation stay, so one changed field is a one-line diff.
+
+```sh
+npm install https://github.com/quazardous/vanilla-yamleditor/releases/download/v0.1.0/quazardous-vanilla-yamleditor-0.1.0.tgz
+```
+
+| Widget | Use |
+|---|---|
+| `VanillaYamlEditor` | `v-model` on a YAML text, with a **Text** view (CodeMirror) and a **Form** view generated from a JSON Schema |
+| `YamlConfigEditor` | The whole gesture on a live document: load, check, diff, reason, save, conflict, history |
+
+#### `VanillaYamlEditor`
+
+```vue
+<VanillaYamlEditor v-model="yaml" :schema="schema" :problems="serverProblems" />
+```
+
+| Prop | Purpose |
+|---|---|
+| `modelValue` | The YAML text |
+| `schema` | JSON Schema (subset): each field's control, label (`title`), help (`description`) and the built-in validation |
+| `validator` | `(value) => [{ path, message }]`, for extra checks |
+| `problems` | Problems found elsewhere (a server check), shown on their line and field; `path` is an array or `a.b[0]` |
+| `mode` / `v-model:mode` | `tree` (the form) or `text` |
+| `readOnly`, `height`, `mainMenuBar` | |
+
+`@status` gives the parsed value, the syntax errors and the problems after each change. While the text has a syntax error, the form view is refused and the error shows at its line.
+
+Schema titles and descriptions go through the catalogue, so they can be i18n keys. The editor's own texts are `core.yamlEditor.*`.
+
+#### `YamlConfigEditor`
+
+```vue
+<YamlConfigEditor :adapter="restYamlAdapter('/api/conf/filters')" @saved="onSaved" />
+```
+
+Saving is one gesture:
+1. the server's `check`. Its problems and the schema's show on their field, and they block the save;
+2. a before/after diff, with a required **reason**;
+3. a single `save` against the loaded `revision`.
+
+If someone saved in between, the server answers 409 and the editor shows their version next to yours. You can load theirs, or keep yours and review it against theirs before saving.
+
+**History** lists past revisions (who, when, reason, diff). "Load this version" puts one back in the editor, and you save it like any other change. Leaving the page with unsaved changes asks first (`guard`, on by default). `readOnly` comes from the prop or from the loaded document.
+
+`restYamlAdapter(url, { path?, fetch?, headers? })` speaks this contract. Pass your app's `fetch` for authentication. `path` adds `?path=a.b` to every call, to edit part of a document.
+
+| Call | Request | Response |
+|---|---|---|
+| load | `GET <url>` | `{ yaml, schema?, revision?, readOnly? }` |
+| check | `POST <url>/check` `{ yaml }` | `{ problems: [{ path, message }] }` |
+| save | `PUT <url>` `{ yaml, reason, revision }` | `{ revision? }`, or 409 `{ yaml, revision }` |
+| history | `GET <url>/history` | `[{ revision, author?, date?, reason?, before?, after }]` |
+
+Any other transport implements `YamlConfigAdapter` (`load`, `save`, and optionally `check` and `history`). On a conflict, `save` throws `YamlConflictError(current)`.
+
 ### `useOptionsLookup` — options for `LookupField`
 
 `LookupField` is fed by `useOptionsLookup`, which sources its options from one of

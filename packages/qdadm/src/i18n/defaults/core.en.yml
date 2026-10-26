@@ -192,6 +192,49 @@ core:
     next: Next message
     position: "{index} of {count}"
     close: Close this message
+  # VanillaYamlEditor and YamlConfigEditor (#4303)
+  yamlEditor:
+    text: Text
+    tree: Form
+    modes: View
+    syntaxBlocked: Fix the syntax errors before switching to the form
+    syntaxErrors: "{count} syntax error | {count} syntax errors"
+    addItem: Add item
+    addKey: Add
+    newKey: new key
+    remove: Remove
+    rename: Key name
+    empty: (empty)
+    alias: An alias, edit it in the text view
+    count: "{count} entry | {count} entries"
+    loading: Loading
+    loadError: "Could not load: {message}"
+    readOnly: Read only
+    unsaved: Unsaved changes
+    upToDate: Up to date
+    check: Check
+    checkOk: No problem found
+    problems: "{count} problem | {count} problems"
+    save: Save…
+    review: Review the change
+    noChange: Nothing changed
+    reason: Reason
+    reasonPlaceholder: Why this change? It goes into the history.
+    confirmSave: Save
+    saved: Saved
+    saveError: "Could not save: {message}"
+    cancel: Cancel
+    revert: Discard changes
+    before: Before
+    after: After
+    history: History
+    historyEmpty: No history yet
+    restore: Load this version
+    restored: "Version {revision} loaded: review and save it to restore it"
+    conflictTitle: Changed meanwhile
+    conflictText: Someone saved this document after you opened it. Their version is on the left, yours on the right.
+    takeTheirs: Load their version
+    keepMine: Keep mine and save over it
   # NotFoundPage
   notFound:
     title: Page not found

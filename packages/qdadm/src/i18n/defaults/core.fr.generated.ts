@@ -194,6 +194,49 @@ export default `core:
     next: Message suivant
     position: "{index} sur {count}"
     close: Fermer ce message
+  # VanillaYamlEditor and YamlConfigEditor (#4303)
+  yamlEditor:
+    text: Texte
+    tree: Formulaire
+    modes: Vue
+    syntaxBlocked: Corrigez les erreurs de syntaxe avant de passer au formulaire
+    syntaxErrors: "{count} erreur de syntaxe | {count} erreurs de syntaxe"
+    addItem: Ajouter un élément
+    addKey: Ajouter
+    newKey: nouvelle clé
+    remove: Retirer
+    rename: Nom de la clé
+    empty: (vide)
+    alias: Un alias, à modifier dans la vue texte
+    count: "{count} entrée | {count} entrées"
+    loading: Chargement
+    loadError: "Chargement impossible : {message}"
+    readOnly: Lecture seule
+    unsaved: Modifications non enregistrées
+    upToDate: À jour
+    check: Vérifier
+    checkOk: Aucun problème trouvé
+    problems: "{count} problème | {count} problèmes"
+    save: Enregistrer…
+    review: Relire la modification
+    noChange: Rien n'a changé
+    reason: Motif
+    reasonPlaceholder: Pourquoi ce changement ? Il figure dans l'historique.
+    confirmSave: Enregistrer
+    saved: Enregistré
+    saveError: "Enregistrement impossible : {message}"
+    cancel: Annuler
+    revert: Abandonner les modifications
+    before: Avant
+    after: Après
+    history: Historique
+    historyEmpty: Pas encore d'historique
+    restore: Charger cette version
+    restored: "Version {revision} chargée : relisez-la et enregistrez-la pour la restaurer"
+    conflictTitle: Modifié entre-temps
+    conflictText: Quelqu'un a enregistré ce document après votre ouverture. Sa version est à gauche, la vôtre à droite.
+    takeTheirs: Charger sa version
+    keepMine: Garder la mienne et l'enregistrer par-dessus
   # NotFoundPage
   notFound:
     title: Page introuvable

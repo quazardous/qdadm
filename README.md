@@ -58,6 +58,7 @@ npm create vite@latest my-admin -- --template vue-ts
 cd my-admin
 npm install @quazardous/qdadm primevue @primeuix/themes primeicons vue-router pinia
 npm install -D vanilla-jsoneditor  # only if you import @quazardous/qdadm/editors
+npm install https://github.com/quazardous/vanilla-yamleditor/releases/download/v0.1.0/quazardous-vanilla-yamleditor-0.1.0.tgz  # only if you import @quazardous/qdadm/editors/yaml
 ```
 
 `import '@quazardous/qdadm/styles'` loads a compiled stylesheet: no sass needed,
@@ -259,6 +260,7 @@ ctx.block('books-list-header', { id: 'export-btn', component: ExportButton, weig
 - [PayloadViewer and PayloadDiff](docs/payloads.md) - XML, JSON, CSV, form, text and binary messages, masked, and their diff
 - [EmailPreview](docs/email-preview.md) - A captured email in a sandboxed frame: HTML, text, source, headers, attachments
 - [TaskRunner](docs/tasks.md) - Long backend tasks: queue, follow live or by polling, cancel, typed confirmation, running-tasks tray
+- [YAML editors](docs/forms.md#yaml-family) - Live YAML configuration: text and form views that keep comments, check, diff, reason, conflict, history
 - [Sign-in with an OIDC provider](docs/auth-oidc.md) - Keycloak, Auth0, Google: code + PKCE, your backend issues the session
 - [Branding](docs/branding.md) - App name, logo, page icon (`app.favicon`), top banner (`app.banner`)
 - [Sidebar user box](docs/user-box.md) - Profile link on the user name and avatar, avatar picture
