@@ -1,5 +1,17 @@
 # Changelog
 
+## 2.39.0
+
+### Minor Changes
+
+- 399e73e: Card dashboards (#4320): `CardsDashboard` shows a zone's blocks as cards each user reorders (drag with mouse, touch or pen, or arrow keys on the handle, announced), hides and pins at the top, in an edit mode with a tray of hidden cards (whole and dimmed, or as chips, `hiddenView` and a per-user switch) and Reset. The arrangement is kept in localStorage per dashboard and per user, and reconciled with the declared cards on each load. Any block with an id is a card, so the same blocks serve a classic `Zone`; a new optional `card` field on blocks adds `title`, `required`, `fixed`, `pinned` and `span`. `DashboardLayout customizable` renders its widgets zone this way. New: `useCardsArrangement`, `reconcileArrangement`, type `BlockCard`.
+- a6f5586: LoginPage labels (#4326): a `labels` prop replaces any text of the page, with a string (`{name}` placeholders) or a function called at render, over the single label props and the catalogue. In `open` mode the local form gets a title (`localSection`, default "Alternative login"; `''` keeps the bare "or"). Shorter defaults: "Sign in", "My account", "Alternative login" (fr: "Se connecter", "Mon compte", "Login alternatif").
+- d65601e: LoginPage, identity provider first (#4321): `sso` puts the provider's button first (`href`, `start()`, or the auth adapter's `beginLogin()`), and `localFallback` makes the local form `open`, `collapsed` or `hidden`. Also new: `providerHome` (a link to the provider's portal), `subtitle`, `brandLogo` (slot `brand`) and `error`. An error from the sign-in flow shows above the button. Without `sso` the page is unchanged.
+
+### Patch Changes
+
+- 4927991: OAuthCallbackPage no longer flashes "no login attempt pending" after a successful sign-in (#4329). It navigates to the destination before emitting `auth:login`, so the app remount that signal triggers happens there, not on the callback. A second mount of the same callback awaits the first completion instead of calling `completeLogin` again, and a used callback opened while signed in (reload, back button) redirects instead of showing an error.
+
 ## 2.38.0
 
 ### Minor Changes
