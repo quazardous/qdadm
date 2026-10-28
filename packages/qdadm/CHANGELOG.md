@@ -1,5 +1,20 @@
 # Changelog
 
+## 2.43.0
+
+### Minor Changes
+
+- 0a00d19: `formatBytes(bytes, locale?, units?)` writes sizes in the locale: the number through `Intl` (`1,4 Mo`, `1.4 MB`, no trailing `.0`) and the units of the language, o / ko / Mo / Go / To in French, B / KB / MB / GB / TB otherwise (`byteUnits(locale)`). A value that rounds up to 1024 moves to the next unit. `formatBytes(n)` still works, with the browser locale; English output changes from `1.0 MB` to `1 MB`.
+
+  `useFormatBytes()` formats in the app's language with the catalogue's units (`core.units.bytes.*`); PayloadViewer and EmailPreview use it. ShowDisplay has a `bytes` type, and the show field resolver maps the schema types `bytes` and `filesize` to it.
+
+- 6f71636: The task dialog's log takes its patterns from the layers: `logPatterns: { errorPattern, timestampPattern }` in `configureTasks`, `registerTaskKind` or a `run()`, the kind's over the app's. `null` turns a pattern off (no error flagging, no "N errors" button). The default error pattern now takes whole words only, `\b(error|fatal|failed)\b`: a line naming `shipping_error.php` or `failed_jobs` is no longer flagged as an error. `TASK_LOG_DEFAULTS` and the `TaskLogPatterns` type are exported.
+- 91a52cb: The YAML editors move to `@quazardous/vanilla-yamleditor` 0.3, then 0.4 (see below; this release needs `^0.4.0`). `VanillaYamlEditor` has three views: `text`, a technical `tree` (nested `key: value` lines) and `form` (the schema form, previously called `tree`). The default stays the form when there is a schema, the tree otherwise. Code that passes `mode="tree"` to get the form now passes `mode="form"`.
+
+  Valid YAML that is likely a typo (`port :: 8080`, a quoted key with spaces around it) is flagged as a warning, which never blocks a save; the new `lint` prop (default `true`) turns it off. `YamlConfigEditor` gains the `mode` and `lint` props, passed to its editor. New labels in `core.yamlEditor`: `form`, `warnings`, `colonKey`, `spacedKey`; `tree` is now "Tree" / "Arbre".
+
+- 327dd91: The YAML editors move to `@quazardous/vanilla-yamleditor` 0.4 (peer `^0.4.0`, install the v0.4.0 release tarball). The form now shows value labels (`oneOf: [{ const, title }]` or `enum` + `x-enumLabels`, titles through the catalogue), schema variants (`allOf`, `if` / `then` / `else`, `oneOf` / `anyOf` with a `discriminator`), and the per-field `readOnly`, `deprecated` (a warning that never blocks a save) and `examples`. No change in qdadm's own API.
+
 ## 2.42.0
 
 ### Minor Changes
