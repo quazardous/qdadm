@@ -33,3 +33,6 @@ packages/qdadm/src/generated/
 
 # Screenshots qdadm-mcp-relay --stdio keeps for the agent (#2284)
 .aiball/screenshots/
+
+# aiball agent session id, per machine
+.aiball-session_id
