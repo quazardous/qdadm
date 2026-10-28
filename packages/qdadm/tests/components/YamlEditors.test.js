@@ -111,6 +111,26 @@ describe('VanillaYamlEditor (#4303)', () => {
     expect(field(w, 'stores.paris.enabled').find('.vye-problem').text()).toBe('server says no')
   })
 
+  it('value labels and deprecated keys from 0.4: titles go through the catalogue (#4398)', async () => {
+    const i18n = new I18n({ defaultLocale: 'fr' })
+    await i18n.bootstrap()
+    i18n.addMessages('fr', { demo: { web: 'Boutique en ligne', store: 'En magasin' } })
+    const schema = {
+      type: 'object',
+      properties: {
+        channel: { title: 'Channel', oneOf: [{ const: 'web', title: 'demo.web' }, { const: 'store', title: 'demo.store' }] },
+        legacy: { type: 'boolean', deprecated: true },
+      },
+    }
+    const w = mount(VanillaYamlEditor, { props: { modelValue: 'channel: store\nlegacy: true\n', schema }, global: { provide: { [I18N_INJECTION_KEY]: i18n } }, attachTo: document.body })
+    mounted.push(w)
+    await nextTick()
+    const select = field(w, 'channel').find('select')
+    expect(select.findAll('option').map((o) => o.text())).toEqual(expect.arrayContaining(['Boutique en ligne', 'En magasin']))
+    expect(select.element.value).toBeTruthy()
+    expect(field(w, 'legacy').find('.vye-problem-warning').exists()).toBe(true)
+  })
+
   it('three views in the catalogue language: form with a schema, tree without; typo warnings (#4399)', async () => {
     const i18n = new I18n({ defaultLocale: 'fr' })
     await i18n.bootstrap()

@@ -269,7 +269,7 @@ For configuration files edited live: `@quazardous/qdadm/editors/yaml`, on
 Its edits keep the file as written: comments, key order, quoting and indentation stay, so one changed field is a one-line diff.
 
 ```sh
-npm install https://github.com/quazardous/vanilla-yamleditor/releases/download/v0.3.0/quazardous-vanilla-yamleditor-0.3.0.tgz
+npm install https://github.com/quazardous/vanilla-yamleditor/releases/download/v0.4.0/quazardous-vanilla-yamleditor-0.4.0.tgz
 ```
 
 | Widget | Use |
@@ -286,7 +286,7 @@ npm install https://github.com/quazardous/vanilla-yamleditor/releases/download/v
 | Prop | Purpose |
 |---|---|
 | `modelValue` | The YAML text |
-| `schema` | JSON Schema (subset): each field's control, label (`title`), help (`description`) and the built-in validation |
+| `schema` | JSON Schema (subset): each field's control, label (`title`), help (`description`) and the built-in validation. Value labels with `oneOf: [{ const, title }]` (or `enum` + `x-enumLabels`), variants (`allOf`, `if` / `then`, `oneOf` with a `discriminator`), and `readOnly`, `deprecated`, `examples` per field |
 | `validator` | `(value) => [{ path, message }]`, for extra checks |
 | `problems` | Problems found elsewhere (a server check), shown on their line and field; `path` is an array or `a.b[0]` |
 | `mode` / `v-model:mode` | `text`, `tree` or `form`. Default: `form` with a schema, `tree` without, `text` while the text does not parse |

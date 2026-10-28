@@ -23,6 +23,7 @@ filters:
     enabled: false
     min_stock: 1
     channel: store
+    legacy_feed: true
     skus:
     - A1
     - "B2"
@@ -41,7 +42,16 @@ export const SCHEMA = {
         properties: {
           enabled: { type: 'boolean', title: 'Enabled' },
           min_stock: { type: 'integer', title: 'Minimum stock', minimum: 0, maximum: 1000, description: 'Units kept back from sale' },
-          channel: { enum: ['web', 'store', 'both'], title: 'Channel' },
+          // Values with labels: the form shows the titles, the file keeps the codes
+          channel: {
+            title: 'Channel',
+            oneOf: [
+              { const: 'web', title: 'Web shop' },
+              { const: 'store', title: 'In store' },
+              { const: 'both', title: 'Web and store' },
+            ],
+          },
+          legacy_feed: { type: 'boolean', title: 'Legacy feed', deprecated: true, description: 'Replaced by the channel' },
           tags: { type: 'array', title: 'Tags', items: { type: 'string', minLength: 2 } },
           skus: { type: 'array', title: 'SKUs', items: { type: 'string', pattern: '^[A-Z][0-9]+$' } },
         },

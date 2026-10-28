@@ -77,7 +77,7 @@
     "vue": "^3.3.0",
     "vue-router": "^4.0.0 || ^5.0.0",
     "postal-mime": ">=3.0.0",
-    "@quazardous/vanilla-yamleditor": "^0.3.0"
+    "@quazardous/vanilla-yamleditor": "^0.4.0"
   },
   "peerDependenciesMeta": {
     "vanilla-jsoneditor": {
@@ -112,7 +112,7 @@
   "devDependencies": {
     "@eslint/js": "^9.39.2",
     "@primeuix/themes": "^1.0.0",
-    "@quazardous/vanilla-yamleditor": "https://github.com/quazardous/vanilla-yamleditor/releases/download/v0.3.0/quazardous-vanilla-yamleditor-0.3.0.tgz",
+    "@quazardous/vanilla-yamleditor": "https://github.com/quazardous/vanilla-yamleditor/releases/download/v0.4.0/quazardous-vanilla-yamleditor-0.4.0.tgz",
     "@types/node": "^25.0.6",
     "@vitejs/plugin-vue": "^6.0.0",
     "@vue/test-utils": "^2.4.6",
