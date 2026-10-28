@@ -269,7 +269,7 @@ For configuration files edited live: `@quazardous/qdadm/editors/yaml`, on
 Its edits keep the file as written: comments, key order, quoting and indentation stay, so one changed field is a one-line diff.
 
 ```sh
-npm install https://github.com/quazardous/vanilla-yamleditor/releases/download/v0.4.0/quazardous-vanilla-yamleditor-0.4.0.tgz
+npm install https://github.com/quazardous/vanilla-yamleditor/releases/download/v0.6.0/quazardous-vanilla-yamleditor-0.6.0.tgz
 ```
 
 | Widget | Use |
@@ -305,10 +305,10 @@ Schema titles and descriptions go through the catalogue, so they can be i18n key
 
 Saving is one gesture:
 1. the server's `check`. Its problems and the schema's show on their field, and they block the save;
-2. a before/after diff, with a required **reason**;
+2. a before/after diff, with a required **reason**. Above it, the keys the change touches (`filters.paris.min_stock`, up to 8, then "+N more"); a click goes back to that field in the editor. A change to comments or layout only lists no key;
 3. a single `save` against the loaded `revision`.
 
-If someone saved in between, the server answers 409 and the editor shows their version next to yours. You can load theirs, or keep yours and review it against theirs before saving.
+If someone saved in between, the server answers 409 and the editor shows their version next to yours, with the keys they changed since you loaded it. You can load theirs, or keep yours and review it against theirs before saving.
 
 **History** lists past revisions (who, when, reason, diff). "Load this version" puts one back in the editor, and you save it like any other change. Leaving the page with unsaved changes asks first (`guard`, on by default). `readOnly` comes from the prop or from the loaded document; `mode` and `lint` go to the `VanillaYamlEditor` inside.
 

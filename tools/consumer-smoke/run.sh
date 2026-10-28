@@ -127,8 +127,9 @@ cat > build-app/main.js <<'SMOKE_MAIN'
 // debug bar module, and the stylesheet. The build follows their lazy imports.
 import { Kernel } from '@quazardous/qdadm'
 import { DebugModule } from '@quazardous/qdadm/modules/debug'
+import { YamlConfigEditor } from '@quazardous/qdadm/editors/yaml'
 import '@quazardous/qdadm/styles'
-console.log(Kernel, DebugModule)
+console.log(Kernel, DebugModule, YamlConfigEditor)
 SMOKE_MAIN
 cat > vite.build.config.js <<'SMOKE_BUILD'
 import vue from '@vitejs/plugin-vue'
@@ -138,5 +139,11 @@ SMOKE_BUILD
 npx vite build --config vite.build.config.js
 ls build-app/dist/assets/*.css >/dev/null || { echo "[consumer-smoke] the build emitted no CSS" >&2; exit 1; }
 echo "[consumer-smoke]   built: $(ls build-app/dist/assets | wc -l) assets, no sass needed"
+# The YAML editors must not drag the lib's diff view (@codemirror/merge, ~70 kB)
+# into an app: qdadm shows its own diff (#4412).
+# The JS only: the lib's styles.css carries the diff's classes too, which costs nothing
+grep -qs 'vye-modes' build-app/dist/assets/*.js || { echo "[consumer-smoke] the YAML editor is not in the build" >&2; exit 1; }
+if grep -qs 'cm-mergeView' build-app/dist/assets/*.js; then echo "[consumer-smoke] @codemirror/merge is in the build: the YAML editors pull the lib's diff view" >&2; exit 1; fi
+echo "[consumer-smoke]   the YAML editors are in, without @codemirror/merge"
 
 echo "[consumer-smoke] OK — the packed tarball typechecks, loads AND builds as a strict consumer"

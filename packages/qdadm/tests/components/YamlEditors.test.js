@@ -189,6 +189,41 @@ describe('YamlConfigEditor (#4303)', () => {
     expect(w.find('.msg').text()).toBe('Saved')
   })
 
+  it('the review lists the changed keys; a click goes back to the field; comments alone list none (#4412)', async () => {
+    const w = mountConfig(makeAdapter())
+    await flushPromises()
+    await editMinStock(w, '5')
+    await button(w, 'Save…').trigger('click')
+    await flushPromises()
+    const keys = w.findAll('.dialog[data-title="Review the change"] .qd-yaml-config-key')
+    expect(keys.map((k) => k.text())).toEqual(['stores.paris.min_stock'])
+    expect(w.find('.qd-yaml-config-keys').text()).toContain('Changed:')
+    await keys[0].trigger('click')
+    await flushPromises()
+    expect(w.find('.dialog').exists()).toBe(false)
+
+    // A comment-only edit: the diff still shows it, the key list has nothing to say
+    const editor = w.findComponent(VanillaYamlEditor)
+    editor.vm.$emit('update:modelValue', YAML.replace('# live', '# live, checked'))
+    await flushPromises()
+    await button(w, 'Save…').trigger('click')
+    await flushPromises()
+    expect(w.find('.dialog[data-title="Review the change"]').exists()).toBe(true)
+    expect(w.find('.qd-yaml-config-keys').exists()).toBe(false)
+  })
+
+  it('more than eight changed keys: eight, then how many more (#4412)', async () => {
+    const many = Array.from({ length: 11 }, (_, i) => `k${i}: 1`).join('\n') + '\n'
+    const w = mountConfig(makeAdapter({ load: vi.fn(async () => ({ yaml: many, revision: 'r1' })) }))
+    await flushPromises()
+    w.findComponent(VanillaYamlEditor).vm.$emit('update:modelValue', many.replaceAll(': 1', ': 2'))
+    await flushPromises()
+    await button(w, 'Save…').trigger('click')
+    await flushPromises()
+    expect(w.findAll('.qd-yaml-config-key')).toHaveLength(8)
+    expect(w.find('.qd-yaml-config-more').text()).toBe('+3 more')
+  })
+
   it('server problems block the save and show on the field', async () => {
     const adapter = makeAdapter({ check: vi.fn(async () => [{ path: ['stores', 'paris', 'min_stock'], message: 'too low for Paris' }]) })
     const w = mountConfig(adapter)
@@ -227,8 +262,12 @@ describe('YamlConfigEditor (#4303)', () => {
 
     const conflict = w.find('.dialog[data-title="Changed meanwhile"]')
     expect(conflict.find('.diff').text()).toContain('enabled: false')
+    // What they changed, from the version I loaded (#4412)
+    expect(conflict.findAll('.qd-yaml-config-key').map((k) => k.text())).toEqual(['stores.paris.enabled'])
     await button(w, 'Keep mine and save over it').trigger('click')
     await flushPromises()
+    // Over their version, mine changes both keys
+    expect(w.findAll('.dialog[data-title="Review the change"] .qd-yaml-config-key').map((k) => k.text()).sort()).toEqual(['stores.paris.enabled', 'stores.paris.min_stock'])
     await w.find('textarea.reason').setValue('why again')
     await w.find('button.confirm').trigger('click')
     await flushPromises()

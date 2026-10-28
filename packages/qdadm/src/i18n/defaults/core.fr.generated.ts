@@ -315,6 +315,9 @@ export default `core:
     restored: "Version {revision} chargée : relisez-la et enregistrez-la pour la restaurer"
     conflictTitle: Modifié entre-temps
     conflictText: Quelqu'un a enregistré ce document après votre ouverture. Sa version est à gauche, la vôtre à droite.
+    changedKeys: "Modifié :"
+    theyChanged: "Modifié par l'autre :"
+    moreKeys: "+{count} autres"
     takeTheirs: Charger sa version
     keepMine: Garder la mienne et l'enregistrer par-dessus
   # NotFoundPage

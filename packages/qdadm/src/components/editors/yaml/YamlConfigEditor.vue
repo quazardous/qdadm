@@ -14,7 +14,7 @@
  */
 import { computed, onMounted, onUnmounted, ref, shallowRef } from 'vue'
 import Textarea from 'primevue/textarea'
-import { validate, type YamlEditorMode, type YamlEditorStatus, type YamlProblem } from '@quazardous/vanilla-yamleditor'
+import { validate, yamlChangedPaths, type YamlEditorMode, type YamlEditorStatus, type YamlPath, type YamlProblem } from '@quazardous/vanilla-yamleditor'
 import QdButton from '../../base/QdButton.vue'
 import QdMessage from '../../base/QdMessage.vue'
 import SimpleDialog from '../../dialogs/SimpleDialog.vue'
@@ -129,10 +129,30 @@ async function runCheck(): Promise<boolean> {
   return true
 }
 
+// --- The keys a change touches (#4412): above the review and conflict diffs ---
+
+const MAX_KEYS = 8
+
+/** The changed keys, at most MAX_KEYS, and how many more; null when nothing but comments or layout changed. */
+function changedKeys(before: string | undefined, after: string | undefined) {
+  const paths = before === undefined || after === undefined ? null : yamlChangedPaths(before, after)
+  if (!paths?.length) return null
+  return { shown: paths.slice(0, MAX_KEYS), more: Math.max(0, paths.length - MAX_KEYS) }
+}
+
+const keyLabel = (path: YamlPath) => path.join('.') || '/'
+
+/** From the review: back to the editor, at that key */
+function goToKey(path: YamlPath) {
+  reviewOpen.value = false
+  editorRef.value?.revealPath(path)
+}
+
 // --- Save: check → diff + reason → save ---
 
 const reviewOpen = ref(false)
 const reason = ref('')
+const reviewKeys = computed(() => (reviewOpen.value ? changedKeys(original.value?.yaml, text.value) : null))
 
 async function startSave() {
   if (!dirty.value) {
@@ -181,6 +201,8 @@ function revert() {
 
 const conflictOpen = ref(false)
 const conflict = shallowRef<YamlConfigDocument | null>(null)
+// What the other person changed: the version I loaded against theirs
+const conflictKeys = computed(() => (conflictOpen.value ? changedKeys(original.value?.yaml, conflict.value?.yaml) : null))
 
 function takeTheirs() {
   if (!conflict.value) return
@@ -314,6 +336,11 @@ defineExpose({ reload: load, check: runCheck, save: startSave, dirty })
       :loading="saving"
       @confirm="confirmSave"
     >
+      <p v-if="reviewKeys" class="qd-yaml-config-keys">
+        <span>{{ l('changedKeys', 'Changed:') }}</span>
+        <button v-for="path in reviewKeys.shown" :key="keyLabel(path)" type="button" class="qd-yaml-config-key" @click="goToKey(path)">{{ keyLabel(path) }}</button>
+        <span v-if="reviewKeys.more" class="qd-yaml-config-more">{{ l('moreKeys', '+{count} more', { count: reviewKeys.more }) }}</span>
+      </p>
       <PayloadDiff :left="original?.yaml ?? ''" :right="text" format="text" :labels="[l('before', 'Before'), l('after', 'After')]" max-height="24rem" />
       <div class="qd-yaml-config-reason">
         <label for="qd-yaml-reason">{{ l('reason', 'Reason') }} *</label>
@@ -323,6 +350,11 @@ defineExpose({ reload: load, check: runCheck, save: startSave, dirty })
 
     <SimpleDialog v-model:visible="conflictOpen" :title="l('conflictTitle', 'Changed meanwhile')" width="60rem" :show-confirm="false" :cancel-label="l('cancel', 'Cancel')">
       <p>{{ l('conflictText', 'Someone saved this document after you opened it. Their version is on the left, yours on the right.') }}</p>
+      <p v-if="conflictKeys" class="qd-yaml-config-keys">
+        <span>{{ l('theyChanged', 'They changed:') }}</span>
+        <code v-for="path in conflictKeys.shown" :key="keyLabel(path)" class="qd-yaml-config-key">{{ keyLabel(path) }}</code>
+        <span v-if="conflictKeys.more" class="qd-yaml-config-more">{{ l('moreKeys', '+{count} more', { count: conflictKeys.more }) }}</span>
+      </p>
       <PayloadDiff :left="conflict?.yaml ?? ''" :right="text" format="text" max-height="24rem" />
       <template #actions>
         <QdButton :label="l('takeTheirs', 'Load their version')" severity="secondary" outlined @click="takeTheirs" />

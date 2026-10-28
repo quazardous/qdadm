@@ -313,6 +313,9 @@ core:
     restored: "Version {revision} loaded: review and save it to restore it"
     conflictTitle: Changed meanwhile
     conflictText: Someone saved this document after you opened it. Their version is on the left, yours on the right.
+    changedKeys: "Changed:"
+    theyChanged: "They changed:"
+    moreKeys: "+{count} more"
     takeTheirs: Load their version
     keepMine: Keep mine and save over it
   # NotFoundPage
