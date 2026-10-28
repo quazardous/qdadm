@@ -11,7 +11,7 @@ import { defineComponent, h } from 'vue'
 import { createRouter, createMemoryHistory } from 'vue-router'
 import PrimeVue from 'primevue/config'
 import { getTaskStore, registerTaskKind } from '../../src/tasks/taskStore'
-import { configureTasks, resetTaskUi, resolveTaskUi, TASK_DIALOG_DEFAULTS } from '../../src/tasks/taskUi'
+import { configureTasks, resetTaskUi, resolveTaskUi, TASK_DIALOG_DEFAULTS, TASK_LOG_DEFAULTS } from '../../src/tasks/taskUi'
 import TaskHost from '../../src/components/tasks/TaskHost.vue'
 import TaskTray from '../../src/components/tasks/TaskTray.vue'
 import LogStream from '../../src/components/display/LogStream.vue'
@@ -46,6 +46,41 @@ describe('layered options (#4334)', () => {
     const kind = { dialog: { modal: true, maximizable: false } }
     expect(resolveTaskUi(kind).dialog).toMatchObject({ width: '56rem', modal: true, maximizable: false, draggable: true })
     expect(resolveTaskUi(kind, { width: '30rem' }).dialog.width).toBe('30rem')
+  })
+})
+
+describe('the log patterns (#4386)', () => {
+  const DELIVERY = ['change  M  modules/admicron/cron/shipping_error.php', 'ERROR: rsync refused', '[error] disk full', '→ failed']
+  async function deliver(kind = {}, run = {}) {
+    const backend = api()
+    registerTaskKind('deliver', { task: { get: backend.get, intervalMs: 60_000 }, log: () => ({ lines: DELIVERY }), ...kind })
+    wrapper = mountHost()
+    await store.run({ label: 'Deliver', kind: 'deliver', start: backend.start, ...run })
+    await flushPromises()
+    return [...document.querySelectorAll('.qd-log-line--error')].map((l) => l.textContent.trim())
+  }
+
+  it('defaults, then the app, then the kind; null turns a pattern off', () => {
+    expect(resolveTaskUi().logPatterns).toEqual(TASK_LOG_DEFAULTS)
+    configureTasks({ logPatterns: { errorPattern: 'boom', timestampPattern: '\\d+:\\d+' } })
+    expect(resolveTaskUi().logPatterns).toEqual({ errorPattern: 'boom', timestampPattern: '\\d+:\\d+' })
+    expect(resolveTaskUi({ logPatterns: { errorPattern: null } }).logPatterns).toEqual({ errorPattern: null, timestampPattern: '\\d+:\\d+' })
+    expect(resolveTaskUi({ logPatterns: { errorPattern: undefined } }).logPatterns.errorPattern).toBe('boom')
+  })
+
+  it('the default flags whole words only: a file name is not an error', async () => {
+    const flagged = await deliver()
+    expect(flagged.some((l) => l.includes('shipping_error.php'))).toBe(false)
+    expect(flagged.length).toBe(3)
+  })
+
+  it("the kind's pattern, or a run's, reaches the dialog's log", async () => {
+    expect(await deliver({ logPatterns: { errorPattern: /\[error\]|^→ failed/ } })).toHaveLength(2)
+    wrapper.unmount()
+    store.reset()
+    expect(await deliver({}, { logPatterns: { errorPattern: null } })).toHaveLength(0)
+    expect(wrapper.findComponent(LogStream).props('errorPattern')).toBeNull()
+    expect(document.querySelector('.qd-log-errors')).toBeNull()
   })
 })
 

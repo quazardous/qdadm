@@ -71,7 +71,9 @@ export function readLog(id, from) {
   for (let i = from; i < count; i++) {
     const t = new Date(task.startedAt + i * 300).toISOString().replace(/\.\d+Z$/, 'Z')
     const s = stateAt(task, task.startedAt + i * 300)
-    lines.push(i % 9 === 0 ? `${t} \x1b[1;34m==> ${s.step}\x1b[0m` : `${t} \x1b[2m  ${s.step.toLowerCase()} ${i}\x1b[0m`)
+    // A file name with "error" in it is not an error: the dialog flags whole words only (#4386)
+    if (s.step === 'Cloning the ref' && i % 9 === 4) lines.push(`${t}   checkout  M  src/handlers/shipping_error.php`)
+    else lines.push(i % 9 === 0 ? `${t} \x1b[1;34m==> ${s.step}\x1b[0m` : `${t} \x1b[2m  ${s.step.toLowerCase()} ${i}\x1b[0m`)
   }
   const done = ['failed', 'cancelled', 'done'].includes(state.status)
   if (done && from <= count) {

@@ -12,7 +12,7 @@
  * they live in. Runs of a registered kind survive a reload (sessionStorage).
  */
 
-import type { TaskDialogOptions, TaskUiOptions } from './taskUi'
+import type { TaskDialogOptions, TaskLogPatterns, TaskUiOptions } from './taskUi'
 import { reactive, computed, type ComputedRef } from 'vue'
 import type { LogSource } from '../composables/useLogStream'
 
@@ -58,6 +58,8 @@ export interface TaskKind {
   onSettled?: (run: TaskRun) => void
   /** The follow dialog's window options for this kind, over the app's (#4334). */
   dialog?: TaskDialogOptions
+  /** What the log flags as an error or a timestamp for this kind, over the app's (#4386). */
+  logPatterns?: TaskLogPatterns
   /** Slot components for this kind's dialog, over the app's. */
   slots?: TaskUiOptions['slots']
   /** A dialog of its own for this kind, instead of TaskDialog. */

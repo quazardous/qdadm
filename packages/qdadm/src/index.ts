@@ -458,6 +458,8 @@ export {
   getTaskUi,
   resolveTaskUi,
   TASK_DIALOG_DEFAULTS,
+  TASK_LOG_DEFAULTS,
+  type TaskLogPatterns,
   type TaskDialogOptions,
   type TaskDialogSlotName,
   type TaskUiOptions,

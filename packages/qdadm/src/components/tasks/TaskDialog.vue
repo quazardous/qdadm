@@ -245,7 +245,7 @@ onBeforeUnmount(() => {
         </slot>
       </div>
       <LogStream v-if="logSource" :key="run.id" class="qd-task-log" :source="logSource" :filename="logFilename" height="16rem"
-        error-pattern="error|fatal|failed" @done="store.poke(run.id)" />
+        :error-pattern="ui.logPatterns.errorPattern" :timestamp-pattern="ui.logPatterns.timestampPattern" @done="store.poke(run.id)" />
       <div v-if="has('after-log')" class="qd-task-after-log">
         <slot name="after-log" v-bind="slotProps">
           <component :is="slotComponent('after-log')!" v-bind="slotProps" />

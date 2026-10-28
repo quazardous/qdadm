@@ -22,6 +22,8 @@ export class OpsDemoModule extends Module {
       task: { get: getTask, intervalMs: 1000 },
       cancel: cancelTask,
       log: (id) => ({ poll: (from) => readLog(id, from), intervalMs: 500 }),
+      // The log's lines start with an ISO time, dimmed in the dialog (#4386)
+      logPatterns: { timestampPattern: '\\d{4}-\\d{2}-\\d{2}T[\\d:]+Z' },
     }
     // A kind's own slot in the follow dialog (#4334)
     registerTaskKind('demo-create-box', { ...kind, slots: { 'after-log': defineAsyncComponent(() => import('./pages/BoxSummary.vue')) } })

@@ -142,6 +142,16 @@ registerTaskKind('migrate', { task, component: MigrationDialog })
   `{ runId, options }`, emits `close`, and reads the run with `getTaskStore()`.
   The TaskRunner still does the queue, the following, the tray and the resume.
 - **The tray row:** `tray.item`, or `TaskTray`'s `item` slot, gets `{ run }`.
+- **The log's patterns:** `logPatterns: { errorPattern, timestampPattern }`,
+  at the app's level or the kind's (or one `run()`), go to the dialog's
+  [LogStream](log-stream.md). `errorPattern` picks the lines flagged as errors and
+  counted by the "N errors" button; the default, `\b(error|fatal|failed)\b`
+  (case-insensitive), takes whole words only, so `shipping_error.php` is not an
+  error. A string is a case-insensitive pattern; `null` turns a pattern off.
+
+  ```js
+  registerTaskKind('deliver', { task, log, logPatterns: { errorPattern: /\[error\]|^→ (failed|refused)/ } })
+  ```
 
 ## Asking first
 
