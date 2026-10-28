@@ -269,12 +269,12 @@ For configuration files edited live: `@quazardous/qdadm/editors/yaml`, on
 Its edits keep the file as written: comments, key order, quoting and indentation stay, so one changed field is a one-line diff.
 
 ```sh
-npm install https://github.com/quazardous/vanilla-yamleditor/releases/download/v0.1.0/quazardous-vanilla-yamleditor-0.1.0.tgz
+npm install https://github.com/quazardous/vanilla-yamleditor/releases/download/v0.3.0/quazardous-vanilla-yamleditor-0.3.0.tgz
 ```
 
 | Widget | Use |
 |---|---|
-| `VanillaYamlEditor` | `v-model` on a YAML text, with a **Text** view (CodeMirror) and a **Form** view generated from a JSON Schema |
+| `VanillaYamlEditor` | `v-model` on a YAML text, with three views: **Text** (CodeMirror), **Tree** (the document as nested `key: value` lines) and **Form** (generated from a JSON Schema) |
 | `YamlConfigEditor` | The whole gesture on a live document: load, check, diff, reason, save, conflict, history |
 
 #### `VanillaYamlEditor`
@@ -289,10 +289,11 @@ npm install https://github.com/quazardous/vanilla-yamleditor/releases/download/v
 | `schema` | JSON Schema (subset): each field's control, label (`title`), help (`description`) and the built-in validation |
 | `validator` | `(value) => [{ path, message }]`, for extra checks |
 | `problems` | Problems found elsewhere (a server check), shown on their line and field; `path` is an array or `a.b[0]` |
-| `mode` / `v-model:mode` | `tree` (the form) or `text` |
+| `mode` / `v-model:mode` | `text`, `tree` or `form`. Default: `form` with a schema, `tree` without, `text` while the text does not parse |
+| `lint` | Warn on valid YAML that is likely a typo, such as `port :: 8080` (default `true`); warnings never block a save |
 | `readOnly`, `height`, `mainMenuBar` | |
 
-`@status` gives the parsed value, the syntax errors and the problems after each change. While the text has a syntax error, the form view is refused and the error shows at its line.
+`@status` gives the parsed value, the syntax errors and the problems after each change. While the text has a syntax error, the tree and form views are refused and the error shows at its line.
 
 Schema titles and descriptions go through the catalogue, so they can be i18n keys. The editor's own texts are `core.yamlEditor.*`.
 
@@ -309,7 +310,7 @@ Saving is one gesture:
 
 If someone saved in between, the server answers 409 and the editor shows their version next to yours. You can load theirs, or keep yours and review it against theirs before saving.
 
-**History** lists past revisions (who, when, reason, diff). "Load this version" puts one back in the editor, and you save it like any other change. Leaving the page with unsaved changes asks first (`guard`, on by default). `readOnly` comes from the prop or from the loaded document.
+**History** lists past revisions (who, when, reason, diff). "Load this version" puts one back in the editor, and you save it like any other change. Leaving the page with unsaved changes asks first (`guard`, on by default). `readOnly` comes from the prop or from the loaded document; `mode` and `lint` go to the `VanillaYamlEditor` inside.
 
 `restYamlAdapter(url, { path?, fetch?, headers? })` speaks this contract. Pass your app's `fetch` for authentication. `path` adds `?path=a.b` to every call, to edit part of a document.
 

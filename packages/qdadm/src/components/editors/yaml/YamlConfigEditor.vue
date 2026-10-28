@@ -14,7 +14,7 @@
  */
 import { computed, onMounted, onUnmounted, ref, shallowRef } from 'vue'
 import Textarea from 'primevue/textarea'
-import { validate, type YamlEditorStatus, type YamlProblem } from '@quazardous/vanilla-yamleditor'
+import { validate, type YamlEditorMode, type YamlEditorStatus, type YamlProblem } from '@quazardous/vanilla-yamleditor'
 import QdButton from '../../base/QdButton.vue'
 import QdMessage from '../../base/QdMessage.vue'
 import SimpleDialog from '../../dialogs/SimpleDialog.vue'
@@ -29,6 +29,10 @@ interface Props {
   adapter: YamlConfigAdapter
   /** Read only, whatever the server says. */
   readOnly?: boolean
+  /** Force a view; default: form with a schema, tree without. */
+  mode?: YamlEditorMode
+  /** Warn on valid YAML that is likely a typo (`key ::`); never blocks a save. */
+  lint?: boolean
   height?: string
   /** Ask before leaving the page with unsaved changes. */
   guard?: boolean
@@ -36,6 +40,8 @@ interface Props {
 
 const props = withDefaults(defineProps<Props>(), {
   readOnly: false,
+  mode: undefined,
+  lint: true,
   height: '28rem',
   guard: true,
 })
@@ -290,6 +296,8 @@ defineExpose({ reload: load, check: runCheck, save: startSave, dirty })
       v-model="text"
       :schema="original.schema"
       :problems="serverProblems"
+      :mode="mode"
+      :lint="lint"
       :read-only="readOnly"
       :height="height"
       @status="onStatus"

@@ -1,10 +1,11 @@
 <script setup lang="ts">
 /**
- * VanillaYamlEditor - a YAML text with a text view and a form view (#4303)
+ * VanillaYamlEditor - a YAML text with text, tree and form views (#4303)
  *
  * Wraps @quazardous/vanilla-yamleditor (an optional peer): CodeMirror text,
- * and a form generated from a JSON Schema whose edits keep the file's
- * comments and formatting. v-model is the YAML text.
+ * a technical tree, and a form generated from a JSON Schema, whose edits keep
+ * the file's comments and formatting. v-model is the YAML text. The default
+ * view is the lib's: form with a schema, tree without.
  *
  * <VanillaYamlEditor v-model="yaml" :schema="schema" :problems="serverProblems" />
  *
@@ -31,6 +32,8 @@ interface Props {
   validator?: (value: unknown, parsed: ParsedYaml) => YamlProblemInput[]
   /** Problems found elsewhere (a server check), shown on their line and field. */
   problems?: YamlProblemInput[]
+  /** Warn on valid YAML that is likely a typo (`key ::`). */
+  lint?: boolean
   readOnly?: boolean
   mainMenuBar?: boolean
   height?: string
@@ -42,6 +45,7 @@ const props = withDefaults(defineProps<Props>(), {
   schema: undefined,
   validator: undefined,
   problems: () => [],
+  lint: true,
   readOnly: false,
   mainMenuBar: true,
   height: '400px',
@@ -64,10 +68,14 @@ function labels() {
   const n = (key: string, one: string, many: string) => (count: number) => tOr(`core.yamlEditor.${key}`, `${one} | ${many}`, { count })
   return {
     text: tOr('core.yamlEditor.text', 'Text'),
-    tree: tOr('core.yamlEditor.tree', 'Form'),
+    tree: tOr('core.yamlEditor.tree', 'Tree'),
+    form: tOr('core.yamlEditor.form', 'Form'),
     modes: tOr('core.yamlEditor.modes', 'View'),
-    syntaxBlocked: tOr('core.yamlEditor.syntaxBlocked', 'Fix the syntax errors before switching to the form'),
+    syntaxBlocked: tOr('core.yamlEditor.syntaxBlocked', 'Fix the syntax errors before switching to the tree or the form'),
     syntaxErrors: n('syntaxErrors', '{count} syntax error', '{count} syntax errors'),
+    warnings: n('warnings', '{count} warning', '{count} warnings'),
+    colonKey: (key: string, suggestion: string) => tOr('core.yamlEditor.colonKey', 'The key is "{key}": did you mean "{suggestion}:"?', { key, suggestion }),
+    spacedKey: (key: string) => tOr('core.yamlEditor.spacedKey', 'The key "{key}" starts or ends with a space', { key }),
     addItem: tOr('core.yamlEditor.addItem', 'Add item'),
     addKey: tOr('core.yamlEditor.addKey', 'Add'),
     newKey: tOr('core.yamlEditor.newKey', 'new key'),
@@ -92,6 +100,7 @@ onMounted(() => {
       schema: props.schema,
       validator: props.validator,
       problems: props.problems,
+      lint: props.lint,
       readOnly: props.readOnly,
       mainMenuBar: props.mainMenuBar,
       labels: labels(),
@@ -116,9 +125,9 @@ watch(
   }
 )
 watch(
-  () => [props.schema, props.validator, props.problems, props.readOnly, props.mainMenuBar] as const,
+  () => [props.schema, props.validator, props.problems, props.lint, props.readOnly, props.mainMenuBar] as const,
   () => {
-    editor?.updateProps({ schema: props.schema, validator: props.validator, problems: props.problems, readOnly: props.readOnly, mainMenuBar: props.mainMenuBar })
+    editor?.updateProps({ schema: props.schema, validator: props.validator, problems: props.problems, lint: props.lint, readOnly: props.readOnly, mainMenuBar: props.mainMenuBar })
     if (editor) emit('status', editor.status())
   }
 )

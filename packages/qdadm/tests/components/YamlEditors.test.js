@@ -12,6 +12,8 @@ import { nextTick, ref } from 'vue'
 import VanillaYamlEditor from '../../src/components/editors/yaml/VanillaYamlEditor.vue'
 import YamlConfigEditor from '../../src/components/editors/yaml/YamlConfigEditor.vue'
 import { restYamlAdapter, YamlConflictError, normalizeProblemPath } from '../../src/components/editors/yaml/yamlConfigAdapter'
+import { I18N_INJECTION_KEY } from '../../src/i18n/useI18n'
+import { I18n } from '../../src/i18n/I18n'
 
 vi.mock('vue-router', () => ({ onBeforeRouteLeave: vi.fn() }))
 
@@ -107,6 +109,33 @@ describe('VanillaYamlEditor (#4303)', () => {
     mounted.push(w)
     await nextTick()
     expect(field(w, 'stores.paris.enabled').find('.vye-problem').text()).toBe('server says no')
+  })
+
+  it('three views in the catalogue language: form with a schema, tree without; typo warnings (#4399)', async () => {
+    const i18n = new I18n({ defaultLocale: 'fr' })
+    await i18n.bootstrap()
+    const make = (props) => {
+      const w = mount(VanillaYamlEditor, { props, global: { provide: { [I18N_INJECTION_KEY]: i18n } }, attachTo: document.body })
+      mounted.push(w)
+      return w
+    }
+    const tabs = (w) => w.findAll('.vye-tab').map((t) => t.text())
+    const active = (w) => w.find('.vye-tab-active').text()
+
+    const withSchema = make({ modelValue: YAML, schema: SCHEMA })
+    await nextTick()
+    expect(tabs(withSchema)).toEqual(['Texte', 'Arbre', 'Formulaire'])
+    expect(active(withSchema)).toBe('Formulaire')
+
+    const typo = make({ modelValue: 'port :: 8080\n' })
+    await nextTick()
+    expect(active(typo)).toBe('Arbre')
+    expect(typo.find('.vye-status').text()).toBe('1 avertissement')
+    expect(typo.find('.vye-problem-warning').text()).toBe('La clé est « port : » : vouliez-vous dire « port: » ?')
+
+    const quiet = make({ modelValue: 'port :: 8080\n', lint: false })
+    await nextTick()
+    expect(quiet.find('.vye-status').text()).toBe('')
   })
 })
 

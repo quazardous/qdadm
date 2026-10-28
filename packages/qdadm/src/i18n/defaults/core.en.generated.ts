@@ -265,10 +265,14 @@ export default `core:
   # VanillaYamlEditor and YamlConfigEditor (#4303)
   yamlEditor:
     text: Text
-    tree: Form
+    tree: Tree
+    form: Form
     modes: View
-    syntaxBlocked: Fix the syntax errors before switching to the form
+    syntaxBlocked: "Fix the syntax errors before switching to the tree or the form"
     syntaxErrors: "{count} syntax error | {count} syntax errors"
+    warnings: "{count} warning | {count} warnings"
+    colonKey: 'The key is "{key}": did you mean "{suggestion}:"?'
+    spacedKey: 'The key "{key}" starts or ends with a space'
     addItem: Add item
     addKey: Add
     newKey: new key

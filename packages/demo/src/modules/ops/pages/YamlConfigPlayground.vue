@@ -26,7 +26,7 @@ function reset() {
       <template #title>Availability filters</template>
       <template #content>
         <p class="hint">
-          Edit in the form or in the text: comments and formatting stay as written. Saving runs the server's check
+          Edit in the form, the tree or the text: comments and formatting stay as written. Saving runs the server's check
           (a store channel needs a SKU), shows the diff and asks for a reason. The history keeps every save.
         </p>
         <div class="actions">

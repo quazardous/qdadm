@@ -265,10 +265,14 @@ export default `core:
   # VanillaYamlEditor and YamlConfigEditor (#4303)
   yamlEditor:
     text: Texte
-    tree: Formulaire
+    tree: Arbre
+    form: Formulaire
     modes: Vue
-    syntaxBlocked: Corrigez les erreurs de syntaxe avant de passer au formulaire
+    syntaxBlocked: "Corrigez les erreurs de syntaxe avant de passer à l'arbre ou au formulaire"
     syntaxErrors: "{count} erreur de syntaxe | {count} erreurs de syntaxe"
+    warnings: "{count} avertissement | {count} avertissements"
+    colonKey: 'La clé est « {key} » : vouliez-vous dire « {suggestion}: » ?'
+    spacedKey: 'La clé « {key} » commence ou finit par une espace'
     addItem: Ajouter un élément
     addKey: Ajouter
     newKey: nouvelle clé
