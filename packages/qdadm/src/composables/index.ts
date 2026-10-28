@@ -48,6 +48,7 @@ export {
   type BulkStatusActionReturn,
 } from './useListPage'
 export { usePageTitle, type UsePageTitleReturn, type TitleParts, type TitleInput } from './usePageTitle'
+export { useFormatBytes } from './useFormatBytes'
 export { useApp, type UseAppReturn } from './useApp'
 export { useAuth, type UseAuthReturn } from './useAuth'
 export { useUserBox, resolveUserAvatar, isExternalUserLink, type UseUserBoxReturn, type UserAvatarResolver, type UserBoxUser } from './useUserBox'

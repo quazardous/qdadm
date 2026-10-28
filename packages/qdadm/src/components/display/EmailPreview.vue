@@ -15,7 +15,7 @@
 import { computed, ref, watch } from 'vue'
 import QdButton from '../base/QdButton.vue'
 import { useI18n } from '../../i18n/useI18n'
-import { formatBytes } from '../../utils/formatters'
+import { useFormatBytes } from '../../composables/useFormatBytes'
 import {
   attachmentSize,
   attachmentUrl,
@@ -50,6 +50,7 @@ const props = withDefaults(defineProps<Props>(), {
 })
 
 const { t, locale } = useI18n()
+const formatBytes = useFormatBytes()
 
 // --- The email ---
 

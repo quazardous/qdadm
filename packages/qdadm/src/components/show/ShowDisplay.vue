@@ -23,12 +23,14 @@
  * - url: clickable link
  * - json: formatted JSON
  * - currency: formatted currency
+ * - bytes: a file size ("1,4 Mo"), in the app's language
  * - badge: styled tag
  */
 import { computed, type PropType } from 'vue'
 import { RouterLink, type RouteLocationRaw } from 'vue-router'
 import Tag from 'primevue/tag'
-import { formatDate, formatNumber, formatCurrency, getEmptyPlaceholder } from '../../utils/formatters'
+import { formatDate, formatNumber, formatCurrency, formatBytes, getEmptyPlaceholder } from '../../utils/formatters'
+import { useFormatBytes } from '../../composables/useFormatBytes'
 
 type DisplayType =
   | 'text'
@@ -45,6 +47,7 @@ type DisplayType =
   | 'url'
   | 'json'
   | 'currency'
+  | 'bytes'
   | 'badge'
 
 type DisplayValue = string | number | boolean | Date | null | undefined | unknown
@@ -126,6 +129,15 @@ const currencyValue = computed(() => {
   const num = Number(props.value)
   if (isNaN(num)) return String(props.value)
   return formatCurrency(num, props.field.currencyCode || 'USD', props.field.locale)
+})
+
+// Format a size in bytes: the app's language and catalogue units, or the field's locale
+const appBytes = useFormatBytes()
+const bytesValue = computed(() => {
+  if (isEmpty.value) return emptyText.value
+  const num = Number(props.value)
+  if (isNaN(num)) return String(props.value)
+  return props.field.locale ? formatBytes(num, props.field.locale) : appBytes(num)
 })
 
 // Format boolean value
@@ -266,6 +278,11 @@ const imageStyle = computed(() => ({
   <!-- Currency -->
   <span v-else-if="displayType === 'currency'" class="show-display show-display--currency">
     {{ currencyValue }}
+  </span>
+
+  <!-- Size in bytes -->
+  <span v-else-if="displayType === 'bytes'" class="show-display show-display--bytes">
+    {{ bytesValue }}
   </span>
 
   <!-- Boolean (icon) -->

@@ -91,6 +91,8 @@ export const SHOW_TYPE_MAPPINGS: Record<string, string> = {
   float: 'number',
   decimal: 'number',
   currency: 'currency',
+  bytes: 'bytes',
+  filesize: 'bytes',
   boolean: 'boolean',
   bool: 'boolean',
   date: 'date',

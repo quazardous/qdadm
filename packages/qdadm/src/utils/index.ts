@@ -15,6 +15,7 @@ export {
   formatNumber,
   formatCurrency,
   formatBytes,
+  byteUnits,
   formatPercent,
   setEmptyPlaceholder,
   getEmptyPlaceholder,

@@ -201,18 +201,37 @@ export function formatCurrency(
   return new Intl.NumberFormat(locale, { style: 'currency', currency: currencyCode }).format(value)
 }
 
+/** Size units by language (octets in French); any other language gets the English ones. */
+const BYTE_UNITS: Record<string, string[]> = {
+  en: ['B', 'KB', 'MB', 'GB', 'TB'],
+  fr: ['o', 'ko', 'Mo', 'Go', 'To'],
+}
+
 /**
- * Format bytes to human-readable size
+ * The size units of a locale: B, KB, MB, GB, TB, or o, ko, Mo, Go, To in French
+ *
+ * @param locale - Explicit locale override (default: browser locale)
  */
-export function formatBytes(bytes: number | null | undefined): string {
+export function byteUnits(locale?: string): string[] {
+  const lang = new Intl.NumberFormat(locale).resolvedOptions().locale.split('-')[0] ?? 'en'
+  return BYTE_UNITS[lang] ?? BYTE_UNITS.en!
+}
+
+/**
+ * Format bytes to human-readable size, base 1024 ("1 Mo", "1,4 Mo", "512 o")
+ *
+ * @param locale - Explicit locale override (default: browser locale)
+ * @param units - The five unit labels, B to TB (default: the locale's, see byteUnits)
+ */
+export function formatBytes(bytes: number | null | undefined, locale?: string, units?: string[]): string {
   if (bytes === null || bytes === undefined) return emptyPlaceholder
-  if (bytes === 0) return '0 B'
-
-  const units = ['B', 'KB', 'MB', 'GB', 'TB']
+  const labels = units ?? byteUnits(locale)
   const k = 1024
-  const i = Math.floor(Math.log(bytes) / Math.log(k))
-
-  return `${(bytes / Math.pow(k, i)).toFixed(1)} ${units[i]}`
+  let i = bytes === 0 ? 0 : Math.min(Math.max(Math.floor(Math.log(Math.abs(bytes)) / Math.log(k)), 0), labels.length - 1)
+  // 1023.96 KB shows as 1 MB, not 1 024 KB
+  if (i < labels.length - 1 && Math.round((Math.abs(bytes) / Math.pow(k, i)) * 10) / 10 >= k) i++
+  const value = new Intl.NumberFormat(locale, { maximumFractionDigits: i === 0 ? 0 : 1 }).format(bytes / Math.pow(k, i))
+  return `${value} ${labels[i]}`
 }
 
 /**

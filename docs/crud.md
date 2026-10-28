@@ -589,6 +589,7 @@ createApp({ layouts: { list: MyListLayout, form: MyFormLayout, show: MyShowLayou
 | `badge` | PrimeVue Tag with severity |
 | `currency` | Formatted currency string |
 | `number` | Locale-formatted number |
+| `bytes` | A file size in the app's language: `1,4 Mo` in French, `1.4 MB` in English (schema types `bytes` and `filesize`) |
 | `boolean` | Checkmark / X icon |
 | `image` | `<img>` tag |
 | `textarea` | Monospace text block |
@@ -606,6 +607,19 @@ fields: { elected_at: { type: 'date', emptyText: 'not judged yet' } }
 
 The kernel option also applies to the formatters in `@quazardous/qdadm/utils`
 (`formatDate`, `formatNumber`…), so list columns show the same marker.
+
+`formatBytes(bytes, locale?, units?)` writes a size in base 1024 with the
+locale's number format and units: o, ko, Mo, Go, To in French, B, KB, MB, GB, TB
+otherwise (`byteUnits(locale)`). In a component, `useFormatBytes()` gives the
+same in the app's language, with the units of the catalogue
+(`core.units.bytes.{b,kb,mb,gb,tb}`), so an app can rename them:
+
+```vue
+<script setup>
+const formatBytes = useFormatBytes()
+</script>
+<Column header="Size"><template #body="{ data }">{{ formatBytes(data.size) }}</template></Column>
+```
 
 ### ShowPage slots
 

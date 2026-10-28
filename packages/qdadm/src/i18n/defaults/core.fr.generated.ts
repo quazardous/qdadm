@@ -262,6 +262,14 @@ export default `core:
     next: Message suivant
     position: "{index} sur {count}"
     close: Fermer ce message
+  # formatBytes in qdadm's own components (#4384)
+  units:
+    bytes:
+      b: o
+      kb: ko
+      mb: Mo
+      gb: Go
+      tb: To
   # VanillaYamlEditor and YamlConfigEditor (#4303)
   yamlEditor:
     text: Texte

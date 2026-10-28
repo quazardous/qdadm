@@ -261,6 +261,7 @@ export {
   type TitleParts,
   type TitleInput,
 } from './composables/usePageTitle'
+export { useFormatBytes } from './composables/useFormatBytes'
 export { useApp, type UseAppReturn } from './composables/useApp'
 export { useAuth, type UseAuthReturn } from './composables/useAuth'
 export { useUserBox, resolveUserAvatar, isExternalUserLink, type UseUserBoxReturn, type UserAvatarResolver, type UserBoxUser } from './composables/useUserBox'

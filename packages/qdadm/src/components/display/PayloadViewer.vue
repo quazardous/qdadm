@@ -34,7 +34,7 @@ import {
   type PayloadFormat,
   type PayloadMask,
 } from '../../utils/payload'
-import { formatBytes } from '../../utils/formatters'
+import { useFormatBytes } from '../../composables/useFormatBytes'
 
 export interface PayloadRequest {
   method?: string
@@ -70,6 +70,7 @@ const props = withDefaults(defineProps<Props>(), {
 })
 
 const { t } = useI18n()
+const formatBytes = useFormatBytes()
 const orchestrator = inject<{ toast: { success: (...a: unknown[]) => void; error: (...a: unknown[]) => void } } | null>('qdadmOrchestrator', null)
 
 const contentTypeHeader = computed(() => {
