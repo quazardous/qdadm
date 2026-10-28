@@ -1,5 +1,13 @@
 # Changelog
 
+## 2.44.0
+
+### Minor Changes
+
+- b51f397: The YAML editors move to `@quazardous/vanilla-yamleditor` 0.6, then 0.7 and 0.8 (see below; this release needs `^0.8.0`); its main entry no longer brings `@codemirror/merge`, and the consumer smoke now fails if an app that imports `@quazardous/qdadm/editors/yaml` gets it in its bundle. `YamlConfigEditor` lists the keys a change touches above the review diff (up to 8, then "+N more"; a click goes back to that field), and the keys the other person changed in the 409 dialog. New labels `core.yamlEditor.changedKeys`, `theyChanged`, `moreKeys`.
+- b3dfbfc: The YAML editors move to `@quazardous/vanilla-yamleditor` 0.7. `VanillaYamlEditor` and `YamlConfigEditor` take `modes` (the views offered, e.g. `['form', 'text']`) and `modeSwitch` (hide the view buttons). A text that stops parsing now switches to the text view, even outside `modes`, and back to an offered view once it parses; `v-model:mode` follows both moves.
+- bac7d2f: The YAML editors move to `@quazardous/vanilla-yamleditor` 0.8 (peer `^0.8.0`, install the v0.8.0 release tarball). Nothing changes in qdadm's API; the text view's line numbers no longer drift after switching from the tree or the form. The lib's linked views (`createYamlDocument`, `mount*View`) are reachable through `VanillaYamlEditor`'s exposed `editor().document`.
+
 ## 2.43.0
 
 ### Minor Changes
