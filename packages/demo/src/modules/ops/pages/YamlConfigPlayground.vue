@@ -7,12 +7,15 @@ import { usePageTitle } from '@quazardous/qdadm'
 import { YamlConfigEditor } from '@quazardous/qdadm/editors/yaml'
 import Card from 'primevue/card'
 import Button from 'primevue/button'
+import Checkbox from 'primevue/checkbox'
 import { fakeYamlAdapter, someoneElseSaves, resetYamlConfig } from '../fakeYamlConfig'
 
 usePageTitle('YAML config')
 
 const editor = ref(null)
 const key = ref(0)
+// Offer only the form and the text (#4414); a broken text still shows the text view
+const formAndText = ref(false)
 
 function reset() {
   resetYamlConfig()
@@ -32,8 +35,9 @@ function reset() {
         <div class="actions">
           <Button label="Someone else saves" icon="pi pi-user-edit" severity="secondary" outlined size="small" @click="someoneElseSaves" />
           <Button label="Reset the demo" icon="pi pi-refresh" severity="secondary" text size="small" @click="reset" />
+          <label class="toggle"><Checkbox v-model="formAndText" binary input-id="form-and-text" /> Form and text only</label>
         </div>
-        <YamlConfigEditor :key="key" ref="editor" :adapter="fakeYamlAdapter" height="30rem" />
+        <YamlConfigEditor :key="key" ref="editor" :adapter="fakeYamlAdapter" :modes="formAndText ? ['form', 'text'] : undefined" height="30rem" />
       </template>
     </Card>
   </div>
@@ -47,7 +51,14 @@ function reset() {
 
 .actions {
   display: flex;
+  align-items: center;
   gap: 0.5rem;
   margin-bottom: 0.75rem;
+}
+.toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.875rem;
 }
 </style>

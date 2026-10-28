@@ -28,6 +28,10 @@ import { useI18n } from '../../../i18n/useI18n'
 interface Props {
   modelValue?: string
   mode?: YamlEditorMode
+  /** The views offered, in the order of their buttons (default all three). */
+  modes?: YamlEditorMode[]
+  /** Show the view buttons (the bar keeps its status). */
+  modeSwitch?: boolean
   schema?: JsonSchema
   validator?: (value: unknown, parsed: ParsedYaml) => YamlProblemInput[]
   /** Problems found elsewhere (a server check), shown on their line and field. */
@@ -42,6 +46,8 @@ interface Props {
 const props = withDefaults(defineProps<Props>(), {
   modelValue: '',
   mode: undefined,
+  modes: undefined,
+  modeSwitch: true,
   schema: undefined,
   validator: undefined,
   problems: () => [],
@@ -97,6 +103,8 @@ onMounted(() => {
     props: {
       content: props.modelValue,
       mode: props.mode,
+      modes: props.modes,
+      modeSwitch: props.modeSwitch,
       schema: props.schema,
       validator: props.validator,
       problems: props.problems,
@@ -125,9 +133,9 @@ watch(
   }
 )
 watch(
-  () => [props.schema, props.validator, props.problems, props.lint, props.readOnly, props.mainMenuBar] as const,
+  () => [props.schema, props.validator, props.problems, props.lint, props.readOnly, props.mainMenuBar, props.modes, props.modeSwitch] as const,
   () => {
-    editor?.updateProps({ schema: props.schema, validator: props.validator, problems: props.problems, lint: props.lint, readOnly: props.readOnly, mainMenuBar: props.mainMenuBar })
+    editor?.updateProps({ schema: props.schema, validator: props.validator, problems: props.problems, lint: props.lint, readOnly: props.readOnly, mainMenuBar: props.mainMenuBar, modes: props.modes, modeSwitch: props.modeSwitch })
     if (editor) emit('status', editor.status())
   }
 )

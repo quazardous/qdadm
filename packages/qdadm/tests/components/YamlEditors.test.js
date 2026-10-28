@@ -111,6 +111,31 @@ describe('VanillaYamlEditor (#4303)', () => {
     expect(field(w, 'stores.paris.enabled').find('.vye-problem').text()).toBe('server says no')
   })
 
+  it('modes picks the views offered; modeSwitch hides the buttons (#4414)', async () => {
+    const two = mount(VanillaYamlEditor, { props: { modelValue: YAML, schema: SCHEMA, modes: ['form', 'text'] }, attachTo: document.body })
+    mounted.push(two)
+    await nextTick()
+    expect(two.findAll('.vye-tab').filter((t) => !t.element.hidden && t.element.style.display !== 'none').map((t) => t.text())).toEqual(['Form', 'Text'])
+    const none = mount(VanillaYamlEditor, { props: { modelValue: YAML, schema: SCHEMA, modeSwitch: false }, attachTo: document.body })
+    mounted.push(none)
+    await nextTick()
+    expect(none.findAll('.vye-tab').filter((t) => !t.element.hidden && t.element.style.display !== 'none' && !t.element.closest('[hidden]'))).toHaveLength(0)
+  })
+
+  it('a text that stops parsing shows the text view, even outside modes, and v-model:mode follows (#4414)', async () => {
+    const modes = []
+    const w = mount(VanillaYamlEditor, {
+      props: { modelValue: YAML, schema: SCHEMA, modes: ['form'], 'onUpdate:mode': (m) => modes.push(m) },
+      attachTo: document.body,
+    })
+    mounted.push(w)
+    await nextTick()
+    await w.setProps({ modelValue: 'stores: [unclosed\n' })
+    expect(modes.at(-1)).toBe('text')
+    await w.setProps({ modelValue: YAML })
+    expect(modes.at(-1)).toBe('form')
+  })
+
   it('value labels and deprecated keys from 0.4: titles go through the catalogue (#4398)', async () => {
     const i18n = new I18n({ defaultLocale: 'fr' })
     await i18n.bootstrap()

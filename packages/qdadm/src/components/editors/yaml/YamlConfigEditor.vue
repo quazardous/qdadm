@@ -31,6 +31,10 @@ interface Props {
   readOnly?: boolean
   /** Force a view; default: form with a schema, tree without. */
   mode?: YamlEditorMode
+  /** The views offered, e.g. ['form', 'text']. */
+  modes?: YamlEditorMode[]
+  /** Show the view buttons. */
+  modeSwitch?: boolean
   /** Warn on valid YAML that is likely a typo (`key ::`); never blocks a save. */
   lint?: boolean
   height?: string
@@ -41,6 +45,8 @@ interface Props {
 const props = withDefaults(defineProps<Props>(), {
   readOnly: false,
   mode: undefined,
+  modes: undefined,
+  modeSwitch: true,
   lint: true,
   height: '28rem',
   guard: true,
@@ -319,6 +325,8 @@ defineExpose({ reload: load, check: runCheck, save: startSave, dirty })
       :schema="original.schema"
       :problems="serverProblems"
       :mode="mode"
+      :modes="modes"
+      :mode-switch="modeSwitch"
       :lint="lint"
       :read-only="readOnly"
       :height="height"

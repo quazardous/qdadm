@@ -269,7 +269,7 @@ For configuration files edited live: `@quazardous/qdadm/editors/yaml`, on
 Its edits keep the file as written: comments, key order, quoting and indentation stay, so one changed field is a one-line diff.
 
 ```sh
-npm install https://github.com/quazardous/vanilla-yamleditor/releases/download/v0.6.0/quazardous-vanilla-yamleditor-0.6.0.tgz
+npm install https://github.com/quazardous/vanilla-yamleditor/releases/download/v0.7.0/quazardous-vanilla-yamleditor-0.7.0.tgz
 ```
 
 | Widget | Use |
@@ -290,6 +290,8 @@ npm install https://github.com/quazardous/vanilla-yamleditor/releases/download/v
 | `validator` | `(value) => [{ path, message }]`, for extra checks |
 | `problems` | Problems found elsewhere (a server check), shown on their line and field; `path` is an array or `a.b[0]` |
 | `mode` / `v-model:mode` | `text`, `tree` or `form`. Default: `form` with a schema, `tree` without, `text` while the text does not parse |
+| `modes` | The views offered, in the order of their buttons, e.g. `['form', 'text']` (default all three). A text that stops parsing still shows the text view, and `v-model:mode` follows; the editor comes back to an offered view once it parses |
+| `modeSwitch` | Show the view buttons (default `true`); the bar keeps its status. One offered view shows no buttons |
 | `lint` | Warn on valid YAML that is likely a typo, such as `port :: 8080` (default `true`); warnings never block a save |
 | `readOnly`, `height`, `mainMenuBar` | |
 
@@ -310,7 +312,7 @@ Saving is one gesture:
 
 If someone saved in between, the server answers 409 and the editor shows their version next to yours, with the keys they changed since you loaded it. You can load theirs, or keep yours and review it against theirs before saving.
 
-**History** lists past revisions (who, when, reason, diff). "Load this version" puts one back in the editor, and you save it like any other change. Leaving the page with unsaved changes asks first (`guard`, on by default). `readOnly` comes from the prop or from the loaded document; `mode` and `lint` go to the `VanillaYamlEditor` inside.
+**History** lists past revisions (who, when, reason, diff). "Load this version" puts one back in the editor, and you save it like any other change. Leaving the page with unsaved changes asks first (`guard`, on by default). `readOnly` comes from the prop or from the loaded document; `mode`, `modes`, `modeSwitch` and `lint` go to the `VanillaYamlEditor` inside.
 
 `restYamlAdapter(url, { path?, fetch?, headers? })` speaks this contract. Pass your app's `fetch` for authentication. `path` adds `?path=a.b` to every call, to edit part of a document.
 
