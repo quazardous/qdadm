@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.44.1
+
+### Patch Changes
+
+- ce248e4: vanilla-yamleditor is on npm: install it with `npm install @quazardous/vanilla-yamleditor` instead of the GitHub release tarball URL (#4429). The peer stays `^0.8.0`.
+
 ## 2.44.0
 
 ### Minor Changes
