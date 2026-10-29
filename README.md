@@ -58,7 +58,7 @@ npm create vite@latest my-admin -- --template vue-ts
 cd my-admin
 npm install @quazardous/qdadm primevue @primeuix/themes primeicons vue-router pinia
 npm install -D vanilla-jsoneditor  # only if you import @quazardous/qdadm/editors
-npm install https://github.com/quazardous/vanilla-yamleditor/releases/download/v0.8.0/quazardous-vanilla-yamleditor-0.8.0.tgz  # only if you import @quazardous/qdadm/editors/yaml
+npm install @quazardous/vanilla-yamleditor  # only if you import @quazardous/qdadm/editors/yaml
 ```
 
 `import '@quazardous/qdadm/styles'` loads a compiled stylesheet: no sass needed,

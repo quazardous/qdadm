@@ -269,7 +269,7 @@ For configuration files edited live: `@quazardous/qdadm/editors/yaml`, on
 Its edits keep the file as written: comments, key order, quoting and indentation stay, so one changed field is a one-line diff.
 
 ```sh
-npm install https://github.com/quazardous/vanilla-yamleditor/releases/download/v0.8.0/quazardous-vanilla-yamleditor-0.8.0.tgz
+npm install @quazardous/vanilla-yamleditor
 ```
 
 | Widget | Use |
