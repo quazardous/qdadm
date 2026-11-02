@@ -15,6 +15,7 @@
 import type { TaskDialogOptions, TaskLogPatterns, TaskUiOptions } from './taskUi'
 import { reactive, computed, type ComputedRef } from 'vue'
 import type { LogSource } from '../composables/useLogStream'
+import type { TaskPhasesSource } from './taskPhases'
 
 export type TaskStatus = 'starting' | 'queued' | 'running' | 'succeeded' | 'failed' | 'cancelled'
 
@@ -60,6 +61,13 @@ export interface TaskKind {
   dialog?: TaskDialogOptions
   /** What the log flags as an error or a timestamp for this kind, over the app's (#4386). */
   logPatterns?: TaskLogPatterns
+  /**
+   * The task's phases, shown as a frieze above the log (#4655): fixed, or read
+   * from the backend at the log's pace while the run lasts, then once at its end.
+   */
+  phases?: TaskPhasesSource
+  /** An icon class per phase name, over the app's. */
+  phaseIcons?: Record<string, string>
   /** Slot components for this kind's dialog, over the app's. */
   slots?: TaskUiOptions['slots']
   /** A dialog of its own for this kind, instead of TaskDialog. */

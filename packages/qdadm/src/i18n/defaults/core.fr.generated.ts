@@ -165,6 +165,17 @@ export default `core:
     tray: "{count} tâche en cours | {count} tâches en cours"
     trayDone: Tâches récentes
     clear: Effacer les terminées
+    # The phases frieze (#4655)
+    phase:
+      pending: À venir
+      running: En cours
+      done: Faite
+      failed: En échec
+      cancelled: Annulée
+      skipped: Sautée
+      subs: "{count} sous-phase | {count} sous-phases"
+      filter: "Phase : {name}"
+      showAll: Voir tout le journal
   # LoginPage (#4168)
   login:
     username: Identifiant

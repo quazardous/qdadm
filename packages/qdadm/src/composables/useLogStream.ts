@@ -18,13 +18,27 @@
  * // A finished log
  * useLogStream({ lines: text.split('\n') })
  * ```
+ *
+ * A line may also come as an object, `{ text, step, phase }`: the step it
+ * belongs to, and on a phase's first and last lines the marker (#4655). The
+ * follow dialog filters the log by phase with them.
  */
 
 import { shallowRef, ref, onScopeDispose, getCurrentScope, type Ref, type ShallowRef } from 'vue'
 import { parseAnsiLine, stripAnsi, type AnsiSegment, type AnsiStyle } from '../utils/ansi'
 
+/** A line with what it belongs to (#4655): its step, and a phase's start or end marker. */
+export interface LogEntry {
+  text: string
+  step?: string | null
+  phase?: { event: 'start' | 'end'; name: string } | null
+}
+
+/** A line as a source gives it: plain text, or an entry. */
+export type LogChunkLine = string | LogEntry
+
 export interface LogPollResult {
-  lines: string[]
+  lines: LogChunkLine[]
   /** Offset to ask for next. Defaults to the previous one plus the lines received. */
   next?: number
   /** True once the log is complete: polling stops. */
@@ -32,7 +46,7 @@ export interface LogPollResult {
 }
 
 export interface LogPushApi {
-  push: (lines: string | string[]) => void
+  push: (lines: LogChunkLine | LogChunkLine[]) => void
   end: () => void
   fail: (error: unknown) => void
 }
@@ -46,10 +60,10 @@ export type LogSource =
       /** Event that closes the log. Default `end`. */
       endEvent?: string
       /** Turn a message's data into lines. Default: JSON `{ lines, done }` or plain text split on newlines. */
-      parse?: (data: string) => string[] | LogPollResult
+      parse?: (data: string) => LogChunkLine[] | LogPollResult
     }
   | { subscribe: (api: LogPushApi) => (() => void) | void }
-  | { lines: string[] }
+  | { lines: LogChunkLine[] }
 
 export interface LogLine {
   /** 1-based number in the whole log, kept when old lines are dropped. */
@@ -59,6 +73,10 @@ export interface LogLine {
   text: string
   segments: AnsiSegment[]
   error: boolean
+  /** The step it belongs to, when the source says (#4655). */
+  step?: string
+  /** On a phase's first and last lines: the marker. */
+  phase?: { event: 'start' | 'end'; name: string }
 }
 
 export type LogStreamStatus = 'idle' | 'streaming' | 'done' | 'error'
@@ -83,7 +101,7 @@ export interface UseLogStreamReturn {
   /** Empty the buffer and read the source again from its start. */
   restart: () => void
   /** Add lines by hand (used by the push sources, open to the app). */
-  append: (lines: string | string[]) => void
+  append: (lines: LogChunkLine | LogChunkLine[]) => void
 }
 
 const MAX_BACKOFF_MS = 30_000
@@ -95,9 +113,21 @@ function toRegExp(pattern: RegExp | string | null | undefined): RegExp | null {
   return new RegExp(pattern.source, pattern.flags.replace(/[gy]/g, ''))
 }
 
-function splitLines(chunk: string | string[]): string[] {
+type Incoming = { raw: string; step?: string; phase?: LogLine['phase'] }
+
+// An entry spanning several lines keeps its step on each, its marker on the first
+function splitLines(chunk: LogChunkLine | LogChunkLine[]): Incoming[] {
   const list = Array.isArray(chunk) ? chunk : [chunk]
-  return list.flatMap((l) => String(l).replace(/\r\n?/g, '\n').split('\n'))
+  return list.flatMap((l) => {
+    const entry = l !== null && typeof l === 'object' ? l : null
+    const raws = String(entry ? entry.text : l).replace(/\r\n?/g, '\n').split('\n')
+    if (!entry) return raws.map((raw) => ({ raw }))
+    return raws.map((raw, i) => ({
+      raw,
+      ...(entry.step ? { step: entry.step } : {}),
+      ...(i === 0 && entry.phase ? { phase: { event: entry.phase.event, name: entry.phase.name } } : {}),
+    }))
+  })
 }
 
 function defaultParse(data: string): string[] | LogPollResult {
@@ -110,7 +140,7 @@ function defaultParse(data: string): string[] | LogPollResult {
       // not JSON: a line that happens to start with a brace
     }
   }
-  return splitLines(data)
+  return splitLines(data).map((l) => l.raw)
 }
 
 export function useLogStream(source: LogSource, options: UseLogStreamOptions = {}): UseLogStreamReturn {
@@ -128,14 +158,17 @@ export function useLogStream(source: LogSource, options: UseLogStreamOptions = {
   // A restart must not let a poll answer from the previous run append.
   let run = 0
 
-  function append(chunk: string | string[]): void {
+  function append(chunk: LogChunkLine | LogChunkLine[]): void {
     const incoming = splitLines(chunk)
     if (incoming.length === 0) return
-    const parsed: LogLine[] = incoming.map((raw) => {
+    const parsed: LogLine[] = incoming.map(({ raw, step, phase }) => {
       const { segments, state } = parseAnsiLine(raw, ansiState)
       ansiState = state
       const text = stripAnsi(raw)
-      return { n: ++counter, raw, text, segments, error: errorRe ? errorRe.test(text) : false }
+      const line: LogLine = { n: ++counter, raw, text, segments, error: errorRe ? errorRe.test(text) : false }
+      if (step) line.step = step
+      if (phase) line.phase = phase
+      return line
     })
     let next = lines.value.concat(parsed)
     if (next.length > maxLines) {

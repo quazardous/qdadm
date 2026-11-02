@@ -116,6 +116,8 @@ export {
   useLogStream,
   type LogSource,
   type LogLine,
+  type LogEntry,
+  type LogChunkLine,
   type LogPollResult,
   type LogPushApi,
   type LogStreamStatus,

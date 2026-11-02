@@ -13,6 +13,9 @@
  * and slots come layered: qdadm's defaults, the app's (configureTasks), the
  * task kind's, then these props. Slots `header`, `before-log`, `after-log`,
  * `actions` and `result` get `{ run, kind, final }`.
+ *
+ * A kind with `phases` gets a frieze above the log (#4655), read at the log's
+ * pace while the run lasts; picking a step shows only its lines.
  */
 import { computed, inject, onBeforeUnmount, onMounted, ref, useSlots, watch, type Component } from 'vue'
 import { RouterLink } from 'vue-router'
@@ -20,10 +23,12 @@ import Dialog from 'primevue/dialog'
 import ProgressBar from 'primevue/progressbar'
 import QdButton from '../base/QdButton.vue'
 import LogStream from '../display/LogStream.vue'
+import TaskPhases from './TaskPhases.vue'
 import JsonViewer from '../editors/JsonViewer.vue'
 import { useI18n } from '../../i18n/useI18n'
 import { getTaskStore } from '../../tasks/taskStore'
 import { resolveTaskUi, type TaskDialogOptions, type TaskDialogSlotName } from '../../tasks/taskUi'
+import { phaseLabel, phasesMarkedIn, phaseSteps, type TaskPhase } from '../../tasks/taskPhases'
 
 interface Props {
   runId: string | null
@@ -37,7 +42,7 @@ const props = withDefaults(defineProps<Props>(), { options: null, width: undefin
 const emit = defineEmits<{ close: [] }>()
 const slots = useSlots()
 
-const { t } = useI18n()
+const { t, tOr } = useI18n()
 const store = getTaskStore()
 const appConfig = inject<{ name?: string }>('qdadmApp', {})
 
@@ -61,6 +66,90 @@ const slotProps = computed(() => ({ run: run.value, kind: run.value?.kind ?? nul
 /** A page's slot, else the component the app or the kind gave for it */
 const slotComponent = (name: TaskDialogSlotName): Component | null => (slots[name] ? null : (ui.value.slots[name] ?? null))
 const has = (name: TaskDialogSlotName) => !!slots[name] || !!ui.value.slots[name]
+
+// ── The phases (#4655) ────────────────────────────────────────────────────
+const phases = ref<TaskPhase[] | null>(null)
+const selectedPhase = ref<string | null>(null)
+const logView = ref<InstanceType<typeof LogStream> | null>(null)
+/** The sub-phases the log has markers for: the only ones it can be filtered on */
+const markedSubs = computed(() => {
+  const marked = phasesMarkedIn(logView.value?.log.lines.value ?? [])
+  return (phases.value ?? []).flatMap((s) => s.subs ?? []).map((s) => s.name).filter((name) => marked.has(name))
+})
+const selectedLabel = computed(() => {
+  const name = selectedPhase.value
+  if (!name) return ''
+  const isSub = !(phases.value ?? []).some((s) => s.name === name)
+  return phaseLabel(tOr, name, isSub)
+})
+/** The log's pace, else the task's */
+const phasesInterval = computed(() => {
+  const src = logSource.value as { intervalMs?: number } | null
+  return src?.intervalMs ?? def.value?.task?.intervalMs ?? 2000
+})
+
+let phasesTimer: ReturnType<typeof setTimeout> | null = null
+let phasesRead = 0
+
+async function readPhases(): Promise<void> {
+  const source = def.value?.phases
+  if (!source) {
+    phases.value = null
+    return
+  }
+  if (typeof source !== 'function') {
+    phases.value = phaseSteps(source)
+    return
+  }
+  const taskId = run.value?.taskId
+  if (taskId === null || taskId === undefined) return
+  const current = phasesRead
+  try {
+    const read = phaseSteps(await source(taskId))
+    if (current === phasesRead) phases.value = read
+  } catch {
+    // Kept as they were: the next read may do better
+  }
+}
+
+function stopPhases(): void {
+  phasesRead++
+  if (phasesTimer) clearTimeout(phasesTimer)
+  phasesTimer = null
+}
+
+// Read now, then at the log's pace until the run ends, then once more
+function followPhases(): void {
+  stopPhases()
+  const current = phasesRead
+  const tick = async () => {
+    await readPhases()
+    if (current !== phasesRead || final.value || typeof def.value?.phases !== 'function') return
+    phasesTimer = setTimeout(tick, phasesInterval.value)
+  }
+  void tick()
+}
+
+watch(
+  () => [run.value?.id, run.value?.taskId] as const,
+  ([id], previous) => {
+    const previousId = previous?.[0]
+    if (id !== previousId) {
+      phases.value = null
+      selectedPhase.value = null
+    }
+    if (id) followPhases()
+    else stopPhases()
+  },
+  { immediate: true }
+)
+
+watch(final, (done, was) => {
+  if (done && !was && run.value) {
+    stopPhases()
+    void readPhases()
+  }
+})
 
 const now = ref(Date.now())
 const ticker = setInterval(() => (now.value = Date.now()), 1000)
@@ -191,6 +280,7 @@ watch(
 
 onBeforeUnmount(() => {
   clearInterval(ticker)
+  stopPhases()
   narrowQuery?.removeEventListener?.('change', onNarrow)
   window.removeEventListener('pointerup', onPointerUp)
   window.removeEventListener('keydown', onKeyDown)
@@ -239,12 +329,20 @@ onBeforeUnmount(() => {
       <ProgressBar v-if="!final" class="qd-task-progress" :mode="run.progress === null ? 'indeterminate' : 'determinate'"
         :value="Math.round(run.progress ?? 0)" :show-value="run.progress !== null" />
       <div v-if="run.step" class="qd-task-step">{{ run.step }}</div>
+      <TaskPhases v-if="phases?.length" v-model:selected="selectedPhase" class="qd-task-phases-frieze" :phases="phases"
+        :selectable="!!logSource" :selectable-subs="markedSubs" :icons="ui.phaseIcons" />
+      <div v-if="selectedPhase && logSource" class="qd-task-phase-filter">
+        <span>{{ t('core.task.phase.filter', { name: selectedLabel }) }}</span>
+        <button type="button" class="qd-task-phase-filter-clear" :aria-label="t('core.task.phase.showAll')"
+          v-tooltip.top="t('core.task.phase.showAll')" @click="selectedPhase = null"><i class="pi pi-times" /></button>
+      </div>
       <div v-if="has('before-log')" class="qd-task-before-log">
         <slot name="before-log" v-bind="slotProps">
           <component :is="slotComponent('before-log')!" v-bind="slotProps" />
         </slot>
       </div>
-      <LogStream v-if="logSource" :key="run.id" class="qd-task-log" :source="logSource" :filename="logFilename" height="16rem"
+      <LogStream v-if="logSource" ref="logView" :key="run.id" class="qd-task-log" :source="logSource" :filename="logFilename" height="16rem"
+        :phase="selectedPhase"
         :error-pattern="ui.logPatterns.errorPattern" :timestamp-pattern="ui.logPatterns.timestampPattern" @done="store.poke(run.id)" />
       <div v-if="has('after-log')" class="qd-task-after-log">
         <slot name="after-log" v-bind="slotProps">

@@ -9,7 +9,7 @@
  */
 import { defineAsyncComponent } from 'vue'
 import { Module, registerTaskKind } from '@quazardous/qdadm'
-import { getTask, cancelTask, readLog } from './fakeTasks'
+import { getTask, cancelTask, readLog, readPhases } from './fakeTasks'
 
 export class OpsDemoModule extends Module {
   static moduleName = 'ops-demo'
@@ -24,7 +24,25 @@ export class OpsDemoModule extends Module {
       log: (id) => ({ poll: (from) => readLog(id, from), intervalMs: 500 }),
       // The log's lines start with an ISO time, dimmed in the dialog (#4386)
       logPatterns: { timestampPattern: '\\d{4}-\\d{2}-\\d{2}T[\\d:]+Z' },
+      // The phases frieze above the log, read at the log's pace (#4655)
+      phases: readPhases,
+      phaseIcons: { restore: 'pi pi-database' },
     }
+    // Phase labels: `phase.<name>` in the app's catalogue
+    ctx.messages('en', {
+      phase: {
+        allocate: 'Allocate', clone: 'Clone', install: 'Install', restore: 'Restore', start: 'Start',
+        stop: 'Stop', 'drop-db': 'Drop the database', release: 'Release', migrate: 'Migrate',
+        download: 'Download the dump', import: 'Import it',
+      },
+    })
+    ctx.messages('fr', {
+      phase: {
+        allocate: 'Allocation', clone: 'Clonage', install: 'Installation', restore: 'Restauration', start: 'Démarrage',
+        stop: 'Arrêt', 'drop-db': 'Suppression de la base', release: 'Libération', migrate: 'Migrations',
+        download: 'Téléchargement du dump', import: 'Import',
+      },
+    })
     // A kind's own slot in the follow dialog (#4334)
     registerTaskKind('demo-create-box', { ...kind, slots: { 'after-log': defineAsyncComponent(() => import('./pages/BoxSummary.vue')) } })
     registerTaskKind('demo-destroy-box', { ...kind, cancel: undefined })

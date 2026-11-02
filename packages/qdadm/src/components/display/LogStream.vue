@@ -16,6 +16,8 @@
  *   height), so a log of tens of thousands of lines scrolls freely. With
  *   wrapping, rows have no fixed height: every row is in the DOM and the
  *   browser skips painting the ones off screen (content-visibility).
+ * - phase: only that phase's lines on show (#4655), from lines that carry
+ *   their step; copy and download still take the whole log.
  */
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import InputText from 'primevue/inputtext'
@@ -23,6 +25,7 @@ import QdButton from '../base/QdButton.vue'
 import { useI18n } from '../../i18n/useI18n'
 import { ansiStyleToCss } from '../../utils/ansi'
 import { useLogStream, type LogLine, type LogSource, type UseLogStreamReturn } from '../../composables/useLogStream'
+import { linesOfPhase } from '../../tasks/taskPhases'
 
 interface Props {
   /** Where the lines come from; ignored when `stream` is given. */
@@ -43,6 +46,8 @@ interface Props {
   /** Download with the ANSI escapes kept. */
   downloadRaw?: boolean
   maxLines?: number
+  /** Show only this phase's lines: a step's, or a sub-phase's between its markers (#4655). */
+  phase?: string | null
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -58,6 +63,7 @@ const props = withDefaults(defineProps<Props>(), {
   filename: 'log.txt',
   downloadRaw: false,
   maxLines: 100_000,
+  phase: null,
 })
 
 const emit = defineEmits<{
@@ -100,10 +106,10 @@ const isError = (line: LogLine) => line.error || (errorRe.value ? errorRe.value.
 const needle = computed(() => query.value.trim().toLowerCase())
 const isMatch = (line: LogLine) => needle.value !== '' && line.text.toLowerCase().includes(needle.value)
 
+/** The phase's lines, or all of them */
+const scoped = computed<LogLine[]>(() => (props.phase ? linesOfPhase(log.lines.value, props.phase) : log.lines.value))
 /** The lines on show: all of them, or the matching ones. */
-const view = computed<LogLine[]>(() =>
-  onlyMatches.value && needle.value ? log.lines.value.filter(isMatch) : log.lines.value
-)
+const view = computed<LogLine[]>(() => (onlyMatches.value && needle.value ? scoped.value.filter(isMatch) : scoped.value))
 const matchIndexes = computed(() => {
   if (!needle.value) return []
   const out: number[] = []
@@ -254,6 +260,16 @@ const nextError = () => step(errorIndexes.value, currentError, 1)
 watch([needle, onlyMatches], () => {
   currentMatch.value = -1
 })
+
+// Another phase is another view: start from its end, as a fresh log does
+watch(
+  () => props.phase,
+  () => {
+    currentMatch.value = -1
+    currentError.value = -1
+    if (following.value) void nextTick(scrollToEnd)
+  }
+)
 
 function toggleWrap(): void {
   wrapping.value = !wrapping.value

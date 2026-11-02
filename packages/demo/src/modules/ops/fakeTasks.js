@@ -12,6 +12,14 @@ const STEPS = {
   destroy: ['Stopping services', 'Dropping the database', 'Releasing the box'],
   reset: ['Dropping the database', 'Restoring the dump', 'Running migrations'],
 }
+// The same steps as phases (#4655): one name each, and the restore's two sub-phases
+const PHASES = {
+  create: ['allocate', 'clone', 'install', 'restore', 'start'],
+  destroy: ['stop', 'drop-db', 'release'],
+  reset: ['drop-db', 'restore', 'migrate'],
+}
+const SUBS = { restore: ['restore.download', 'restore.import'] }
+const FAIL_AT = 62
 
 function load() {
   try {
@@ -61,7 +69,20 @@ export function getTask(id) {
   return later({ id: task.id, box: task.box, ...stateAt(task, Date.now()) })
 }
 
-/** GET /tasks/<id>/log?from=<n> → { lines, next, done } */
+const progressAt = (task, at) => Math.min(100, Math.max(0, ((at - task.startedAt - 1500) / DURATION[task.type]) * 100))
+
+/** The step and sub-phase running at a time, or null while queued */
+function phaseAt(task, at) {
+  if (at - task.startedAt < 1500) return null
+  const names = PHASES[task.type]
+  const exact = (progressAt(task, at) / 100) * names.length
+  const index = Math.min(names.length - 1, Math.floor(exact))
+  const step = names[index]
+  const subs = SUBS[step]
+  return { step, label: STEPS[task.type][index], sub: subs ? subs[exact - index < 0.5 ? 0 : 1] : null }
+}
+
+/** GET /tasks/<id>/log?from=<n> → { lines, next, done }; each line says its step (#4655) */
 export function readLog(id, from) {
   const task = load()[id]
   if (!task) return Promise.reject(new Error(`task ${id} not found`))
@@ -69,17 +90,67 @@ export function readLog(id, from) {
   const count = Math.floor(state.elapsed / 300)
   const lines = []
   for (let i = from; i < count; i++) {
-    const t = new Date(task.startedAt + i * 300).toISOString().replace(/\.\d+Z$/, 'Z')
-    const s = stateAt(task, task.startedAt + i * 300)
+    const at = task.startedAt + i * 300
+    const t = new Date(at).toISOString().replace(/\.\d+Z$/, 'Z')
+    const ph = phaseAt(task, at)
+    if (!ph) {
+      lines.push(`${t} \x1b[2m  waiting for a worker\x1b[0m`)
+      continue
+    }
+    const prev = i > 0 ? phaseAt(task, at - 300) : null
+    const { step } = ph
+    // A phase's first and last lines carry its marker
+    if (prev?.sub && prev.sub !== ph.sub) lines.push({ text: `${t} \x1b[2m  <-- ${prev.sub}\x1b[0m`, step: prev.step, phase: { event: 'end', name: prev.sub } })
+    if (prev && prev.step !== step) lines.push({ text: `${t} \x1b[2m<== ${prev.step}\x1b[0m`, step: prev.step, phase: { event: 'end', name: prev.step } })
+    if (prev?.step !== step) lines.push({ text: `${t} \x1b[1;34m==> ${ph.label}\x1b[0m`, step, phase: { event: 'start', name: step } })
+    if (ph.sub && prev?.sub !== ph.sub) lines.push({ text: `${t} \x1b[36m  --> ${ph.sub}\x1b[0m`, step, phase: { event: 'start', name: ph.sub } })
     // A file name with "error" in it is not an error: the dialog flags whole words only (#4386)
-    if (s.step === 'Cloning the ref' && i % 9 === 4) lines.push(`${t}   checkout  M  src/handlers/shipping_error.php`)
-    else lines.push(i % 9 === 0 ? `${t} \x1b[1;34m==> ${s.step}\x1b[0m` : `${t} \x1b[2m  ${s.step.toLowerCase()} ${i}\x1b[0m`)
+    if (step === 'clone' && i % 9 === 4) lines.push({ text: `${t}   checkout  M  src/handlers/shipping_error.php`, step })
+    else lines.push({ text: `${t} \x1b[2m  ${ph.label.toLowerCase()} ${i}\x1b[0m`, step })
   }
   const done = ['failed', 'cancelled', 'done'].includes(state.status)
   if (done && from <= count) {
-    if (state.status === 'failed') lines.push(`\x1b[31mERROR\x1b[0m ${state.error}`)
-    if (state.status === 'cancelled') lines.push('\x1b[33mcancelled by the user\x1b[0m')
+    const step = phaseAt(task, task.startedAt + count * 300)?.step
+    if (state.status === 'failed') lines.push({ text: `\x1b[31mERROR\x1b[0m ${state.error}`, step })
+    if (state.status === 'cancelled') lines.push({ text: '\x1b[33mcancelled by the user\x1b[0m', step })
     if (state.status === 'done') lines.push('\x1b[32m✔ finished\x1b[0m')
   }
   return later({ lines, next: done ? count + 1 : count, done }, 60)
+}
+
+/** GET /tasks/<id>/phases → { state, steps: [{ name, state, started, ended, dur, subs }] } (#4655) */
+export function readPhases(id) {
+  const task = load()[id]
+  if (!task) return Promise.reject(new Error(`task ${id} not found`))
+  const now = Date.now()
+  const state = stateAt(task, now)
+  const stopped = state.status === 'failed' || state.status === 'cancelled'
+  // How far it went, in percent: a failure stops at the restore, a cancel where it was
+  const reached = state.status === 'queued' ? -1 : state.status === 'failed' ? FAIL_AT : progressAt(task, task.cancelledAt ?? now)
+  const duration = DURATION[task.type]
+  const iso = (p) => new Date(task.startedAt + 1500 + (p / 100) * duration).toISOString()
+
+  const phase = (name, from, to, subs = []) => {
+    let s
+    if (reached < from || reached < 0) s = stopped ? 'skipped' : 'pending'
+    else if (reached >= to && !(stopped && reached === to && to < 100)) s = 'done'
+    else s = state.status === 'failed' ? 'failed' : state.status === 'cancelled' ? 'cancelled' : 'running'
+    const until = s === 'done' ? to : s === 'failed' || s === 'cancelled' ? reached : null
+    return {
+      name,
+      state: s,
+      started: reached >= from ? iso(from) : null,
+      ended: until === null ? null : iso(until),
+      dur: until === null ? null : Math.round(((until - from) / 100) * duration) / 1000,
+      subs,
+    }
+  }
+  const names = PHASES[task.type]
+  const width = 100 / names.length
+  const steps = names.map((name, i) => {
+    const from = i * width
+    const subs = (SUBS[name] ?? []).map((sub, j, all) => phase(sub, from + (j * width) / all.length, from + ((j + 1) * width) / all.length))
+    return phase(name, from, from + width, subs)
+  })
+  return later({ task: task.id, state: state.status, steps }, 80)
 }

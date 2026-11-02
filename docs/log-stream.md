@@ -26,6 +26,11 @@ The app picks how the lines arrive:
 | `{ subscribe }` | `subscribe({ push, end, fail }) → unsubscribe`, for an SSEBridge event, a WebSocket, anything that pushes. | `end()` |
 | `{ lines }` | a finished log | at once |
 
+A line is text, or an object `{ text, step?, phase? }` that says which step it
+belongs to; a phase's first and last lines also carry its marker,
+`phase: { event: 'start' | 'end', name }`. The `phase` prop, and the task
+dialog's [phases frieze](tasks.md#phases), filter on them.
+
 Polling waits `intervalMs` (1 s by default) between calls. After an error it
 doubles the wait, up to 30 s, and shows the error, until a call succeeds.
 Reading stops when the component unmounts.
@@ -78,6 +83,7 @@ once with `useLogStream(source, options)` and pass it as `:stream`.
 | `filename` | `log.txt` | download name |
 | `download-raw` | `false` | keep the ANSI escapes in the download |
 | `max-lines` | `100000` | |
+| `phase` | — | only this phase's lines: those whose `step` is it, or a sub-phase's, from its start marker to its end marker (the last line while it runs). Copy and download still take the whole log. |
 
 It emits `done` when the source reports the end of the log, e.g. to re-read
 the task record at once (the TaskRunner dialog does, and names the download

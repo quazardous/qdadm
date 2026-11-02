@@ -333,6 +333,8 @@ export {
   useLogStream,
   type LogSource,
   type LogLine,
+  type LogEntry,
+  type LogChunkLine,
   type LogPollResult,
   type LogPushApi,
   type LogStreamStatus,
@@ -474,6 +476,18 @@ export {
   type TaskConfirm,
   type RunOptions,
 } from './tasks/taskStore'
+export {
+  TASK_PHASE_STATE_ICONS,
+  formatPhaseDuration,
+  linesOfPhase,
+  phaseLabel,
+  phasesMarkedIn,
+  phaseSteps,
+  type TaskPhase,
+  type TaskPhasesData,
+  type TaskPhaseState,
+  type TaskPhasesSource,
+} from './tasks/taskPhases'
 
 // ════════════════════════════════════════════════════════════════════════════
 // MODULE SYSTEM (excluding types that conflict)

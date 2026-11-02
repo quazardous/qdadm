@@ -165,6 +165,17 @@ export default `core:
     tray: "{count} running task | {count} running tasks"
     trayDone: Recent tasks
     clear: Clear finished
+    # The phases frieze (#4655)
+    phase:
+      pending: To do
+      running: Running
+      done: Done
+      failed: Failed
+      cancelled: Cancelled
+      skipped: Skipped
+      subs: "{count} sub-phase | {count} sub-phases"
+      filter: "Phase: {name}"
+      showAll: Show the whole log
   # LoginPage (#4168)
   login:
     username: Username

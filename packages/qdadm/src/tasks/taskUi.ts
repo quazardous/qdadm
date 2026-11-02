@@ -8,6 +8,7 @@
  *   configureTasks({ dialog: { width: '56rem', modal: false }, slots: { 'after-log': DeliverySummary } })
  *   registerTaskKind('deploy', { task, log, dialog: { maximizable: false }, component: DeployDialog })
  *   registerTaskKind('deliver', { task, log, logPatterns: { errorPattern: /\[error\]|^→ failed/ } })
+ *   configureTasks({ phaseIcons: { deploy: 'pi pi-upload', 'backup-after': 'pi pi-database' } })
  */
 import { shallowReactive, type Component } from 'vue'
 
@@ -43,6 +44,8 @@ export interface TaskUiOptions {
   dialog?: TaskDialogOptions
   logPatterns?: TaskLogPatterns
   slots?: Partial<Record<TaskDialogSlotName, Component>>
+  /** An icon class per phase name, in the phases frieze (#4655); a phase without one shows its state's. */
+  phaseIcons?: Record<string, string>
   /**
    * Renders instead of TaskDialog, with props `{ runId, options }` and a
    * `close` event; it reads the run through getTaskStore().
@@ -78,6 +81,7 @@ export function configureTasks(options: TaskUiOptions): void {
   if (options.dialog) app.dialog = { ...app.dialog, ...options.dialog }
   if (options.slots) app.slots = { ...app.slots, ...options.slots }
   if (options.logPatterns) app.logPatterns = { ...app.logPatterns, ...options.logPatterns }
+  if (options.phaseIcons) app.phaseIcons = { ...app.phaseIcons, ...options.phaseIcons }
   if (options.component !== undefined) app.component = options.component
   if (options.tray) app.tray = { ...app.tray, ...options.tray }
 }
@@ -87,6 +91,7 @@ export function resetTaskUi(): void {
   delete app.dialog
   delete app.slots
   delete app.logPatterns
+  delete app.phaseIcons
   delete app.component
   delete app.tray
 }
@@ -104,6 +109,7 @@ export function resolveTaskUi(kind?: TaskUiOptions | null, page?: TaskDialogOpti
     // null is kept: it turns a pattern off
     logPatterns: { ...TASK_LOG_DEFAULTS, ...strip(app.logPatterns), ...strip(kind?.logPatterns) } as Required<TaskLogPatterns>,
     slots: { ...app.slots, ...kind?.slots } as Partial<Record<TaskDialogSlotName, Component>>,
+    phaseIcons: { ...app.phaseIcons, ...kind?.phaseIcons } as Record<string, string>,
     component: kind?.component ?? app.component ?? null,
   }
 }

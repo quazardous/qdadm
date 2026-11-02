@@ -81,6 +81,7 @@ knows the task moved can do the same: `getTaskStore().poke(run.id)`.
 
 - The status, the time elapsed, and the task id.
 - A progress bar and the current step.
+- The task's [phases](#phases), when `phases` is given.
 - The live log, when `log(taskId)` returns a [LogStream](log-stream.md)
   source.
 - At the end, the result (an object shows as JSON) or the error.
@@ -93,6 +94,42 @@ knows the task moved can do the same: `getTaskStore().poke(run.id)`.
 When a task ends, a toast says so (`notify: false` turns that off). A
 failure stays in the notification history, and the toast leads to the
 task's page.
+
+### Phases
+
+A task that goes through steps (check, preview, wait for the crons, deliver,
+back up) shows them as a frieze above the log: a row across, a column when the
+dialog is narrow.
+
+```ts
+registerTaskKind('deliver', {
+  task, log,
+  phases: (taskId) => api.get(`/v1/tasks/${taskId}/phases`).then((r) => r.data),
+  phaseIcons: { deploy: 'pi pi-upload', 'backup-after': 'pi pi-database' },
+})
+```
+
+- `phases` is a reader, called at the log's pace (else the task's
+  `intervalMs`) while the run lasts and once more at its end, or fixed phases.
+  Either is `{ steps }` or the steps alone.
+- A step is `{ name, state, started, ended, dur, subs }`: `state` is
+  `pending`, `running`, `done`, `failed`, `cancelled` or `skipped`, `started`
+  and `ended` ISO times, `dur` seconds, `subs` its sub-phases, of the same
+  shape.
+- Each step shows its state's icon and colour, then its duration, or the time
+  since it started while it runs. Sub-phases fold out under their step. A
+  failed step stands out and opens its sub-phases; a cancelled one is grey.
+- Labels come from the app's catalogue, `phase.<name>`, else the name. A
+  sub-phase (`deploy.wait-crons`) tries its full name, then its last segment
+  (`phase.wait-crons`), then shows that segment.
+- Icons: `phaseIcons`, name to icon class, from the kind or `configureTasks()`.
+  A phase without one shows its state's.
+- With a log whose lines carry their step (see [LogStream](log-stream.md#sources)),
+  picking a step shows only its lines, under a "Phase: …" chip; picking it again,
+  or the chip's cross, gives the whole log back. A sub-phase can be picked when
+  the log has its start marker: its lines run from that marker to its end marker.
+- `TaskPhases` is exported for a page of its own:
+  `<TaskPhases v-model:selected="phase" :phases="phases" selectable />`.
 
 ### The window
 
