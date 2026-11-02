@@ -124,6 +124,10 @@ registerTaskKind('deliver', {
   (`phase.wait-crons`), then shows that segment.
 - Icons: `phaseIcons`, name to icon class, from the kind or `configureTasks()`.
   A phase without one shows its state's.
+- Colours: a running step is orange whatever the theme's primary, with a light
+  running back and forth on its bar (still under `prefers-reduced-motion`); a
+  done one is green. An app changes them with CSS variables on `.qd-task-phases`:
+  `--qd-task-running-color` and `--qd-task-done-color`.
 - With a log whose lines carry their step (see [LogStream](log-stream.md#sources)),
   picking a step shows only its lines, under a "Phase: …" chip; picking it again,
   or the chip's cross, gives the whole log back. A sub-phase can be picked when
