@@ -86,7 +86,8 @@ export type ResolvedFieldConfig = ShowResolvedFieldConfig
  */
 export interface ActionConfig {
   name: string
-  label: string
+  /** A string, or a function read at each render, so it follows the locale (#4692) */
+  label: string | (() => string)
   icon?: string
   /** PrimeVue Button severity — the shared union, not bare string (#1281) */
   severity?: ButtonSeverity
@@ -423,7 +424,7 @@ export function useEntityItemShowPage<T = Record<string, unknown>>(
       if (action.visible && !action.visible(ctx)) return null
       return {
         ...action,
-        label: action._label ? action._label() : action.label,
+        label: typeof action.label === 'function' ? action.label() : action._label ? action._label() : action.label,
         isLoading: action.loading ? action.loading() : false,
         isDisabled: action.disabled ? action.disabled(ctx) : false,
       }

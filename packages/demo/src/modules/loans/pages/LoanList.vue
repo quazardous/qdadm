@@ -6,12 +6,14 @@
  */
 
 import { ref, onMounted } from 'vue'
-import { useListPage, ListPage, useOrchestrator, BoolCell, useSignalToast } from '@quazardous/qdadm'
+import { useListPage, ListPage, useOrchestrator, BoolCell, useSignalToast, useI18n } from '@quazardous/qdadm'
 import Tag from 'primevue/tag'
 import Column from 'primevue/column'
 
 const { getManager } = useOrchestrator()
 const toast = useSignalToast('LoanList')
+// Every string on screen comes from the catalogue (LoansModule's messages)
+const { t } = useI18n()
 
 // ============ LIST BUILDER ============
 const list = useListPage({ entity: 'loans' })
@@ -42,15 +44,14 @@ function getUserName(userId) {
 // Storage declares searchFields: ['book.title', 'user.username']
 // Override to only search by book title (not username)
 list.setSearch({
-  placeholder: 'Search by book title only...',
   fields: ['book.title']  // ← Override: only search book titles
 })
 
 // ============ FILTERS ============
 // Smart filter: optionsEntity - options from books EntityManager
 // Using explicit autocomplete component for testing
+// No placeholder: the field's label, and "All …", come from the catalogue
 list.addFilter('book_id', {
-  placeholder: 'All Books',
   optionsEntity: 'books',
   optionLabel: 'title',
   optionValue: 'bookId',
@@ -61,11 +62,10 @@ list.addFilter('book_id', {
 // toQuery transforms the value to MongoDB-like query for QueryExecutor
 // default: 'active' - show only active loans by default (blue indicator)
 // when user changes to another value, indicator turns orange
+// Option labels: entities.loans.fields.status.options.<value>
 list.addFilter('status', {
-  placeholder: 'All Status',
   default: 'active',
   options: [
-    { label: 'All Status', value: null },
     { label: 'Active', value: 'active' },
     { label: 'Returned', value: 'returned' }
   ],
@@ -77,19 +77,14 @@ list.addFilter('status', {
 })
 
 // Smart filter: optionsFromCache - extract unique 'read' values from loaded items
+// Options from the loaded rows: true / false, labelled by
+// entities.loans.fields.read.options.true|false
 list.addFilter('read', {
-  placeholder: 'Read Status',
-  optionsFromCache: true,
-  // Processor transforms boolean values to human-readable labels
-  // Preserves original "All X" label for null value (from placeholder)
-  processor: (options) => options.map(opt => ({
-    ...opt,
-    label: opt.value === null ? opt.label : (opt.value ? 'Read' : 'Unread')
-  }))
+  optionsFromCache: true
 })
 
 // ============ HEADER ACTIONS ============
-list.addCreateAction('New Loan')
+list.addCreateAction()
 
 // Bulk toggle read status
 const markingRead = ref(false)
@@ -105,8 +100,8 @@ async function bulkMarkAsRead(readValue) {
 
     toast.add({
       severity: 'success',
-      summary: 'Updated',
-      detail: `${selected.length} loan(s) marked as ${readValue ? 'read' : 'unread'}`,
+      summary: t('core.messages.updated'),
+      detail: t(readValue ? 'loans.markedRead' : 'loans.markedUnread', { count: selected.length }),
       life: 3000
     })
 
@@ -115,8 +110,8 @@ async function bulkMarkAsRead(readValue) {
   } catch (error) {
     toast.add({
       severity: 'error',
-      summary: 'Error',
-      detail: 'Failed to update loans',
+      summary: t('loans.error'),
+      detail: t('loans.failed'),
       life: 5000
     })
   } finally {
@@ -125,7 +120,7 @@ async function bulkMarkAsRead(readValue) {
 }
 
 list.addHeaderAction('mark-read', {
-  label: (state) => `Mark Read (${state.selectionCount})`,
+  label: (state) => t('loans.markRead', { count: state.selectionCount }),
   icon: 'pi pi-check',
   severity: 'success',
   onClick: () => bulkMarkAsRead(true),
@@ -134,7 +129,7 @@ list.addHeaderAction('mark-read', {
 })
 
 list.addHeaderAction('mark-unread', {
-  label: (state) => `Mark Unread (${state.selectionCount})`,
+  label: (state) => t('loans.markUnread', { count: state.selectionCount }),
   icon: 'pi pi-times',
   severity: 'secondary',
   onClick: () => bulkMarkAsRead(false),
@@ -160,39 +155,39 @@ function getStatusSeverity(loan) {
 }
 
 function getStatusLabel(loan) {
-  return loan.returned_at ? 'Returned' : 'Active'
+  return t(`entities.loans.fields.status.options.${loan.returned_at ? 'returned' : 'active'}`)
 }
 </script>
 
 <template>
   <ListPage v-bind="list.props.value" v-on="list.events">
     <template #columns>
-      <Column v-bind="list.column('book_id', { header: 'Book' })" sortable>
+      <Column v-bind="list.column('book_id')" sortable>
         <template #body="{ data }">
           {{ getBookTitle(data.book_id) }}
         </template>
       </Column>
-      <Column v-bind="list.column('user_id', { header: 'Borrower' })" sortable>
+      <Column v-bind="list.column('user_id')" sortable>
         <template #body="{ data }">
           {{ getUserName(data.user_id) }}
         </template>
       </Column>
-      <Column v-bind="list.column('borrowed_at', { header: 'Borrowed' })" sortable style="width: 120px">
+      <Column v-bind="list.column('borrowed_at')" sortable style="width: 120px">
         <template #body="{ data }">
           {{ formatDate(data.borrowed_at) }}
         </template>
       </Column>
-      <Column v-bind="list.column('returned_at', { header: 'Returned' })" sortable style="width: 120px">
+      <Column v-bind="list.column('returned_at')" sortable style="width: 120px">
         <template #body="{ data }">
           {{ formatDate(data.returned_at) }}
         </template>
       </Column>
-      <Column header="Status" style="width: 100px">
+      <Column v-bind="list.column('status')" style="width: 100px">
         <template #body="{ data }">
           <Tag :value="getStatusLabel(data)" :severity="getStatusSeverity(data)" />
         </template>
       </Column>
-      <Column v-bind="list.column('read', { header: 'Read' })" style="width: 80px">
+      <Column v-bind="list.column('read')" style="width: 80px">
         <template #body="{ data }">
           <BoolCell :value="data.read" />
         </template>

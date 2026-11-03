@@ -30,6 +30,10 @@ run fails at once with that reason.
 `run()` opens the follow dialog (unless `open: false`) and resolves with the
 run as soon as the task is queued. The run then moves on by itself.
 
+A `label` may be a function, `label: () => t('stock.check', { name })`: it is
+read each time the run shows (tray, dialog, end toast), so it follows the
+locale.
+
 ## When it ends
 
 `run.finished` settles with the run once it ends, whatever the outcome: read

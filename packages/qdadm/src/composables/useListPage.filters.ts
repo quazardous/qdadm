@@ -212,11 +212,29 @@ export function useListFilters(deps: UseListFiltersDeps): UseListFiltersReturn {
     warnIfReservedName(name)
     warnIfUnknownType(name, filterConfig?.type)
     warnIfEndpointUnreachable(name, filterConfig)
+    // Static options get the same "All" choice as loaded ones (#4692): a
+    // select has no other way back to no filter. Not when the page has its own
+    // null option, nor with allLabel: false.
+    const staticOptions = Array.isArray(filterConfig.options) ? filterConfig.options : null
+    const addAll =
+      staticOptions !== null &&
+      (filterConfig as { allLabel?: string | false }).allLabel !== false &&
+      !staticOptions.some((o) => (o as { value?: unknown })?.value === null)
+    const allOption = addAll
+      ? [{
+          label: (filterConfig as { allLabel?: string }).allLabel || filterConfig.placeholder || `All ${snakeToTitle(name)}`,
+          value: null as unknown,
+          ...(!(filterConfig as { allLabel?: string }).allLabel && !filterConfig.placeholder ? { _autoAll: true } : {}),
+        }]
+      : []
     filtersMap.value.set(name, {
       name,
       type: 'select',
       placeholder: name,
+      // No placeholder given: the field's label, resolved at render (#4692)
+      ...(filterConfig.placeholder ? {} : { _autoPlaceholder: true }),
       ...filterConfig,
+      ...(addAll ? { options: [...allOption, ...staticOptions!] } : {}),
     })
     if (filterValues.value[name] === undefined) {
       filterValues.value[name] = filterConfig.default ?? null
@@ -459,7 +477,9 @@ export function useListFilters(deps: UseListFiltersDeps): UseListFiltersReturn {
             filterDef.component || (shouldCache ? 'dropdown' : 'autocomplete')
           const allLabel =
             filterDef.allLabel || filterDef.placeholder || `All ${snakeToTitle(filterName)}`
-          let finalOptions = [{ label: allLabel, value: null as unknown }, ...rawOptions]
+          // Neither allLabel nor placeholder given: "All <field>" from the catalogue at render (#4692)
+          const autoAll = !filterDef.allLabel && !!(filterDef as { _autoPlaceholder?: boolean })._autoPlaceholder
+          let finalOptions = [{ label: allLabel, value: null as unknown, ...(autoAll ? { _autoAll: true } : {}) }, ...rawOptions]
 
           if (typeof filterDef.processor === 'function') {
             finalOptions = filterDef.processor(finalOptions)

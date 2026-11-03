@@ -730,7 +730,7 @@ export function useEntityItemFormPage<T extends Record<string, unknown> = Record
       if (action.visible && !action.visible({ isEdit: isEdit.value, dirty: dirty.value })) return null
       return {
         ...action,
-        label: action._label ? action._label() : action.label,
+        label: typeof action.label === 'function' ? action.label() : action._label ? action._label() : action.label,
         isLoading: action.loading ? action.loading() : false,
         isDisabled: action.disabled
           ? action.disabled({ dirty: dirty.value, saving: saving.value })

@@ -318,7 +318,7 @@ export function useListPage<T = unknown>(config: UseListPageOptions<T>): UseList
   // Search
   const searchQuery = ref(savedSearch)
   const searchConfig = ref<SearchConfig>({
-    placeholder: 'Search...',
+    placeholder: '',  // empty: the catalogue's core.placeholders.search, at render (#4692)
     fields: [],
     debounce: 300,
   })
@@ -1332,6 +1332,14 @@ export function useListPage<T = unknown>(config: UseListPageOptions<T>): UseList
     return false
   })
 
+  /** A filter's field label: the catalogue's, the field's, else its humanized name (#4692) */
+  function filterFieldLabel(name: string): string {
+    const trace = kernelI18n?.resolve(`entities.${entity}.fields.${name}`)
+    if (trace?.hit && typeof trace.result === 'string') return trace.result
+    const declared = (manager.getFieldConfig?.(name) as { label?: string } | null | undefined)?.label
+    return declared || humanizeFieldName(name)
+  }
+
   // ============ LIST PAGE PROPS ============
 
   const listProps = computed<ListPageProps>(() => ({
@@ -1357,12 +1365,18 @@ export function useListPage<T = unknown>(config: UseListPageOptions<T>): UseList
     sortOrder: sortOrder.value,
     searchQuery: searchQuery.value,
     searchPlaceholder: searchConfig.value.placeholder || tOr('core.placeholders.search', 'Search...'),
-    // Static options translate as the field's do (#4686)
-    filters: filters.value.map((f) =>
-      Array.isArray(f.options)
-        ? { ...f, options: translateOptions(kernelI18n, entity, f.name, f.options as LabeledOption[]) as typeof f.options }
-        : f
-    ),
+    // Static options translate as the field's do (#4686); the automatic
+    // placeholder and "All …" follow the locale (#4692)
+    filters: filters.value.map((f) => {
+      const auto = f as typeof f & { _autoPlaceholder?: boolean }
+      const label = auto._autoPlaceholder ? filterFieldLabel(f.name) : null
+      const options = Array.isArray(f.options)
+        ? (translateOptions(kernelI18n, entity, f.name, f.options as LabeledOption[]) as LabeledOption[]).map((o) =>
+            (o as LabeledOption & { _autoAll?: boolean })._autoAll ? { ...o, label: tOr('core.filters.all', 'All {field}', { field: filterFieldLabel(f.name) }) } : o
+          )
+        : f.options
+      return { ...f, ...(label ? { placeholder: label } : {}), options: options as typeof f.options }
+    }),
     filterValues: filterValues.value,
     isFilterAtDefault,
     getActions,

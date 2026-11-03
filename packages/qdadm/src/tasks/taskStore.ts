@@ -84,8 +84,9 @@ export interface TaskConfirm {
   severity?: 'primary' | 'secondary' | 'success' | 'info' | 'warn' | 'danger' | 'contrast'
 }
 
-export interface RunOptions extends Partial<TaskKind> {
-  label: string
+export interface RunOptions extends Omit<Partial<TaskKind>, 'label'> {
+  /** A string, or a function read each time it shows (tray, dialog, toast), so it follows the locale (#4692) */
+  label: string | (() => string)
   /** Queue the task; returns its id, or `{ task_id | taskId | id }`. */
   start: () => Promise<unknown>
   /** A registered kind; its settings are the defaults of this run, and the run resumes after a reload. */
@@ -218,7 +219,7 @@ function createTaskStore() {
 
   // --- Runs ---
 
-  function addRun(partial: Partial<TaskRun> & Pick<TaskRun, 'label'>): TaskRun {
+  function addRun(partial: Partial<TaskRun> & Pick<TaskRun, 'label'>, labelOf?: () => string): TaskRun {
     const id = partial.id ?? `task-${Date.now().toString(36)}-${++seq}`
     const run: TaskRun = {
       id,
@@ -237,6 +238,8 @@ function createTaskStore() {
       // A promise is not made reactive: run.finished stays the raw promise.
       finished: new Promise<TaskRun>((resolve) => settles.set(id, resolve)),
     }
+    // A label given as a function is read each time it shows (#4692)
+    if (labelOf) Object.defineProperty(run, 'label', { get: labelOf, enumerable: true, configurable: true })
     state.runs.unshift(run)
     // Keep every active run, and the most recent finished ones.
     const finished = state.runs.filter((r) => FINAL.includes(r.status))
@@ -402,9 +405,11 @@ function createTaskStore() {
       throw new Error(`TaskRunner: unknown task kind "${options.kind}"`)
     }
     const def: TaskKind = { ...base, ...options, task: { ...base?.task, ...options.task } } as TaskKind
-    if (options.confirm && !(await requestConfirm(options.label, options.confirm))) return null
+    const labelOf = typeof options.label === 'function' ? options.label : undefined
+    const label = labelOf ? labelOf() : (options.label as string)
+    if (options.confirm && !(await requestConfirm(label, options.confirm))) return null
 
-    const r = addRun({ label: options.label, kind: options.kind ?? null, meta: options.meta ? { ...options.meta } : null })
+    const r = addRun({ label, kind: options.kind ?? null, meta: options.meta ? { ...options.meta } : null }, labelOf)
     defs.set(r.id, def)
     if (options.open !== false) state.openId = r.id
     try {

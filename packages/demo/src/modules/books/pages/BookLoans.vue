@@ -8,11 +8,13 @@
  */
 
 import { ref, onMounted } from 'vue'
-import { useListPage, ListPage, PageNav, useOrchestrator, BoolCell } from '@quazardous/qdadm'
+import { useListPage, ListPage, PageNav, useOrchestrator, BoolCell, useI18n } from '@quazardous/qdadm'
 import Column from 'primevue/column'
 import Tag from 'primevue/tag'
 
 const { getManager } = useOrchestrator()
+// Every string on screen comes from the catalogue (LoansModule's messages)
+const { t } = useI18n()
 
 // ============ LIST BUILDER ============
 // Parent filter (book_id) is auto-applied from route.meta.parent
@@ -20,7 +22,7 @@ const list = useListPage({ entity: 'loans' })
 
 // ============ HEADER ACTIONS ============
 // Create action auto-detects child route (book-loan-create)
-list.addCreateAction('New Loan')
+list.addCreateAction()
 
 // ============ ROW ACTIONS ============
 list.addEditAction()
@@ -55,7 +57,7 @@ function getStatusSeverity(loan) {
 }
 
 function getStatusLabel(loan) {
-  return loan.returned_at ? 'Returned' : 'Active'
+  return t(`entities.loans.fields.status.options.${loan.returned_at ? 'returned' : 'active'}`)
 }
 </script>
 
@@ -66,27 +68,27 @@ function getStatusLabel(loan) {
     </template>
 
     <template #columns>
-        <Column v-bind="list.column('user_id', { header: 'Borrower' })">
+        <Column v-bind="list.column('user_id')">
           <template #body="{ data }">
             {{ getUserName(data.user_id) }}
           </template>
         </Column>
-        <Column v-bind="list.column('borrowed_at', { header: 'Borrowed' })" style="width: 120px">
+        <Column v-bind="list.column('borrowed_at')" style="width: 120px">
           <template #body="{ data }">
             {{ formatDate(data.borrowed_at) }}
           </template>
         </Column>
-        <Column v-bind="list.column('returned_at', { header: 'Returned' })" style="width: 120px">
+        <Column v-bind="list.column('returned_at')" style="width: 120px">
           <template #body="{ data }">
             {{ formatDate(data.returned_at) }}
           </template>
         </Column>
-        <Column header="Status" style="width: 100px">
+        <Column v-bind="list.column('status')" style="width: 100px">
           <template #body="{ data }">
             <Tag :value="getStatusLabel(data)" :severity="getStatusSeverity(data)" />
           </template>
         </Column>
-        <Column v-bind="list.column('read', { header: 'Read' })" style="width: 80px">
+        <Column v-bind="list.column('read')" style="width: 80px">
           <template #body="{ data }">
             <BoolCell :value="data.read" />
           </template>
@@ -95,7 +97,7 @@ function getStatusLabel(loan) {
 
     <template #empty>
       <div class="text-center p-4 text-color-secondary">
-        No loans for this book
+        {{ t('loans.noneForBook') }}
       </div>
     </template>
   </ListPage>

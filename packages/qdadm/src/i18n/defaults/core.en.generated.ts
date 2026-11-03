@@ -1,6 +1,9 @@
 /* GENERATED from core.en.yml — DO NOT EDIT.
  * Run `npm run gen:i18n-defaults -w packages/qdadm` to regenerate. */
 export default `core:
+  # A filter's "all" choice (#4692)
+  filters:
+    all: "All {field}"
   # The table's own column headers (#4686)
   table:
     actions: Actions

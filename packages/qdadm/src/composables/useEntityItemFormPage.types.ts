@@ -69,7 +69,8 @@ export interface ToastHelper {
  */
 export interface ActionConfig {
   name: string
-  label: string
+  /** A string, or a function read at each render, so it follows the locale (#4692) */
+  label: string | (() => string)
   icon?: string
   severity?: string
   size?: string

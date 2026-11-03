@@ -79,7 +79,8 @@ ctx.crud('loans', {
 }, {
   parentRoute: 'book',
   foreignKey: 'book_id',
-  label: 'Loans'
+  // The tab reads the child's labelPlural (from the catalogue, so it follows
+  // the locale); a `label: 'Loans'` here would pin it in one language
 })
 
 // List-only (no form)
@@ -246,6 +247,16 @@ translated `header`, so headers follow the user's language.
 ```
 
 A header typed in the template (`header="Title"`) stays in that language.
+
+### Filter labels
+
+A filter without a `placeholder` shows its field's label from the catalogue
+(`entities.<entity>.fields.<field>`), and its empty choice reads "All <field>"
+(`core.filters.all`); both follow the locale. Static `options` get that empty
+choice too, unless they hold a `null` option of their own or `allLabel: false`. Static `options` translate through
+`entities.<entity>.fields.<field>.options.<value>`, and so do options read from
+the rows (`optionsFromCache`), `true` / `false` included. A `placeholder` or
+`allLabel` given by the page is kept as written.
 
 ### Filter modes
 
@@ -458,7 +469,7 @@ form.addDeleteAction()
 | `addSaveAction({ andClose? })` | Save button |
 | `addDeleteAction()` | Delete button (hidden in create mode) |
 | `addCancelAction()` | Cancel navigation |
-| `addAction(name, config)` | Custom action |
+| `addAction(name, { label, icon, onClick, … })` | Custom action; `label` may be `() => t('…')`, read at each render so it follows the locale |
 
 ### Mode detection
 
@@ -607,7 +618,7 @@ createApp({ layouts: { list: MyListLayout, form: MyFormLayout, show: MyShowLayou
 | `addEditAction()` | Navigate to edit form |
 | `addDeleteAction()` | Delete with confirmation |
 | `addBackAction({ route })` | Back navigation |
-| `addAction(name, config)` | Custom action |
+| `addAction({ name, label, icon, onClick, … })` | Custom action; `label` may be `() => t('…')`, read at each render so it follows the locale |
 
 ### Field display types
 
@@ -687,9 +698,9 @@ list.addDeleteAction()
     </template>
 
     <template #columns>
-      <Column field="borrower_name" header="Borrower" sortable />
-      <Column field="borrowed_at" header="Borrowed" sortable />
-      <Column field="returned_at" header="Returned" sortable />
+      <Column v-bind="list.column('borrower_name')" sortable />
+      <Column v-bind="list.column('borrowed_at')" sortable />
+      <Column v-bind="list.column('returned_at')" sortable />
     </template>
 
     <template #empty>
@@ -911,18 +922,18 @@ ctx.crud('genres', {
 ctx.crud('loans', {
   list: () => import('./pages/BookLoans.vue'),
   form: () => import('./pages/BookLoanForm.vue')
-}, { parentRoute: 'book', foreignKey: 'book_id', label: 'Loans' })
+}, { parentRoute: 'book', foreignKey: 'book_id' })
 
 ctx.crud('reviews', {
   list: () => import('./pages/BookReviews.vue')
-}, { parentRoute: 'book', foreignKey: 'book_id', label: 'Reviews' })
+}, { parentRoute: 'book', foreignKey: 'book_id' })
 ```
 
 ### Child entity + custom child page
 
 ```js
 // Book has loans (entity) + info (custom page)
-ctx.crud('loans', { list, form }, { parentRoute: 'book', foreignKey: 'book_id', label: 'Loans' })
+ctx.crud('loans', { list, form }, { parentRoute: 'book', foreignKey: 'book_id' })
 ctx.childPage('book', 'info', { component: () => import('./pages/BookInfo.vue'), label: 'Info' })
 ```
 

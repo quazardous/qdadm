@@ -113,9 +113,21 @@ export class LoansModule extends Module {
             user_id: 'Borrower',
             borrowed_at: 'Borrowed at',
             returned_at: 'Returned at',
-            read: 'Read?',
+            read: { _label: 'Read?', options: { true: 'Read', false: 'Unread' } },
+            // A virtual field: the status filter and column (#4692)
+            status: { _label: 'Status', options: { active: 'Active', returned: 'Returned' } },
           },
         },
+      },
+      // The module's own strings
+      loans: {
+        markRead: 'Mark read ({count})',
+        markUnread: 'Mark unread ({count})',
+        error: 'Error',
+        markedRead: '{count} loan marked as read | {count} loans marked as read',
+        markedUnread: '{count} loan marked as unread | {count} loans marked as unread',
+        failed: 'Could not update the loans',
+        noneForBook: 'No loans for this book',
       },
       nav: {
         routes: { loan: 'Loans' },
@@ -131,9 +143,19 @@ export class LoansModule extends Module {
             user_id: 'Emprunteur',
             borrowed_at: 'Emprunté le',
             returned_at: 'Retourné le',
-            read: 'Lu ?',
+            read: { _label: 'Lu ?', options: { true: 'Lu', false: 'Non lu' } },
+            status: { _label: 'Statut', options: { active: 'En cours', returned: 'Retourné' } },
           },
         },
+      },
+      loans: {
+        markRead: 'Marquer lu ({count})',
+        markUnread: 'Marquer non lu ({count})',
+        error: 'Erreur',
+        markedRead: '{count} emprunt marqué lu | {count} emprunts marqués lus',
+        markedUnread: '{count} emprunt marqué non lu | {count} emprunts marqués non lus',
+        failed: 'Impossible de mettre à jour les emprunts',
+        noneForBook: 'Aucun emprunt pour ce livre',
       },
       nav: {
         routes: { loan: 'Emprunts' },

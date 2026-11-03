@@ -150,7 +150,7 @@ export class BooksModule extends Module {
         genre: { type: 'select', label: 'Genre', reference: { entity: 'genres' }, default: 'fiction' }
       },
       children: {
-        loans: { entity: 'loans', foreignKey: 'book_id', label: 'Loans' }
+        loans: { entity: 'loans', foreignKey: 'book_id' }
       },
       storage: booksStorage
     }).setSeverityMap('genre', {
@@ -255,7 +255,7 @@ export class BooksModule extends Module {
     }, {
       parentRoute: 'book',      // Mount under the 'book' route
       foreignKey: 'book_id',    // FK field in loans pointing to books
-      label: 'Loans'            // Label for navlinks
+      // No label: the tab reads the loans' labelPlural from the catalogue
       // routePrefix defaults to 'book-loan' (parentRoute + singular entity)
     })
 

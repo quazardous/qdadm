@@ -121,7 +121,8 @@ export interface FilterOptions {
   options?: Array<{ label: string; value: unknown }>
   default?: unknown
   persist?: boolean
-  allLabel?: string
+  /** The empty choice's label; `false` for no empty choice on static options (#4692) */
+  allLabel?: string | false
   optionsEntity?: string
   optionsEndpoint?: string | boolean
   optionsFromCache?: string | boolean
