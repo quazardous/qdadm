@@ -2,6 +2,7 @@
  * Patch KernelContext prototype with permission registration methods:
  *   - permissions(namespace, perms, options)   — generic registration
  *   - entityPermissions(entity, perms)         — shorthand for entity-scoped
+ *   - grant(role, perms)                       — default grants brought by the module (#4694)
  */
 
 import type { PermissionMeta, PermissionOptions } from './KernelContext.types'
@@ -24,6 +25,16 @@ export function applyPermissionMethods(KernelContextClass: { prototype: KernelCo
         ...options,
         module: (this._module?.constructor as { name?: string })?.name || 'unknown',
       })
+    }
+    return this
+  }
+
+  proto.grant = function (this: Self, role: string, permissions: string | string[]): Self {
+    const list = Array.isArray(permissions) ? permissions : [permissions]
+    const provider = this._kernel.rolesProvider
+    if (provider?.addDefaultGrants) provider.addDefaultGrants(role, list)
+    else if (this._kernel.options.debug) {
+      console.warn(`[qdadm] ctx.grant('${role}', …): the roles provider takes no default grants, nothing granted`)
     }
     return this
   }

@@ -109,6 +109,8 @@ export class Kernel {
   liveEntityRouter: LiveEntityRouter | null = null
   layoutComponents: InternalLayoutComponents | null = null
   securityChecker: SecurityChecker | null = null
+  /** The roles provider, where a module's default grants go (`ctx.grant`, #4694) */
+  rolesProvider: { addDefaultGrants?: (role: string, permissions: string[]) => void } | null = null
   permissionRegistry!: PermissionRegistry
   moduleLoader: ModuleLoader | null = null
   activeStack: ActiveStack | null = null

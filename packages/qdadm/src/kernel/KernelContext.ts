@@ -229,6 +229,12 @@ export interface KernelContext {
     entity: string,
     permissions: Record<string, string | PermissionMeta>
   ): this
+  /**
+   * Default grants brought by this module (#4694): `ctx.grant('ROLE_USER',
+   * ['entity:suppliers:create'])`. The app's roles and the Roles screen still
+   * have the last word.
+   */
+  grant(role: string, permissions: string | string[]): this
 
   // i18n (KernelContext.i18n.ts)
   messages(locale: string, bundle: MessagesBundle): this

@@ -163,6 +163,7 @@ export function applyRegistryMethods(KernelClass: { prototype: Kernel }): void {
       })
     }
 
+    this.rolesProvider = (rolesProvider as Self['rolesProvider']) ?? null
     this.securityChecker = createSecurityChecker({
       rolesProvider: rolesProvider || undefined,
       grant: security.grant,

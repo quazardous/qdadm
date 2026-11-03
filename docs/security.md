@@ -384,6 +384,25 @@ ctx.entity('loans', new EntityManager({
 // roles: ROLE_USER: ['entity-own:loans:update']   → a user edits their own loans only
 ```
 
+**A module brings its own grants** with `ctx.grant(role, permissions)` in its
+`connect()`, so a feature does not need an edit to the app's `main.js`:
+
+```js
+async connect(ctx) {
+  ctx.entity('loans', new EntityManager({ name: 'loans', isOwn: (r, user) => r.user_id === user.id, /* … */ }))
+  ctx.grant('ROLE_USER', ['entity-own:loans:update'])
+}
+```
+
+They are defaults: they join the roles provider's own defaults, and the Roles
+screen still has the last word. A role saved from that screen keeps its own
+list, plus the default grants added since it was saved (the save records the
+defaults it saw, `defaults_snapshot`); a grant the user removed stays removed.
+`createLocalStorageRolesProvider` keeps that record; another persistable
+provider does with `trackDefaults: true` (off by default, so a backend's
+payload keeps its shape).
+A save made before that record existed is kept as it is.
+
 Override `canUpdate` / `canDelete` only for a **business rule** about the
 record, not about who the user is, and keep the grant's answer:
 

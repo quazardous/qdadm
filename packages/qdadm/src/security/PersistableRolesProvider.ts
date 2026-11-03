@@ -68,6 +68,11 @@ export interface RoleConfig {
   role_hierarchy?: Record<string, string[]>
   role_permissions?: Record<string, string[]>
   role_labels?: Record<string, string>
+  /**
+   * The default grants as they were when this config was saved (#4694): a
+   * default added since reaches the role, one the user removed stays removed.
+   */
+  defaults_snapshot?: Record<string, string[]>
 }
 
 /**
@@ -95,6 +100,13 @@ export interface PersistableRolesProviderOptions {
   defaults?: RoleConfig
   mergeStrategy?: MergeStrategy
   autoLoad?: boolean
+  /**
+   * Save the defaults the roles were saved against (`defaults_snapshot`), so a
+   * default added later reaches a saved role (#4694). On for
+   * createLocalStorageRolesProvider; off by default, so a backend's payload
+   * keeps its shape.
+   */
+  trackDefaults?: boolean
 }
 
 /**
@@ -107,17 +119,42 @@ export interface LocalStorageRolesProviderOptions {
   mergeStrategy?: MergeStrategy
 }
 
+function cloneGrants(grants: Record<string, string[]>): Record<string, string[]> {
+  return Object.fromEntries(Object.entries(grants).map(([role, perms]) => [role, [...perms]]))
+}
+
+/**
+ * A saved role's grants, plus the defaults added since it was saved (#4694).
+ * Without a snapshot (a config saved before it existed) the saved list stands
+ * as it is: there is no telling a default the user removed from a new one.
+ */
+function withNewDefaults(
+  saved: Record<string, string[]>,
+  defaults: Record<string, string[]>,
+  snapshot: Record<string, string[]> | undefined
+): Record<string, string[]> {
+  if (!snapshot) return saved
+  const out: Record<string, string[]> = {}
+  for (const [role, perms] of Object.entries(saved)) {
+    const seen = snapshot[role] ?? []
+    const added = (defaults[role] ?? []).filter((p) => !seen.includes(p) && !perms.includes(p))
+    out[role] = [...perms, ...added]
+  }
+  return out
+}
+
 export class PersistableRoleProvider extends RoleProvider {
   private _loadFn: LoadCallback | null
   private _persistFn: PersistCallback | null
   private _mergeStrategy: MergeStrategy
   private _autoLoad: boolean
+  private _trackDefaults: boolean
 
   // Fixed (incompressible, always applied on top)
-  private _fixed: Required<RoleConfig>
+  private _fixed: Required<Omit<RoleConfig, 'defaults_snapshot'>>
 
   // Defaults (fallback)
-  private _defaults: Required<RoleConfig>
+  private _defaults: Required<Omit<RoleConfig, 'defaults_snapshot'>>
 
   // Current state (starts with defaults)
   protected _hierarchy: Record<string, string[]>
@@ -129,6 +166,8 @@ export class PersistableRoleProvider extends RoleProvider {
   public _loaded: boolean = false
   private _loading: Promise<void> | null = null
   private _dirty: boolean = false
+  // The last saved config applied, kept to merge again when defaults grow (#4694)
+  private _lastData: RoleConfig | null = null
 
   /**
    * Create a persistable roles provider
@@ -139,6 +178,7 @@ export class PersistableRoleProvider extends RoleProvider {
     this._loadFn = options.load || null
     this._persistFn = options.persist || null
     this._mergeStrategy = options.mergeStrategy || 'extend'
+    this._trackDefaults = options.trackDefaults ?? false
     this._autoLoad = options.autoLoad ?? true
 
     // Fixed (incompressible, always applied on top)
@@ -207,6 +247,7 @@ export class PersistableRoleProvider extends RoleProvider {
    * Apply loaded data according to merge strategy
    */
   _applyData(data: RoleConfig): void {
+    this._lastData = data
     switch (this._mergeStrategy) {
       case 'replace':
         // Loaded data replaces everything
@@ -228,7 +269,7 @@ export class PersistableRoleProvider extends RoleProvider {
         }
         this._permissions = {
           ...this._defaults.role_permissions,
-          ...(data.role_permissions || {}),
+          ...withNewDefaults(data.role_permissions || {}, this._defaults.role_permissions, data.defaults_snapshot),
         }
         this._labels = {
           ...this._defaults.role_labels,
@@ -236,6 +277,21 @@ export class PersistableRoleProvider extends RoleProvider {
         }
         break
     }
+  }
+
+  /**
+   * Default grants brought by a module (`ctx.grant`, #4694). They join the
+   * defaults; a role the user saved keeps its own list, plus the defaults it
+   * has not seen yet (see `defaults_snapshot`).
+   */
+  addDefaultGrants(role: string, permissions: string[]): void {
+    const current = this._defaults.role_permissions[role] ?? []
+    this._defaults.role_permissions = {
+      ...this._defaults.role_permissions,
+      [role]: [...current, ...permissions.filter((p) => !current.includes(p))],
+    }
+    if (this._lastData) this._applyData(this._lastData)
+    else this._permissions = { ...this._permissions, [role]: [...this._defaults.role_permissions[role]!] }
   }
 
   /**
@@ -251,6 +307,7 @@ export class PersistableRoleProvider extends RoleProvider {
       role_hierarchy: this._hierarchy,
       role_permissions: this._permissions,
       role_labels: this._labels,
+      ...(this._trackDefaults ? { defaults_snapshot: cloneGrants(this._defaults.role_permissions) } : {}),
     }
 
     try {
@@ -571,6 +628,7 @@ export function createLocalStorageRolesProvider(
     fixed: options.fixed,
     defaults: options.defaults,
     mergeStrategy: options.mergeStrategy,
+    trackDefaults: true, // a module's later grants reach roles saved here (#4694)
     autoLoad: false, // We load synchronously below
   })
 

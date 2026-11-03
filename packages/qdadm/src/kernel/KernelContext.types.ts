@@ -62,6 +62,8 @@ export interface KernelInterface {
   hookRegistry: HookRegistry | null
   deferred: DeferredRegistry | null
   securityChecker: SecurityChecker | null
+  /** Where a module's default grants go (`ctx.grant`, #4694) */
+  rolesProvider?: { addDefaultGrants?: (role: string, permissions: string[]) => void } | null
   permissionRegistry: PermissionRegistry | null
   activeStack: unknown
   stackHydrator: unknown

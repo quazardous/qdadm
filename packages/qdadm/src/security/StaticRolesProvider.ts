@@ -58,6 +58,12 @@ export class StaticRoleProvider extends RoleProvider {
     this._labels = config.role_labels || {}
   }
 
+  /** Default grants brought by a module (`ctx.grant`, #4694) */
+  addDefaultGrants(role: string, permissions: string[]): void {
+    const current = this._permissions[role] ?? []
+    this._permissions = { ...this._permissions, [role]: [...current, ...permissions.filter((p) => !current.includes(p))] }
+  }
+
   /**
    * Get permissions for a role
    */

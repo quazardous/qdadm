@@ -187,6 +187,10 @@ export class LoansModule extends Module {
       isOwn: (record, user) => record?.user_id === user?.id
     }))
 
+    // A user updates their own loans (marks one read): a default grant the
+    // module brings itself (#4694); the Roles screen still has the last word
+    ctx.grant('ROLE_USER', ['entity-own:loans:update'])
+
     // ════════════════════════════════════════════════════════════════════════
     // ZONE EXTENSIONS (extends Books module zones)
     // ════════════════════════════════════════════════════════════════════════
