@@ -10,32 +10,28 @@
  *   - {{entity_name}} → your_entity (snake_case: books, users, products)
  *   - {{Section}} → Navigation Section (e.g., "Library", "Admin")
  *
- * Module Structure:
- * - Storage: Mock/API storage with optional auth protection
- * - Entity: Manager with fields, permissions, optional children
- * - Routes: CRUD routes with single form pattern
- * - Navigation: Nav item in configured section
+ * It follows docs/RULES.md: the module declares its strings, its entity and
+ * its pages in connect(ctx); pages are builders; who may do what is a grant.
  */
 
 import { Module, EntityManager, MockApiStorage } from '@quazardous/qdadm'
-
-// Optionally import auth check from shared config
-// import { authCheck } from '../../config/storages'
-
-// ============================================================================
-// STORAGE
-// ============================================================================
-
+import { authCheck } from '../../config/storages'
 import {{entityName}}Fixture from '../../fixtures/{{entity_name}}.json'
+
+// ============================================================================
+// STORAGE: a fake remote server for the demo (slow calls, rare failures)
+// ============================================================================
 
 const {{entityName}}Storage = new MockApiStorage({
   entityName: '{{entity_name}}',
-  initialData: {{entityName}}Fixture
-  // authCheck  // Uncomment to require authentication
+  initialData: {{entityName}}Fixture,
+  authCheck,
+  latency: [150, 500],
+  failRate: 0.02,
 })
 
 // ============================================================================
-// ENTITY MANAGER (Optional - only if custom permissions needed)
+// ENTITY MANAGER (only for a business rule about the record)
 // ============================================================================
 
 // Who may do what is a grant in the roles provider (main.js), not code:
@@ -46,6 +42,10 @@ const {{entityName}}Storage = new MockApiStorage({
 //     return record?.status !== 'archived' && super.canUpdate(record)
 //   }
 // }
+//
+// A call that is not about one record (a lookup, a long task) is a method of
+// the manager too, never a fetch in a page:
+//   leadTime(id) { return api.get(`/{{entity_name}}/${id}/lead-time`).then((r) => r.data) }
 
 // ============================================================================
 // MODULE
@@ -58,39 +58,69 @@ export class {{EntityName}}Module extends Module {
 
   async connect(ctx) {
     // ════════════════════════════════════════════════════════════════════════
-    // ENTITY
+    // STRINGS: every label on screen, in each language (docs/i18n.md)
     // ════════════════════════════════════════════════════════════════════════
-    ctx.entity('{{entity_name}}', {
+    ctx.messages('en', {
+      entities: {
+        {{entity_name}}: {
+          label: '{{EntityName}}',
+          labelPlural: '{{EntityName}}s',
+          fields: {
+            name: 'Name',
+            description: 'Description',
+            status: { _label: 'Status', options: { draft: 'Draft', published: 'Published' } },
+          },
+        },
+      },
+      // The module's own strings live under its name
+      {{entity_name}}: {},
+    })
+    ctx.messages('fr', {
+      entities: {
+        {{entity_name}}: {
+          label: '{{EntityName}}',
+          labelPlural: '{{EntityName}}s',
+          fields: {
+            name: 'Nom',
+            description: 'Description',
+            status: { _label: 'Statut', options: { draft: 'Brouillon', published: 'Publié' } },
+          },
+        },
+      },
+      {{entity_name}}: {},
+    })
+
+    // ════════════════════════════════════════════════════════════════════════
+    // ENTITY: fields carry no label, the catalogue gives them
+    // ════════════════════════════════════════════════════════════════════════
+    ctx.entity('{{entity_name}}', new EntityManager({
       name: '{{entity_name}}',
       labelField: 'name',  // Field used for display (e.g., in breadcrumbs)
       fields: {
-        name: { type: 'text', label: 'Name', required: true, default: '' },
-        description: { type: 'text', label: 'Description', default: '' }
-        // Add more fields...
+        name: { type: 'text', required: true, default: '', sortable: true },
+        description: { type: 'textarea', default: '' },
+        status: {
+          type: 'select',
+          default: 'draft',
+          options: [{ label: 'Draft', value: 'draft' }, { label: 'Published', value: 'published' }],
+        },
       },
       // children: {
-      //   items: { entity: 'items', foreignKey: '{{entity_name}}_id', label: 'Items' }
+      //   items: { entity: 'items', foreignKey: '{{entity_name}}_id' }
       // },
-      storage: {{entityName}}Storage
-    })
+      storage: {{entityName}}Storage,
+    }))
 
     // ════════════════════════════════════════════════════════════════════════
-    // ROUTES (using ctx.crud helper)
+    // PAGES (ctx.crud: list, show, form; the menu entry follows)
     // ════════════════════════════════════════════════════════════════════════
     ctx.crud('{{entity_name}}', {
       list: () => import('./pages/{{EntityName}}List.vue'),
-      form: () => import('./pages/{{EntityName}}Form.vue')
+      show: () => import('./pages/{{EntityName}}Show.vue'),
+      form: () => import('./pages/{{EntityName}}Form.vue'),
     }, {
-      nav: { section: '{{Section}}', icon: 'pi pi-box' }
+      nav: { section: '{{Section}}', icon: 'pi pi-box' },
     })
-
-    // ════════════════════════════════════════════════════════════════════════
-    // CUSTOM PAGES (Optional)
-    // ════════════════════════════════════════════════════════════════════════
-    // ctx.routes('{{entity_name}}/stats', [
-    //   { path: '', name: '{{entity_name}}-stats', component: () => import('./pages/{{EntityName}}Stats.vue') }
-    // ])
-    // ctx.navItem({ section: '{{Section}}', route: '{{entity_name}}-stats', icon: 'pi pi-chart-bar', label: 'Stats' })
   }
 }
 

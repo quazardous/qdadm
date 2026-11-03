@@ -8,8 +8,10 @@ What qdadm expects of code written on it. Each rule says where it is explained.
    Columns are `list.generateColumns()` or `list.addColumn()`; fields are
    `form.generateFields()`. ([crud.md](crud.md))
 2. **Pages never call a storage, an SDK or `fetch`.** Data goes through an
-   `EntityManager` (`ctx.entity(...)`) with its storage. A read that is not an
-   entity goes through `useAsyncRead`. ([QDADM_CREDO.md](QDADM_CREDO.md#2-direct-sdkapi-calls-in-pages))
+   `EntityManager` (`ctx.entity(...)`) with its storage. A call that is not
+   about one record (a lookup, starting a long task) is a **method of the
+   entity's manager** (`suppliers.leadTime(id)`); the page reaches it through
+   `useOrchestrator().getManager()` and reads it with `useAsyncRead`. ([QDADM_CREDO.md](QDADM_CREDO.md#2-direct-sdkapi-calls-in-pages))
 3. **Entity pages come from `ctx.crud()`,** children with `{ parentRoute }`.
    Routes by hand are for pages that are not an entity's. ([crud.md](crud.md#ctxcrud))
 4. **Who may do what is a grant,** in the roles provider:

@@ -11,9 +11,21 @@ wait on it.
 ## useAsyncRead
 
 ```ts
-import { useAsyncRead } from '@quazardous/qdadm'
+import { useAsyncRead, useOrchestrator } from '@quazardous/qdadm'
 
-const backups = useAsyncRead(() => api.get('/backups').then((r) => r.data))
+// The call lives on the entity's manager, not in the page (docs/RULES.md, rule 2)
+const { getManager } = useOrchestrator()
+const servers = getManager('servers')
+const backups = useAsyncRead(() => servers.backups(serverId.value), { key: () => serverId.value })
+```
+
+```js
+// In the module: the manager owns the calls that are not one record
+class ServersManager extends EntityManager {
+  backups(id) {
+    return api.get(`/servers/${id}/backups`).then((r) => r.data)
+  }
+}
 ```
 
 It returns `{ data, error, loading, ready, pending, load }`:

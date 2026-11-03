@@ -162,15 +162,15 @@ defineEmits<{
   (e: 'back'): void
 }>()
 
+// Where an action goes: its own `placement`, else the header for edit and the
+// footer for the rest (#4693)
+const inHeader = (a: ResolvedAction) => (a.placement ? a.placement === 'header' : a.name === 'edit')
+
 // Header actions: actions that go in the header (e.g., edit)
-const headerActions = computed<ResolvedAction[]>(() =>
-  props.actions.filter((a: ResolvedAction) => ['edit'].includes(a.name))
-)
+const headerActions = computed<ResolvedAction[]>(() => props.actions.filter(inHeader))
 
 // Footer actions: actions that go in the footer (e.g., back, delete)
-const footerActions = computed<ResolvedAction[]>(() =>
-  props.actions.filter((a: ResolvedAction) => !['edit'].includes(a.name))
-)
+const footerActions = computed<ResolvedAction[]>(() => props.actions.filter((a: ResolvedAction) => !inHeader(a)))
 
 // Get error message from fetchError
 const fetchErrorMessage = computed<string | null>(() => formatFetchError(props.fetchError))

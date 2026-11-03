@@ -12,6 +12,7 @@ cp -r src/modules/_template src/modules/products
 cd src/modules/products
 mv TemplateModule.js ProductsModule.js
 mv pages/TemplateList.vue pages/ProductList.vue
+mv pages/TemplateShow.vue pages/ProductShow.vue
 mv pages/TemplateForm.vue pages/ProductForm.vue
 
 # 3. Search & replace placeholders
@@ -33,8 +34,9 @@ export const moduleDefs = [..., ProductsModule]
 
 | File | Purpose |
 |------|---------|
-| `TemplateModule.js` | Module class - entity, routes, nav |
-| `pages/TemplateList.vue` | List page with DataTable |
+| `TemplateModule.js` | Module class - strings, entity, pages, nav |
+| `pages/TemplateList.vue` | List page: declared columns, search, filter |
+| `pages/TemplateShow.vue` | Detail page |
 | `pages/TemplateForm.vue` | Create/Edit form (single component) |
 | `index.js` | Barrel export |
 
@@ -47,9 +49,10 @@ export class {{EntityName}}Module extends Module {
   static priority = 10               // Load order (lower = first)
 
   async connect(ctx) {
-    ctx.entity(...)    // Register entity + manager
-    ctx.crud(...)      // CRUD routes + nav
-    ctx.routes(...)    // Custom pages
+    ctx.messages(...)  // Every string on screen, per language
+    ctx.entity(...)    // An EntityManager with its storage
+    ctx.crud(...)      // List, show and form pages + nav
+    ctx.routes(...)    // Pages that are not an entity's
     ctx.navItem(...)   // Additional nav items
   }
 }
@@ -58,19 +61,19 @@ export class {{EntityName}}Module extends Module {
 ## Entity Definition
 
 ```javascript
-ctx.entity('products', {
+ctx.entity('products', new EntityManager({
   name: 'products',
   labelField: 'name',           // Display field
-  fields: {
-    name: { type: 'text', label: 'Name', required: true },
-    price: { type: 'number', label: 'Price' },
-    category: { type: 'select', label: 'Category', options: [...] }
+  fields: {                     // No labels here: entities.products.fields.* in ctx.messages
+    name: { type: 'text', required: true },
+    price: { type: 'number' },
+    category: { type: 'select', options: [...] }   // labels: entities.products.fields.category.options.*
   },
   children: {                    // Related entities
     variants: { entity: 'variants', foreignKey: 'product_id' }
   },
   storage: productsStorage
-})
+}))
 ```
 
 ## CRUD Routes
@@ -79,14 +82,16 @@ ctx.entity('products', {
 // Single form pattern (recommended)
 ctx.crud('products', {
   list: () => import('./pages/ProductList.vue'),
+  show: () => import('./pages/ProductShow.vue'),
   form: () => import('./pages/ProductForm.vue')
 }, {
-  nav: { section: 'Inventory', icon: 'pi pi-box', label: 'Products' }
+  nav: { section: 'Inventory', icon: 'pi pi-box' }   // its label: nav.routes.product in the catalogue
 })
 ```
 
 Generated routes:
 - `/products` → list (name: `product`)
+- `/products/:id` → show (name: `product-show`)
 - `/products/create` → form in create mode (name: `product-create`)
 - `/products/:id/edit` → form in edit mode (name: `product-edit`)
 
@@ -96,17 +101,19 @@ Generated routes:
 ctx.routes('products/stats', [
   { path: '', name: 'product-stats', component: () => import('./pages/ProductStats.vue') }
 ])
-ctx.navItem({ section: 'Inventory', route: 'product-stats', icon: 'pi pi-chart-bar', label: 'Stats' })
+ctx.navItem({ section: 'Inventory', route: 'product-stats', icon: 'pi pi-chart-bar' })   // label: nav.routes.product-stats
 ```
 
 ## Storage Options
 
 ```javascript
-// MockApiStorage (development)
+// MockApiStorage (development): latency and failRate make it behave like a server
 const storage = new MockApiStorage({
   entityName: 'products',
   initialData: fixtureData,
-  authCheck: () => !!authAdapter.getUser()  // Protect API
+  authCheck,                    // the shared check, src/config/storages.js
+  latency: [150, 500],
+  failRate: 0.02,
 })
 
 // ApiStorage (production)

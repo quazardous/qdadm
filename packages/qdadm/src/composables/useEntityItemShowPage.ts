@@ -88,6 +88,8 @@ export interface ActionConfig {
   name: string
   /** A string, or a function read at each render, so it follows the locale (#4692) */
   label: string | (() => string)
+  /** Where it shows: the header or the footer. Default: the header for `edit`, the footer for the rest (#4693) */
+  placement?: 'header' | 'footer'
   icon?: string
   /** PrimeVue Button severity — the shared union, not bare string (#1281) */
   severity?: ButtonSeverity

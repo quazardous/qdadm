@@ -155,21 +155,27 @@ Organize features as class-based modules with lifecycle hooks:
 import { Module, EntityManager, MockApiStorage } from '@quazardous/qdadm'
 
 export class BooksModule extends Module {
-  static name = 'books'
+  static moduleName = 'books'
   static requires = []        // Dependencies
   static priority = 50        // Load order (lower = earlier)
 
   async connect(ctx) {
-    // Register entity
+    // Its strings, per language
+    ctx.messages('en', { entities: { books: { label: 'Book', labelPlural: 'Books', fields: { title: 'Title' } } } })
+    ctx.messages('fr', { entities: { books: { label: 'Livre', labelPlural: 'Livres', fields: { title: 'Titre' } } } })
+
+    // Its entity
     ctx.entity('books', new EntityManager({
       name: 'books',
       labelField: 'title',
+      fields: { title: { type: 'text', required: true } },
       storage: new MockApiStorage({ entityName: 'books' })
     }))
 
-    // CRUD routes + nav (single form pattern)
+    // Its pages + nav (single form pattern)
     ctx.crud('books', {
       list: () => import('./pages/BookList.vue'),
+      show: () => import('./pages/BookShow.vue'),
       form: () => import('./pages/BookForm.vue')
     }, {
       nav: { section: 'Library', icon: 'pi pi-book' }
@@ -181,9 +187,9 @@ export class BooksModule extends Module {
   }
 }
 
-// In main.js - auto-discovery via glob
+// In main.js - the modules, listed once (the demo: src/config/modules.js)
 const kernel = new Kernel({
-  modules: import.meta.glob('./modules/*/index.js', { eager: true }),
+  moduleDefs: [BooksModule, LoansModule],
   // ...
 })
 kernel.createApp().mount('#app')

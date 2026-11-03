@@ -54,6 +54,11 @@ talk with whoever looks at the tab.
 Full setup guide + agent playbook:
 [`packages/qdadm-mcp/README.md`](packages/qdadm-mcp/README.md).
 
+**`instances` empty?** Under `vite` (any port, with `qdadmMcpPlugin()`) a tab
+connects on its own, retrying after 1, 2, 5 then 10 s while the relay is not
+up: wait a moment, or reload the tab. Still nothing: pair it by hand from the
+debug bar's MCP tab; it then shows `via: token`.
+
 The raw surfaces below remain available and are what the MCP is built on.
 
 ## Live debug bridge — `/__qdadm/*` (dev only)

@@ -8,17 +8,26 @@ current step, live log, and then the result or the error. A tray in the
 sidebar lists the running tasks.
 
 ```js
-import { useTaskRunner } from '@quazardous/qdadm'
-
-const tasks = useTaskRunner()
-tasks.run({
-  label: `Create box ${name}`,
-  start: () => api.post('/boxes', { name }).then((r) => r.data),   // → { task_id: 42 }
+// In the module: the kind (how to follow, cancel and show a task), and the
+// manager's method that queues it (docs/RULES.md, rule 2)
+registerTaskKind('create-box', {
   task: { entity: 'tasks' },
   log: (id) => ({ poll: (from) => api.get(`/tasks/${id}/log`, { params: { from } }).then((r) => r.data) }),
   cancel: (id) => api.post(`/tasks/${id}/cancel`),
   to: (id) => ({ name: 'task-show', params: { id } }),
 })
+class BoxesManager extends EntityManager {
+  create(name) { return api.post('/boxes', { name }).then((r) => r.data) }   // → { task_id: 42 }
+}
+```
+
+```js
+// In the page
+import { useTaskRunner, useOrchestrator } from '@quazardous/qdadm'
+
+const tasks = useTaskRunner()
+const boxes = useOrchestrator().getManager('boxes')
+tasks.run({ kind: 'create-box', label: `Create box ${name}`, start: () => boxes.create(name) })
 ```
 
 ## Starting
@@ -264,6 +273,14 @@ const check = computed(() => tasks.runFor('stock-check', { supplierId: supplier.
 `runFor(kind, meta | taskId)` gives the latest such run, or null;
 `runsFor({ kind, taskId, meta })` all of them, newest first. `meta` holds plain
 values: it is kept with the run in `sessionStorage`.
+
+- `meta` is compared with `===`: a route param is a string, so store the id
+  the way the page will ask for it (`{ supplierId: String(id) }`).
+- The runner keeps the runs of this tab: a finished run is gone after a
+  reload, and a run started elsewhere is not there. "The last check of this
+  record" belongs to the backend: read it like any record (an entity, or a
+  manager method with `useAsyncRead`), and use `runFor` for the run in
+  progress.
 
 ## Where the dialogs live
 

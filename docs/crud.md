@@ -618,7 +618,7 @@ createApp({ layouts: { list: MyListLayout, form: MyFormLayout, show: MyShowLayou
 | `addEditAction()` | Navigate to edit form |
 | `addDeleteAction()` | Delete with confirmation |
 | `addBackAction({ route })` | Back navigation |
-| `addAction({ name, label, icon, onClick, … })` | Custom action; `label` may be `() => t('…')`, read at each render so it follows the locale |
+| `addAction({ name, label, icon, onClick, placement, … })` | Custom action; `label` may be `() => t('…')`, read at each render so it follows the locale. `placement: 'header'` puts it next to Edit at the top; by default only `edit` goes there and the rest goes to the footer |
 
 ### Field display types
 
@@ -801,6 +801,26 @@ const { parentData: book, parentLoading, parentManager } = useChildPage()
 | `parentId` | `ComputedRef<string>` | Parent entity ID |
 
 ---
+
+## Storage for demos and tests
+
+`MockApiStorage` keeps an entity's records in localStorage, seeded from
+fixtures. `latency` and `failRate` make it behave like a remote server, so the
+pages' waiting and error states show:
+
+```js
+new MockApiStorage({
+  entityName: 'suppliers',
+  initialData: suppliersFixture,
+  authCheck,                 // throws a 401 when it returns false
+  latency: [250, 800],       // ms per call, or a fixed number
+  failRate: 0.05,            // a 503 on 5 % of the calls
+})
+```
+
+Its search matches the term in every string field of a record; the list's
+`setSearch({ fields })` narrows what the page searches when the records are
+cached in the page.
 
 ## Field Definition
 
