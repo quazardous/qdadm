@@ -78,12 +78,12 @@ function truncateTitle(title, maxLength = 60) {
 <template>
   <ListPage v-bind="list.props.value" v-on="list.events">
     <template #columns>
-      <Column field="title" header="Title" sortable>
+      <Column v-bind="list.column('title', { header: 'Title' })" sortable>
         <template #body="{ data }">
           {{ truncateTitle(data.title) }}
         </template>
       </Column>
-      <Column field="userId" header="Author" sortable style="width: 200px">
+      <Column v-bind="list.column('userId', { header: 'Author' })" sortable style="width: 200px">
         <template #body="{ data }">
           <Button
             :label="getUserName(data.userId)"

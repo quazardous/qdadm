@@ -77,6 +77,8 @@ export interface ActionConfig {
   visible?: (ctx: { isEdit: boolean; dirty: boolean }) => boolean
   disabled?: (ctx: { dirty: boolean; saving: boolean }) => boolean
   loading?: () => boolean
+  /** A default label, read again at each render so it follows the locale (#4686) */
+  _label?: () => string
 }
 
 /**

@@ -91,6 +91,8 @@ export function applyRegistryMethods(KernelClass: { prototype: Kernel }): void {
     this.orchestrator.kernelOptions = {
       defaultEntityCacheTtlMs: this.options.defaultEntityCacheTtlMs,
     }
+    // Entity labels come from the catalogue (#4686)
+    this.orchestrator.i18n = this.i18nInstance ?? null
 
     if (this.options.toast) {
       this.orchestrator.setToastConfig(this.options.toast)

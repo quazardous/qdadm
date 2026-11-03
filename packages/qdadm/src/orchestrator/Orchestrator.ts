@@ -112,6 +112,9 @@ export class Orchestrator {
     defaultEntityCacheTtlMs?: number
   }
 
+  /** The app's catalogue, set by the Kernel: managers read their labels from it (#4686). */
+  i18n: { resolve: (key: string) => { hit: boolean; result: string } } | null = null
+
   constructor(options: OrchestratorOptions = {}) {
     const {
       entityFactory = null,

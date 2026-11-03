@@ -475,9 +475,24 @@ export class EntityManager<T extends EntityRecord = EntityRecord> {
   // ============ METADATA ACCESSORS ============
 
   /**
+   * `entities.<name>.label` / `labelPlural` in the app's catalogue (#4686).
+   * The catalogue wins over the `label` option, as it does for field labels;
+   * it reads the reactive locale, so a title computed from it follows a
+   * locale change.
+   */
+  protected _catalogueLabel(key: 'label' | 'labelPlural'): string | null {
+    const i18n = this._orchestrator?.i18n
+    if (!i18n || !this.name) return null
+    const trace = i18n.resolve(`entities.${this.name}.${key}`)
+    return trace.hit && typeof trace.result === 'string' ? trace.result : null
+  }
+
+  /**
    * Get entity label (singular)
    */
   get label(): string {
+    const translated = this._catalogueLabel('label')
+    if (translated) return translated
     if (this._label) return this._label
     if (!this.name) return 'Item'
     const singular = pluralize.singular(this.name)
@@ -488,6 +503,8 @@ export class EntityManager<T extends EntityRecord = EntityRecord> {
    * Get entity label (plural)
    */
   get labelPlural(): string {
+    const translated = this._catalogueLabel('labelPlural')
+    if (translated) return translated
     if (this._labelPlural) return this._labelPlural
     if (!this.name) return 'Items'
     const plural = pluralize.plural(this.name)

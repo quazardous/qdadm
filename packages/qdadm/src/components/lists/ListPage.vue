@@ -23,6 +23,7 @@ import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
 import QdButton from '../base/QdButton.vue'
 import SeverityTag from '../SeverityTag.vue'
+import { useI18n } from '../../i18n/useI18n'
 import ShowDisplay from '../show/ShowDisplay.vue'
 import Select from 'primevue/select'
 import AutoComplete from 'primevue/autocomplete'
@@ -136,6 +137,8 @@ const props = defineProps({
   // Mobile row tap
   hasRowTapAction: { type: Boolean, default: false }
 })
+
+const { tOr } = useI18n()
 
 // `{ name, label }` is read as `{ field, header }`; a column without either is skipped
 const declaredColumns = computed(() =>
@@ -488,7 +491,7 @@ function getFilterClass(filter: FilterConfig): Record<string, boolean> {
         </slot>
 
         <!-- Actions column -->
-        <Column v-if="getActions" header="Actions" :style="{ width: actionsWidth }">
+        <Column v-if="getActions" :header="tOr('core.table.actions', 'Actions')" :style="{ width: actionsWidth }">
           <template #body="{ data }">
             <ActionButtons :actions="getActions(data)" />
           </template>

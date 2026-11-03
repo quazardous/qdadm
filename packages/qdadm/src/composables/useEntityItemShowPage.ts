@@ -94,6 +94,8 @@ export interface ActionConfig {
   visible?: (ctx: { canEdit: boolean; canDelete: boolean }) => boolean
   disabled?: (ctx: { loading: boolean }) => boolean
   loading?: () => boolean
+  /** A default label, read again at each render so it follows the locale (#4686) */
+  _label?: () => string
 }
 
 /**
@@ -421,6 +423,7 @@ export function useEntityItemShowPage<T = Record<string, unknown>>(
       if (action.visible && !action.visible(ctx)) return null
       return {
         ...action,
+        label: action._label ? action._label() : action.label,
         isLoading: action.loading ? action.loading() : false,
         isDisabled: action.disabled ? action.disabled(ctx) : false,
       }
@@ -442,11 +445,16 @@ export function useEntityItemShowPage<T = Record<string, unknown>>(
     return returnValue
   }
 
+  /** The page's label as given, else the catalogue's, read again on each render */
+  function ownLabel(label: string | undefined, key: string, fallback: string): Pick<ActionConfig, 'label' | '_label'> {
+    return label ? { label } : { label: tOr(key, fallback), _label: () => tOr(key, fallback) }
+  }
+
   function addEditAction(editOptions: { label?: string; icon?: string } = {}): UseEntityItemShowPageReturn<T> {
-    const { label = tOr('core.actions.edit', 'Edit'), icon = 'pi pi-pencil' } = editOptions
+    const { label, icon = 'pi pi-pencil' } = editOptions
     return addAction({
       name: 'edit',
-      label,
+      ...ownLabel(label, 'core.actions.edit', 'Edit'),
       icon,
       severity: 'primary',
       onClick: goToEdit,
@@ -457,10 +465,10 @@ export function useEntityItemShowPage<T = Record<string, unknown>>(
   function addDeleteAction(
     deleteOptions: { label?: string; icon?: string; confirm?: boolean } = {}
   ): UseEntityItemShowPageReturn<T> {
-    const { label = tOr('core.actions.delete', 'Delete'), icon = 'pi pi-trash', confirm: confirmDelete = true } = deleteOptions
+    const { label, icon = 'pi pi-trash', confirm: confirmDelete = true } = deleteOptions
     return addAction({
       name: 'delete',
-      label,
+      ...ownLabel(label, 'core.actions.delete', 'Delete'),
       icon,
       severity: 'danger',
       onClick: () => {
@@ -479,10 +487,10 @@ export function useEntityItemShowPage<T = Record<string, unknown>>(
   }
 
   function addBackAction(backOptions: { label?: string; icon?: string; route?: string } = {}): UseEntityItemShowPageReturn<T> {
-    const { label = tOr('core.actions.back', 'Back'), icon = 'pi pi-arrow-left', route: backRoute } = backOptions
+    const { label, icon = 'pi pi-arrow-left', route: backRoute } = backOptions
     return addAction({
       name: 'back',
-      label,
+      ...ownLabel(label, 'core.actions.back', 'Back'),
       icon,
       severity: 'secondary',
       onClick: () => {

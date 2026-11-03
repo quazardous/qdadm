@@ -65,24 +65,24 @@ function getRegionSeverity(region) {
           <span class="country-flag">{{ data.flag }}</span>
         </template>
       </Column>
-      <Column field="name.common" header="Name" sortable>
+      <Column v-bind="list.column('name.common', { header: 'Name' })" sortable>
         <template #body="{ data }">
           {{ data.name?.common || '-' }}
         </template>
       </Column>
-      <Column field="cca3" header="Code" sortable style="width: 80px" />
-      <Column field="capital" header="Capital" style="width: 180px">
+      <Column v-bind="list.column('cca3', { header: 'Code' })" sortable style="width: 80px" />
+      <Column v-bind="list.column('capital', { header: 'Capital' })" style="width: 180px">
         <template #body="{ data }">
           {{ formatCapital(data.capital) }}
         </template>
       </Column>
-      <Column field="region" header="Region" sortable style="width: 120px">
+      <Column v-bind="list.column('region', { header: 'Region' })" sortable style="width: 120px">
         <template #body="{ data }">
           <Tag v-if="data.region" :value="data.region" :severity="getRegionSeverity(data.region)" />
           <span v-else>-</span>
         </template>
       </Column>
-      <Column field="area" header="Area (km²)" sortable style="width: 130px">
+      <Column v-bind="list.column('area', { header: 'Area (km²)' })" sortable style="width: 130px">
         <template #body="{ data }">
           {{ formatArea(data.area) }}
         </template>

@@ -15,12 +15,12 @@ list.addEditAction()
 <template>
   <ListPage v-bind="list.props.value" v-on="list.events">
     <template #columns>
-      <Column field="name" header="Genre" sortable>
+      <Column v-bind="list.column('name', { header: 'Genre' })" sortable>
         <template #body="{ data }">
           <SeverityTag field="id" :value="data.id" entity="genres" />
         </template>
       </Column>
-      <Column field="description" header="Description" sortable />
+      <Column v-bind="list.column('description', { header: 'Description' })" sortable />
     </template>
   </ListPage>
 </template>

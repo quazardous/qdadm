@@ -54,13 +54,13 @@ function formatPrice(price) {
           />
         </template>
       </Column>
-      <Column field="title" header="Title" sortable />
-      <Column field="price" header="Price" sortable style="width: 120px">
+      <Column v-bind="list.column('title', { header: 'Title' })" sortable />
+      <Column v-bind="list.column('price', { header: 'Price' })" sortable style="width: 120px">
         <template #body="{ data }">
           {{ formatPrice(data.price) }}
         </template>
       </Column>
-      <Column field="category" header="Category" sortable style="width: 150px" />
+      <Column v-bind="list.column('category', { header: 'Category' })" sortable style="width: 150px" />
     </template>
   </ListPage>
 </template>

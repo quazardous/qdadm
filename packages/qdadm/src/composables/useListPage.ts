@@ -46,6 +46,7 @@ import { useI18n } from '../i18n/useI18n'
 import { useLiveEntity } from './useLiveEntity'
 import { formatDateOnly } from '../utils/formatters'
 import { humanizeFieldName } from '../utils/humanize'
+import { translateOptions, type LabeledOption } from '../i18n/optionLabels'
 
 // Import types from dedicated types file
 import type {
@@ -534,8 +535,10 @@ export function useListPage<T = unknown>(config: UseListPageOptions<T>): UseList
     const options: CreateActionOptions =
       typeof labelOrOptions === 'string' ? { label: labelOrOptions } : labelOrOptions || {}
 
-    const createLabel =
-      options.label || `Create ${entityName.charAt(0).toUpperCase() + entityName.slice(1)}`
+    // Read at each render: the entity's label and the verb follow the locale (#4686)
+    const createLabel = options.label
+      ? options.label
+      : () => tOr('core.actions.createEntity', 'Create {entity}', { entity: manager.label })
 
     const onClick = options.routeName
       ? () =>
@@ -1282,7 +1285,7 @@ export function useListPage<T = unknown>(config: UseListPageOptions<T>): UseList
   function addViewAction(options: Partial<ActionConfig> = {}): void {
     addAction('view', {
       icon: 'pi pi-eye',
-      tooltip: tOr('core.actions.view', 'View'),
+      tooltip: () => tOr('core.actions.view', 'View'),
       onClick: options.onClick || goToShow,
       ...options,
     })
@@ -1291,7 +1294,7 @@ export function useListPage<T = unknown>(config: UseListPageOptions<T>): UseList
   function addEditAction(options: Partial<ActionConfig> = {}): void {
     addAction('edit', {
       icon: 'pi pi-pencil',
-      tooltip: tOr('core.actions.edit', 'Edit'),
+      tooltip: () => tOr('core.actions.edit', 'Edit'),
       onClick: options.onClick || goToEdit,
       visible: (row) => manager.canUpdate(row),
       ...options,
@@ -1302,7 +1305,7 @@ export function useListPage<T = unknown>(config: UseListPageOptions<T>): UseList
     const labelField = options.labelField || 'name'
     addAction('delete', {
       icon: 'pi pi-trash',
-      tooltip: tOr('core.actions.delete', 'Delete'),
+      tooltip: () => tOr('core.actions.delete', 'Delete'),
       severity: 'danger',
       onClick: (row) => confirmDelete(row, labelField),
       visible: (row) => manager.canDelete(row),
@@ -1353,8 +1356,13 @@ export function useListPage<T = unknown>(config: UseListPageOptions<T>): UseList
     sortField: sortField.value,
     sortOrder: sortOrder.value,
     searchQuery: searchQuery.value,
-    searchPlaceholder: searchConfig.value.placeholder || 'Search...',
-    filters: filters.value,
+    searchPlaceholder: searchConfig.value.placeholder || tOr('core.placeholders.search', 'Search...'),
+    // Static options translate as the field's do (#4686)
+    filters: filters.value.map((f) =>
+      Array.isArray(f.options)
+        ? { ...f, options: translateOptions(kernelI18n, entityName, f.name, f.options as LabeledOption[]) as typeof f.options }
+        : f
+    ),
     filterValues: filterValues.value,
     isFilterAtDefault,
     getActions,

@@ -31,6 +31,7 @@ import { RouterLink, type RouteLocationRaw } from 'vue-router'
 import Tag from 'primevue/tag'
 import { formatDate, formatNumber, formatCurrency, formatBytes, getEmptyPlaceholder } from '../../utils/formatters'
 import { useFormatBytes } from '../../composables/useFormatBytes'
+import { useI18n } from '../../i18n/useI18n'
 
 type DisplayType =
   | 'text'
@@ -74,6 +75,8 @@ interface FieldConfig {
   referenceLabel?: string | ((value: unknown, option?: unknown) => string)
   // Select options (for label lookup)
   options?: SelectOption[]
+  // The entity, when the options translate here (a list cell, #4686)
+  entity?: string
   optionLabel?: string
   optionValue?: string
   // Badge options
@@ -140,10 +143,12 @@ const bytesValue = computed(() => {
   return props.field.locale ? formatBytes(num, props.field.locale) : appBytes(num)
 })
 
-// Format boolean value
+const { tOr, i18n } = useI18n()
+
+// Format boolean value: the catalogue's yes and no (#4686), or the field's own
 const booleanValue = computed(() => {
   if (isEmpty.value) return emptyText.value
-  const labels = props.field.booleanLabels || { true: 'Yes', false: 'No' }
+  const labels = props.field.booleanLabels || { true: tOr('core.values.yes', 'Yes'), false: tOr('core.values.no', 'No') }
   return props.value ? labels.true : labels.false
 })
 
@@ -183,6 +188,12 @@ const selectValue = computed(() => {
   const optionValue = props.field.optionValue || 'value'
   const optionLabel = props.field.optionLabel || 'label'
 
+  // A field that names its entity (a list cell) translates its options here (#4686)
+  const entity = props.field.entity as string | undefined
+  if (entity && i18n && props.value !== null && props.value !== undefined) {
+    const trace = i18n.resolve(`entities.${entity}.fields.${props.field.name}.options.${String(props.value)}`)
+    if (trace.hit) return trace.result
+  }
   const option = options.find((opt) => opt[optionValue] === props.value)
   if (option) {
     return option[optionLabel] as string

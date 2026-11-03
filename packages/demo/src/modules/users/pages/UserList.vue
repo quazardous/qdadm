@@ -38,8 +38,8 @@ list.addDeleteAction({ labelField: 'username' })
 <template>
   <ListPage v-bind="list.props.value" v-on="list.events">
     <template #columns>
-      <Column field="username" header="Username" sortable />
-      <Column field="role" header="Role" sortable style="width: 120px">
+      <Column v-bind="list.column('username', { header: 'Username' })" sortable />
+      <Column v-bind="list.column('role', { header: 'Role' })" sortable style="width: 120px">
         <template #body="{ data }">
           <span class="p-role-label">{{ data.role }}</span>
         </template>

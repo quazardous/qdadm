@@ -99,7 +99,7 @@ async function toggleCompleted(todo) {
 <template>
   <ListPage v-bind="list.props.value" v-on="list.events">
     <template #columns>
-      <Column field="completed" header="Done" style="width: 70px">
+      <Column v-bind="list.column('completed', { header: 'Done' })" style="width: 70px">
         <template #body="{ data }">
           <Checkbox
             :modelValue="data.completed"
@@ -109,14 +109,14 @@ async function toggleCompleted(todo) {
           />
         </template>
       </Column>
-      <Column field="title" header="Title" sortable>
+      <Column v-bind="list.column('title', { header: 'Title' })" sortable>
         <template #body="{ data }">
           <span :class="{ 'todo-completed': data.completed }">
             {{ data.title }}
           </span>
         </template>
       </Column>
-      <Column field="userId" header="Assigned To" sortable style="width: 200px">
+      <Column v-bind="list.column('userId', { header: 'Assigned To' })" sortable style="width: 200px">
         <template #body="{ data }">
           {{ getUserName(data.userId) }}
         </template>

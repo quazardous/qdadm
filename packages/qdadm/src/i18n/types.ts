@@ -39,4 +39,9 @@ export interface I18nOptions extends BaseI18nOptions {
    * but the debug collector consumes this signal.
    */
   emitMissing?: boolean
+  /**
+   * Keep the user's language across reloads, in localStorage
+   * (`qdadm.locale.<app>`). Default: `true` (#4686).
+   */
+  rememberLocale?: boolean
 }

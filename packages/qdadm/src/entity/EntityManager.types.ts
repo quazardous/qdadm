@@ -342,6 +342,8 @@ export interface Orchestrator {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   kernel?: any
   deferred?: DeferredRegistry | null
+  /** The app's catalogue (#4686) */
+  i18n?: { resolve: (key: string) => { hit: boolean; result: string } } | null
 }
 
 // Forward declaration for DeferredRegistry

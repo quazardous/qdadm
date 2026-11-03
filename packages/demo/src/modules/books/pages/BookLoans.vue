@@ -66,17 +66,17 @@ function getStatusLabel(loan) {
     </template>
 
     <template #columns>
-        <Column field="user_id" header="Borrower">
+        <Column v-bind="list.column('user_id', { header: 'Borrower' })">
           <template #body="{ data }">
             {{ getUserName(data.user_id) }}
           </template>
         </Column>
-        <Column field="borrowed_at" header="Borrowed" style="width: 120px">
+        <Column v-bind="list.column('borrowed_at', { header: 'Borrowed' })" style="width: 120px">
           <template #body="{ data }">
             {{ formatDate(data.borrowed_at) }}
           </template>
         </Column>
-        <Column field="returned_at" header="Returned" style="width: 120px">
+        <Column v-bind="list.column('returned_at', { header: 'Returned' })" style="width: 120px">
           <template #body="{ data }">
             {{ formatDate(data.returned_at) }}
           </template>
@@ -86,7 +86,7 @@ function getStatusLabel(loan) {
             <Tag :value="getStatusLabel(data)" :severity="getStatusSeverity(data)" />
           </template>
         </Column>
-        <Column field="read" header="Read" style="width: 80px">
+        <Column v-bind="list.column('read', { header: 'Read' })" style="width: 80px">
           <template #body="{ data }">
             <BoolCell :value="data.read" />
           </template>

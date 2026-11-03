@@ -23,13 +23,13 @@ function truncateTitle(title, maxLength = 80) {
     </template>
 
     <template #columns>
-      <Column field="id" header="ID" sortable style="width: 60px" />
-      <Column field="title" header="Title" sortable>
+      <Column v-bind="list.column('id', { header: 'ID' })" sortable style="width: 60px" />
+      <Column v-bind="list.column('title', { header: 'Title' })" sortable>
         <template #body="{ data }">
           {{ truncateTitle(data.title) }}
         </template>
       </Column>
-      <Column field="completed" header="Done" sortable style="width: 80px">
+      <Column v-bind="list.column('completed', { header: 'Done' })" sortable style="width: 80px">
         <template #body="{ data }">
           <BoolCell :value="data.completed" />
         </template>

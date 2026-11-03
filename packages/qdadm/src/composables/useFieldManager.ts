@@ -18,6 +18,7 @@
  * fieldManager.group('info', ['name', 'email'], { label: 'Information' })
  * ```
  */
+import { translateOptions, type LabeledOption } from '../i18n/optionLabels'
 import { ref, computed, watch, type Ref, type ComputedRef } from 'vue'
 import { useI18n } from '../i18n/useI18n'
 
@@ -272,6 +273,10 @@ export function useFieldManager<T extends ResolvedFieldConfig = ResolvedFieldCon
     const trace = i18n.resolve(key)
     if (trace.hit) {
       resolved.label = trace.result
+    }
+    const withOptions = resolved as T & { options?: LabeledOption[] }
+    if (Array.isArray(withOptions.options)) {
+      withOptions.options = translateOptions(i18n, entityName, name, withOptions.options) as LabeledOption[]
     }
     return resolved
   }
@@ -632,8 +637,12 @@ export function useFieldManager<T extends ResolvedFieldConfig = ResolvedFieldCon
       const newLabel = trace.hit
         ? trace.result
         : meta._inlineLabel || snakeCaseToTitle(name)
-      if (field.label !== newLabel) {
-        fieldsMap.value.set(name, { ...field, label: newLabel } as T)
+      const options = (field as T & { options?: LabeledOption[] }).options
+      const newOptions = Array.isArray(options) ? translateOptions(i18n, entityName, name, options) : options
+      const optionsChanged =
+        Array.isArray(options) && JSON.stringify(newOptions?.map((o) => o?.label)) !== JSON.stringify(options.map((o) => o?.label))
+      if (field.label !== newLabel || optionsChanged) {
+        fieldsMap.value.set(name, { ...field, label: newLabel, ...(optionsChanged ? { options: newOptions } : {}) } as T)
       }
     }
 

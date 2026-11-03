@@ -730,6 +730,7 @@ export function useEntityItemFormPage<T extends Record<string, unknown> = Record
       if (action.visible && !action.visible({ isEdit: isEdit.value, dirty: dirty.value })) return null
       return {
         ...action,
+        label: action._label ? action._label() : action.label,
         isLoading: action.loading ? action.loading() : false,
         isDisabled: action.disabled
           ? action.disabled({ dirty: dirty.value, saving: saving.value })
@@ -754,10 +755,14 @@ export function useEntityItemFormPage<T extends Record<string, unknown> = Record
 
   function addSaveAction(options: AddSaveActionOptions = {}): void {
     const { label, andClose = true } = options
-    const actionLabel = label || (andClose ? 'Save & Close' : 'Save')
+    // The catalogue's, by mode: Create / Update, and & Close (#4686)
+    const saveLabel = () =>
+      andClose
+        ? isEdit.value ? tOr('core.actions.updateAndClose', 'Save & Close') : tOr('core.actions.createAndClose', 'Save & Close')
+        : tOr('core.actions.save', 'Save')
 
     addAction('save', {
-      label: actionLabel,
+      ...(label ? { label } : { label: saveLabel(), _label: saveLabel }),
       icon: andClose ? 'pi pi-check-circle' : 'pi pi-check',
       severity: andClose ? 'success' : 'primary',
       onClick: async () => { await submit(andClose) },
@@ -768,10 +773,11 @@ export function useEntityItemFormPage<T extends Record<string, unknown> = Record
   }
 
   function addDeleteAction(options: AddDeleteActionOptions = {}): void {
-    const { label = tOr('core.actions.delete', 'Delete') } = options
+    const { label } = options
+    const deleteLabel = () => tOr('core.actions.delete', 'Delete')
 
     addAction('delete', {
-      label,
+      ...(label ? { label } : { label: deleteLabel(), _label: deleteLabel }),
       icon: 'pi pi-trash',
       severity: 'danger',
       onClick: confirmDelete,
@@ -780,10 +786,11 @@ export function useEntityItemFormPage<T extends Record<string, unknown> = Record
   }
 
   function addCancelAction(options: AddCancelActionOptions = {}): void {
-    const { label = 'Cancel' } = options
+    const { label } = options
+    const cancelLabel = () => tOr('core.actions.cancel', 'Cancel')
 
     addAction('cancel', {
-      label,
+      ...(label ? { label } : { label: cancelLabel(), _label: cancelLabel }),
       icon: 'pi pi-times',
       severity: 'secondary',
       onClick: cancel,

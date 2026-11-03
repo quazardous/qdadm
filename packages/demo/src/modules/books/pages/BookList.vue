@@ -58,10 +58,10 @@ list.addDeleteAction({ labelField: 'title' })
     </template>
 
     <template #columns>
-      <Column field="title" header="Title" sortable />
-      <Column field="author" header="Author" sortable />
-      <Column field="year" header="Year" sortable style="width: 100px" />
-      <Column field="genre" header="Genre" style="width: 120px">
+      <Column v-bind="list.column('title', { header: 'Title' })" sortable />
+      <Column v-bind="list.column('author', { header: 'Author' })" sortable />
+      <Column v-bind="list.column('year', { header: 'Year' })" sortable style="width: 100px" />
+      <Column v-bind="list.column('genre', { header: 'Genre' })" style="width: 120px">
         <template #body="{ data }">
           <SeverityTag field="genre" :value="data.genre" />
         </template>

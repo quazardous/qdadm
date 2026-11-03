@@ -103,14 +103,14 @@ async function addSampleFavorites() {
     </template>
 
     <template #columns>
-      <Column field="name" header="Name" sortable />
-      <Column field="entityType" header="Type" sortable style="width: 150px">
+      <Column v-bind="list.column('name', { header: 'Name' })" sortable />
+      <Column v-bind="list.column('entityType', { header: 'Type' })" sortable style="width: 150px">
         <template #body="{ data }">
           <Tag :value="data.entityType" :severity="getTypeSeverity(data.entityType)" />
         </template>
       </Column>
-      <Column field="entityId" header="Entity ID" style="width: 150px" />
-      <Column field="createdAt" header="Created" sortable style="width: 180px">
+      <Column v-bind="list.column('entityId', { header: 'Entity ID' })" style="width: 150px" />
+      <Column v-bind="list.column('createdAt', { header: 'Created' })" sortable style="width: 180px">
         <template #body="{ data }">
           {{ formatDate(data.createdAt) }}
         </template>

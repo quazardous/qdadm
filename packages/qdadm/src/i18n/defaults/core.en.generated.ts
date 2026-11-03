@@ -1,12 +1,20 @@
 /* GENERATED from core.en.yml — DO NOT EDIT.
  * Run `npm run gen:i18n-defaults -w packages/qdadm` to regenerate. */
 export default `core:
+  # The table's own column headers (#4686)
+  table:
+    actions: Actions
+  # Boolean values (#4686)
+  values:
+    "yes": "Yes"
+    "no": "No"
   actions:
     save: Save
     cancel: Cancel
     delete: Delete
     edit: Edit
     create: Create
+    createEntity: "Create {entity}"
     update: Update
     createAndClose: Create & Close
     updateAndClose: Update & Close
