@@ -1,5 +1,7 @@
 # qdadm Philosophy
 
+> The rules this page argues for, in eight lines: [RULES.md](RULES.md).
+
 ## Core Principle: Declaration Over Implementation
 
 qdadm is an **ultra-DRY** admin framework. 80% of admin pages are built by declaring WHAT you want, not HOW to get it.
@@ -12,8 +14,8 @@ import { ListPage } from '@quazardous/qdadm/components'
 import { useListPage } from '@quazardous/qdadm/composables'
 
 const list = useListPage({ entity: 'books' })
-list.addColumn('title', 'Title')
-list.addColumn('author', 'Author')
+list.addColumn('title')
+list.addColumn('author')
 list.setSearch({ placeholder: 'Search...' })
 list.addFilter('genre', { optionsEntity: 'genres' })
 list.addEditAction()

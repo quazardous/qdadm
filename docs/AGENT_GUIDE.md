@@ -1,7 +1,7 @@
 # AGENT_GUIDE - qdadm Quick Index
 
 > Navigation index for AI agents. Read code directly for details.
-> Philosophy: see [QDADM_CREDO.md](./QDADM_CREDO.md)
+> The rules: [RULES.md](./RULES.md). Philosophy: [QDADM_CREDO.md](./QDADM_CREDO.md)
 
 ## Dev Commands
 

@@ -2,6 +2,11 @@
 
 > Entry point for AI agents working on or against a qdadm app.
 
+**Writing code on qdadm?** Read [`docs/RULES.md`](docs/RULES.md) first: eight
+rules (declare, don't implement; no API call in a page; permissions as grants;
+every string in the catalogue; anything slow says it waits…), each with where
+it is explained.
+
 qdadm exposes a self-describing **debug bridge** — every running app in dev mode
 publishes a JSON manifest of its collectors plus a live snapshot, and accepts
 remote actions. An agent can introspect the app without touching the source.

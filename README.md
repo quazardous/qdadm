@@ -268,6 +268,7 @@ ctx.block('books-list-header', { id: 'export-btn', component: ExportButton, weig
 - [Sign-in with an OIDC provider](docs/auth-oidc.md) - Keycloak, Auth0, Google: code + PKCE, your backend issues the session
 - [Branding](docs/branding.md) - App name, logo, page icon (`app.favicon`), top banner (`app.banner`)
 - [Sidebar user box](docs/user-box.md) - Profile link on the user name and avatar, avatar picture
+- [The rules](docs/RULES.md) - What code on qdadm must do, in eight lines
 - [QDADM_CREDO](docs/QDADM_CREDO.md) - Philosophy & patterns
 - [Contributing](CONTRIBUTING.md) - Setup, quality gates, release flow
 
