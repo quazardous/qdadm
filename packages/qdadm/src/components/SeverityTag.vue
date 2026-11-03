@@ -22,6 +22,7 @@ import { computed, inject } from 'vue'
 import Tag from 'primevue/tag'
 import type { Orchestrator } from '../orchestrator/Orchestrator'
 import type { EntityManager } from '../entity/EntityManager'
+import { useI18n } from '../i18n/useI18n'
 
 interface Props {
   /** Entity name (e.g., 'jobs', 'stories') - optional if inside ListPage context */
@@ -68,8 +69,21 @@ const descriptor = computed(() => {
 
 const severity = computed(() => descriptor.value.severity)
 
+const { i18n } = useI18n()
+
+// The page's label, the severity map's, then the option's in the catalogue
+// or as declared (#4686): a status reads "Commandée", not "ordered"
+const optionLabel = computed(() => {
+  const value = fieldValue.value
+  if (value === '' || !resolvedEntity.value) return null
+  const trace = i18n?.resolve(`entities.${resolvedEntity.value}.fields.${props.field}.options.${String(value)}`)
+  if (trace?.hit) return trace.result
+  const options = (manager.value?.getFieldConfig?.(props.field) as { options?: Array<{ value?: unknown; label?: string }> } | undefined)?.options
+  return options?.find((o) => o.value === props.value)?.label ?? null
+})
+
 const displayLabel = computed(() => {
-  return props.label ?? descriptor.value.label ?? props.value
+  return props.label ?? descriptor.value.label ?? optionLabel.value ?? props.value
 })
 
 const hasIcon = computed(() => !!descriptor.value.icon)

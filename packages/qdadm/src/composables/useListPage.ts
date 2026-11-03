@@ -1360,7 +1360,7 @@ export function useListPage<T = unknown>(config: UseListPageOptions<T>): UseList
     // Static options translate as the field's do (#4686)
     filters: filters.value.map((f) =>
       Array.isArray(f.options)
-        ? { ...f, options: translateOptions(kernelI18n, entityName, f.name, f.options as LabeledOption[]) as typeof f.options }
+        ? { ...f, options: translateOptions(kernelI18n, entity, f.name, f.options as LabeledOption[]) as typeof f.options }
         : f
     ),
     filterValues: filterValues.value,
