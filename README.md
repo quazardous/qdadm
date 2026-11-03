@@ -9,6 +9,8 @@ TypeScript-first. Module-driven. Zero boilerplate.
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.0+-blue)](https://www.typescriptlang.org/)
 [![Vue 3](https://img.shields.io/badge/Vue-3.4+-42b883)](https://vuejs.org/)
 
+[![The demo's book list: a sidebar, a searchable and filterable table, row actions](docs/assets/demo-books.png)](https://quazardous.github.io/qdadm/)
+
 ---
 
 ## Why qdadm?
