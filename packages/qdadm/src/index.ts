@@ -341,6 +341,12 @@ export {
   type UseLogStreamOptions,
   type UseLogStreamReturn,
 } from './composables/useLogStream'
+export {
+  useAsyncRead,
+  readErrorMessage,
+  type UseAsyncReadOptions,
+  type UseAsyncReadReturn,
+} from './composables/useAsyncRead'
 
 // Route-state persistence (#2146) — where a route remembers what it shows.
 export {

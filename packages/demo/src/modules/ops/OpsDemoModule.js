@@ -74,6 +74,12 @@ export class OpsDemoModule extends Module {
         meta: { layout: 'page', permission: 'admin:ops:tasks' },
       },
       {
+        path: 'pending',
+        name: 'ops-pending',
+        component: () => import('./pages/PendingPlayground.vue'),
+        meta: { layout: 'page' },
+      },
+      {
         path: 'yaml-config',
         name: 'ops-yaml-config',
         component: () => import('./pages/YamlConfigPlayground.vue'),
@@ -124,6 +130,7 @@ export class OpsDemoModule extends Module {
     // Gated by its route's permission, not an entity (#4318, #4332): hidden from
     // whoever may not open the page, and lit on its own page
     ctx.navItem({ section: 'Features', route: 'ops-tasks', icon: 'pi pi-cog', label: 'Tasks' })
+    ctx.navItem({ section: 'Features', route: 'ops-pending', icon: 'pi pi-hourglass', label: 'Pending reads' })
     ctx.navItem({ section: 'Features', route: 'ops-yaml-config', icon: 'pi pi-file-edit', label: 'YAML config' })
   }
 }

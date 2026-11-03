@@ -176,6 +176,12 @@ export default `core:
       subs: "{count} sous-phase | {count} sous-phases"
       filter: "Phase : {name}"
       showAll: Voir tout le journal
+  # Waiting states (#4665)
+  pending:
+    reading: Lecture…
+    unavailable: Indisponible
+    failed: "Lecture impossible : {error}"
+    retry: Réessayer
   # LoginPage (#4168)
   login:
     username: Identifiant

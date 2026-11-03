@@ -124,6 +124,12 @@ export {
   type UseLogStreamOptions,
   type UseLogStreamReturn,
 } from './useLogStream'
+export {
+  useAsyncRead,
+  readErrorMessage,
+  type UseAsyncReadOptions,
+  type UseAsyncReadReturn,
+} from './useAsyncRead'
 export { useTaskRunner, taskAction } from '../tasks/useTaskRunner'
 export {
   useDeferred,

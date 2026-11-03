@@ -176,6 +176,12 @@ export default `core:
       subs: "{count} sub-phase | {count} sub-phases"
       filter: "Phase: {name}"
       showAll: Show the whole log
+  # Waiting states (#4665)
+  pending:
+    reading: Reading…
+    unavailable: Unavailable
+    failed: "Could not read: {error}"
+    retry: Retry
   # LoginPage (#4168)
   login:
     username: Username

@@ -1,0 +1,104 @@
+/**
+ * Waiting states (#4665): QdPending, a badge that waits for its value, and
+ * QdPendingZone, an area that waits for its data. Neutral colours: a wait is
+ * not a warning.
+ */
+
+@use 'variables' as *;
+
+.qd-pending.p-tag {
+  gap: 0.375rem;
+  font-weight: 500;
+  color: var(--p-text-muted-color);
+}
+
+.qd-pending--failed.p-tag {
+  opacity: 0.8;
+}
+
+.qd-pending-zone {
+  position: relative;
+}
+
+.qd-pending-zone-content {
+  transition: opacity 0.2s;
+}
+
+.qd-pending-zone--reloading > .qd-pending-zone-content {
+  opacity: 0.55;
+}
+
+.qd-pending-zone-corner {
+  position: absolute;
+  top: 0.375rem;
+  right: 0.375rem;
+  color: var(--p-text-muted-color);
+}
+
+.qd-pending-zone-skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: 0.625rem;
+  padding: 0.25rem 0;
+}
+
+.qd-pending-zone-line {
+  display: block;
+  height: 0.875rem;
+  border-radius: $radius-sm;
+  background: linear-gradient(
+    90deg,
+    var(--p-content-border-color) 0%,
+    var(--p-content-hover-background) 50%,
+    var(--p-content-border-color) 100%
+  );
+  background-size: 200% 100%;
+  animation: qd-pending-shimmer 1.4s ease-in-out infinite;
+}
+
+@keyframes qd-pending-shimmer {
+  from { background-position: 100% 0; }
+  to { background-position: -100% 0; }
+}
+
+.qd-pending-zone-spinner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 1.5rem 0.5rem;
+  color: var(--p-text-muted-color);
+  font-size: $font-size-sm;
+}
+
+.qd-pending-zone-error,
+.qd-pending-zone-stale {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--p-text-muted-color);
+  font-size: $font-size-sm;
+  overflow-wrap: anywhere;
+}
+
+.qd-pending-zone-error {
+  padding: 0.75rem;
+  border: 1px dashed var(--p-content-border-color);
+  border-radius: $radius-sm;
+}
+
+.qd-pending-zone-stale {
+  margin-top: 0.5rem;
+}
+
+// A still spinner and a still skeleton: the label and the shape say it waits
+@media (prefers-reduced-motion: reduce) {
+  .qd-pending-spinner {
+    animation: none;
+  }
+
+  .qd-pending-zone-line {
+    animation: none;
+  }
+}
