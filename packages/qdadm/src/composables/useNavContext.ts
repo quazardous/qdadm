@@ -166,8 +166,9 @@ export function useNavContext(_options: UseNavContextOptions = {}): UseNavContex
   /**
    * Get default item route for an entity manager
    * Checks which routes actually exist and returns the appropriate one:
-   * - Prefers -edit if it exists (editable entity)
-   * - Falls back to -show if -edit doesn't exist
+   * - Prefers -show: a record's crumb (and a child page's "Details") opens
+   *   the record, not its form (#4685)
+   * - Falls back to -edit for an entity with no show page
    * @param manager - Entity manager
    * @returns Route name or null if neither exists
    */
@@ -178,8 +179,8 @@ export function useNavContext(_options: UseNavContextOptions = {}): UseNavContex
     const showRoute = `${manager.routePrefix}-show`
 
     // Check which routes actually exist and return the first available
-    if (router.hasRoute(editRoute)) return editRoute
     if (router.hasRoute(showRoute)) return showRoute
+    if (router.hasRoute(editRoute)) return editRoute
 
     return null
   }
@@ -488,7 +489,7 @@ export function useNavContext(_options: UseNavContextOptions = {}): UseNavContex
   }
 
   // Item pages (#1332): the terminal is entity-show/entity-edit — offer the
-  // OPPOSITE mode (getDefaultItemRoute's edit-preference is a landing
+  // OPPOSITE mode (getDefaultItemRoute's show-preference is a landing
   // default, not a toggle).
   const modeToggle = computed<BreadcrumbModeToggle | null>(() => {
     void i18nLocale.value // label re-resolves on locale change

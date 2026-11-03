@@ -38,11 +38,12 @@ const {{entityName}}Storage = new MockApiStorage({
 // ENTITY MANAGER (Optional - only if custom permissions needed)
 // ============================================================================
 
-// Uncomment to add custom permission logic:
+// Who may do what is a grant in the roles provider (main.js), not code:
+// entity:{{entity_name}}:delete for ROLE_ADMIN only = only admins delete.
+// Subclass only for a business rule about the record, keeping the grant:
 // class {{EntityName}}Manager extends EntityManager {
-//   canDelete() {
-//     const user = this._orchestrator?.kernel?.options?.authAdapter?.getUser?.()
-//     return user?.role === 'ROLE_ADMIN'
+//   canUpdate(record) {
+//     return record?.status !== 'archived' && super.canUpdate(record)
 //   }
 // }
 

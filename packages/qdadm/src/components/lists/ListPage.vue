@@ -22,10 +22,12 @@ import ActionButtons from './ActionButtons.vue'
 import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
 import QdButton from '../base/QdButton.vue'
+import SeverityTag from '../SeverityTag.vue'
+import ShowDisplay from '../show/ShowDisplay.vue'
 import Select from 'primevue/select'
 import AutoComplete from 'primevue/autocomplete'
 import SplitButton from 'primevue/splitbutton'
-import type { FilterConfig, CardConfig, ResolvedAction, ResolvedHeaderAction } from '../../composables/useListPage'
+import type { FilterConfig, CardConfig, ResolvedAction, ResolvedHeaderAction, ColumnConfig } from '../../composables/useListPage'
 
 /**
  * Header action state for label function (matches useListPage)
@@ -86,6 +88,8 @@ const props = defineProps({
 
   // Table data
   items: { type: Array as PropType<unknown[]>, required: true },
+  /** Declared columns, shown when the page gives no #columns slot */
+  columns: { type: Array as PropType<Array<ColumnConfig & { display?: Record<string, unknown> & { severity?: boolean; entity?: string } }>>, default: () => [] },
   /**
    * Extra props forwarded verbatim to the underlying PrimeVue DataTable
    * (#1217) — e.g. { nullSortOrder: -1 } to sort null values last. Bound
@@ -132,6 +136,16 @@ const props = defineProps({
   // Mobile row tap
   hasRowTapAction: { type: Boolean, default: false }
 })
+
+// `{ name, label }` is read as `{ field, header }`; a column without either is skipped
+const declaredColumns = computed(() =>
+  props.columns
+    .map((c) => {
+      const loose = c as typeof c & { name?: string; label?: string }
+      return { ...c, field: c.field ?? loose.name, header: c.header ?? loose.label }
+    })
+    .filter((c) => typeof c.field === 'string' && c.field !== '')
+)
 
 function resolveLabel(label: LabelType): string {
   if (typeof label === 'function') {
@@ -458,8 +472,20 @@ function getFilterClass(filter: FilterConfig): Record<string, boolean> {
         removableSort
         v-bind="tableProps"
       >
-        <!-- Columns from slot -->
-        <slot name="columns" ></slot>
+        <!-- The page's own columns, else the declared ones (addColumn / generateColumns, #4685) -->
+        <slot name="columns">
+          <Column v-for="col in declaredColumns" :key="col.field" :field="col.field" :header="col.header"
+            :sortable="!!col.sortable" :style="col.style">
+            <template #body="{ data }">
+              <slot :name="`column-${col.field}`" :data="data" :value="(data as Record<string, unknown>)[col.field]">
+                <template v-if="col.body">{{ col.body(data) }}</template>
+                <SeverityTag v-else-if="col.display?.severity" :entity="col.display.entity" :field="col.field"
+                  :value="((data as Record<string, unknown>)[col.field] as never)" />
+                <ShowDisplay v-else :field="((col.display ?? { name: col.field }) as never)" :value="((data as Record<string, unknown>)[col.field] as never)" />
+              </slot>
+            </template>
+          </Column>
+        </slot>
 
         <!-- Actions column -->
         <Column v-if="getActions" header="Actions" :style="{ width: actionsWidth }">

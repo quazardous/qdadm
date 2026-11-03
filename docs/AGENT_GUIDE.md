@@ -180,7 +180,7 @@ EntitiesPanel shows all relations:
 | Form (create/edit) | `demo/src/modules/books/pages/BookForm.vue` | useEntityItemFormPage, single form |
 | Custom page | `demo/src/modules/books/pages/BookStats.vue` | Non-CRUD route |
 | Auth adapter | `demo/src/adapters/authAdapter.js` | Login/logout |
-| Entity auth | `demo/src/adapters/entityAuthAdapter.js` | Permissions |
+| Entity auth | `demo/src/main.js` (`security.rolesProvider`) | Who may do what, as grants |
 | User impersonation | `demo/src/components/UserImpersonator.vue` | Signal-driven |
 | Module template | `demo/src/modules/_template/` | Copy to create new |
 
@@ -230,10 +230,11 @@ User roles → RoleHierarchy (expand) → RolesProvider (get perms) → Permissi
 ctx.security.isGranted('entity:books:delete')
 ctx.security.isGranted('entity:books:*')  // wildcard
 
-// In EntityManager
-canDelete() {
-  return this._orchestrator?.kernel?.options?.authAdapter?.getUser?.()?.role === 'ROLE_ADMIN'
-}
+// "Only admins delete": a grant, not code (roles provider)
+//   ROLE_ADMIN: ['entity:*:*'], ROLE_USER: ['entity:books:list', 'entity:books:read']
+// "A user edits their own": isOwn + entity-own:<name>:<action>
+new EntityManager({ name: 'loans', isOwn: (r, user) => r.user_id === user.id })
+//   ROLE_USER: ['entity-own:loans:update']
 
 // Storage-level auth (MockApiStorage)
 new MockApiStorage({

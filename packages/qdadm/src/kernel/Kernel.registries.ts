@@ -45,8 +45,12 @@ export function applyRegistryMethods(KernelClass: { prototype: Kernel }): void {
       this.signals = this.options.existingSignals
       return
     }
-    const debug = this.options.debug ?? false
-    this.signals = createSignalBus({ debug })
+    // Not this.options.debug (#4685): the debug bar turns that on, and the
+    // event kernel's own tracing JSON-stringifies every payload, so a payload
+    // holding a cycle (a manager with its I18n) threw before any handler ran
+    // and every save failed in dev. The bar's signal panel traces safely;
+    // signals.debug(true) still turns the raw tracing on by hand.
+    this.signals = createSignalBus({ debug: false })
   }
 
   /**
@@ -58,11 +62,8 @@ export function applyRegistryMethods(KernelClass: { prototype: Kernel }): void {
     // which is the failure this lot exists to remove.
     if (this.hookRegistry) return
 
-    const debug = this.options.debug ?? false
-    this.hookRegistry = createHookRegistry({
-      kernel: this.signals.getKernel(),
-      debug,
-    })
+    // It shares the signal bus's kernel, tracing off (see _createSignalBus)
+    this.hookRegistry = createHookRegistry({ kernel: this.signals.getKernel() })
   }
 
   /**

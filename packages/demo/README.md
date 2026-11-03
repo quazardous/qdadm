@@ -2,196 +2,51 @@
 
 [![Live Demo](https://img.shields.io/badge/demo-live-brightgreen)](https://quazardous.github.io/qdadm/)
 
-Demo application showcasing [qdadm](https://github.com/quazardous/qdadm) framework features with **6 different storage backends**.
+The app built on [qdadm](../../README.md) in this repository: what each feature
+looks like, and how a feature is meant to be built. Copy its modules, they are
+kept to the [credo](../../docs/QDADM_CREDO.md).
 
-## Quick Start
+## Run it
 
 ```bash
-npm install
-npm run dev
+npm install          # at the repository root
+npm run dev -w packages/demo
 ```
 
-## Storage Backends
+Accounts (password = username): `admin` (ROLE_ADMIN), `bob` and `june`
+(ROLE_USER). `localStorage.clear()` resets the data.
 
-This demo showcases qdadm's storage abstraction with six different backends:
+## How it is put together
 
-| Backend | Type | Persistence | Use Case |
-|---------|------|-------------|----------|
-| **MockApiStorage** | localStorage | Yes | Demo/prototyping with fixtures |
-| **LocalStorage** | localStorage | Yes | Browser-local persistent data |
-| **MemoryStorage** | volatile | No | Session-scoped temporary data |
-| **ApiStorage** | REST API | Remote | Standard REST API integration |
-| **DummyJsonStorage** | REST API | Remote | APIs with limit/skip pagination |
-| **RestCountriesStorage** | REST API | Remote | Client-side pagination + caching |
+- `src/main.js`: the `Kernel` bootstrap. Who may do what is there too, as
+  grants in `security.rolesProvider` (ROLE_USER reads and lists, ROLE_ADMIN
+  also writes and deletes).
+- `src/config/modules.js`: the modules, in order. `src/config/storages.js`:
+  the shared storage settings.
+- `src/modules/<name>/<Name>Module.js`: one module per feature. In
+  `connect(ctx)` it declares its messages (`ctx.messages`), its entities
+  (`ctx.entity`), its pages (`ctx.crud`, `ctx.routes`) and its menu entries.
+- `src/modules/<name>/pages/`: pages built with the builders
+  (`useListPage`, `useEntityItemFormPage`, `useEntityItemShowPage`); no page
+  calls a storage or an API.
+- `src/modules/_template/`: a module to copy for a new entity.
+- `src/fixtures/`: the initial data.
 
-## Demo Entities by Backend
+## What to look at
 
-### MockApiStorage (Library)
-- **Books** - Full CRUD with genre filter, admin-only delete
-- **Genres** - Parent entity with child route to filtered books
-- **Loans** - Ownership-based access, enrichment pattern
-- **Users** - Admin-only access for user management
+| Module | Shows |
+|---|---|
+| `books` | The reference CRUD: list with search and filters, show page, form, a child list (loans) in a tab, severity tags |
+| `loans` | A child entity (`parents`), owner rights (`isOwn`) |
+| `users` | Admin-only pages |
+| `favorites`, `settings` | `LocalStorage`, `MemoryStorage` |
+| `jsonplaceholder`, `products`, `countries` | Remote APIs: `ApiStorage`, limit/skip pagination, client-side pagination with a cache |
+| `ops` | Long tasks (TaskRunner, phases), waiting states, logs, payloads, emails, YAML config, dashboards, sessions |
+| `notifications` | The notification panel |
 
-### LocalStorage
-- **Favorites** - User bookmarks stored in browser localStorage
-
-### MemoryStorage
-- **Settings** - Key/value pairs (volatile, lost on refresh)
-
-### ApiStorage (JSONPlaceholder)
-- **JP Users** - External users with detail page
-- **Posts** - Posts with author relationship
-- **Todos** - Simple todo list with completion toggle
-
-### DummyJsonStorage
-- **Products** - Products with thumbnails, price, category
-
-### RestCountriesStorage
-- **Countries** - 250 countries with flag, capital, region
-
-## Default Users
-
-| Username | Password | Role |
-|----------|----------|------|
-| `admin` | `admin` | ROLE_ADMIN |
-| `bob` | `bob` | ROLE_USER |
-| `june` | `june` | ROLE_USER |
-
-### Permissions
-
-- **ROLE_ADMIN**: Full access to all modules including Users management
-- **ROLE_USER**: Access to Books, Loans, and external APIs (Users hidden)
-
-### Resetting Data
-
-Clear localStorage to reset all MockApiStorage data:
-
-```js
-localStorage.clear()
-```
-
-## Key Features Demonstrated
-
-### 1. Kernel Bootstrap
-
-Single-call app initialization:
-
-```js
-const kernel = new Kernel({
-  root: App,
-  modules: import.meta.glob('./modules/*/init.js', { eager: true }),
-  sectionOrder: ['Library', 'Memory Storage', 'Local Storage', ...],
-  managers: allManagers,
-  authAdapter,
-  primevue: { plugin: PrimeVue, theme: Aura }
-})
-
-kernel.createApp().mount('#app')
-```
-
-### 2. Multiple Storage Backends
-
-```js
-// MockApiStorage - localStorage persistence with fixtures
-const booksStorage = new MockApiStorage({
-  entityName: 'books',
-  initialData: booksFixture
-})
-
-// LocalStorage - browser localStorage
-const favoritesStorage = new LocalStorage({
-  key: 'qdadm-demo-favorites'
-})
-
-// MemoryStorage - volatile (session only)
-const settingsStorage = new MemoryStorage({
-  initialData: [{ id: 'theme', key: 'theme', value: 'light' }]
-})
-
-// ApiStorage - REST API integration
-const jpStorage = new ApiStorage({
-  endpoint: '/users',
-  client: axios.create({ baseURL: 'https://jsonplaceholder.typicode.com' })
-})
-```
-
-### 3. Custom Storage Classes
-
-```js
-// DummyJSON uses limit/skip pagination
-class DummyJsonStorage extends ApiStorage {
-  async list(params = {}) {
-    const { page = 1, page_size = 20 } = params
-    const limit = page_size
-    const skip = (page - 1) * page_size
-    // ... convert pagination format
-  }
-}
-
-// REST Countries with client-side pagination + caching
-class RestCountriesStorage extends ApiStorage {
-  constructor(options = {}) {
-    super({ ...options, idField: 'cca3' })
-    this._cache = null
-    this._cacheTTL = 5 * 60 * 1000  // 5 minutes
-  }
-}
-```
-
-### 4. Permission-Based Access
-
-```js
-class UsersManager extends EntityManager {
-  canRead() {
-    return authAdapter.getUser()?.role === 'ROLE_ADMIN'
-  }
-  canDelete() {
-    return authAdapter.getUser()?.role === 'ROLE_ADMIN'
-  }
-}
-```
-
-### 5. Module System
-
-Each module registers routes and navigation:
-
-```js
-export function init({ registry }) {
-  registry.addRoutes('books', [...], { entity: 'books' })
-  registry.addNavItem({
-    section: 'Library',
-    route: 'book',
-    icon: 'pi pi-book',
-    label: 'Books'
-  })
-}
-```
-
-## Project Structure
-
-```
-src/
-├── adapters/
-│   └── authAdapter.js        # Auth with localStorage (entity permissions inline in main.js)
-├── modules/
-│   ├── books/                # MockApiStorage - Books CRUD
-│   ├── genres/               # MockApiStorage - Genres with children
-│   ├── loans/                # MockApiStorage - Ownership-based
-│   ├── users/                # MockApiStorage - Admin only
-│   ├── favorites/            # LocalStorage - Persistent bookmarks
-│   ├── settings/             # MemoryStorage - Volatile config
-│   ├── jp-users/             # ApiStorage - JSONPlaceholder
-│   ├── posts/                # ApiStorage - JSONPlaceholder
-│   ├── todos/                # ApiStorage - JSONPlaceholder
-│   ├── products/             # DummyJsonStorage - limit/skip
-│   └── countries/            # RestCountriesStorage - caching
-├── fixtures/                 # Initial data for MockApiStorage
-├── pages/
-│   ├── LoginPage.vue
-│   ├── MainLayout.vue
-│   └── WelcomePage.vue       # Architecture overview
-└── main.js                   # Kernel bootstrap + storage setup
-```
+The storages: `MockApiStorage` (fixtures in localStorage), `LocalStorage`,
+`MemoryStorage`, `ApiStorage` and two subclasses for APIs with their own
+pagination. See the [storage docs](../../docs/crud.md).
 
 ## License
 

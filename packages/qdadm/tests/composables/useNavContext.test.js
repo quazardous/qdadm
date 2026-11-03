@@ -241,3 +241,12 @@ describe('useNavContext labels follow the i18n locale (#4147)', () => {
     expect(en.nav.breadcrumb.value.map((c) => c.label)).toEqual(['Home', 'Bots', 'Create'])
   })
 })
+
+describe("a record's crumb opens the record (#4685)", () => {
+  it('the item segment goes to the show page when there is one, else the form', async () => {
+    const both = await mountNav(createTestRouter(), { path: '/bots/1/edit' })
+    expect(both.nav.navChain.value.find((s) => s.type === 'item').routeName).toBe('bots-show')
+    const editOnly = await mountNav(createTestRouter({ withShow: false }), { path: '/bots/1/edit' })
+    expect(editOnly.nav.navChain.value.find((s) => s.type === 'item').routeName).toBe('bots-edit')
+  })
+})

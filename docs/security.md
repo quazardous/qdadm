@@ -356,21 +356,41 @@ Hiding is a convenience: the server still has to refuse.
 
 ## EntityManager Permissions
 
-EntityManager auto-registers CRUD permissions and provides can* methods:
+A manager registers `entity:<name>:<action>` for its entity (`list`, `read`,
+`create`, `update`, `delete`) and answers `canCreate()`, `canUpdate(record)`,
+`canDelete(record)` from them. Who may do what is a grant, not code:
 
 ```js
-class BooksManager extends EntityManager {
-  // Override for custom logic
-  canDelete(record) {
-    // Only admin can delete
-    const user = this._orchestrator?.kernel?.options?.authAdapter?.getUser?.()
-    return user?.role === 'ROLE_ADMIN'
-  }
+// main.js: the roles provider
+roles: {
+  ROLE_USER: ['entity:books:list', 'entity:books:read', 'entity:books:create', 'entity:books:update'],
+  ROLE_ADMIN: ['entity:*:*'],            // admins also delete
+}
+```
 
+"Only admins delete books" is `entity:books:delete` granted to `ROLE_ADMIN` and
+to no one else: no `canDelete` override, no `role ===` test. The list's delete
+action, the show page's, and the storage all follow the grant.
+
+**Owner rights** are declared too: `isOwn` says whose a record is, and
+`entity-own:<name>:<action>` grants an action on one's own records.
+
+```js
+ctx.entity('loans', new EntityManager({
+  name: 'loans',
+  isOwn: (record, user) => record.user_id === user.id,
+  // ...
+}))
+// roles: ROLE_USER: ['entity-own:loans:update']   → a user edits their own loans only
+```
+
+Override `canUpdate` / `canDelete` only for a **business rule** about the
+record, not about who the user is, and keep the grant's answer:
+
+```js
+class OrdersManager extends EntityManager {
   canUpdate(record) {
-    // Owner or admin
-    const user = this._orchestrator?.kernel?.options?.authAdapter?.getUser?.()
-    return record.owner_id === user?.id || user?.role === 'ROLE_ADMIN'
+    return record?.status !== 'archived' && super.canUpdate(record)
   }
 }
 ```
@@ -557,7 +577,7 @@ AuthCollector displays in debug panel:
 
 ## Best Practices
 
-1. **Use SecurityChecker** - Don't implement permission logic in components
+1. **Grant, don't test roles** - Who may do what goes in the roles' permissions; no `role ===` in components or managers
 2. **Register permissions** - Use PermissionRegistry for discoverability
 3. **Use signals** - Don't manipulate auth state directly
 4. **Storage authCheck** - Protect at storage level, not just UI

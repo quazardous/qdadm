@@ -43,10 +43,9 @@ const genresStorage = new MockApiStorage({
   authCheck
 })
 
-// Books permissions are handled by the SecurityChecker:
-// - entity:books:* for admin access
-// - entity:books:read, entity:books:list, entity:books:create, entity:books:update for regular users
-// - entity:books:delete restricted to admin only via role permissions
+// Books permissions are grants in the roles provider (main.js), not code:
+// ROLE_USER reads and lists (entity:*:read, entity:*:list); ROLE_ADMIN also
+// creates, updates and deletes (entity:*:create|update|delete)
 
 // ============================================================================
 // MODULE

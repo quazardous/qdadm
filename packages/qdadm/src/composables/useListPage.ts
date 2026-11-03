@@ -445,7 +445,43 @@ export function useListPage<T = unknown>(config: UseListPageOptions<T>): UseList
     }
   }
 
-  const columns = computed(() => Array.from(columnsMap.value.values()))
+  /**
+   * One column per listable field of the entity, in the order they are
+   * declared (#4685). `password`, `textarea` and `json` fields are left out,
+   * as is any field with `listable: false`; `exclude` / `only` narrow it.
+   * A column already added keeps its own settings.
+   */
+  // What generateColumns and the cells read of the manager
+  const columnSource = manager as unknown as {
+    getListFields?: () => Array<{ name: string; type?: string; sortable?: boolean }>
+    hasSeverityMap?: (field: string) => boolean
+    name?: string
+  }
+
+  function generateColumns(options: { exclude?: string[]; only?: string[] } = {}): void {
+    const skip = new Set(options.exclude ?? [])
+    const only = options.only ? new Set(options.only) : null
+    for (const field of columnSource.getListFields?.() ?? []) {
+      const name = field.name
+      if (skip.has(name) || (only && !only.has(name)) || columnsMap.value.has(name)) continue
+      if (['password', 'textarea', 'json'].includes(field.type ?? '')) continue
+      addColumn(name, field.sortable ? { sortable: true } : {})
+    }
+  }
+
+  // Each column carries what ListPage needs to render its cells by type
+  // (dates, booleans, options, severity) when the page gives no #columns slot
+  const columns = computed(() =>
+    Array.from(columnsMap.value.values()).map((c) => ({
+      ...c,
+      display: {
+        name: c.field,
+        ...(manager.getFieldConfig(c.field) ?? {}),
+        severity: columnSource.hasSeverityMap?.(c.field) ?? false,
+        entity: columnSource.name ?? entity,
+      },
+    }))
+  )
 
   // ============ HEADER ACTIONS ============
   const headerActionsMap = ref<Map<string, HeaderActionConfig>>(new Map())
@@ -1376,6 +1412,7 @@ export function useListPage<T = unknown>(config: UseListPageOptions<T>): UseList
     columns,
     column,
     addColumn,
+    generateColumns,
     removeColumn,
     updateColumn,
 

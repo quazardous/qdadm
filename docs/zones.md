@@ -62,23 +62,28 @@ import { Zone } from '@quazardous/qdadm'
 
 ### Register a Block
 
-**Preferred: Module init** (receives `zones` from kernel):
+**Preferred: in the module's `connect(ctx)`:**
 
 ```js
-// modules/mymodule/init.js
+// modules/mymodule/MyModule.js
 import { defineAsyncComponent } from 'vue'
+import { Module } from '@quazardous/qdadm'
 
 // IMPORTANT: Use defineAsyncComponent for lazy loading!
 // Static imports would execute <script setup> before Vue app exists,
 // causing silent failures if components use inject() or composables.
 const MyBanner = defineAsyncComponent(() => import('./components/MyBanner.vue'))
 
-export function init({ registry, zones }) {
-  zones.registerBlock('page-header', {
-    id: 'my-banner',
-    component: MyBanner,
-    weight: 50
-  })
+export class MyModule extends Module {
+  static moduleName = 'my-module'
+
+  async connect(ctx) {
+    ctx.block('page-header', {
+      id: 'my-banner',
+      component: MyBanner,
+      weight: 50,
+    })
+  }
 }
 ```
 
@@ -194,74 +199,62 @@ Use for cross-cutting concerns (borders, badges, analytics).
 
 The power of zones: modules extend each other without coupling.
 
-### Module Init Pattern
+### In modules
 
-Zones are registered in module `init.js` files, which receive `zones` from the kernel:
+A module defines the zones it owns and fills them in `connect(ctx)`; another
+module extends them from its own `connect`:
 
 ```js
-// modules/books/init.js - Define zones
-import { defineAsyncComponent } from 'vue'
-
+// modules/books/BooksModule.js - Define zones
 const BooksListHeader = defineAsyncComponent(() => import('./components/BooksListHeader.vue'))
 
-export function init({ registry, zones }) {
-  // Define zones owned by this module
-  zones.defineZone('books-list-header')
+export class BooksModule extends Module {
+  static moduleName = 'books'
 
-  // Register default block
-  zones.registerBlock('books-list-header', {
-    id: 'books-header',
-    component: BooksListHeader,
-    weight: 50
-  })
-
-  // Routes...
-  registry.addRoutes('books', [...])
+  async connect(ctx) {
+    ctx.zone('books-list-header')
+    ctx.block('books-list-header', { id: 'books-header', component: BooksListHeader, weight: 50 })
+    // entities, ctx.crud(...), nav...
+  }
 }
 ```
 
 ```js
-// modules/loans/init.js - Extend Books zones
-import { defineAsyncComponent } from 'vue'
-
+// modules/loans/LoansModule.js - Extend Books zones
 const LoanAwareBooksHeader = defineAsyncComponent(() => import('./components/LoanAwareBooksHeader.vue'))
 const LoanStatusColumn = defineAsyncComponent(() => import('./components/LoanStatusColumn.vue'))
 
-export function init({ registry, zones }) {
-  // REPLACE: Substitute Books header with loan-aware version
-  zones.registerBlock('books-list-header', {
-    id: 'loans-header-replacement',
-    component: LoanAwareBooksHeader,
-    weight: 60,
-    operation: 'replace',
-    replaces: 'books-header'
-  })
+export class LoansModule extends Module {
+  static moduleName = 'loans'
+  static requires = ['books']   // books defines the zone first
 
-  // EXTEND: Add overdue warning after header
-  zones.registerBlock('books-list-header', {
-    id: 'loans-status-extension',
-    component: LoanStatusColumn,
-    weight: 70,
-    operation: 'extend',
-    after: 'loans-header-replacement'
-  })
+  async connect(ctx) {
+    // REPLACE: Substitute Books header with loan-aware version
+    ctx.block('books-list-header', {
+      id: 'loans-header-replacement',
+      component: LoanAwareBooksHeader,
+      weight: 60,
+      operation: 'replace',
+      replaces: 'books-header',
+    })
 
-  // Routes...
-  registry.addRoutes('loans', [...])
+    // EXTEND: Add overdue warning after header
+    ctx.block('books-list-header', {
+      id: 'loans-status-extension',
+      component: LoanStatusColumn,
+      weight: 70,
+      operation: 'extend',
+      after: 'loans-header-replacement',
+    })
+  }
 }
 ```
 
 ### Module Order
 
-Modules are initialized in discovery order (glob pattern). Define zones before extending them.
-
-```js
-// main.js - Kernel auto-discovers modules
-const kernel = new Kernel({
-  modules: import.meta.glob('./modules/*/init.js', { eager: true }),
-  // ...
-})
-```
+A module that extends another's zones names it in `static requires`: it
+connects after it. `priority` orders the rest. The modules are listed once in
+`moduleDefs` (see the demo's `src/config/modules.js`).
 
 ## Duplicate Detection
 

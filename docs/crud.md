@@ -175,6 +175,7 @@ import Column from 'primevue/column'
 
 const list = useListPage({ entity: 'books' })
 
+list.generateColumns({ only: ['title', 'author', 'genre', 'year'] })
 list.setSearch({ placeholder: 'Search books...' })
 list.addFilter('genre', { optionsEntity: 'genres', optionLabel: 'name' })
 list.addCreateAction()
@@ -183,18 +184,7 @@ list.addDeleteAction({ labelField: 'title' })
 </script>
 
 <template>
-  <ListPage v-bind="list.props.value" v-on="list.events">
-    <template #columns>
-      <Column field="title" header="Title" sortable />
-      <Column field="author" header="Author" sortable />
-      <Column field="genre" header="Genre" sortable>
-        <template #body="{ data }">
-          <SeverityTag field="genre" :value="data.genre" />
-        </template>
-      </Column>
-      <Column field="year" header="Year" sortable style="width: 100px" />
-    </template>
-  </ListPage>
+  <ListPage v-bind="list.props.value" v-on="list.events" />
 </template>
 ```
 
@@ -216,8 +206,46 @@ Override per page with the `subtitle` option (`null` suppresses it).
 | `addBulkDeleteAction()` | Bulk delete with selection |
 | `addHeaderAction(name, config)` | Custom header action |
 | `addAction(name, config)` | Custom row action |
-| `generateColumns()` | Auto-generate columns from schema |
+| `addColumn(field, { header?, sortable?, style?, body? })` | One declared column |
+| `column(field, overrides?)` | `{ field, header }` for a `<Column v-bind>` in a `#columns` slot, header translated |
+| `generateColumns({ exclude?, only? })` | One column per listable field, in declaration order (no `password`, `textarea`, `json`, nor `listable: false`); cells render by field type |
 | `loadItems(params?, { force? })` | Force reload data |
+
+### Columns
+
+Declare them; the list renders them, headers from the catalogue
+(`entities.<entity>.fields.<field>`), cells by field type (a date, a boolean,
+an option's label, a severity tag when the manager has a severity map):
+
+```js
+list.generateColumns()                                   // every listable field
+list.generateColumns({ only: ['title', 'author'] })      // or some of them
+list.addColumn('year', { sortable: true, style: 'width: 100px' })
+```
+
+One cell of your own, the rest declared: a `#column-<field>` slot gets
+`{ data, value }`.
+
+```vue
+<ListPage v-bind="list.props.value" v-on="list.events">
+  <template #column-genre="{ value }"><Tag :value="value" /></template>
+</ListPage>
+```
+
+A table entirely your own: the `#columns` slot replaces the declared columns.
+Bind each `Column` with `list.column(field)`: it gives `field` and the
+translated `header`, so headers follow the user's language.
+
+```vue
+<template #columns>
+  <Column v-bind="list.column('title')" sortable />
+  <Column v-bind="list.column('genre')">
+    <template #body="{ data }"><SeverityTag field="genre" :value="data.genre" /></template>
+  </Column>
+</template>
+```
+
+A header typed in the template (`header="Title"`) stays in that language.
 
 ### Filter modes
 
@@ -299,7 +327,7 @@ override ListPage defaults). E.g. sort `null` values last:
 useListPage({
   entity: 'books',
   defaultSort: 'title',        // Default sort field
-  defaultSortOrder: 1,         // 1 = asc, -1 = desc
+  defaultSortOrder: -1,        // -1 = desc (the default), 1 = asc
   pageSize: 20,                // Rows per page
   serverSide: false,           // Server-side pagination
   loadOnMount: true,           // Auto-load on mount
@@ -719,7 +747,7 @@ form.addSaveAction({ andClose: true })
 </template>
 ```
 
-The `book_id` field is auto-filled from the route param and hidden (`f.hidden`). No manual handling needed.
+The `book_id` field is filled from the route param and shown disabled: the user sees which book the loan belongs to and cannot change it. No manual handling needed; to leave it out of the form, skip it in the `v-for` or `form.removeField('book_id')`.
 
 ---
 
@@ -955,9 +983,11 @@ builders (call `addField` / `addAction` on them). Full working example:
 
 ```vue
 <script setup>
-import { useAuth } from '@quazardous/qdadm'
+import { useAuth, useSecurity } from '@quazardous/qdadm'
 const { user } = useAuth()
-const isAdmin = computed(() => user.value?.role === 'ROLE_ADMIN')
+// A permission granted in the roles provider, not a role test
+const { isGranted } = useSecurity()
+const anyBorrower = isGranted('loans:any-borrower')
 
 const form = useEntityItemFormPage({ entity: 'loans' })
 form.generateFields()
@@ -968,10 +998,10 @@ form.generateFields()
     <template #fields>
       <div class="form-grid">
         <!-- Admin selects any user -->
-        <FormField v-if="isAdmin" name="user_id" label="Borrower">
+        <FormField v-if="anyBorrower" name="user_id" label="Borrower">
           <FormInput :field="form.getFieldConfig('user_id')" v-model="form.data.value.user_id" />
         </FormField>
-        <!-- Non-admin sees locked value -->
+        <!-- Without it, the borrower is the user, locked -->
         <FormField v-else name="user_id" label="Borrower">
           <InputText :modelValue="user?.username" disabled class="w-full" />
         </FormField>

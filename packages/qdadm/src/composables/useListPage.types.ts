@@ -428,6 +428,8 @@ export interface UseListPageReturn<T = unknown> {
   /** v-bind column binding helper (#1255): field + header from one source */
   column: (name: string, overrides?: Partial<ColumnConfig>) => ColumnConfig
   addColumn: (field: string, config?: Partial<ColumnConfig>) => void
+  /** One column per listable field of the entity (#4685). */
+  generateColumns: (options?: { exclude?: string[]; only?: string[] }) => void
   removeColumn: (field: string) => void
   updateColumn: (field: string, updates: Partial<ColumnConfig>) => void
 

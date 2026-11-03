@@ -57,11 +57,14 @@ The run itself is reactive too: a `watch` on `run.status` works.
 | `get` | — | or `(taskId) → Promise<record>` |
 | `status` | `'status'` | the field, or `(record) → value` |
 | `statusMap` | — | backend values to `queued`, `running`, `succeeded`, `failed` or `cancelled` |
-| `progress` | `'progress'` | percent, 0–100; without it the bar is indeterminate |
-| `step` | `'step'` | the current step, under the bar |
-| `result` | `'result'` | what a finished task produced, shown in the dialog |
-| `error` | `'error'` | why it failed |
+| `progress` | `'progress'` | percent, 0–100; without it the bar is indeterminate. The field, or `(record) → value` |
+| `step` | `'step'` | the current step, under the bar. The field, or `(record) → value` |
+| `result` | `'result'` | what a finished task produced, shown in the dialog. The field, or `(record) → value` |
+| `error` | `'error'` | why it failed. The field, or `(record) → value` |
 | `intervalMs` | 2000 | the poll interval |
+
+A reader is how a backend that answers in codes gets words on screen: `step:
+(r) => t(\`stock.steps.${r.step}\`)` shows the step in the user's language.
 
 The usual status names are understood without a map: `pending` or
 `waiting` mean queued; `in_progress`, `processing` or `started` mean running;

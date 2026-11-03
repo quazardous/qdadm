@@ -121,15 +121,16 @@ const storage = new LocalStorage({ key: 'my-products' })
 
 ## Custom Permissions
 
+Who may do what is a grant in the roles provider (`src/main.js`), not code:
+`entity:products:delete` granted to `ROLE_ADMIN` only means only admins delete.
+See [docs/security.md](../../../../../docs/security.md#entitymanager-permissions).
+
+A manager subclass is for a business rule about the record, keeping the grant:
+
 ```javascript
 class ProductsManager extends EntityManager {
-  canDelete(item) {
-    const user = this._orchestrator?.kernel?.options?.authAdapter?.getUser?.()
-    return user?.role === 'ROLE_ADMIN'
-  }
-
   canUpdate(item) {
-    return item.status !== 'archived'
+    return item?.status !== 'archived' && super.canUpdate(item)
   }
 }
 ```
