@@ -22,7 +22,7 @@ TypeScript-first. Module-driven. Zero boilerplate.
 - **TypeScript everywhere** - Full type safety, autocomplete, refactoring
 - **Extensible by design** - Hooks, signals, zones for any customization
 - **PrimeVue powered** - Beautiful UI out of the box
-- **AI-friendly** - An AI agent can drive a running app and read back what its actions caused: [debug bridge](docs/DEBUG.md)
+- **AI-friendly** - Easy for an AI to read (typed, conventional, explained in the code) and to drive: an agent runs the app and reads back what its actions caused ([debug bridge](docs/DEBUG.md))
 
 ```js
 // That's it. Full CRUD for books.
