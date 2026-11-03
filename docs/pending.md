@@ -30,6 +30,9 @@ It returns `{ data, error, loading, ready, pending, load }`:
 - The read starts at creation (`{ immediate: false }` to start it yourself), so
   the first render already shows the wait.
 - The latest call wins: an earlier answer arriving late is dropped.
+- `{ key: () => id.value }`: what the read is about. A new key reads again from
+  scratch, not ready: the previous record's answer never shows under the next
+  one, without keying the component.
 - A failure stops `loading`, sets `error`, and keeps the last good `data`.
   The next successful read clears `error`.
 - Test `ready`, never the truthiness of `data`: `null` and `[]` are answers.
@@ -54,6 +57,7 @@ It returns `{ data, error, loading, ready, pending, load }`:
   read yet; `null` has arrived.
 - A failed read shows a muted "Unavailable" tag, the error in its tooltip. It is
   never orange or red: a read that failed is not a warning about the thing read.
+  With `:read`, a retry button sits next to it (`:retry="false"` drops it).
 - `role="status"`, and `aria-busy` while it waits.
 
 ## QdPendingZone: an area that waits

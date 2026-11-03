@@ -93,6 +93,11 @@ export interface RunOptions extends Partial<TaskKind> {
   confirm?: TaskConfirm
   /** Open the follow dialog at once. Default true. */
   open?: boolean
+  /**
+   * What the run is about, for a page to find it again: `{ supplierId: 7 }`.
+   * Kept with the run, across a reload too (#4687). Plain values only.
+   */
+  meta?: Record<string, unknown>
 }
 
 export interface TaskRun {
@@ -108,6 +113,8 @@ export interface TaskRun {
   startedAt: number
   endedAt: number | null
   cancelling: boolean
+  /** What the run is about, as given to run() (#4687) */
+  meta: Record<string, unknown> | null
   /** Settles with the run once it ends: succeeded, failed or cancelled (it never rejects). */
   finished: Promise<TaskRun>
 }
@@ -183,7 +190,7 @@ function createTaskStore() {
     try {
       const saved = state.runs
         .filter((r) => r.kind && kinds.has(r.kind) && r.taskId !== null && !FINAL.includes(r.status))
-        .map((r) => ({ id: r.id, kind: r.kind, label: r.label, taskId: r.taskId, startedAt: r.startedAt }))
+        .map((r) => ({ id: r.id, kind: r.kind, label: r.label, taskId: r.taskId, startedAt: r.startedAt, meta: r.meta }))
       if (saved.length) sessionStorage.setItem(STORAGE_KEY, JSON.stringify(saved))
       else sessionStorage.removeItem(STORAGE_KEY)
     } catch {
@@ -194,7 +201,7 @@ function createTaskStore() {
   function restore(): void {
     if (restored) return
     restored = true
-    let saved: Array<Pick<TaskRun, 'id' | 'kind' | 'label' | 'taskId' | 'startedAt'>> = []
+    let saved: Array<Pick<TaskRun, 'id' | 'kind' | 'label' | 'taskId' | 'startedAt'> & { meta?: TaskRun['meta'] }> = []
     try {
       saved = JSON.parse(sessionStorage.getItem(STORAGE_KEY) ?? '[]')
     } catch {
@@ -203,7 +210,7 @@ function createTaskStore() {
     for (const s of saved) {
       const kind = s.kind ? kinds.get(s.kind) : undefined
       if (!kind || s.taskId === null || state.runs.some((r) => r.id === s.id)) continue
-      const run = addRun({ id: s.id, kind: s.kind, label: s.label, taskId: s.taskId, status: 'running', startedAt: s.startedAt })
+      const run = addRun({ id: s.id, kind: s.kind, label: s.label, taskId: s.taskId, status: 'running', startedAt: s.startedAt, meta: s.meta ?? null })
       defs.set(run.id, kind)
       follow(run.id)
     }
@@ -226,6 +233,7 @@ function createTaskStore() {
       startedAt: partial.startedAt ?? Date.now(),
       endedAt: null,
       cancelling: false,
+      meta: partial.meta ?? null,
       // A promise is not made reactive: run.finished stays the raw promise.
       finished: new Promise<TaskRun>((resolve) => settles.set(id, resolve)),
     }
@@ -396,7 +404,7 @@ function createTaskStore() {
     const def: TaskKind = { ...base, ...options, task: { ...base?.task, ...options.task } } as TaskKind
     if (options.confirm && !(await requestConfirm(options.label, options.confirm))) return null
 
-    const r = addRun({ label: options.label, kind: options.kind ?? null })
+    const r = addRun({ label: options.label, kind: options.kind ?? null, meta: options.meta ? { ...options.meta } : null })
     defs.set(r.id, def)
     if (options.open !== false) state.openId = r.id
     try {
@@ -452,6 +460,25 @@ function createTaskStore() {
 
   const active: ComputedRef<TaskRun[]> = computed(() => state.runs.filter((r) => !FINAL.includes(r.status)))
 
+  // --- Finding a run again (#4687) ---
+
+  /** The runs matching a kind and/or a meta (each given key equal), newest first. */
+  function runsFor(filter: { kind?: string; taskId?: string | number; meta?: Record<string, unknown> } = {}): TaskRun[] {
+    return state.runs
+      .filter((r) =>
+        (filter.kind === undefined || r.kind === filter.kind) &&
+        (filter.taskId === undefined || String(r.taskId) === String(filter.taskId)) &&
+        Object.entries(filter.meta ?? {}).every(([k, v]) => r.meta?.[k] === v)
+      )
+      .sort((a, b) => b.startedAt - a.startedAt)
+  }
+
+  /** The latest run of a kind about one record: `runFor('stock-check', { supplierId: 7 })`, or by task id. */
+  function runFor(kind: string, about: Record<string, unknown> | string | number): TaskRun | null {
+    const filter = typeof about === 'object' ? { kind, meta: about } : { kind, taskId: about }
+    return runsFor(filter)[0] ?? null
+  }
+
   return {
     state,
     active,
@@ -466,6 +493,8 @@ function createTaskStore() {
     answerConfirm,
     attach,
     definition: (id: string) => defs.get(id),
+    runFor,
+    runsFor,
     isFinal: (status: TaskStatus) => FINAL.includes(status),
     /** For tests: stop everything and forget every run. */
     reset(): void {

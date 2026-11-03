@@ -18,15 +18,23 @@
  * - The latest call wins: an earlier answer arriving late is dropped.
  * - A failure stops `loading`, sets `error` (a readable message) and keeps the
  *   last good `data`.
+ * - `key`: what the read is about; a new key reads again from scratch.
+ *   `useAsyncRead(() => api.leadTime(id.value), { key: () => id.value })`
  *
  * QdPending (a badge) and QdPendingZone (an area) take it as `:read`.
  */
 
-import { computed, ref, shallowRef, type ComputedRef, type Ref, type ShallowRef } from 'vue'
+import { computed, ref, shallowRef, watch, type ComputedRef, type Ref, type ShallowRef, type WatchSource } from 'vue'
 
 export interface UseAsyncReadOptions {
   /** Read at once, from setup. Default true. */
   immediate?: boolean
+  /**
+   * What the read is about (an id, a route param): when it changes, the read
+   * starts over, not ready, so the previous record's answer never shows
+   * under the next one (#4687).
+   */
+  key?: WatchSource<unknown>
 }
 
 export interface UseAsyncReadReturn<T> {
@@ -58,7 +66,7 @@ export function readErrorMessage(err: unknown): string {
 }
 
 export function useAsyncRead<T>(loader: () => Promise<T> | T, options: UseAsyncReadOptions = {}): UseAsyncReadReturn<T> {
-  const { immediate = true } = options
+  const { immediate = true, key } = options
 
   const data = shallowRef<T | undefined>(undefined)
   const error = ref<string | null>(null)
@@ -84,6 +92,15 @@ export function useAsyncRead<T>(loader: () => Promise<T> | T, options: UseAsyncR
     } finally {
       if (call === latest) loading.value = false
     }
+  }
+
+  if (key) {
+    watch(key, () => {
+      data.value = undefined
+      error.value = null
+      ready.value = false
+      void load()
+    })
   }
 
   if (immediate) void load()

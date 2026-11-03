@@ -153,8 +153,8 @@ export class BooksModule extends Module {
 ### Storage adapters
 
 ```js
-// Mock (localStorage persistence, dev/demo)
-new MockApiStorage({ entityName: 'books', initialData: [...] })
+// Mock (localStorage persistence, dev/demo); latency and failRate make it behave like a server
+new MockApiStorage({ entityName: 'books', initialData: [...], latency: [250, 800], failRate: 0.05 })
 
 // REST API (axios-based)
 new ApiStorage({ endpoint: '/api/books', client: axiosInstance })

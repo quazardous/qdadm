@@ -17,6 +17,13 @@ export interface MockApiStorageOptions<T extends EntityRecord = EntityRecord> {
    *  Needed when several apps sharing an origin use the same entity names
    *  (e.g. multiple demos on one GitHub Pages site) (#1382). */
   storageKey?: string
+  /**
+   * Behave like a remote server (#4687): each call waits `latency` ms (a
+   * number, or `[min, max]` for a random wait) and fails with a 503 at the
+   * `failRate` (0 to 1). Off by default.
+   */
+  latency?: number | [number, number]
+  failRate?: number
 }
 
 /**
@@ -58,6 +65,8 @@ export class MockApiStorage<T extends EntityRecord = EntityRecord> extends IStor
   protected _storageKey: string
   protected _data: Map<string, T>
   protected _authCheck: (() => boolean) | null
+  protected _latency: number | [number, number]
+  protected _failRate: number
 
   constructor(options: MockApiStorageOptions<T>) {
     super()
@@ -68,6 +77,8 @@ export class MockApiStorage<T extends EntityRecord = EntityRecord> extends IStor
       initialData = null,
       authCheck = null,
       storageKey = null,
+      latency = 0,
+      failRate = 0,
     } = options
 
     if (!entityName) {
@@ -80,8 +91,21 @@ export class MockApiStorage<T extends EntityRecord = EntityRecord> extends IStor
     this._storageKey = storageKey || `mockapi_${entityName}_data`
     this._data = new Map()
     this._authCheck = authCheck
+    this._latency = latency
+    this._failRate = failRate
 
     this._loadFromStorage(initialData)
+  }
+
+  /** The simulated network: the wait, then maybe a failure, then the auth check */
+  protected async _call(): Promise<void> {
+    const [min, max] = Array.isArray(this._latency) ? this._latency : [this._latency, this._latency]
+    const wait = min + Math.random() * Math.max(0, max - min)
+    if (wait > 0) await new Promise((resolve) => setTimeout(resolve, wait))
+    if (this._failRate > 0 && Math.random() < this._failRate) {
+      throw new StorageError(`Service unavailable (simulated failure of ${this.entityName})`, 503)
+    }
+    this._checkAuth()
   }
 
   protected _checkAuth(): void {
@@ -139,7 +163,7 @@ export class MockApiStorage<T extends EntityRecord = EntityRecord> extends IStor
   }
 
   async list(params: ListParams = {}): Promise<ListResult<T>> {
-    this._checkAuth()
+    await this._call()
     const { page = 1, page_size = 20, sort_by, sort_order = 'asc', filters = {}, search } = params
 
     let items = this._getAll()
@@ -163,7 +187,7 @@ export class MockApiStorage<T extends EntityRecord = EntityRecord> extends IStor
   }
 
   async get(id: string | number): Promise<T> {
-    this._checkAuth()
+    await this._call()
     const item = this._data.get(String(id))
     if (!item) {
       throw new StorageError(`Entity not found: ${id}`, 404)
@@ -172,7 +196,7 @@ export class MockApiStorage<T extends EntityRecord = EntityRecord> extends IStor
   }
 
   async getMany(ids: Array<string | number>): Promise<T[]> {
-    this._checkAuth()
+    await this._call()
     if (!ids || ids.length === 0) return []
     const results: T[] = []
     for (const id of ids) {
@@ -215,7 +239,7 @@ export class MockApiStorage<T extends EntityRecord = EntityRecord> extends IStor
   }
 
   async create(data: Partial<T>): Promise<T> {
-    this._checkAuth()
+    await this._call()
     const id =
       (data[this.idField as keyof T] as string | number | undefined) || this.generateId()
     const newItem = {
@@ -229,7 +253,7 @@ export class MockApiStorage<T extends EntityRecord = EntityRecord> extends IStor
   }
 
   async update(id: string | number, data: Partial<T>): Promise<T> {
-    this._checkAuth()
+    await this._call()
     if (!this._data.has(String(id))) {
       throw new StorageError(`Entity not found: ${id}`, 404)
     }
@@ -244,7 +268,7 @@ export class MockApiStorage<T extends EntityRecord = EntityRecord> extends IStor
   }
 
   async patch(id: string | number, data: Partial<T>): Promise<T> {
-    this._checkAuth()
+    await this._call()
     const existing = this._data.get(String(id))
     if (!existing) {
       throw new StorageError(`Entity not found: ${id}`, 404)
@@ -260,7 +284,7 @@ export class MockApiStorage<T extends EntityRecord = EntityRecord> extends IStor
   }
 
   async delete(id: string | number): Promise<void> {
-    this._checkAuth()
+    await this._call()
     if (!this._data.has(String(id))) {
       throw new StorageError(`Entity not found: ${id}`, 404)
     }

@@ -20,6 +20,10 @@
  * // Or react to the end without awaiting it (also fires after a reload resume)
  * tasks.run({ label: 'Refresh db', start, task: { entity: 'tasks' }, onSettled: () => list.refresh() })
  *
+ * // A page finds the run about its record again, live, across a reload
+ * tasks.run({ kind: 'stock-check', label, start, meta: { supplierId: id } })
+ * const check = computed(() => tasks.runFor('stock-check', { supplierId: id }))
+ *
  * // As a row action, with a typed confirmation
  * list.addAction('destroy', {
  *   icon: 'pi pi-trash', severity: 'danger',
@@ -49,6 +53,10 @@ export function useTaskRunner() {
     open: store.open,
     runs: store.state.runs,
     active: store.active,
+    /** The latest run of a kind about one record (its meta, or its task id), or null (#4687). */
+    runFor: store.runFor,
+    /** The runs matching `{ kind, taskId, meta }`, newest first. */
+    runsFor: store.runsFor,
   }
 }
 

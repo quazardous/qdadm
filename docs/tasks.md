@@ -245,6 +245,22 @@ Its id is kept in `sessionStorage` while it runs, so after a reload it is
 followed again: in the tray, and in its dialog when reopened. Runs without a
 registered kind live as long as the page.
 
+## The run about a record
+
+A page that shows a record finds the run about it again, live and after a
+reload: give the run a `meta`, then ask for it.
+
+```js
+tasks.run({ kind: 'stock-check', label: `Check ${supplier.name}`, start, meta: { supplierId: supplier.id } })
+
+const check = computed(() => tasks.runFor('stock-check', { supplierId: supplier.id }))
+// check.value?.status, .progress, .step… and tasks.open(check.value.id) reopens its dialog
+```
+
+`runFor(kind, meta | taskId)` gives the latest such run, or null;
+`runsFor({ kind, taskId, meta })` all of them, newest first. `meta` holds plain
+values: it is kept with the run in `sessionStorage`.
+
 ## Where the dialogs live
 
 `AppLayout` mounts the tray in the sidebar and a `TaskHost`, which renders

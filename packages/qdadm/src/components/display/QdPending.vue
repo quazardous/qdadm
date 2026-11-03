@@ -5,7 +5,8 @@
  * Until the value is read, a neutral tag with a spinner and a short label
  * stands in for the badge: never an empty spot, never a false state. Once it
  * arrives (null included), the slot shows. A failed read shows a muted
- * "unavailable" tag, the error in its tooltip: never a warning colour.
+ * "unavailable" tag, the error in its tooltip: never a warning colour, and
+ * with a `read`, a retry button next to it (`:retry="false"` drops it).
  *
  * Usage:
  *   <QdPending :value="code" label="Reading the deployed code…"><Tag :value="code.state" /></QdPending>
@@ -25,9 +26,11 @@ interface Props {
   label?: string
   /** Why the read failed, without `read` */
   error?: string | null
+  /** A retry button next to "Unavailable" (with `read`). Default true */
+  retry?: boolean
 }
 
-const props = withDefaults(defineProps<Props>(), { value: undefined, read: null, label: undefined, error: null })
+const props = withDefaults(defineProps<Props>(), { value: undefined, read: null, label: undefined, error: null, retry: true })
 
 const { t } = useI18n()
 
@@ -39,11 +42,15 @@ const failure = computed(() => (props.read ? (props.read.loading.value ? null : 
 
 <template>
   <slot v-if="arrived" :value="current" />
-  <Tag v-else-if="failure" class="qd-pending qd-pending--failed" severity="secondary" role="status" :title="failure"
-    :aria-label="`${t('core.pending.unavailable')}: ${failure}`">
-    <i class="pi pi-minus-circle" aria-hidden="true" />
-    <span>{{ t('core.pending.unavailable') }}</span>
-  </Tag>
+  <span v-else-if="failure" class="qd-pending-failed">
+    <Tag class="qd-pending qd-pending--failed" severity="secondary" role="status" :title="failure"
+      :aria-label="`${t('core.pending.unavailable')}: ${failure}`">
+      <i class="pi pi-minus-circle" aria-hidden="true" />
+      <span>{{ t('core.pending.unavailable') }}</span>
+    </Tag>
+    <button v-if="read && retry" type="button" class="qd-pending-retry" :title="t('core.pending.retry')"
+      :aria-label="t('core.pending.retry')" @click="read.load()"><i class="pi pi-refresh" aria-hidden="true" /></button>
+  </span>
   <Tag v-else class="qd-pending" severity="secondary" role="status" aria-busy="true">
     <i class="pi pi-spin pi-spinner qd-pending-spinner" aria-hidden="true" />
     <span>{{ label ?? t('core.pending.reading') }}</span>
