@@ -501,6 +501,8 @@ function createTaskStore() {
     runFor,
     runsFor,
     isFinal: (status: TaskStatus) => FINAL.includes(status),
+    /** A run still going: starting, queued or running (#4695) */
+    isActive: (run: TaskRun | null | undefined) => !!run && !FINAL.includes(run.status),
     /** For tests: stop everything and forget every run. */
     reset(): void {
       for (const stop of stops.values()) stop()

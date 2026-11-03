@@ -12,6 +12,7 @@
  * host's slots go to TaskDialog.
  */
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
+import { useRoute } from 'vue-router'
 import InputText from 'primevue/inputtext'
 import SimpleDialog from '../dialogs/SimpleDialog.vue'
 import TaskDialog from './TaskDialog.vue'
@@ -35,6 +36,18 @@ const dialogComponent = computed(() => {
   const id = store.state.openId
   return (id ? resolveTaskUi(store.definition(id)).component : resolveTaskUi().component) ?? TaskDialog
 })
+
+// Another page: the open dialog closes, the run goes on in the tray (#4695).
+// The dialog is modal, and left open it would block the page behind it.
+const route = useRoute() as ReturnType<typeof useRoute> | undefined
+watch(
+  () => route?.path,
+  (path, previous) => {
+    const id = store.state.openId
+    if (!id || previous === undefined || path === previous) return
+    if (!resolveTaskUi(store.definition(id)).dialog.keepOnNavigate) store.open(null)
+  }
+)
 
 const pending = computed(() => store.state.pendingConfirm)
 const typed = ref('')

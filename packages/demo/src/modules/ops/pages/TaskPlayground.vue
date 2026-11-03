@@ -2,8 +2,8 @@
 /**
  * TaskPlayground — long backend tasks, queued and followed (#4114).
  */
-import { ref } from 'vue'
-import { usePageTitle, useTaskRunner, taskAction } from '@quazardous/qdadm'
+import { computed, ref } from 'vue'
+import { usePageTitle, useTaskRunner, taskAction, TaskRunStatus } from '@quazardous/qdadm'
 import Card from 'primevue/card'
 import Button from 'primevue/button'
 import InputText from 'primevue/inputtext'
@@ -20,8 +20,13 @@ function create(fail = false) {
     kind: 'demo-create-box',
     label: `Create box ${box}`,
     start: () => createTask('create', { box, fail }),
+    // What the run is about: the page finds it again, live and after a reload (#4695)
+    meta: { box },
   })
 }
+
+// The latest creation of the box named above, in a line
+const lastCreate = computed(() => tasks.runFor('demo-create-box', { box: name.value.trim() || 'box' }))
 
 const boxes = ['staging-main', 'feature-sku-index', 'hotfix-vat']
 
@@ -62,6 +67,9 @@ function reset() {
           <Button size="small" severity="danger" outlined icon="pi pi-bolt" label="Create (the restore fails)" @click="create(true)" />
           <Button size="small" severity="secondary" outlined icon="pi pi-refresh" label="Fresh database" @click="reset" />
         </div>
+        <TaskRunStatus class="last-create" :run="lastCreate">
+          <template #result="{ run }"><a :href="run.result.url">{{ run.result.url }}</a></template>
+        </TaskRunStatus>
         <p v-if="lastReset" class="hint last-reset">onSettled: {{ lastReset }}</p>
       </template>
     </Card>
@@ -82,6 +90,10 @@ function reset() {
 </template>
 
 <style scoped>
+.last-create {
+  margin-top: 0.75rem;
+}
+
 .task-playground {
   display: flex;
   flex-direction: column;

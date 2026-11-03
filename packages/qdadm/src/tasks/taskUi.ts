@@ -27,6 +27,11 @@ export interface TaskDialogOptions {
   class?: string
   /** Keep size, position and full screen in localStorage, per app */
   rememberLayout?: boolean
+  /**
+   * Stay open when the user goes to another page. Off by default: the dialog
+   * is modal, so it closes and the run goes on in the tray (#4695).
+   */
+  keepOnNavigate?: boolean
 }
 
 /** The TaskDialog slots an app fills with components; each gets `{ run, kind, final }`. */
@@ -64,6 +69,7 @@ export const TASK_DIALOG_DEFAULTS: Required<Omit<TaskDialogOptions, 'position' |
   resizable: true,
   maximizable: true,
   rememberLayout: true,
+  keepOnNavigate: false,
   position: undefined,
   class: undefined,
 }

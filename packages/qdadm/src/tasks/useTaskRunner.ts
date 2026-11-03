@@ -57,6 +57,8 @@ export function useTaskRunner() {
     runFor: store.runFor,
     /** The runs matching `{ kind, taskId, meta }`, newest first. */
     runsFor: store.runsFor,
+    /** A run still going (starting, queued, running), false for none (#4695). */
+    isActive: store.isActive,
   }
 }
 

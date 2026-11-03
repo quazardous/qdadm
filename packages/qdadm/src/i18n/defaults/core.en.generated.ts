@@ -169,6 +169,8 @@ export default `core:
     close: Close
     background: Run in the background
     open: Open the task
+    follow: Follow
+    notRun: Not run yet
     readError: "Could not read the task ({error}), still trying"
     start: Start
     dontStart: Do not start

@@ -105,7 +105,9 @@ knows the task moved can do the same: `getTaskStore().poke(run.id)`.
 - **Cancel** when `cancel(taskId)` is given. It calls the backend; the run
   ends when the record says it was cancelled.
 - Closing the dialog stops nothing: the task goes on in the tray, and the
-  tray reopens its dialog.
+  tray reopens its dialog. Going to another page closes it the same way (it is
+  modal, and would otherwise block the page); `dialog: { keepOnNavigate: true }`
+  on a kind or in `configureTasks` keeps it open.
 
 When a task ends, a toast says so (`notify: false` turns that off). A
 failure stays in the notification history, and the toast leads to the
@@ -281,6 +283,20 @@ values: it is kept with the run in `sessionStorage`.
   record" belongs to the backend: read it like any record (an entity, or a
   manager method with `useAsyncRead`), and use `runFor` for the run in
   progress.
+
+On the record's page, `TaskRunStatus` shows that run in a line: its status
+(the dialog's words and colours), progress and step while it runs, the error
+once it failed, a `#result` slot once it succeeded, and **Follow**, which
+reopens its dialog; without a run, "Not run yet".
+
+```vue
+<TaskRunStatus :run="check">
+  <template #result="{ run }">{{ run.result.count }} in stock</template>
+</TaskRunStatus>
+<Button label="Check the stock" :disabled="tasks.isActive(check)" @click="startCheck" />
+```
+
+`tasks.isActive(run)` is true while a run is starting, queued or running.
 
 ## Where the dialogs live
 

@@ -481,3 +481,27 @@
   padding: 0.25rem;
   border-radius: 50%;
 }
+
+// ── A run's state on the page of what it is about (#4695) ─────────────────
+.qd-task-run-status {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem 0.75rem;
+  font-size: $font-size-sm;
+}
+
+.qd-task-run-status-progress {
+  flex: 0 1 8rem;
+  height: 0.375rem;
+}
+
+.qd-task-run-status-step,
+.qd-task-run-status-empty {
+  color: var(--p-text-muted-color);
+}
+
+.qd-task-run-status-error {
+  color: var(--p-red-700);
+  overflow-wrap: anywhere;
+}

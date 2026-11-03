@@ -169,6 +169,8 @@ export default `core:
     close: Fermer
     background: Continuer en arrière-plan
     open: Ouvrir la tâche
+    follow: Suivre
+    notRun: Pas encore lancée
     readError: "Lecture de la tâche impossible ({error}), nouvel essai"
     start: Lancer
     dontStart: Ne pas lancer
