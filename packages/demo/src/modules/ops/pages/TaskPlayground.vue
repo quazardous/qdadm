@@ -38,6 +38,17 @@ const destroy = taskAction((box) => ({
   open: false,
 }))
 
+// Two tasks in a row, in one window: the list of steps, a step's detail on a click (#4934).
+// Kinds with a start and metas: the sequence goes on after a reload.
+function verify(failConf = false) {
+  const box = name.value.trim() || 'box'
+  tasks.sequence(`Verify ${box}`, [
+    { kind: 'demo-check', label: 'Check the box', meta: { box } },
+    { kind: 'demo-conf-check', label: 'Check the configuration', meta: { box, fail: failConf } },
+  ], { meta: { box, verify: true } })
+}
+const verifying = computed(() => tasks.isActive(tasks.sequenceFor({ box: name.value.trim() || 'box', verify: true })))
+
 // A reversible gesture: a plain confirmation, no name to type (#4147).
 const lastReset = ref(null)
 function reset() {
@@ -71,6 +82,21 @@ function reset() {
           <template #result="{ run }"><a :href="run.result.url">{{ run.result.url }}</a></template>
         </TaskRunStatus>
         <p v-if="lastReset" class="hint last-reset">onSettled: {{ lastReset }}</p>
+      </template>
+    </Card>
+
+    <Card>
+      <template #title>Verify a box</template>
+      <template #content>
+        <p class="hint">
+          Two checks in a row, in one window: the list of steps, a click shows a step's log, "Back to the list" returns.
+          A failure stops the rest, and one toast says which step failed. The button stays pressed while it runs.
+        </p>
+        <div class="row">
+          <Button size="small" icon="pi pi-verified" label="Verify" :loading="verifying" @click="verify(false)" />
+          <Button size="small" severity="danger" outlined icon="pi pi-bolt" label="Verify (the conf check fails)" :disabled="verifying"
+            @click="verify(true)" />
+        </div>
       </template>
     </Card>
 

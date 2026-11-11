@@ -72,6 +72,13 @@ export interface TaskKind {
   slots?: TaskUiOptions['slots']
   /** A dialog of its own for this kind, instead of TaskDialog. */
   component?: TaskUiOptions['component']
+  /**
+   * Start a task of this kind from its meta alone. With it, `run({ kind, meta })`
+   * needs no `start`, and a sequence of such kinds goes on after a reload (#4934).
+   */
+  start?: (meta: Record<string, unknown> | null) => Promise<unknown>
+  /** A run's line in a sequence's list (#4934). Default: the error, else the step. */
+  summary?: (run: TaskRun) => string | null | undefined
 }
 
 export interface TaskConfirm {
@@ -84,11 +91,15 @@ export interface TaskConfirm {
   severity?: 'primary' | 'secondary' | 'success' | 'info' | 'warn' | 'danger' | 'contrast'
 }
 
-export interface RunOptions extends Omit<Partial<TaskKind>, 'label'> {
+export interface RunOptions extends Omit<Partial<TaskKind>, 'label' | 'start'> {
   /** A string, or a function read each time it shows (tray, dialog, toast), so it follows the locale (#4692) */
   label: string | (() => string)
-  /** Queue the task; returns its id, or `{ task_id | taskId | id }`. */
-  start: () => Promise<unknown>
+  /**
+   * Queue the task; returns its id, or `{ task_id | taskId | id }`. In a
+   * sequence it gets the previous step's run (#4934). Optional when the kind
+   * has a `start`.
+   */
+  start?: (previous: TaskRun | null) => Promise<unknown>
   /** A registered kind; its settings are the defaults of this run, and the run resumes after a reload. */
   kind?: string
   confirm?: TaskConfirm
@@ -116,8 +127,57 @@ export interface TaskRun {
   cancelling: boolean
   /** What the run is about, as given to run() (#4687) */
   meta: Record<string, unknown> | null
+  /** The sequence this run is a step of, or null (#4934) */
+  sequenceId: string | null
   /** Settles with the run once it ends: succeeded, failed or cancelled (it never rejects). */
   finished: Promise<TaskRun>
+}
+
+/** A step of a sequence: run options, or a function of the previous step's run that returns them (#4934). */
+export type SequenceStep = RunOptions | ((previous: TaskRun | null) => RunOptions)
+
+export interface SequenceOptions {
+  /** A failure stops the steps that follow (they show "not run"). Default true. */
+  stopOnError?: boolean
+  /** Open the sequence's window at once. Default true. */
+  open?: boolean
+  /** Asked once, before the first step. */
+  confirm?: TaskConfirm
+  /** What the sequence is about, for a page to find it again (sequenceFor). Plain values only. */
+  meta?: Record<string, unknown>
+  /** One toast when it ends. Default true. */
+  notify?: boolean
+  /** Called once the sequence ends. */
+  onSettled?: (sequence: TaskSequence) => void
+}
+
+/** A step that has no run: waiting its turn, or never run (and why). */
+export type SequenceStepStatus = TaskStatus | 'pending' | 'skipped'
+
+export interface TaskSequenceStep {
+  /** The run's label once started, else the declared one ("Step 2" for a step given as a function) */
+  label: string
+  runId: string | null
+  /** The state recorded: pending, skipped, or the run's once it ended. Live: `store.stepStatus(step)` */
+  status: SequenceStepStatus
+  /** Why a step was not run: an earlier step failed, the sequence was cancelled, the page was reloaded */
+  skipped: 'error' | 'cancelled' | 'reload' | null
+}
+
+export interface TaskSequence {
+  id: string
+  label: string
+  status: 'running' | 'succeeded' | 'failed' | 'cancelled'
+  steps: TaskSequenceStep[]
+  /** The index of the step running, or of the last one run */
+  current: number
+  stopOnError: boolean
+  cancelling: boolean
+  startedAt: number
+  endedAt: number | null
+  meta: Record<string, unknown> | null
+  /** Settles with the sequence once it ends (it never rejects). */
+  finished: Promise<TaskSequence>
 }
 
 interface TaskHostDeps {
@@ -136,6 +196,7 @@ interface PendingConfirm {
 
 const FINAL: TaskStatus[] = ['succeeded', 'failed', 'cancelled']
 const STORAGE_KEY = 'qdadm:tasks'
+const SEQUENCES_KEY = 'qdadm:task-sequences'
 const KEEP_FINISHED = 20
 
 const USUAL: Record<string, Exclude<TaskStatus, 'starting'>> = {
@@ -173,6 +234,9 @@ function errorText(err: unknown): string {
 function createTaskStore() {
   const state = reactive({
     runs: [] as TaskRun[],
+    /** Runs chained in one window (#4934) */
+    sequences: [] as TaskSequence[],
+    /** The run or the sequence whose window is open */
     openId: null as string | null,
     pendingConfirm: null as PendingConfirm | null,
     hosts: 0,
@@ -191,7 +255,7 @@ function createTaskStore() {
     try {
       const saved = state.runs
         .filter((r) => r.kind && kinds.has(r.kind) && r.taskId !== null && !FINAL.includes(r.status))
-        .map((r) => ({ id: r.id, kind: r.kind, label: r.label, taskId: r.taskId, startedAt: r.startedAt, meta: r.meta }))
+        .map((r) => ({ id: r.id, kind: r.kind, label: r.label, taskId: r.taskId, startedAt: r.startedAt, meta: r.meta, sequenceId: r.sequenceId }))
       if (saved.length) sessionStorage.setItem(STORAGE_KEY, JSON.stringify(saved))
       else sessionStorage.removeItem(STORAGE_KEY)
     } catch {
@@ -202,7 +266,7 @@ function createTaskStore() {
   function restore(): void {
     if (restored) return
     restored = true
-    let saved: Array<Pick<TaskRun, 'id' | 'kind' | 'label' | 'taskId' | 'startedAt'> & { meta?: TaskRun['meta'] }> = []
+    let saved: Array<Pick<TaskRun, 'id' | 'kind' | 'label' | 'taskId' | 'startedAt'> & { meta?: TaskRun['meta']; sequenceId?: string | null }> = []
     try {
       saved = JSON.parse(sessionStorage.getItem(STORAGE_KEY) ?? '[]')
     } catch {
@@ -211,10 +275,12 @@ function createTaskStore() {
     for (const s of saved) {
       const kind = s.kind ? kinds.get(s.kind) : undefined
       if (!kind || s.taskId === null || state.runs.some((r) => r.id === s.id)) continue
-      const run = addRun({ id: s.id, kind: s.kind, label: s.label, taskId: s.taskId, status: 'running', startedAt: s.startedAt, meta: s.meta ?? null })
-      defs.set(run.id, kind)
+      const run = addRun({ id: s.id, kind: s.kind, label: s.label, taskId: s.taskId, status: 'running', startedAt: s.startedAt, meta: s.meta ?? null, sequenceId: s.sequenceId ?? null })
+      // A step of a sequence: the sequence gives the one toast
+      defs.set(run.id, s.sequenceId ? { ...kind, notify: false } : kind)
       follow(run.id)
     }
+    restoreSequences()
   }
 
   // --- Runs ---
@@ -235,6 +301,7 @@ function createTaskStore() {
       endedAt: null,
       cancelling: false,
       meta: partial.meta ?? null,
+      sequenceId: partial.sequenceId ?? null,
       // A promise is not made reactive: run.finished stays the raw promise.
       finished: new Promise<TaskRun>((resolve) => settles.set(id, resolve)),
     }
@@ -400,6 +467,10 @@ function createTaskStore() {
    * pass `onSettled`) for its outcome.
    */
   async function run(options: RunOptions): Promise<TaskRun | null> {
+    return startRun(options, {})
+  }
+
+  async function startRun(options: RunOptions, ctx: { previous?: TaskRun | null; sequenceId?: string }): Promise<TaskRun | null> {
     const base = options.kind ? kinds.get(options.kind) : undefined
     if (options.kind && !base && !options.task) {
       throw new Error(`TaskRunner: unknown task kind "${options.kind}"`)
@@ -407,13 +478,20 @@ function createTaskStore() {
     const def: TaskKind = { ...base, ...options, task: { ...base?.task, ...options.task } } as TaskKind
     const labelOf = typeof options.label === 'function' ? options.label : undefined
     const label = labelOf ? labelOf() : (options.label as string)
+    const meta = options.meta ? { ...options.meta } : null
+    const start = options.start
+      ? () => options.start!(ctx.previous ?? null)
+      : base?.start
+        ? () => base.start!(meta)
+        : null
+    if (!start) throw new Error(`TaskRunner: "${label}" has no start, and its kind none either`)
     if (options.confirm && !(await requestConfirm(label, options.confirm))) return null
 
-    const r = addRun({ label, kind: options.kind ?? null, meta: options.meta ? { ...options.meta } : null }, labelOf)
+    const r = addRun({ label, kind: options.kind ?? null, meta, sequenceId: ctx.sequenceId ?? null }, labelOf)
     defs.set(r.id, def)
     if (options.open !== false) state.openId = r.id
     try {
-      const taskId = taskIdOf(await options.start())
+      const taskId = taskIdOf(await start())
       if (taskId === null) throw new Error('the start handler returned no task id')
       const current = find(r.id)!
       current.taskId = taskId
@@ -454,6 +532,7 @@ function createTaskStore() {
 
   function clearFinished(): void {
     for (const r of state.runs.filter((x) => FINAL.includes(x.status))) dismiss(r.id)
+    for (const x of state.sequences.filter((x) => x.status !== 'running')) dismissSequence(x.id)
   }
 
   /** Wire the orchestrator (manager reads, toasts) and the signal bus (live). Called by useTaskRunner. */
@@ -464,6 +543,313 @@ function createTaskStore() {
   }
 
   const active: ComputedRef<TaskRun[]> = computed(() => state.runs.filter((r) => !FINAL.includes(r.status)))
+
+  // --- Sequences: runs chained in one window (#4934) ---
+
+  interface SequenceInternals {
+    /** Each step's options; null for a step that cannot start again after a reload */
+    specs: Array<SequenceStep | null>
+    options: SequenceOptions
+    /** One step only: it is a plain run, with its own window and toast */
+    single: boolean
+    settle: (sequence: TaskSequence) => void
+  }
+  const sequenceInternals = new Map<string, SequenceInternals>()
+  let sequenceSeq = 0
+
+  const findSequence = (id: string) => state.sequences.find((s) => s.id === id)
+
+  /** A step's state: its run's while the run is in the store, else what was recorded */
+  function stepStatus(step: TaskSequenceStep): SequenceStepStatus {
+    const run = step.runId ? find(step.runId) : undefined
+    return run?.status ?? step.status ?? 'pending'
+  }
+
+  /** What the list shows on a step's line: the kind's summary, else the error, else the step reached */
+  function stepSummary(step: TaskSequenceStep): string | null {
+    const run = step.runId ? find(step.runId) : undefined
+    if (!run) return null
+    const custom = defs.get(run.id)?.summary
+    if (custom) {
+      try {
+        const text = custom(run)
+        if (text !== undefined) return text
+      } catch (err) {
+        console.error(`[qdadm] Task "${run.label}": summary threw`, err)
+      }
+    }
+    if (run.status === 'failed') return run.error
+    if (run.status === 'succeeded' && run.result !== null && typeof run.result !== 'object') return String(run.result)
+    return run.step
+  }
+
+  const declaredLabel = (spec: SequenceStep | null | undefined): string | (() => string) =>
+    !spec || typeof spec === 'function' ? '' : spec.label
+
+  function addSequence(
+    partial: Pick<TaskSequence, 'label' | 'stopOnError' | 'meta'> & Partial<Pick<TaskSequence, 'id' | 'startedAt' | 'current' | 'cancelling'>>,
+    steps: Array<{ label: string | (() => string); runId?: string | null; status?: SequenceStepStatus; skipped?: TaskSequenceStep['skipped'] }>,
+    internals: Omit<SequenceInternals, 'settle'>,
+    labelOf?: () => string
+  ): TaskSequence {
+    const id = partial.id ?? `seq-${Date.now().toString(36)}-${++sequenceSeq}`
+    let settle!: (sequence: TaskSequence) => void
+    const sequence: TaskSequence = {
+      id,
+      label: partial.label,
+      status: 'running',
+      steps: steps.map((st) => {
+        const declared = st.label
+        return {
+          runId: st.runId ?? null,
+          status: st.status ?? 'pending',
+          skipped: st.skipped ?? null,
+          // The run's label once started (it follows the locale), else the declared one
+          get label(): string {
+            const run = this.runId ? find(this.runId) : undefined
+            if (run) return run.label
+            return typeof declared === 'function' ? declared() : declared
+          },
+        } as TaskSequenceStep
+      }),
+      current: partial.current ?? 0,
+      stopOnError: partial.stopOnError,
+      cancelling: partial.cancelling ?? false,
+      startedAt: partial.startedAt ?? Date.now(),
+      endedAt: null,
+      meta: partial.meta,
+      finished: new Promise<TaskSequence>((resolve) => (settle = resolve)),
+    }
+    if (labelOf) Object.defineProperty(sequence, 'label', { get: labelOf, enumerable: true, configurable: true })
+    sequenceInternals.set(id, { ...internals, settle })
+    state.sequences.unshift(sequence)
+    const finished = state.sequences.filter((x) => FINAL.includes(x.status as TaskStatus))
+    for (const old of finished.slice(KEEP_FINISHED)) dismissSequence(old.id)
+    return findSequence(id)!
+  }
+
+  function persistSequences(): void {
+    try {
+      const saved = state.sequences
+        .filter((x) => x.status === 'running' && !sequenceInternals.get(x.id)?.single)
+        .map((x) => {
+          const specs = sequenceInternals.get(x.id)?.specs ?? []
+          return {
+            id: x.id,
+            label: x.label,
+            meta: x.meta,
+            stopOnError: x.stopOnError,
+            startedAt: x.startedAt,
+            current: x.current,
+            cancelling: x.cancelling,
+            steps: x.steps.map((st, i) => {
+              const spec = specs[i]
+              const plain = spec && typeof spec !== 'function' ? spec : null
+              return { label: st.label, runId: st.runId, status: stepStatus(st), skipped: st.skipped, kind: plain?.kind ?? null, meta: plain?.meta ?? null }
+            }),
+          }
+        })
+      if (saved.length) sessionStorage.setItem(SEQUENCES_KEY, JSON.stringify(saved))
+      else sessionStorage.removeItem(SEQUENCES_KEY)
+    } catch {
+      // no storage: a sequence does not survive a reload
+    }
+  }
+
+  /** A sequence that was running before a reload: its running step was restored with the runs; the steps after it start again when their kind can */
+  function restoreSequences(): void {
+    type Saved = Pick<TaskSequence, 'id' | 'label' | 'meta' | 'stopOnError' | 'startedAt' | 'current' | 'cancelling'> & {
+      steps: Array<{ label: string; runId: string | null; status: SequenceStepStatus; skipped: TaskSequenceStep['skipped']; kind: string | null; meta: Record<string, unknown> | null }>
+    }
+    let saved: Saved[] = []
+    try {
+      saved = JSON.parse(sessionStorage.getItem(SEQUENCES_KEY) ?? '[]')
+    } catch {
+      return
+    }
+    for (const x of saved) {
+      if (findSequence(x.id)) continue
+      const specs = x.steps.map((st) => {
+        const kind = st.kind ? kinds.get(st.kind) : undefined
+        return kind?.start ? ({ kind: st.kind!, label: st.label, meta: st.meta ?? undefined } as RunOptions) : null
+      })
+      const steps = x.steps.map((st) => ({
+        label: st.label,
+        // A run that is not back (its kind is not registered) cannot be followed
+        runId: st.runId && find(st.runId) ? st.runId : null,
+        status: st.runId && !find(st.runId) && !FINAL.includes(st.status as TaskStatus) ? ('skipped' as const) : st.status,
+        skipped: st.runId && !find(st.runId) && !FINAL.includes(st.status as TaskStatus) ? ('reload' as const) : st.skipped,
+      }))
+      const sequence = addSequence(x, steps, { specs, options: {}, single: false })
+      const current = sequence.steps[sequence.current]
+      const previous = current?.runId ? find(current.runId) ?? null : null
+      void drive(sequence.id, previous)
+    }
+  }
+
+  function skipFrom(sequence: TaskSequence, index: number, why: NonNullable<TaskSequenceStep['skipped']>): void {
+    for (const step of sequence.steps.slice(index)) {
+      if (step.runId) continue
+      step.status = 'skipped'
+      step.skipped = why
+    }
+  }
+
+  /** Run the steps one after another, from the sequence's current one */
+  async function drive(id: string, previous: TaskRun | null): Promise<void> {
+    const internals = sequenceInternals.get(id)
+    if (!internals) return
+    let failed = false
+    for (let i = findSequence(id)?.current ?? 0; i < (findSequence(id)?.steps.length ?? 0); i++) {
+      const sequence = findSequence(id)
+      if (!sequence) return
+      const step = sequence.steps[i]!
+      if (step.status === 'skipped') continue
+      if (step.runId && FINAL.includes(stepStatus(step) as TaskStatus)) {
+        // Already over before a reload
+        failed ||= stepStatus(step) === 'failed'
+        continue
+      }
+      if (sequence.cancelling) {
+        skipFrom(sequence, i, 'cancelled')
+        break
+      }
+      if (failed && sequence.stopOnError) {
+        skipFrom(sequence, i, 'error')
+        break
+      }
+      sequence.current = i
+      let run: TaskRun | null = step.runId ? find(step.runId) ?? null : null
+      if (!run) {
+        const spec = internals.specs[i]
+        if (!spec) {
+          skipFrom(sequence, i, 'reload')
+          break
+        }
+        let options: RunOptions
+        try {
+          options = typeof spec === 'function' ? spec(previous) : spec
+        } catch (err) {
+          options = { label: step.label || `#${i + 1}`, start: () => Promise.reject(err), task: {} }
+        }
+        const stepOptions: RunOptions = {
+          ...options,
+          confirm: undefined,
+          open: internals.single ? internals.options.open !== false : false,
+          ...(internals.single ? {} : { notify: false }),
+        }
+        try {
+          run = await startRun(stepOptions, { previous, sequenceId: id })
+        } catch (err) {
+          run = await startRun({ label: options.label, start: () => Promise.reject(err), task: {}, open: false, notify: internals.single ? undefined : false }, { sequenceId: id })
+        }
+        if (!run) break
+        step.runId = run.id
+        persistSequences()
+      }
+      const end = await run.finished
+      step.status = end.status
+      if (end.status === 'failed') failed = true
+      if (end.status === 'cancelled') findSequence(id)!.cancelling = true
+      previous = end
+      persistSequences()
+    }
+    finishSequence(id)
+  }
+
+  function finishSequence(id: string): void {
+    const sequence = findSequence(id)
+    const internals = sequenceInternals.get(id)
+    if (!sequence || !internals || sequence.status !== 'running') return
+    const statuses = sequence.steps.map((st) => stepStatus(st))
+    sequence.status = statuses.includes('failed')
+      ? 'failed'
+      : statuses.some((st) => st === 'cancelled' || st === 'skipped')
+        ? 'cancelled'
+        : 'succeeded'
+    sequence.endedAt = Date.now()
+    sequence.cancelling = false
+    persistSequences()
+    if (!internals.single && internals.options.notify !== false) notifySequenceEnd(sequence)
+    internals.settle(sequence)
+    try {
+      internals.options.onSettled?.(sequence)
+    } catch (err) {
+      console.error(`[qdadm] Task sequence "${sequence.label}": onSettled threw`, err)
+    }
+  }
+
+  const MARKS: Partial<Record<SequenceStepStatus, string>> = { succeeded: '✓', failed: '✗', cancelled: '⊘', skipped: '–' }
+
+  /** One toast for the whole sequence: each step marked, the failure's error after it */
+  function notifySequenceEnd(sequence: TaskSequence): void {
+    const toast = deps.orchestrator?.toast
+    if (!toast) return
+    const detail = sequence.steps
+      .map((st, i) => {
+        const status = stepStatus(st)
+        const label = st.label || `#${i + 1}`
+        const error = status === 'failed' && st.runId ? find(st.runId)?.error : null
+        return `${MARKS[status] ?? '…'} ${label}${error ? `: ${error}` : ''}`
+      })
+      .join(' · ')
+    const opts = { emitter: 'TaskRunner' }
+    if (sequence.status === 'succeeded') toast.success(sequence.label, detail, opts)
+    else if (sequence.status === 'failed') toast.error(sequence.label, detail, { ...opts, keep: 'long' })
+    else toast.warn(sequence.label, detail, opts)
+  }
+
+  /**
+   * Run tasks one after another, followed in one window: the list of steps,
+   * each step's detail on a click (#4934). Resolves once the sequence is
+   * under way (null when its confirmation is declined); await
+   * `sequence.finished` for its end. One step only is a plain run.
+   */
+  async function sequence(
+    label: string | (() => string),
+    steps: SequenceStep[],
+    options: SequenceOptions = {}
+  ): Promise<TaskSequence | null> {
+    if (!steps.length) throw new Error('TaskRunner: a sequence needs at least one step')
+    const labelOf = typeof label === 'function' ? label : undefined
+    const text = labelOf ? labelOf() : (label as string)
+    if (options.confirm && !(await requestConfirm(text, options.confirm))) return null
+    const single = steps.length === 1
+    const created = addSequence(
+      { label: text, stopOnError: options.stopOnError !== false, meta: options.meta ? { ...options.meta } : null },
+      steps.map((spec) => ({ label: declaredLabel(spec) })),
+      { specs: steps.slice(), options, single },
+      labelOf
+    )
+    if (!single && options.open !== false) state.openId = created.id
+    void drive(created.id, null)
+    return created
+  }
+
+  /** Stop a sequence: its running step is cancelled when its kind can, and the steps after it are not run. */
+  async function cancelSequence(id: string): Promise<void> {
+    const sequence = findSequence(id)
+    if (!sequence || sequence.status !== 'running') return
+    sequence.cancelling = true
+    persistSequences()
+    const runId = sequence.steps[sequence.current]?.runId
+    if (runId) await cancel(runId)
+  }
+
+  function dismissSequence(id: string): void {
+    const i = state.sequences.findIndex((x) => x.id === id)
+    if (i !== -1) state.sequences.splice(i, 1)
+    sequenceInternals.delete(id)
+    if (state.openId === id) state.openId = null
+    persistSequences()
+  }
+
+  /** The sequences matching a meta (each given key equal), newest first. */
+  function sequencesFor(meta: Record<string, unknown> = {}): TaskSequence[] {
+    return state.sequences
+      .filter((x) => Object.entries(meta).every(([k, v]) => x.meta?.[k] === v))
+      .sort((a, b) => b.startedAt - a.startedAt)
+  }
 
   // --- Finding a run again (#4687) ---
 
@@ -500,9 +886,20 @@ function createTaskStore() {
     definition: (id: string) => defs.get(id),
     runFor,
     runsFor,
-    isFinal: (status: TaskStatus) => FINAL.includes(status),
-    /** A run still going: starting, queued or running (#4695) */
-    isActive: (run: TaskRun | null | undefined) => !!run && !FINAL.includes(run.status),
+    isFinal: (status: TaskStatus | SequenceStepStatus | TaskSequence['status']) => FINAL.includes(status as TaskStatus),
+    /** A run or a sequence still going (#4695, #4934) */
+    isActive: (run: TaskRun | TaskSequence | null | undefined) => !!run && !FINAL.includes(run.status as TaskStatus),
+    sequence,
+    cancelSequence,
+    dismissSequence,
+    /** The sequence a run is a step of, or a sequence by its id */
+    sequenceOf: (id: string | null | undefined): TaskSequence | null =>
+      !id ? null : (findSequence(id) ?? (find(id)?.sequenceId ? findSequence(find(id)!.sequenceId!) ?? null : null)),
+    sequencesFor,
+    /** The latest sequence about a record: `sequenceFor({ box: 'b1' })` */
+    sequenceFor: (meta: Record<string, unknown>) => sequencesFor(meta)[0] ?? null,
+    stepStatus,
+    stepSummary,
     /** For tests: stop everything and forget every run. */
     reset(): void {
       for (const stop of stops.values()) stop()
@@ -512,6 +909,8 @@ function createTaskStore() {
       defs.clear()
       kinds.clear()
       state.runs.splice(0)
+      state.sequences.splice(0)
+      sequenceInternals.clear()
       state.openId = null
       state.pendingConfirm = null
       state.hosts = 0

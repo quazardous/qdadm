@@ -9,13 +9,15 @@
  *
  * The follow dialog is TaskDialog, or the `component` the run's kind or the
  * app gives (#4334), with props `{ runId, options }` and a `close` event. The
- * host's slots go to TaskDialog.
+ * host's slots go to TaskDialog. A sequence's id opens TaskSequenceDialog
+ * (#4934), which gets the same slots for a step's detail.
  */
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import InputText from 'primevue/inputtext'
 import SimpleDialog from '../dialogs/SimpleDialog.vue'
 import TaskDialog from './TaskDialog.vue'
+import TaskSequenceDialog from './TaskSequenceDialog.vue'
 import { useI18n } from '../../i18n/useI18n'
 import { useTaskRunner } from '../../tasks/useTaskRunner'
 import { getTaskStore } from '../../tasks/taskStore'
@@ -30,6 +32,12 @@ const { t } = useI18n()
 
 store.state.hosts++
 onBeforeUnmount(() => store.state.hosts--)
+
+// The open id is a sequence's: its window, not a run's (#4934)
+const openSequence = computed(() => {
+  const id = store.state.openId
+  return id && store.state.sequences.some((s) => s.id === id) ? id : null
+})
 
 // The open run's dialog: a replacement from its kind or the app, else TaskDialog
 const dialogComponent = computed(() => {
@@ -58,11 +66,16 @@ const severity = computed(() => pending.value?.confirm.severity ?? (expected.val
 </script>
 
 <template>
-  <component :is="dialogComponent" :run-id="store.state.openId" :options="null" @close="store.open(null)">
+  <component :is="dialogComponent" :run-id="openSequence ? null : store.state.openId" :options="null" @close="store.open(null)">
     <template v-for="(_, name) in $slots" #[name]="slotProps">
       <slot :name="name" v-bind="slotProps ?? {}" />
     </template>
   </component>
+  <TaskSequenceDialog :sequence-id="openSequence" @close="store.open(null)">
+    <template v-for="(_, name) in $slots" #[name]="slotProps">
+      <slot :name="name" v-bind="slotProps ?? {}" />
+    </template>
+  </TaskSequenceDialog>
   <SimpleDialog :visible="!!pending" :title="pending?.label ?? ''" :confirm-label="pending?.confirm.accept ?? t('core.task.start')"
     :confirm-severity="severity" :confirm-disabled="!confirmable" :cancel-label="t('core.task.dontStart')"
     @confirm="store.answerConfirm(true)" @cancel="store.answerConfirm(false)"

@@ -187,6 +187,19 @@ core:
       subs: "{count} sous-phase | {count} sous-phases"
       filter: "Phase : {name}"
       showAll: Voir tout le journal
+    # Tasks chained in one window (#4934)
+    sequence:
+      progress: "{done}/{total}"
+      step: "Étape {n}"
+      pending: En attente
+      skipped: Non lancée
+      why:
+        error: Une étape précédente a échoué
+        cancelled: La suite a été arrêtée
+        reload: La page a été rechargée
+      back: Retour à la liste
+      details: Voir cette étape
+      cancel: Arrêter la suite
   # Waiting states (#4665)
   pending:
     reading: Lecture…

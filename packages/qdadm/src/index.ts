@@ -481,6 +481,11 @@ export {
   type TaskFollow,
   type TaskConfirm,
   type RunOptions,
+  type SequenceStep,
+  type SequenceOptions,
+  type SequenceStepStatus,
+  type TaskSequence,
+  type TaskSequenceStep,
 } from './tasks/taskStore'
 export {
   TASK_PHASE_STATE_ICONS,

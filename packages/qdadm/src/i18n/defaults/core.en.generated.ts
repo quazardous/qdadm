@@ -189,6 +189,19 @@ export default `core:
       subs: "{count} sub-phase | {count} sub-phases"
       filter: "Phase: {name}"
       showAll: Show the whole log
+    # Tasks chained in one window (#4934)
+    sequence:
+      progress: "{done}/{total}"
+      step: "Step {n}"
+      pending: Waiting
+      skipped: Not run
+      why:
+        error: An earlier step failed
+        cancelled: The sequence was stopped
+        reload: The page was reloaded
+      back: Back to the list
+      details: Show this step
+      cancel: Stop the sequence
   # Waiting states (#4665)
   pending:
     reading: Reading…

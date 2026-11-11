@@ -298,6 +298,59 @@ reopens its dialog; without a run, "Not run yet".
 
 `tasks.isActive(run)` is true while a run is starting, queued or running.
 
+## Tasks in a row
+
+A gesture that runs several tasks, one after the other, runs them as a
+**sequence**: one window lists the steps, each with its state (waiting,
+running, done, failed, not run), its duration and a recap (the error, or the
+step reached). A click on a step shows its detail: what the follow dialog
+shows (log, phases, result), with **Back to the list**. The tray and the
+notification zone show the sequence as one line.
+
+```js
+const seq = await tasks.sequence('Verify', [
+  { kind: 'check', label: 'Check', start: () => boxes.check(box) },
+  { kind: 'conf-check', label: 'Conf check', start: (previous) => boxes.confCheck(box, previous?.result) },
+], { meta: { box } })
+const end = await seq?.finished   // end.status: succeeded, failed or cancelled
+```
+
+- A step is the options of a `run()`. Its `start` gets the previous step's
+  run. A step may also be a function of that run that returns the options;
+  its line reads "Step n" until it starts.
+- A failure stops the rest: those steps show "not run".
+  `stopOnError: false` goes on, and the sequence still ends `failed`.
+- **Stop the sequence** cancels the running step (when its kind can) and the
+  rest is not run.
+- One toast at the end, each step marked (`✓ Check · ✗ Conf check: drift`);
+  the steps' own toasts are off.
+- `confirm` is asked once, before the first step; `open: false` starts it
+  without the window; `onSettled(sequence)` is called once it ends.
+- One step only is a plain run: its own window, its own toast.
+
+A page finds it again by its `meta`: `tasks.sequenceFor({ box })`, and
+`tasks.isActive(sequence)` keeps a button pressed while it runs, without a
+flag of its own. `tasks.open(sequence.id)` reopens its window.
+
+**After a reload**, the running step is followed again like any run of a
+registered kind. The steps after it start again when their kind has a
+`start(meta)`, so a sequence written with kinds and metas goes on:
+
+```js
+registerTaskKind('check', { task: { entity: 'tasks' }, start: (meta) => boxes.check(meta.box) })
+tasks.sequence('Verify', [
+  { kind: 'check', label: 'Check', meta: { box } },
+  { kind: 'conf-check', label: 'Conf check', meta: { box } },
+], { meta: { box } })
+```
+
+A step whose kind cannot start again shows "the page was reloaded", and the
+sequence ends `cancelled`. A kind's `summary(run)` sets its line's recap.
+
+The window is `TaskSequenceDialog`, and a step's detail is `TaskRunView`,
+the body of `TaskDialog`, which a custom window may use too. The host's
+`before-log`, `after-log` and `result` slots reach a step's detail.
+
 ## Where the dialogs live
 
 `AppLayout` mounts the tray in the sidebar and a `TaskHost`, which renders

@@ -72,6 +72,108 @@
   }
 }
 
+// TaskRunView fills the window like the content did (#4934)
+.qd-task-run-view {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+// The sequence window: the list of steps (#4934)
+.qd-task-sequence-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.qd-task-sequence-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.qd-task-sequence-step {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--p-content-border-color);
+  border-radius: $radius-sm;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+
+  &:hover:not(:disabled) { background: var(--p-content-hover-background); }
+  &:disabled { cursor: default; }
+  &:focus-visible { outline: 2px solid var(--p-primary-color); outline-offset: 1px; }
+
+  &--current {
+    border-color: var(--qd-task-running-color, var(--p-orange-500));
+    box-shadow: inset 3px 0 0 var(--qd-task-running-color, var(--p-orange-500));
+  }
+  &--pending,
+  &--skipped { color: var(--p-text-muted-color); }
+  &--succeeded .qd-task-sequence-icon { color: var(--qd-task-done-color, var(--p-green-600)); }
+  &--failed .qd-task-sequence-icon { color: var(--p-red-600); }
+  &--running .qd-task-sequence-icon,
+  &--queued .qd-task-sequence-icon,
+  &--starting .qd-task-sequence-icon { color: var(--qd-task-running-color, var(--p-orange-500)); }
+}
+
+.qd-task-sequence-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+}
+
+.qd-task-sequence-label { font-weight: 600; }
+
+.qd-task-sequence-recap {
+  font-size: $font-size-sm;
+  color: var(--p-text-muted-color);
+  overflow-wrap: anywhere;
+
+  .qd-task-sequence-step--failed & { color: var(--p-red-700); }
+}
+
+.qd-task-sequence-progress {
+  height: 0.375rem;
+  margin-top: 0.25rem;
+}
+
+.qd-task-sequence-state,
+.qd-task-sequence-duration {
+  font-size: $font-size-sm;
+  color: var(--p-text-muted-color);
+  white-space: nowrap;
+}
+
+.qd-task-sequence-duration {
+  min-width: 4rem;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.qd-task-sequence-detail-title {
+  margin-bottom: 0.75rem;
+  font-weight: 600;
+}
+
+.qd-task-sequence-detail-index {
+  margin-right: 0.5rem;
+  color: var(--p-text-muted-color);
+  font-variant-numeric: tabular-nums;
+}
+
 .qd-task-before-log,
 .qd-task-after-log {
   margin-top: 0.75rem;

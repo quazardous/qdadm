@@ -24,6 +24,14 @@
  * tasks.run({ kind: 'stock-check', label, start, meta: { supplierId: id } })
  * const check = computed(() => tasks.runFor('stock-check', { supplierId: id }))
  *
+ * // Tasks chained in one window: the list of steps, each step's detail on a click (#4934).
+ * // A step's start gets the previous step's run; a failure stops the rest.
+ * const seq = await tasks.sequence('Verify', [
+ *   { kind: 'check', label: 'Check', start: () => api.check(box) },
+ *   { kind: 'conf-check', label: 'Conf check', start: (prev) => api.confCheck(box, prev?.result) },
+ * ], { meta: { box } })
+ * const busy = computed(() => tasks.isActive(tasks.sequenceFor({ box })))
+ *
  * // As a row action, with a typed confirmation
  * list.addAction('destroy', {
  *   icon: 'pi pi-trash', severity: 'danger',
@@ -57,8 +65,14 @@ export function useTaskRunner() {
     runFor: store.runFor,
     /** The runs matching `{ kind, taskId, meta }`, newest first. */
     runsFor: store.runsFor,
-    /** A run still going (starting, queued, running), false for none (#4695). */
+    /** A run or a sequence still going, false for none (#4695). */
     isActive: store.isActive,
+    /** Run tasks one after another, followed in one window (#4934). Resolves once under way; await `sequence.finished`. */
+    sequence: store.sequence,
+    cancelSequence: store.cancelSequence,
+    /** The latest sequence about a record (its meta), or null. */
+    sequenceFor: store.sequenceFor,
+    sequencesFor: store.sequencesFor,
   }
 }
 

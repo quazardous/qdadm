@@ -6,17 +6,22 @@
  * picks it up where it is, as it would against a real worker.
  */
 const KEY = 'qdadm-demo:tasks'
-const DURATION = { create: 20_000, destroy: 6_000, reset: 5_000 }
+const DURATION = { create: 20_000, destroy: 6_000, reset: 5_000, check: 6_000, 'conf-check': 7_000 }
 const STEPS = {
   create: ['Allocating the box', 'Cloning the ref', 'Installing dependencies', 'Restoring the database', 'Starting services'],
   destroy: ['Stopping services', 'Dropping the database', 'Releasing the box'],
   reset: ['Dropping the database', 'Restoring the dump', 'Running migrations'],
+  // The two checks of the "Verify" sequence (#4934)
+  check: ['Reaching the box', 'Reading the services', 'Checking the disk'],
+  'conf-check': ['Reading the configuration', 'Comparing with the reference', 'Checking the secrets'],
 }
 // The same steps as phases (#4655): one name each, and the restore's two sub-phases
 const PHASES = {
   create: ['allocate', 'clone', 'install', 'restore', 'start'],
   destroy: ['stop', 'drop-db', 'release'],
   reset: ['drop-db', 'restore', 'migrate'],
+  check: ['reach', 'services', 'disk'],
+  'conf-check': ['read-conf', 'compare', 'secrets'],
 }
 const SUBS = { restore: ['restore.download', 'restore.import'] }
 const FAIL_AT = 62
@@ -55,10 +60,21 @@ function stateAt(task, now) {
   if (elapsed < 1500) return { status: 'queued', progress: null, step: 'Waiting for a worker', elapsed }
   const progress = Math.min(100, ((elapsed - 1500) / duration) * 100)
   const step = steps[Math.min(steps.length - 1, Math.floor((progress / 100) * steps.length))]
-  if (task.fail && progress > 62) return { status: 'failed', progress, step, elapsed, error: 'pg_restore: error: could not execute query: relation "orders_sku_idx" already exists' }
+  if (task.fail && progress > 62) {
+    const error = task.type === 'conf-check' ? 'app.yml differs from the reference: mailer.dsn' : 'pg_restore: error: could not execute query: relation "orders_sku_idx" already exists'
+    return { status: 'failed', progress, step, elapsed, error }
+  }
   if (task.cancelledAt) return { status: 'cancelled', progress, step, elapsed }
   if (progress >= 100) {
-    return { status: 'done', progress: 100, step: 'Done', elapsed, result: task.type === 'create' ? { box: task.box, url: `https://${task.box}.stagebox.test`, db: 'refreshed 2026-10-19 06:00' } : task.type === 'reset' ? { box: task.box, dump: '2026-10-21 06:00' } : { box: task.box, freed: '38 GB' } }
+    const results = {
+      create: { box: task.box, url: `https://${task.box}.stagebox.test`, db: 'refreshed 2026-10-19 06:00' },
+      reset: { box: task.box, dump: '2026-10-21 06:00' },
+      destroy: { box: task.box, freed: '38 GB' },
+      check: { box: task.box, services: 4, disk: '61 %' },
+      'conf-check': { box: task.box, files: 12 },
+    }
+    const done = { check: '4 services up, disk at 61 %', 'conf-check': '12 files match the reference' }
+    return { status: 'done', progress: 100, step: done[task.type] ?? 'Done', elapsed, result: results[task.type] }
   }
   return { status: 'in_progress', progress, step, elapsed }
 }

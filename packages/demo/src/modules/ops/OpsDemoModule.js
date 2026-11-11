@@ -9,7 +9,7 @@
  */
 import { defineAsyncComponent } from 'vue'
 import { Module, registerTaskKind } from '@quazardous/qdadm'
-import { getTask, cancelTask, readLog, readPhases } from './fakeTasks'
+import { getTask, cancelTask, readLog, readPhases, createTask } from './fakeTasks'
 
 export class OpsDemoModule extends Module {
   static moduleName = 'ops-demo'
@@ -33,6 +33,7 @@ export class OpsDemoModule extends Module {
       phase: {
         allocate: 'Allocate', clone: 'Clone', install: 'Install', restore: 'Restore', start: 'Start',
         stop: 'Stop', 'drop-db': 'Drop the database', release: 'Release', migrate: 'Migrate',
+        reach: 'Reach', services: 'Services', disk: 'Disk', 'read-conf': 'Read', compare: 'Compare', secrets: 'Secrets',
         download: 'Download the dump', import: 'Import it',
       },
     })
@@ -40,12 +41,16 @@ export class OpsDemoModule extends Module {
       phase: {
         allocate: 'Allocation', clone: 'Clonage', install: 'Installation', restore: 'Restauration', start: 'Démarrage',
         stop: 'Arrêt', 'drop-db': 'Suppression de la base', release: 'Libération', migrate: 'Migrations',
+        reach: 'Connexion', services: 'Services', disk: 'Disque', 'read-conf': 'Lecture', compare: 'Comparaison', secrets: 'Secrets',
         download: 'Téléchargement du dump', import: 'Import',
       },
     })
     // A kind's own slot in the follow dialog (#4334)
     registerTaskKind('demo-create-box', { ...kind, slots: { 'after-log': defineAsyncComponent(() => import('./pages/BoxSummary.vue')) } })
     registerTaskKind('demo-destroy-box', { ...kind, cancel: undefined })
+    // The two steps of "Verify" (#4934): a start from the meta, so the sequence goes on after a reload
+    registerTaskKind('demo-check', { ...kind, start: (meta) => createTask('check', meta) })
+    registerTaskKind('demo-conf-check', { ...kind, start: (meta) => createTask('conf-check', meta) })
 
     ctx.routes('ops-demo', [
       {

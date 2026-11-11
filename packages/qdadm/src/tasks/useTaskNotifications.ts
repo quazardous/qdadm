@@ -46,12 +46,16 @@ export function useTaskNotifications(): void {
       for (const { run } of entries) {
         const id = STATUS_PREFIX + run.id
         ids.add(id)
+        // A step of a sequence says which sequence, and opens its window (#4934)
+        const sequence = run.sequenceId ? store.sequenceOf(run.sequenceId) : null
+        const index = sequence ? sequence.steps.findIndex((st) => st.runId === run.id) : -1
+        const label = sequence && index !== -1 ? `${sequence.label} · ${run.label} (${index + 1}/${sequence.steps.length})` : run.label
         notifications.registerStatus({
           id,
-          label: `${run.label} — ${stateText(run)}`,
+          label: `${label} — ${stateText(run)}`,
           severity: 'nominal',
           icon: 'pi pi-spin pi-spinner',
-          onClick: () => store.open(run.id),
+          onClick: () => store.open(sequence ? sequence.id : run.id),
         })
         shown.add(id)
         if (!tracked.has(run.id)) {
