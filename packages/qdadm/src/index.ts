@@ -528,6 +528,7 @@ export {
   type ModuleInitFunction,
   type InitModulesOptions,
   type MenuAlterContext,
+  type ItemTabsOptions,
   // ParentConfig, NavItem, NavSection, ModuleDefinition - already exported
 } from './module/moduleRegistry'
 

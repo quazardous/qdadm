@@ -6,7 +6,8 @@ import {
   type RouteLocationNormalized,
   type RouteRecordNormalized,
 } from 'vue-router'
-import { getRoutes } from '../module/moduleRegistry'
+import { getRoutes, getItemTabs } from '../module/moduleRegistry'
+import { nestItemTabs } from './itemTabs'
 import { installChunkReload } from './chunkReload'
 import { routeEntity, routePermissions, missingPermission, entityDenial } from '../security/routeAccess'
 import type { Kernel } from './Kernel'
@@ -73,7 +74,8 @@ export function applyRoutingMethods(KernelClass: { prototype: Kernel }): void {
       }
     }
 
-    const moduleRoutes = getRoutes() as RouteRecordRaw[]
+    // An entity shown as tabs gets its item's pages nested under one frame route (#4963)
+    const moduleRoutes = nestItemTabs(getRoutes() as RouteRecordRaw[], getItemTabs())
 
     const publicRoutes = moduleRoutes.filter(
       (r) => r.meta?.public || r.meta?.requiresAuth === false

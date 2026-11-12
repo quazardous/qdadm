@@ -1,0 +1,52 @@
+/**
+ * A tabbed item (#4963): EntityItemLayout's header and tab bar
+ */
+
+@use 'variables' as *;
+
+.qd-item-tabs-header {
+  display: flex;
+  flex-direction: column;
+  gap: $space-2xs;
+  margin-bottom: $space-md;
+}
+
+.qd-item-tabs-entity {
+  font-size: $font-size-xs;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--p-text-muted-color);
+}
+
+.qd-item-tabs-title {
+  margin: 0;
+  font-size: $font-size-2xl;
+  font-weight: 600;
+}
+
+.qd-item-tabs-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: $space-xs;
+  margin-bottom: $space-lg;
+  border-bottom: 1px solid var(--p-content-border-color);
+}
+
+.qd-item-tabs-tab {
+  padding: $space-sm $space-md;
+  margin-bottom: -1px;
+  border-bottom: 2px solid transparent;
+  color: var(--p-text-muted-color);
+  text-decoration: none;
+  font-size: $font-size-sm;
+
+  &:hover {
+    color: var(--p-text-color);
+  }
+
+  &--active {
+    color: var(--p-primary-color);
+    border-bottom-color: var(--p-primary-color);
+    font-weight: 600;
+  }
+}

@@ -14,6 +14,7 @@
  * framework cannot afford two answers to the same question.
  */
 
+import type { ItemTabsOptions } from '../module/moduleRegistry'
 import type { RouteRecordRaw } from 'vue-router'
 import pluralize from '../utils/pluralize'
 import { registry, getRoutes } from '../module/moduleRegistry'
@@ -150,6 +151,11 @@ export function applyRoutingMethods(KernelContextClass: { prototype: KernelConte
     opts: RouteOptions = {}
   ): Self {
     registry.addRoutes(basePath, routes, opts)
+    return this
+  }
+
+  proto.itemTabs = function (this: Self, entity: string, options: ItemTabsOptions = {}): Self {
+    registry.addItemTabs(entity, options)
     return this
   }
 

@@ -257,6 +257,12 @@ export class BooksModule extends Module {
       permission: 'entity:books:update',
     })
 
+    // A tabbed item (#4963): a book's pages (Details, Info, Reprint, Loans) as
+    // tabs under the book's header, the page below; a tab switch keeps the
+    // header. The pages are nested under one frame route; their names and
+    // paths do not change.
+    ctx.itemTabs('books')
+
     // Child CRUD: loans for a specific book
     // DEMONSTRATES: ctx.crud() with parentRoute for child entities
     // - Auto-generates list, create, edit routes under books/:bookId/loans

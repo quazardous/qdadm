@@ -814,6 +814,40 @@ and a failed read keeps what is shown.
 
 ---
 
+## A tabbed item
+
+An item driven by several pages (its own page, child pages, child lists) can
+show them as tabs under one header: the item's header, a tab per page, and the
+page below. A tab switch changes only the page.
+
+```js
+ctx.crud('instances', { list, show })
+ctx.childPage('instance-show', 'guide', { component: Guide, label: 'Guide' })
+ctx.childPage('instance-show', 'deploy', { component: Deploy, label: 'Deploy', permission: 'entity:instances:update' })
+ctx.itemTabs('instances', { header: InstanceHeader })
+```
+
+- **The tabs** are the item's own page ("Details", or `details: 'Overview'`,
+  or `details: false` to leave it out), then its child pages and child lists
+  in declaration order. A tab the user cannot open is left out (the rule of
+  the [router guard](security.md#which-permission-a-page-needs)). Forms are not
+  tabs; they open from their list and keep the frame around them.
+- **The header** is the entity's label and the item's by default, or the
+  `header` component, given `{ item, manager, loading, id }`. The item comes
+  from the active stack, so it follows changes like `parentData` does.
+- **The pages** stay what they are. Their names, paths, guards and breadcrumb
+  do not change: they become children of one frame route, whose component is
+  `EntityItemLayout` (or `component` for your own frame). A `<PageNav/>` in a
+  page stays silent inside the frame.
+- Without a show page, the item opens on its first tab.
+
+Every page of the item must use the same param for the item's id. A child
+list with forms namespaces it (`:instanceId`), a child page keeps the id field
+(`:name`): give the child list `parentParam: 'name'`. A page left out of the
+tabs for this reason is named in a warning at boot.
+
+---
+
 ## Storage for demos and tests
 
 `MockApiStorage` keeps an entity's records in localStorage, seeded from

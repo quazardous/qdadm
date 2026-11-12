@@ -169,6 +169,21 @@ const navItems: NavItemWithSection[] = []
 const routeFamilies: Record<string, string[]> = {}
 const navSections = new Map<string, NavItem[]>()
 const entityConfigs = new Map<string, EntityConfig>()
+/** Entities shown as a tabbed item (#4963), by entity name */
+const itemTabs = new Map<string, ItemTabsOptions>()
+
+/**
+ * A tabbed item (#4963): the item's header, one tab per page of the item, and
+ * the page below. Declared by entity: `ctx.itemTabs('instances', { header })`.
+ */
+export interface ItemTabsOptions {
+  /** The header, given `{ item, manager, loading, id }`. Default: the entity's label and the item's. */
+  header?: unknown
+  /** The item's own page as the first tab: `false` to leave it out, or its label. Default: shown, "Details". */
+  details?: boolean | string
+  /** The frame itself, instead of EntityItemLayout */
+  component?: unknown
+}
 
 // Configurable section order (set via setSectionOrder or bootstrap)
 let sectionOrder: string[] = []
@@ -262,6 +277,16 @@ const registry = {
   addEntity(name: string, config: EntityConfig): void {
     entityConfigs.set(name, config)
   },
+
+  /** Show an entity's item as tabs (#4963) */
+  addItemTabs(entity: string, options: ItemTabsOptions = {}): void {
+    itemTabs.set(entity, options)
+  },
+}
+
+/** The entities shown as a tabbed item (#4963) */
+export function getItemTabs(): Map<string, ItemTabsOptions> {
+  return itemTabs
 }
 
 /**
@@ -519,6 +544,7 @@ export function resetRegistry(): void {
   Object.keys(routeFamilies).forEach((key) => delete routeFamilies[key])
   navSections.clear()
   entityConfigs.clear()
+  itemTabs.clear()
   sectionOrder = []
   alteredNavSections = null
   alterationPromise = null

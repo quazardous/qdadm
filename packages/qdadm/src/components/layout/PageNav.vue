@@ -205,10 +205,13 @@ const allNavlinks = computed<NavLink[]>(() => {
 // Only what the user may open
 const visibleNavlinks = computed<NavLink[]>(() => allNavlinks.value.filter(canOpen))
 
+// Inside a tabbed item (#4963) the tabs are the navigation: no links twice
+const inItemTabs = inject<boolean>('qdadmItemTabs', false)
+
 // Sync navlinks to AppLayout via provide/inject
 watch([visibleNavlinks, () => route.fullPath], ([links]) => {
   if (navlinksOverride) {
-    navlinksOverride.value = links as NavLink[]
+    navlinksOverride.value = inItemTabs ? [] : (links as NavLink[])
   }
 }, { immediate: true })
 </script>

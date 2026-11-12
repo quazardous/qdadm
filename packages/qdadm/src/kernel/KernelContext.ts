@@ -35,6 +35,7 @@
  * ```
  */
 
+import type { ItemTabsOptions } from '../module/moduleRegistry'
 import type { App, Component } from 'vue'
 import type { Router, RouteRecordRaw } from 'vue-router'
 import type { ListenerOptions } from '@quazardous/quarkernel'
@@ -207,6 +208,8 @@ export interface KernelContext {
   routeFamily(base: string, prefixes: string[]): this
   crud(entity: string, pages: CrudPages, options?: CrudOptions): this
   childPage(parentRouteName: string, pageName: string, options: ChildPageOptions): this
+  /** Show an entity's item as tabs: its header, a tab per page of the item, the page below (#4963) */
+  itemTabs(entity: string, options?: ItemTabsOptions): this
 
   // Zones / Vue (KernelContext.zones.ts)
   zone(name: string, options?: ZoneOptions): this
