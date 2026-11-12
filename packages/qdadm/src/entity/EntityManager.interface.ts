@@ -81,6 +81,12 @@ export interface EntityManagerRead<T = unknown> extends EntityManagerBase<T>, En
   delete: (id: string | number, context?: unknown) => Promise<void>
   request: (method: string, path: string, options?: { data?: unknown }) => Promise<unknown>
   invalidateCache: () => void
+  /**
+   * A record changed, or the whole entity without an id (#4959): drops it from
+   * the caches and has the mounted views read it again. Optional on the
+   * structural view so hand-written managers and test doubles stay valid.
+   */
+  invalidate?: (id?: string | number | null) => void
   /** Field config lookup — read-side too since list column binding (#1255) */
   getFieldConfig: (name: string) => unknown | null
   /** Config-carrying property: always present on the class, VALUE nullable */

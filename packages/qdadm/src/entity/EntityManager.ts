@@ -1007,6 +1007,14 @@ export interface EntityManager<T extends EntityRecord = EntityRecord> {
   /** @internal */ _loadCacheInBackground(): void
   /** @internal */ _loadCache(): Promise<boolean>
   invalidateCache(): void
+  /** @internal */ _dropDetail(id?: string | number | null): void
+  /** @internal */ _dropListCache(): void
+  /** @internal */ _dropCaches(id?: string | number | null): void
+  /**
+   * A record of this entity changed, or the whole entity without an id: drop
+   * what the caches hold of it and have the mounted views read it again.
+   */
+  invalidate(id?: string | number | null): void
   invalidateDataLayer(): void
   ensureCache(): Promise<boolean>
   warmup(): Promise<boolean | null>

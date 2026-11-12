@@ -49,6 +49,15 @@ describe('useLiveEntity', () => {
     expect(reload).toHaveBeenCalledTimes(1)
   })
 
+  it('reloads when the app says the entity changed (manager.invalidate, #4959)', () => {
+    mountWatcher(signals, { reload })
+
+    signals.emit('entity:data-invalidate', { entity: 'runs', action: 'updated', source: 'app' })
+    vi.advanceTimersByTime(300)
+
+    expect(reload).toHaveBeenCalledTimes(1)
+  })
+
   it('ignores a local echo — the page that wrote already reloads its own way', () => {
     mountWatcher(signals, { reload })
 

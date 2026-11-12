@@ -88,6 +88,7 @@ export class BooksModule extends Module {
             },
           },
           groups: { basic: 'Basic Information', details: 'Publication Details' },
+          demo: { changedElsewhere: 'Changed elsewhere' },
         },
         genres: {
           label: 'Genre',
@@ -122,6 +123,7 @@ export class BooksModule extends Module {
             },
           },
           groups: { basic: 'Informations générales', details: 'Détails de publication' },
+          demo: { changedElsewhere: 'Modifié ailleurs' },
         },
         genres: {
           label: 'Genre',

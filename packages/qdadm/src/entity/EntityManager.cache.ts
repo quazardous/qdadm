@@ -332,7 +332,7 @@ export function applyCacheMethods(EntityManagerClass: { prototype: any }): void 
       )
     }
 
-    // Listen for REMOTE changes to this entity — a mutation nobody here made.
+    // Listen for changes to this entity that this manager did not make.
     //
     // The invalidation signals were written for local mutations, where the
     // manager that mutates repairs its own cache on the way out. A change that
@@ -340,27 +340,34 @@ export function applyCacheMethods(EntityManagerClass: { prototype: any }): void 
     // while claiming to be valid (#1887). Gated on the origin marker: without
     // it, this handler would fire on every local write too and force a refetch
     // of a list the manager is already holding correctly.
+    //
+    // 'remote' comes from a live stream, 'app' from `invalidate()` (#4959).
+    // With an id, only that record's detail entry goes; the list cache goes
+    // whole either way, since a changed record can enter or leave a filtered
+    // or sorted page, and a complete list cache also answers list() locally.
     cleanups.push(
       signals.on('entity:data-invalidate', (event: { name: string; data: unknown }) => {
-        const { entity, source } = (event.data || {}) as {
+        const { entity, source, id } = (event.data || {}) as {
           entity?: string
           source?: string
+          id?: string | number
         }
-        if (source !== 'remote') return
+        if (source !== 'remote' && source !== 'app') return
         if (entity !== this.name) return
-        this.invalidateCache()
+        this._dropCaches(id)
       })
     )
 
-    // Listen for own entity data changes to invalidate detail cache
+    // Asymmetric detail cache: a write to this entity drops what it touched —
+    // that record when the event names it, every record otherwise.
     if (this.isAsymmetric && this.isDetailCacheEnabled) {
       cleanups.push(
         signals.on(
           'entity:data-invalidate',
           (event: { name: string; data: unknown }) => {
-            const { entity } = (event.data || {}) as { entity?: string }
+            const { entity, id } = (event.data || {}) as { entity?: string; id?: string | number }
             if (entity === this.name) {
-              this.invalidateDetailCache()
+              this._dropDetail(id)
             }
           }
         )
@@ -415,7 +422,16 @@ export function applyCacheMethods(EntityManagerClass: { prototype: any }): void 
     this._detailInflight.clear()
   }
 
-  proto.invalidateCache = function (this: Self): void {
+  proto._dropDetail = function (this: Self, id?: string | number | null): void {
+    if (id === undefined || id === null) {
+      this.invalidateDetailCache()
+      return
+    }
+    this._detailCache.items.delete(String(id))
+    this._detailInflight.delete(String(id))
+  }
+
+  proto._dropListCache = function (this: Self): void {
     const cache = this._cache
     cache.valid = false
     cache.items = []
@@ -423,8 +439,33 @@ export function applyCacheMethods(EntityManagerClass: { prototype: any }): void 
     cache.overflowed = false
     cache.loadedAt = null
     this._cacheLoading = null
+  }
+
+  proto._dropCaches = function (this: Self, id?: string | number | null): void {
+    this._dropListCache()
+    this._dropDetail(id)
+  }
+
+  proto.invalidateCache = function (this: Self): void {
+    this._dropListCache()
     // Also clear detail cache
     this.invalidateDetailCache()
+  }
+
+  /**
+   * Say that a record of this entity changed, or the whole entity without an
+   * id (#4959). Drops what the caches hold of it, then tells the mounted views
+   * (`useLiveEntity`, list and show pages, the active stack) to read it again,
+   * with `source: 'app'` — heard like a change made elsewhere.
+   */
+  proto.invalidate = function (this: Self, id?: string | number | null): void {
+    this._dropCaches(id)
+    this._signals?.emit('entity:data-invalidate', {
+      entity: this.name,
+      action: 'updated',
+      ...(id !== undefined && id !== null && { id }),
+      source: 'app',
+    })
   }
 
   proto.invalidateDataLayer = function (this: Self): void {

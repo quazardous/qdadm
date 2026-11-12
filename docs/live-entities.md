@@ -350,6 +350,28 @@ and `EventSource` consumes it without surfacing anything. So on the default
 transport a heartbeat will **not** hold the watchdog off — budget for your
 data, not for your pings.
 
+## Saying it from the app
+
+Sometimes the app knows a record changed and no stream will say so: a
+background task delivered something to it, or an action ran through an
+endpoint the manager does not wrap. Tell its manager:
+
+```js
+const instances = orchestrator.get('instances')
+instances.invalidate('prod')   // that record
+instances.invalidate()         // the whole entity
+```
+
+Every screen showing it reads it again: the lists, the detail pages, anything
+on `useLiveEntity`, the same way as for a change from the stream. A task can
+do this on its own when it ends: [`invalidates`](tasks.md#refreshing-what-a-task-changed).
+
+What the caches hold of it goes at once. With an id, the record's own detail
+entry goes and the other records keep theirs. The list cache always goes whole:
+a changed record can enter or leave a filtered or sorted page, and a complete
+list cache answers lists locally, so a list held without it, or with the old
+row, would be wrong.
+
 ## Other transports
 
 The mechanics are front-side, so where a fact came from does not matter. SSE is

@@ -135,7 +135,9 @@ export function useLiveEntity(
 
     // Local writes are the manager's own echo: it has already repaired its
     // cache and the page that triggered the write reloads on its own path.
-    if (payload.source !== 'remote') return
+    // 'app' is the app saying a record changed (`manager.invalidate`, #4959):
+    // news to this screen, like a change made elsewhere.
+    if (payload.source !== 'remote' && payload.source !== 'app') return
     if (payload.entity !== entityName) return
 
     if (options.id) {
