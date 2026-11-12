@@ -43,6 +43,16 @@ export interface TaskFollow {
   intervalMs?: number
 }
 
+/**
+ * A record (or a whole entity) a task changes, read again when it ends (#4961):
+ * `id` is a value, a function of the run (or of the sequence), or absent for
+ * the whole entity.
+ */
+export interface TaskInvalidate<S = TaskRun> {
+  entity: string
+  id?: string | number | null | ((subject: S) => string | number | null | undefined)
+}
+
 /** What a kind of task shares, whatever starts it: registered once, it lets runs resume after a reload. */
 export interface TaskKind {
   label?: string
@@ -57,6 +67,18 @@ export interface TaskKind {
   notify?: boolean
   /** Called once the run ends, whatever the outcome (read `run.status`). */
   onSettled?: (run: TaskRun) => void
+  /**
+   * What the run changes, read again when it ends, whatever the outcome
+   * (#4961). A run's own list adds to its kind's.
+   */
+  invalidates?: TaskInvalidate<TaskRun>[]
+  /**
+   * Awaited before `invalidates` apply: for a backend that is still refreshing
+   * what the task changed once the task itself has ended.
+   */
+  ready?: (run: TaskRun) => unknown
+  /** How long `ready` may take before the invalidation goes ahead anyway. Default 30 000 ms. */
+  readyTimeoutMs?: number
   /** The follow dialog's window options for this kind, over the app's (#4334). */
   dialog?: TaskDialogOptions
   /** What the log flags as an error or a timestamp for this kind, over the app's (#4386). */
@@ -149,6 +171,12 @@ export interface SequenceOptions {
   notify?: boolean
   /** Called once the sequence ends. */
   onSettled?: (sequence: TaskSequence) => void
+  /** What the sequence changes, read again when it ends (#4961); each step's own apply as it ends. */
+  invalidates?: TaskInvalidate<TaskSequence>[]
+  /** Awaited before the sequence's `invalidates` apply. */
+  ready?: (sequence: TaskSequence) => unknown
+  /** How long `ready` may take. Default 30 000 ms. */
+  readyTimeoutMs?: number
 }
 
 /** A step that has no run: waiting its turn, or never run (and why). */
@@ -185,7 +213,10 @@ interface TaskHostDeps {
     get: (name: string) => unknown
     toast?: Record<'success' | 'error' | 'warn' | 'info', (summary: string, detail?: string, options?: unknown) => void>
   } | null
-  signals?: { on: (name: string, handler: (event: { data: unknown }) => void) => () => void } | null
+  signals?: {
+    on: (name: string, handler: (event: { data: unknown }) => void) => () => void
+    emit?: (name: string, data?: unknown) => unknown
+  } | null
 }
 
 interface PendingConfirm {
@@ -195,6 +226,7 @@ interface PendingConfirm {
 }
 
 const FINAL: TaskStatus[] = ['succeeded', 'failed', 'cancelled']
+const READY_TIMEOUT_MS = 30_000
 const STORAGE_KEY = 'qdadm:tasks'
 const SEQUENCES_KEY = 'qdadm:task-sequences'
 const KEEP_FINISHED = 20
@@ -330,10 +362,64 @@ function createTaskStore() {
     notifyEnd(run)
     settles.get(id)?.(run)
     settles.delete(id)
+    const def = defs.get(id)
     try {
-      defs.get(id)?.onSettled?.(run)
+      def?.onSettled?.(run)
     } catch (err) {
       console.error(`[qdadm] Task "${run.label}": onSettled threw`, err)
+    }
+    emit('task:settled', { run, kind: run.kind, status: run.status, meta: run.meta })
+    void applyInvalidates(def, run, `Task "${run.label}"`)
+  }
+
+  function emit(name: string, data: unknown): void {
+    try {
+      void deps.signals?.emit?.(name, data)
+    } catch (err) {
+      console.error(`[qdadm] ${name}: a listener threw`, err)
+    }
+  }
+
+  /**
+   * Read again what a run or a sequence changed (#4961): once `ready` settles
+   * (or times out, or fails: a view a little early beats one never refreshed),
+   * each target's manager drops it and the views showing it reload.
+   */
+  async function applyInvalidates<S>(
+    source: { invalidates?: TaskInvalidate<S>[]; ready?: (subject: S) => unknown; readyTimeoutMs?: number } | undefined,
+    subject: S,
+    what: string
+  ): Promise<void> {
+    const targets = source?.invalidates
+    if (!targets?.length) return
+    if (source!.ready) {
+      const ms = source!.readyTimeoutMs ?? READY_TIMEOUT_MS
+      let timer: ReturnType<typeof setTimeout> | undefined
+      try {
+        await Promise.race([
+          Promise.resolve().then(() => source!.ready!(subject)),
+          new Promise((_, reject) => {
+            timer = setTimeout(() => reject(new Error(`not ready after ${ms} ms`)), ms)
+          }),
+        ])
+      } catch (err) {
+        console.warn(`[qdadm] ${what}: ready failed, invalidating anyway —`, errorText(err))
+      } finally {
+        if (timer) clearTimeout(timer)
+      }
+    }
+    for (const target of targets) {
+      try {
+        const id = typeof target.id === 'function' ? target.id(subject) : target.id
+        const manager = deps.orchestrator?.get(target.entity) as { invalidate?: (id?: string | number | null) => void } | null | undefined
+        if (typeof manager?.invalidate !== 'function') {
+          console.warn(`[qdadm] ${what}: cannot invalidate "${target.entity}", no such entity`)
+          continue
+        }
+        manager.invalidate(id ?? undefined)
+      } catch (err) {
+        console.warn(`[qdadm] ${what}: invalidating "${target.entity}" failed —`, errorText(err))
+      }
     }
   }
 
@@ -476,6 +562,8 @@ function createTaskStore() {
       throw new Error(`TaskRunner: unknown task kind "${options.kind}"`)
     }
     const def: TaskKind = { ...base, ...options, task: { ...base?.task, ...options.task } } as TaskKind
+    // A run's targets add to its kind's
+    if (base?.invalidates?.length && options.invalidates?.length) def.invalidates = [...base.invalidates, ...options.invalidates]
     const labelOf = typeof options.label === 'function' ? options.label : undefined
     const label = labelOf ? labelOf() : (options.label as string)
     const meta = options.meta ? { ...options.meta } : null
@@ -777,6 +865,8 @@ function createTaskStore() {
     } catch (err) {
       console.error(`[qdadm] Task sequence "${sequence.label}": onSettled threw`, err)
     }
+    emit('task:sequence-settled', { sequence, status: sequence.status, meta: sequence.meta })
+    void applyInvalidates(internals.options, sequence, `Task sequence "${sequence.label}"`)
   }
 
   const MARKS: Partial<Record<SequenceStepStatus, string>> = { succeeded: '✓', failed: '✗', cancelled: '⊘', skipped: '–' }

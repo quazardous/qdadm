@@ -2,8 +2,8 @@
 /**
  * TaskPlayground — long backend tasks, queued and followed (#4114).
  */
-import { computed, ref } from 'vue'
-import { usePageTitle, useTaskRunner, taskAction, TaskRunStatus } from '@quazardous/qdadm'
+import { computed, onBeforeUnmount, ref } from 'vue'
+import { usePageTitle, useTaskRunner, useSignals, taskAction, TaskRunStatus } from '@quazardous/qdadm'
 import Card from 'primevue/card'
 import Button from 'primevue/button'
 import InputText from 'primevue/inputtext'
@@ -46,6 +46,17 @@ function verify(failConf = false) {
     { kind: 'demo-check', label: 'Check the box', meta: { box } },
     { kind: 'demo-conf-check', label: 'Check the configuration', meta: { box, fail: failConf } },
   ], { meta: { box, verify: true } })
+}
+// The end of every run and sequence, on the signal bus (#4961): any page can hear it
+const ends = ref([])
+const signals = useSignals()
+const offs = [
+  signals?.on('task:settled', ({ data }) => note(data.run.label, data.status)),
+  signals?.on('task:sequence-settled', ({ data }) => note(data.sequence.label, data.status)),
+]
+onBeforeUnmount(() => offs.forEach((off) => off?.()))
+function note(label, status) {
+  ends.value = [`${new Date().toLocaleTimeString()} · ${label} · ${status}`, ...ends.value].slice(0, 4)
 }
 const verifying = computed(() => tasks.isActive(tasks.sequenceFor({ box: name.value.trim() || 'box', verify: true })))
 
@@ -97,6 +108,11 @@ function reset() {
           <Button size="small" severity="danger" outlined icon="pi pi-bolt" label="Verify (the conf check fails)" :disabled="verifying"
             @click="verify(true)" />
         </div>
+        <p class="hint">Heard on the signal bus (<code>task:settled</code>, <code>task:sequence-settled</code>):</p>
+        <ul class="task-ends">
+          <li v-for="line in ends" :key="line">{{ line }}</li>
+          <li v-if="!ends.length" class="hint">nothing yet</li>
+        </ul>
       </template>
     </Card>
 

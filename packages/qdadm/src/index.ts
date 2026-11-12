@@ -483,6 +483,7 @@ export {
   type RunOptions,
   type SequenceStep,
   type SequenceOptions,
+  type TaskInvalidate,
   type SequenceStepStatus,
   type TaskSequence,
   type TaskSequenceStep,

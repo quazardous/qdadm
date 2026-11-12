@@ -167,6 +167,21 @@ EntityManager automatically emits signals on CRUD operations:
 
 Example: Creating a book emits `books:created` then `entity:created`.
 
+`entity:data-invalidate` `{ entity, action, id?, source }` asks the caches and
+the screens to drop and read data again. `source` says where the change came
+from: `local` (the manager's own write, already repaired), `remote` (the live
+stream) or `app` (`manager.invalidate(id)`); see
+[live entities](live-entities.md#saying-it-from-the-app).
+
+## Task Signals
+
+| Signal | When | Payload |
+|--------|------|---------|
+| `task:settled` | A run of the TaskRunner ended, a sequence step included | `{ run, kind, status, meta }` |
+| `task:sequence-settled` | A sequence ended | `{ sequence, status, meta }` |
+
+See [tasks](tasks.md#when-it-ends).
+
 ## Auth Signals
 
 Auth signals handle session lifecycle and security events:

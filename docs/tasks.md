@@ -60,6 +60,42 @@ tasks.run({ label: 'Refresh db', start, task: { entity: 'tasks' }, onSettled: ()
 
 The run itself is reactive too: a `watch` on `run.status` works.
 
+Anywhere else in the app, the signal bus says it: `task:settled`
+`{ run, kind, status, meta }` at the end of every run, a step of a sequence
+included, and `task:sequence-settled` `{ sequence, status, meta }` at the end
+of a sequence. Both fire for a run followed again after a reload too.
+
+### Refreshing what a task changed
+
+A task that changes records says which, and every screen showing them reads
+them again when it ends, whatever the outcome: a failed or cancelled task may
+have changed things too.
+
+```js
+registerTaskKind('deploy', {
+  task: { entity: 'tasks' },
+  invalidates: [{ entity: 'instances', id: (run) => run.meta.instance }],
+})
+tasks.run({ kind: 'deploy', label: 'Deploy', meta: { instance: 'prod' } })
+```
+
+An entry without `id` covers the whole entity. A run's own `invalidates` add to
+its kind's; a sequence takes `invalidates` too, whose `id` gets the sequence,
+and each of its steps applies its own as it ends. It goes through
+[`manager.invalidate(id)`](live-entities.md#saying-it-from-the-app); an entity
+that is not registered is skipped with a warning.
+
+When the backend is still refreshing what the task changed after the task
+itself has ended, `ready(run)` is awaited first: the invalidation waits for it,
+up to `readyTimeoutMs` (30 s by default), then goes ahead anyway, even if
+`ready` failed. The signal, the toast and the next step of a sequence do not
+wait.
+
+```js
+invalidates: [{ entity: 'instances', id: (run) => run.meta.instance }],
+ready: (run) => api.get(`/instances/${run.meta.instance}/refreshed`),
+```
+
 ## Following
 
 `task` says how to read the task record:
