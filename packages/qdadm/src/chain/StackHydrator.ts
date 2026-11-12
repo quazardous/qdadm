@@ -7,6 +7,10 @@
  * Signals emitted:
  * - stack:hydrated - when hydration completes (batched, emits once after all levels) { levels }
  *
+ * A record of the stack that changes (`entity:data-invalidate` for its entity
+ * and id, or for the whole entity) is read again (#4960), so `useChildPage`'s
+ * `parentData` and the breadcrumb follow it without a navigation.
+ *
  * For Vue reactivity, use useStackHydrator composable.
  *
  * @example
@@ -59,6 +63,12 @@ export class StackHydrator implements Hydrator<EntityStackLevel, HydratedLevel> 
   private _levels: HydratedLevel[] = []
   private _pendingEmit: Promise<void> | null = null
   private _unsubscribe: (() => void) | null = null
+  private _unsubscribeInvalidate: (() => void) | null = null
+  /** Re-reads waiting out their coalescing window, by level */
+  private _timers = new Map<HydratedLevel, ReturnType<typeof setTimeout>>()
+  /** Levels changed while a read of them was in flight: read once more after it */
+  private _dirty = new WeakSet<HydratedLevel>()
+  private _rereading = new WeakSet<HydratedLevel>()
 
   constructor(
     _activeStack: ActiveStack,
@@ -77,6 +87,10 @@ export class StackHydrator implements Hydrator<EntityStackLevel, HydratedLevel> 
           this._onStackChange(levels)
         }
       })
+      this._unsubscribeInvalidate = signalBus.on('entity:data-invalidate', (event) => {
+        const { entity, id } = (event.data || {}) as { entity?: string; id?: string | number }
+        if (entity) this._onInvalidate(entity, id)
+      })
     }
     // Note: No initial check needed - stack is always empty at construction time
     // The Kernel's router.afterEach will trigger stack:change after navigation
@@ -90,6 +104,10 @@ export class StackHydrator implements Hydrator<EntityStackLevel, HydratedLevel> 
       this._unsubscribe()
       this._unsubscribe = null
     }
+    this._unsubscribeInvalidate?.()
+    this._unsubscribeInvalidate = null
+    for (const timer of this._timers.values()) clearTimeout(timer)
+    this._timers.clear()
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -101,6 +119,9 @@ export class StackHydrator implements Hydrator<EntityStackLevel, HydratedLevel> 
    * @private
    */
   private _onStackChange(stackLevels: StackLevel[]): void {
+    // Re-reads pending for the levels being replaced are moot
+    for (const timer of this._timers.values()) clearTimeout(timer)
+    this._timers.clear()
     // Create new hydrated levels (each starts its own async hydration)
     this._levels = stackLevels.map((level, index) =>
       this._createHydratedLevel(level, index)
@@ -174,6 +195,67 @@ export class StackHydrator implements Hydrator<EntityStackLevel, HydratedLevel> 
     } finally {
       level.loading = false
       this._scheduleEmit()
+      if (this._dirty.has(level)) {
+        this._dirty.delete(level)
+        void this._reread(level)
+      }
+    }
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // Invalidation: a record of the stack changed (#4960)
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  /**
+   * Every source counts — a local write to the parent from a dialog changes
+   * what the stack shows too. Coalesced over the entity's `live.coalesceMs`.
+   * @private
+   */
+  private _onInvalidate(entity: string, id: string | number | undefined): void {
+    for (const level of this._levels) {
+      if (level.entity !== entity || !level.id) continue
+      if (id !== undefined && id !== null && String(id) !== String(level.id)) continue
+      if (this._timers.has(level)) continue
+      const manager = this._orchestrator?.get(entity) as { live?: { coalesceMs?: number } } | null | undefined
+      const ms = manager?.live?.coalesceMs ?? 300
+      this._timers.set(level, setTimeout(() => {
+        this._timers.delete(level)
+        void this._reread(level)
+      }, ms))
+    }
+  }
+
+  /**
+   * Read a level's record again. Never two reads of it at once: one that
+   * arrives meanwhile runs once the current one ends. A failure keeps the data
+   * shown: the page does not fall back to loading for a refresh.
+   * @private
+   */
+  private async _reread(level: HydratedLevel): Promise<void> {
+    if (!this._levels.includes(level) || !level.id) return
+    if (level.loading || this._rereading.has(level)) {
+      this._dirty.add(level)
+      return
+    }
+    const manager = this._orchestrator?.get(level.entity)
+    if (!manager) return
+    this._rereading.add(level)
+    try {
+      const data = await manager.get(level.id, undefined, { listCache: false })
+      // The stack moved on meanwhile: nothing to update
+      if (!this._levels.includes(level)) return
+      level.data = data
+      level.label = manager.getEntityLabel?.(data) ?? level.id
+      level.error = null
+      this._scheduleEmit()
+    } catch (err) {
+      console.warn(`[qdadm] StackHydrator: reading ${level.entity} #${level.id} again failed —`, err instanceof Error ? err.message : err)
+    } finally {
+      this._rereading.delete(level)
+      if (this._dirty.has(level)) {
+        this._dirty.delete(level)
+        void this._reread(level)
+      }
     }
   }
 

@@ -800,6 +800,13 @@ const { parentData: book, parentLoading, parentManager } = useChildPage()
 | `parentEntity` | `ComputedRef<string>` | Parent entity name |
 | `parentId` | `ComputedRef<string>` | Parent entity ID |
 
+`parentData` follows the record: when it changes (a write, a change from the
+[live stream](live-entities.md), or `manager.invalidate(id)` from the app,
+say at the end of a [task](tasks.md#refreshing-what-a-task-changed)), it is
+read again and the page and the breadcrumb update without a navigation. Bursts
+collapse over the entity's `live.coalesceMs`, a read never overlaps another,
+and a failed read keeps what is shown.
+
 ---
 
 ## Storage for demos and tests

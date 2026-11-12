@@ -5,11 +5,23 @@
  * Demonstrates ctx.childPage() + useChildPage() for adding non-entity tabs
  * alongside entity child routes (like Loans).
  * useChildPage() gives access to hydrated parent data automatically.
+ *
+ * DEMONSTRATES (#4960): parentData follows the record. "Changed elsewhere"
+ * writes the year behind the manager's back, then `invalidate(id)`: the card
+ * and the breadcrumb update, with no code here to read it again.
  */
-import { useChildPage, PageLayout, PageNav } from '@quazardous/qdadm'
+import { useChildPage, useI18n, PageLayout, PageNav } from '@quazardous/qdadm'
 import Card from 'primevue/card'
+import Button from 'primevue/button'
 
-const { parentData: book, parentLoading, parentManager } = useChildPage()
+const { parentData: book, parentLoading, parentManager, parentId } = useChildPage()
+const { t } = useI18n()
+
+async function changedElsewhere() {
+  const books = parentManager.value
+  await books.storage.patch(parentId.value, { year: Number(book.value?.year ?? 2000) + 1 })
+  books.invalidate(parentId.value)
+}
 </script>
 
 <template>
@@ -52,6 +64,8 @@ const { parentData: book, parentLoading, parentManager } = useChildPage()
               <dd><code>{{ book[parentManager?.idField] }}</code></dd>
             </div>
           </dl>
+          <Button size="small" severity="secondary" outlined icon="pi pi-sync" class="changed-elsewhere"
+            :label="t('entities.books.demo.changedElsewhere')" @click="changedElsewhere" />
         </template>
       </Card>
     </div>
@@ -59,6 +73,10 @@ const { parentData: book, parentLoading, parentManager } = useChildPage()
 </template>
 
 <style scoped>
+.changed-elsewhere {
+  margin-top: 1rem;
+}
+
 .info-grid {
   max-width: 600px;
 }
