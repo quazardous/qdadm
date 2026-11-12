@@ -12,6 +12,9 @@
  * Auto-detects from current route:
  * - Navlinks: sibling routes (same parent entity + param) or children routes
  *
+ * Links the user cannot open are left out (#4962): the same rule as the
+ * router guard and the menu (security/routeAccess).
+ *
  * Props:
  * - showDetailsLink: Show "Details" link in navlinks (default: false)
  */
@@ -20,6 +23,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { getSiblingRoutes, getChildRoutes, routeParamsSatisfied, type ModuleRoute, type ParentConfig } from '../../module/moduleRegistry'
 import { useOrchestrator } from '../../orchestrator/useOrchestrator.js'
 import { useI18n } from '../../i18n/useI18n'
+import { canOpenRoute, type RouteAccessDeps } from '../../security/routeAccess'
 import type { EntityManager } from '../../entity/EntityManager'
 import type { EntityRecord } from '../../types'
 
@@ -41,6 +45,18 @@ const route = useRoute()
 const router = useRouter()
 const { getManager } = useOrchestrator()
 const { tOr } = useI18n()
+// null without security: every link shows, as in the menu
+const securityChecker = inject<RouteAccessDeps['checker']>('qdadmSecurityChecker', null)
+const accessOrchestrator = inject<RouteAccessDeps['orchestrator']>('qdadmOrchestrator', null)
+
+/** Whether the user may open the link's route (unresolvable: shown, the router decides) */
+function canOpen(link: NavLink): boolean {
+  try {
+    return canOpenRoute(router.resolve(link.to as never), { orchestrator: accessOrchestrator, checker: securityChecker })
+  } catch {
+    return true
+  }
+}
 
 // Parent config from route meta
 const parentConfig = computed<ParentConfig | undefined>(() => route.meta?.parent as ParentConfig | undefined)
@@ -186,8 +202,11 @@ const allNavlinks = computed<NavLink[]>(() => {
   return []
 })
 
+// Only what the user may open
+const visibleNavlinks = computed<NavLink[]>(() => allNavlinks.value.filter(canOpen))
+
 // Sync navlinks to AppLayout via provide/inject
-watch([allNavlinks, () => route.fullPath], ([links]) => {
+watch([visibleNavlinks, () => route.fullPath], ([links]) => {
   if (navlinksOverride) {
     navlinksOverride.value = links as NavLink[]
   }

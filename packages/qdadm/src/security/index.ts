@@ -93,3 +93,4 @@ export {
  * Used by PermissionRegistry.registerEntity()
  */
 export const ENTITY_ACTIONS = ['read', 'list', 'create', 'update', 'delete'] as const
+export { canOpenRoute, routeDenial, type RouteDenial, type RouteAccessDeps, type RouteLike } from './routeAccess'

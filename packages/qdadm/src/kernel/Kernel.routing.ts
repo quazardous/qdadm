@@ -8,6 +8,7 @@ import {
 } from 'vue-router'
 import { getRoutes } from '../module/moduleRegistry'
 import { installChunkReload } from './chunkReload'
+import { routeEntity, routePermissions, missingPermission, entityDenial } from '../security/routeAccess'
 import type { Kernel } from './Kernel'
 // #1196 Phase B — this-typing against the real Kernel shape (was Self = any)
 type Self = Kernel
@@ -247,32 +248,25 @@ export function applyRoutingMethods(KernelClass: { prototype: Kernel }): void {
         return sessionLost ? { name: 'login', query: { session_lost: '1' } } : { name: 'login' }
       }
 
-      const entity = to.meta?.entity as string | undefined
-      // Entity not registered → nothing to check yet (e.g. child route
-      // declared before its manager loads) — allow. This is the ONLY
-      // allowed pass-through; a failing access check must fail CLOSED,
-      // not silently allow (#1190).
+      // Who may open it (#4962): the same rule as the menu and PageNav —
+      // every matched record's meta.permission (#4332), and the route's entity
+      // (or, for a child page, its parent item's) for the action it declares
+      // (#2497). An entity not registered yet is the ONLY pass-through; a
+      // failing check fails CLOSED, never silently allows (#1190).
       const orchestrator = this.orchestrator
-      const entityToCheck = !!entity && !!orchestrator && orchestrator.isRegistered(entity)
-
-      // Page permissions (#4332): every matched record's meta.permission, so a
-      // parent's covers its children; a list needs every entry. Without a
-      // security checker (an app without security) nothing is checked, as for
-      // the menu.
-      const permissions = to.matched.flatMap((record: RouteRecordNormalized) => {
-        const p = record.meta.permission
-        return (Array.isArray(p) ? p : [p]).filter((x): x is string => typeof x === 'string' && x !== '')
-      })
       const checker = this.securityChecker
-      const permissionsToCheck = permissions.length > 0 && !!checker
+      const deps = { orchestrator, checker }
+      const entity = routeEntity(to)
+      const entityToCheck = !!entity && !!orchestrator && orchestrator.isRegistered(entity)
+      const permissionsToCheck = routePermissions(to).length > 0 && !!checker
 
       if (!entityToCheck && !permissionsToCheck) return
 
       const checkPermissions = (): { path: string } | undefined => {
         if (!permissionsToCheck) return undefined
         try {
-          const missing = permissions.find((p) => !checker!.isGranted(p))
-          if (missing === undefined) return undefined
+          const missing = missingPermission(to, deps)
+          if (missing === null) return undefined
           console.warn(`[qdadm] Access denied to ${to.path} (permission: ${missing})`)
           orchestrator?.toast.error('Access Denied', "You don't have permission to access this page", 'Kernel')
           this.signals!.emit('auth:access-denied', { path: to.path, permission: missing })
@@ -283,28 +277,23 @@ export function applyRoutingMethods(KernelClass: { prototype: Kernel }): void {
         }
       }
 
-      // The action the route declares (#2497): a list route is governed by
-      // `list`. A route that declares none — any custom page — checks `read`.
-      const action = to.meta?.entityAction === 'list' ? 'list' : 'read'
-
       const checkEntity = (): { path: string } | undefined => {
         if (!entityToCheck) return undefined
         try {
-          const manager = orchestrator!.get(entity!)
-          const allowed = manager && (action === 'list' ? manager.canList() : manager.canRead())
-          if (manager && !allowed) {
+          const denial = entityDenial(to, deps)
+          if (denial) {
             console.warn(
-              `[qdadm] Access denied to ${to.path} (entity: ${entity}, action: ${action})`
+              `[qdadm] Access denied to ${to.path} (entity: ${denial.entity}, action: ${denial.action})`
             )
             orchestrator!.toast.error(
               'Access Denied',
-              `You don't have permission to access ${manager.labelPlural || entity}`,
+              `You don't have permission to access ${denial.manager.labelPlural || denial.entity}`,
               'Kernel'
             )
             this.signals!.emit('auth:access-denied', {
               path: to.path,
-              entity,
-              manager,
+              entity: denial.entity,
+              manager: denial.manager,
             })
             return { path: '/' }
           }

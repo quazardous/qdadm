@@ -432,9 +432,18 @@ For an entity page, the route guard and the menu check what the page does:
 | a `ctx.crud()` list route, and its menu entry | `canList()` | `entity:<x>:list` |
 | a `ctx.crud()` show route | `canRead()` | `entity:<x>:read` |
 | any other entity route (custom pages, create, edit) | `canRead()` | `entity:<x>:read` |
+| a `ctx.childPage()` on an item of `<x>` | `canRead()` of the parent | `entity:<x>:read`, plus its own `permission` |
 
 `read` and `list` are separate grants: a role granted `read` without `list`
 does not see the list or its menu entry.
+
+A child page runs on its parent item, so it follows the parent's `read`. A
+page that acts adds a permission: `ctx.childPage('instance-show', 'deploy',
+{ component, permission: 'entity:instances:update' })`. The links `PageNav`
+shows between an item's pages follow the same rule: a page the user cannot
+open is left out, as in the menu. The guard, the menu and `PageNav` share it:
+`canOpenRoute(route, { orchestrator, checker })` from
+`@quazardous/qdadm/security`, for a link of your own.
 
 A manager that overrides `canRead()` to restrict who sees an entity must
 override `canList()` the same way, or the list page follows the plain

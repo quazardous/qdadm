@@ -389,6 +389,9 @@ export function applyRoutingMethods(KernelContextClass: { prototype: KernelConte
           meta: {
             layout: 'page',
             ...(options.icon && { icon: options.icon }),
+            // On top of the parent item's read right, which the guard checks
+            // through meta.parent (#4962)
+            ...(options.permission !== undefined && { permission: options.permission }),
             ...options.meta,
           },
         },

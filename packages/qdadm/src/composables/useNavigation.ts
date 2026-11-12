@@ -9,6 +9,7 @@
  * the navigation structure dynamically.
  */
 
+import { routePermissions } from '../security/routeAccess'
 import { computed, inject, ref, onMounted, type ComputedRef, type Ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { getNavSections, alterMenuSections, isMenuAltered } from '../module/moduleRegistry'
@@ -129,10 +130,8 @@ export function useNavigation(): UseNavigationReturn {
 
   function routePermission(name: string): string | string[] | undefined {
     try {
-      return router.resolve({ name }).matched.flatMap((r) => {
-        const p = r.meta?.permission as string | string[] | undefined
-        return p === undefined ? [] : Array.isArray(p) ? p : [p]
-      })
+      // The same reading as the router guard and PageNav (#4962)
+      return routePermissions(router.resolve({ name }))
     } catch {
       return undefined
     }

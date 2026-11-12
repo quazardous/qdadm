@@ -247,6 +247,16 @@ export class BooksModule extends Module {
       icon: 'pi pi-info-circle'
     })
 
+    // A child page that acts (#4962): reading the book is not enough, it needs
+    // `entity:books:update` too. bob and june (read-only) neither see its link
+    // nor open it; the guard sends them back.
+    ctx.childPage('book', 'reprint', {
+      component: () => import('./pages/BookReprint.vue'),
+      label: 'Reprint',
+      icon: 'pi pi-print',
+      permission: 'entity:books:update',
+    })
+
     // Child CRUD: loans for a specific book
     // DEMONSTRATES: ctx.crud() with parentRoute for child entities
     // - Auto-generates list, create, edit routes under books/:bookId/loans

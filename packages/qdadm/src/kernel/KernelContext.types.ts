@@ -183,6 +183,12 @@ export interface ChildPageOptions {
   meta?: Record<string, unknown>
   /** Explicit URL param name for the parent id (see CrudOptions.parentParam). */
   parentParam?: string
+  /**
+   * Required on top of reading the parent item, which every child page needs
+   * (#4962): `'entity:instances:update'` for a page that acts. Same as
+   * `meta.permission`.
+   */
+  permission?: string | string[]
 }
 
 /** User entity options */

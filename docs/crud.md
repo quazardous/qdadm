@@ -800,6 +800,11 @@ const { parentData: book, parentLoading, parentManager } = useChildPage()
 | `parentEntity` | `ComputedRef<string>` | Parent entity name |
 | `parentId` | `ComputedRef<string>` | Parent entity ID |
 
+Whoever cannot read the parent item cannot open the page, and `PageNav` leaves
+its link out. A page that acts asks for more: `ctx.childPage('book-show',
+'reprint', { component, permission: 'entity:books:update' })` (see
+[security](security.md#which-permission-a-page-needs)).
+
 `parentData` follows the record: when it changes (a write, a change from the
 [live stream](live-entities.md), or `manager.invalidate(id)` from the app,
 say at the end of a [task](tasks.md#refreshing-what-a-task-changed)), it is
