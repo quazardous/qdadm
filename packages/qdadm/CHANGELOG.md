@@ -1,5 +1,15 @@
 # Changelog
 
+## 2.49.0
+
+### Minor Changes
+
+- ec2e507: A child page is governed by its parent item: the router guard refuses a `ctx.childPage()` to whoever cannot read the parent (it was open to anyone signed in), `childPage({ permission })` adds a permission on top, and `PageNav` leaves out the links the user cannot open. The guard, the menu and `PageNav` share one rule, `canOpenRoute(route, { orchestrator, checker })` in `@quazardous/qdadm/security` (#4962).
+- 94a7168: A tabbed item: `ctx.itemTabs(entity, { header?, details?, component? })` shows an item's pages (its show page, child pages and child lists) as tabs under the item's header, the page in a `router-view` below. The pages are nested under one frame route (`EntityItemLayout`); their names, paths, guards and breadcrumb are unchanged, tabs the user cannot open are left out, and a tab switch keeps the header (#4963).
+- a048861: `manager.invalidate(id?)`: the app says a record changed (or the whole entity without an id). The caches drop what they hold of it and every mounted view reads it again, as for a change from the live stream (`source: 'app'`, heard like `'remote'`). A change event carrying an id now drops only that record's detail cache entry; the list cache still goes whole (#4959).
+- c13867f: The active stack follows its records: an `entity:data-invalidate` for a record of the stack (its id, or the whole entity) reads it again, coalesced over the entity's `live.coalesceMs`, so `useChildPage`'s `parentData` and the breadcrumb update without a navigation. A read never overlaps another, a pending one is dropped when the stack moves on, and a failed one keeps what is shown (#4960).
+- a88ea28: TaskRunner: `task:settled` `{ run, kind, status, meta }` and `task:sequence-settled` `{ sequence, status, meta }` on the signal bus at the end of every run and sequence, and `invalidates: [{ entity, id? }]` on a kind, a run or a sequence: the records a task changed are read again when it ends, whatever the outcome, after an optional `ready()` bounded by `readyTimeoutMs` (#4961).
+
 ## 2.48.0
 
 ### Minor Changes
