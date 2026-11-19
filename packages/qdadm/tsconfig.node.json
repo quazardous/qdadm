@@ -27,7 +27,9 @@
   "include": [
     "src/vite/qdadmPlugin.ts",
     "src/vite/qdadmDebugPlugin.ts",
-    "src/gen/vite-plugin.ts"
+    "src/gen/vite-plugin.ts",
+    "src/cards/tools/cardsTool.ts",
+    "src/cards/tools/cli.ts"
   ],
   "exclude": ["node_modules", "dist", "**/*.test.ts", "**/*.spec.ts"]
 }

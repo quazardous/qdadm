@@ -365,6 +365,36 @@ export default `core:
     moreKeys: "+{count} more"
     takeTheirs: Load their version
     keepMine: Keep mine and save over it
+  # Cards (#5339): the envelope's words and the generic cards'
+  cards:
+    status:
+      critical: Critical
+      watch: To watch
+      good: Good
+      info: Info
+    loading: Loading…
+    unreachable: Source unreachable
+    galleryUnreachable: "The source did not answer (timeout after 10 s)"
+    empty: Nothing to report
+    invalid: Invalid data
+    moreProblems: "and {count} more"
+    overdue: overdue
+    ageUnit:
+      min: min
+      h: h
+      d: d
+    goal:
+      of: "of {target}"
+      reached: "{share} of the target"
+      pace: "expected on {date}: {share}"
+      ahead: ahead
+      behind: behind
+    bullet:
+      target: "target {target}"
+      aria: "{value}: {range}"
+      poor: Poor
+      fair: Fair
+      good: Good
   # PermissionEditor (#5333)
   permissionEditor:
     placeholder: Type a permission…

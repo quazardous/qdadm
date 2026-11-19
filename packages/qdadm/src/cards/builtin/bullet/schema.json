@@ -1,0 +1,18 @@
+{
+  "type": "object",
+  "required": ["value", "thresholds"],
+  "additionalProperties": false,
+  "properties": {
+    "value": { "type": "number" },
+    "target": { "type": "number", "description": "Drawn as an upright tick" },
+    "thresholds": {
+      "type": "array",
+      "items": { "type": "number" },
+      "minItems": 1,
+      "maxItems": 2,
+      "description": "Where the ranges change, ascending: [poor/fair, fair/good] when higher is better"
+    },
+    "min": { "type": "number", "description": "The axis start (default 0)" },
+    "max": { "type": "number", "description": "The axis end (default: a little past the largest number)" }
+  }
+}

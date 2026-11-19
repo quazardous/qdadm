@@ -1,0 +1,12 @@
+{
+  "type": "object",
+  "required": ["value", "target"],
+  "additionalProperties": false,
+  "properties": {
+    "value": { "type": "number", "description": "Reached so far" },
+    "target": { "type": "number", "minimum": 0, "description": "The target of the period" },
+    "start": { "type": "string", "description": "The period's first day (ISO date)" },
+    "due": { "type": "string", "description": "The period's last day (ISO date)" },
+    "now": { "type": "string", "description": "Today, when it is not the browser's (ISO date)" }
+  }
+}

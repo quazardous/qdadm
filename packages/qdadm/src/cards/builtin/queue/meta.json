@@ -1,0 +1,47 @@
+{
+  "type": "queue",
+  "title": "Queue",
+  "question": "What do I have to do?",
+  "readings": [
+    "the big number: how many are waiting, with a short note (\"1 expires tomorrow\")",
+    "each line: one item to process, with its own gesture",
+    "the background that advances under a line: its age against the promised delay",
+    "its warmth: how urgent it is (cool, warm, overdue), doubled by the age written on the right"
+  ],
+  "strengths": [
+    "the only card whose lines each carry a gesture",
+    "the oldest and the overdue stand out without reading the numbers",
+    "the main action opens the first one, and the run bar takes over from there"
+  ],
+  "avoid": [
+    "when nobody acts on the items: use metric with hot lines",
+    "for more than a handful of lines: link to the list instead"
+  ],
+  "sizes": ["s", "m", "l"],
+  "options": {
+    "ageUnit": { "type": "string", "enum": ["min", "h", "d"], "default": "d", "description": "The unit of `age` and `due`" },
+    "maxItems": { "type": "integer", "minimum": 1, "maximum": 8, "default": 3, "description": "How many lines to show" }
+  },
+  "action": "mode next: open the first item to process, with the run bar over the whole queue (\"Process the 1st\")",
+  "example": {
+    "envelope": {
+      "title": "Open returns",
+      "status": "watch",
+      "source": "after-sales",
+      "freshness": "2026-11-19T09:40:00Z",
+      "to": "/returns",
+      "action": { "verb": "Process the oldest", "count": 3, "mode": "next", "to": "/returns/8812" },
+      "size": "s"
+    },
+    "data": {
+      "total": 3,
+      "note": "1 overdue",
+      "items": [
+        { "label": "Return 8812 · broken screen", "age": 11, "due": 10, "to": "/returns/8812" },
+        { "label": "Return 8840 · wrong series", "age": 7, "due": 10, "to": "/returns/8840" },
+        { "label": "Return 8857 · withdrawal", "age": 3, "due": 14, "to": "/returns/8857", "action": { "verb": "Remind", "to": "/returns/8857/remind" } }
+      ]
+    },
+    "options": { "ageUnit": "d", "maxItems": 3 }
+  }
+}

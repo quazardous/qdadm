@@ -1,0 +1,109 @@
+{
+  "type": "metric",
+  "title": "Metric",
+  "question": "How many, and is it going up?",
+  "readings": [
+    "the big number: the value now",
+    "the change chip: how much it moved over the period, its sign and its tone (good or bad news, from higherIs)",
+    "the curve: the recent series, the last point marked",
+    "the hot lines: the few items behind the number that need a look, each one opening its item"
+  ],
+  "strengths": [
+    "one glance gives the level and the direction",
+    "the hot lines lead straight to the items that matter",
+    "fits the smallest size"
+  ],
+  "avoid": [
+    "when the number only means something against a target: use goal or bullet",
+    "when the point is a list of things to process, one gesture each: use queue",
+    "when several values compete: use a ranking or a split"
+  ],
+  "sizes": [
+    "s",
+    "m",
+    "l"
+  ],
+  "options": {
+    "unit": {
+      "type": "string",
+      "description": "Written after the value and the change: \"%\", \"k€\""
+    },
+    "decimals": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 4,
+      "default": 0,
+      "description": "Digits after the decimal point"
+    },
+    "higherIs": {
+      "type": "string",
+      "enum": [
+        "better",
+        "worse",
+        "neutral"
+      ],
+      "default": "better",
+      "description": "Whether a rise is good news (sales) or bad news (open returns)"
+    },
+    "hotCount": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 5,
+      "default": 2,
+      "description": "How many hot lines to show"
+    }
+  },
+  "action": "mode next: open the most urgent of the items behind the number (\"Process the 1st\")",
+  "example": {
+    "envelope": {
+      "title": "Orders to process",
+      "status": "critical",
+      "source": "shop",
+      "freshness": "2026-11-19T09:57:00Z",
+      "to": "/orders",
+      "action": {
+        "verb": "Process the 1st",
+        "count": 14,
+        "mode": "next",
+        "to": "/orders/575806"
+      },
+      "size": "s"
+    },
+    "data": {
+      "value": 14,
+      "label": "orders",
+      "badge": "5 urgent",
+      "delta": {
+        "value": 4,
+        "period": "week"
+      },
+      "series": [
+        9,
+        10,
+        8,
+        11,
+        10,
+        12,
+        14
+      ],
+      "hot": [
+        {
+          "label": "575806 · Amazon · ships tonight",
+          "tag": "urgent",
+          "tagStatus": "critical",
+          "to": "/orders/575806"
+        },
+        {
+          "label": "City of Lyon · 24 k€ · transfer",
+          "tag": "approve",
+          "tagStatus": "watch",
+          "to": "/orders/575811"
+        }
+      ]
+    },
+    "options": {
+      "higherIs": "worse",
+      "hotCount": 2
+    }
+  }
+}

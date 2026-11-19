@@ -1,0 +1,43 @@
+{
+  "type": "goal",
+  "title": "Goal",
+  "question": "Am I on time?",
+  "readings": [
+    "the big number and \"of 600 k€\": where it stands against the target",
+    "the bar's length: the share of the target reached",
+    "the tick on the bar: where the expected pace says it should be today",
+    "the words under it: the share reached, the expected share, ahead or behind"
+  ],
+  "strengths": [
+    "says at once whether the period will end on target",
+    "the pace makes a mid-month number readable"
+  ],
+  "avoid": [
+    "without a period (start and due): use bullet, which reads a value against a target and ranges",
+    "when the target moves every day: use metric"
+  ],
+  "sizes": ["s", "m"],
+  "options": {
+    "unit": { "type": "string", "description": "Written after the value and the target: \"k€\"" },
+    "decimals": { "type": "integer", "minimum": 0, "maximum": 4, "default": 0, "description": "Digits after the decimal point" }
+  },
+  "action": "mode list: open what is left to win (the open quotes, the late orders)",
+  "example": {
+    "envelope": {
+      "title": "Revenue this month (excl. tax)",
+      "status": "good",
+      "source": "sales",
+      "freshness": "2026-11-19T08:00:00Z",
+      "to": "/sales",
+      "size": "s"
+    },
+    "data": {
+      "value": 412,
+      "target": 600,
+      "start": "2026-11-01",
+      "due": "2026-11-30",
+      "now": "2026-11-19"
+    },
+    "options": { "unit": "k€" }
+  }
+}

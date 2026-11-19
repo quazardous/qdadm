@@ -58,6 +58,7 @@ npm test             # Run tests (from packages/qdadm)
 | PermissionEditor | `qdadm/src/components/editors/PermissionEditor.vue` | `namespace:action` permission |
 | JsonViewer / JsonEditorFoldable | `qdadm/src/components/editors/` | Read-only / foldable JSON (main bundle) |
 | VanillaJsonEditor | `qdadm/src/components/editors/VanillaJsonEditor.vue` | Tree/text/table JSON + `:schema` validation (`/editors` subpath) |
+| QdCard / QdCardView / registerCard | `qdadm/src/cards/` | Ready-made dashboard cards: the envelope, card types with a sheet and a schema (`builtin/`), the gallery, the `qdadm-cards` tooling; the bestiary is `docs/cards.md` |
 | StructuredField | `qdadm/src/components/editors/structured/StructuredField.vue` | Structured ↔ raw JSON / YAML dual; the faces come with `/editors/json` and `/editors/yaml` |
 | JsonStructuredField | `qdadm/src/components/editors/JsonStructuredField.vue` | `StructuredField` with the JSON face (`/editors/json` subpath) |
 

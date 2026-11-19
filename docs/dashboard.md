@@ -21,7 +21,81 @@ ctx.block('home-cards', { id: 'news', component: NewsCard, weight: 30, card: { t
 
 `DashboardLayout customizable` renders its `widgets` zone (`DASHBOARD_ZONES.WIDGETS`) with `CardsDashboard`.
 
-## Cards
+## Ready-made cards
+
+qdadm draws the cards themselves: an envelope shared by all, and card types
+that draw a shape of data (a value, a target, a queue…). They have no
+business in them; the app gives the data. Each type answers one question,
+and the [bestiary](cards.md), generated from the sheets, says which.
+
+```vue
+<QdCardView
+  type="metric"
+  :envelope="{ title: 'Orders to process', status: 'critical', source: 'shop', freshness: readAt,
+               to: { name: 'orders' }, action: { verb: 'Process the 1st', mode: 'next', to: firstOrder } }"
+  :data="{ value: 14, label: 'orders', delta: { value: 4, period: 'week' }, series, hot }"
+  :options="{ higherIs: 'worse' }"
+/>
+```
+
+**The envelope** (`QdCard`) has two zones, one gesture each. The surface (the
+title's link, stretched over the card) opens the domain's board; the action
+button does the main gesture, `mode: 'next'` for the most urgent item or
+`'list'` for the filtered list. A link or a button inside the body stops there.
+The status is a side bar, a hue and a word, never the hue alone. `state`
+draws `loading`, `unreachable` (with `error`) or `empty` (with `emptyText`)
+instead of the body. `size` is `s`, `m` or `l`: 1, 2 or 3 columns.
+
+**The data is checked** against the type's JSON Schema before the body draws:
+what does not fit draws the `invalid` state with the path and the reason, and
+the rest of the board keeps working. Options are declared in the sheet, with
+their defaults; a card is set by its options, not by CSS.
+
+The generic cards: `metric`, `queue`, `goal`, `bullet`.
+
+### A card type of your own
+
+A card type is a folder: `meta.json` (its sheet: question, readings,
+strengths, when to avoid it, sizes, options, typical action, a full example),
+`schema.json` (the JSON Schema of its data) and its body, a component taking
+`data`, `options` and `size`.
+
+```js
+import { registerCard } from '@quazardous/qdadm'
+import Body from './cards/stock/StockCard.vue'
+import meta from './cards/stock/meta.json'
+import schema from './cards/stock/schema.json'
+
+registerCard({ type: 'stock', component: Body, meta, schema })
+```
+
+The tooling reads the same folders:
+
+```sh
+qdadm-cards index src/cards --index src/cards/cards-index.json --bestiary docs/cards.md
+qdadm-cards check src/cards --index src/cards/cards-index.json --bestiary docs/cards.md
+```
+
+`index` writes the index (every sheet and schema, as JSON) and the bestiary.
+`check` fails on a card without a sheet or a schema, an example that does not
+fit its own schema, or an index or a bestiary out of date. In a test:
+
+```js
+import { checkCards } from '@quazardous/qdadm/cards/tools'
+expect(checkCards('src/cards', { index: 'src/cards/cards-index.json', bestiary: 'docs/cards.md' })).toEqual([])
+```
+
+### The gallery
+
+`<QdCardsGallery />` shows every registered card, qdadm's and the app's, in
+each of its sizes and states, light and dark, from its sheet's example. Mount
+it on a route: it is the reference for the look. Each tile carries
+`data-gallery-card`, `-state`, `-size` and, on its theme block,
+`data-gallery-theme`, so a script can capture them one by one. The demo does
+it at `/cards`, and `npm run cards:shots` in `packages/demo` writes one PNG
+per tile in `shots/cards/`.
+
+## Arranged cards
 
 - Any block with an `id` is a card: the id is its key in the saved arrangement.
   A block without one is shown after the cards, and cannot be arranged.

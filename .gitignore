@@ -36,3 +36,6 @@ packages/qdadm/src/generated/
 
 # aiball agent session id, per machine
 .aiball-session_id
+
+# Gallery shots for review (npm run cards:shots, #5339)
+packages/demo/shots/

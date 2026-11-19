@@ -1,0 +1,38 @@
+{
+  "type": "bullet",
+  "title": "Bullet",
+  "question": "Is the value good, fair or poor, and how far from the target?",
+  "readings": [
+    "the dark bar's length: the value",
+    "the upright tick: the target",
+    "the background ranges: poor, fair, good, cut at the thresholds written under the axis",
+    "the word under it: the range the value falls in"
+  ],
+  "strengths": [
+    "three readings in one line, without a legend (Few's bullet graph)",
+    "compares to a target and to thresholds at once, where a gauge needs twice the room"
+  ],
+  "avoid": [
+    "when time matters more than the level: use goal (pace over a period) or metric (curve)",
+    "without thresholds: a plain metric says as much"
+  ],
+  "sizes": ["s", "m"],
+  "options": {
+    "unit": { "type": "string", "description": "Written after the numbers: \"%\"" },
+    "decimals": { "type": "integer", "minimum": 0, "maximum": 4, "default": 0, "description": "Digits after the decimal point" },
+    "higherIs": { "type": "string", "enum": ["better", "worse"], "default": "better", "description": "Whether the good range is at the top (margin) or at the bottom (delays)" }
+  },
+  "action": "mode list: open what pulls the value down (the low-margin orders)",
+  "example": {
+    "envelope": {
+      "title": "Margin this month",
+      "status": "watch",
+      "source": "sales",
+      "freshness": "2026-11-19T08:00:00Z",
+      "to": "/sales/margin",
+      "size": "s"
+    },
+    "data": { "value": 11.8, "target": 13, "thresholds": [9, 12], "min": 0, "max": 20 },
+    "options": { "unit": "%", "decimals": 1 }
+  }
+}

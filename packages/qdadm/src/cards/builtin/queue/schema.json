@@ -1,0 +1,32 @@
+{
+  "type": "object",
+  "required": ["items"],
+  "additionalProperties": false,
+  "properties": {
+    "total": { "type": "integer", "minimum": 0, "description": "How many are waiting (the lines show only the first ones)" },
+    "note": { "type": "string", "description": "A short note after the number: \"1 expires tomorrow\"" },
+    "items": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["label"],
+        "additionalProperties": false,
+        "properties": {
+          "label": { "type": "string" },
+          "age": { "type": "number", "minimum": 0, "description": "How long it has waited, in the ageUnit option" },
+          "due": { "type": "number", "minimum": 0, "description": "The promised delay, in the same unit: the background reaches the end there" },
+          "to": { "type": ["string", "object"], "description": "The item's route" },
+          "action": {
+            "type": "object",
+            "required": ["verb", "to"],
+            "additionalProperties": false,
+            "properties": {
+              "verb": { "type": "string", "description": "The line's gesture: \"Remind\"" },
+              "to": { "type": ["string", "object"] }
+            }
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,550 @@
+{
+  "generatedBy": "qdadm-cards index",
+  "cards": [
+    {
+      "type": "bullet",
+      "title": "Bullet",
+      "question": "Is the value good, fair or poor, and how far from the target?",
+      "readings": [
+        "the dark bar's length: the value",
+        "the upright tick: the target",
+        "the background ranges: poor, fair, good, cut at the thresholds written under the axis",
+        "the word under it: the range the value falls in"
+      ],
+      "strengths": [
+        "three readings in one line, without a legend (Few's bullet graph)",
+        "compares to a target and to thresholds at once, where a gauge needs twice the room"
+      ],
+      "avoid": [
+        "when time matters more than the level: use goal (pace over a period) or metric (curve)",
+        "without thresholds: a plain metric says as much"
+      ],
+      "sizes": [
+        "s",
+        "m"
+      ],
+      "options": {
+        "unit": {
+          "type": "string",
+          "description": "Written after the numbers: \"%\""
+        },
+        "decimals": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4,
+          "default": 0,
+          "description": "Digits after the decimal point"
+        },
+        "higherIs": {
+          "type": "string",
+          "enum": [
+            "better",
+            "worse"
+          ],
+          "default": "better",
+          "description": "Whether the good range is at the top (margin) or at the bottom (delays)"
+        }
+      },
+      "action": "mode list: open what pulls the value down (the low-margin orders)",
+      "example": {
+        "envelope": {
+          "title": "Margin this month",
+          "status": "watch",
+          "source": "sales",
+          "freshness": "2026-11-19T08:00:00Z",
+          "to": "/sales/margin",
+          "size": "s"
+        },
+        "data": {
+          "value": 11.8,
+          "target": 13,
+          "thresholds": [
+            9,
+            12
+          ],
+          "min": 0,
+          "max": 20
+        },
+        "options": {
+          "unit": "%",
+          "decimals": 1
+        }
+      },
+      "schema": {
+        "type": "object",
+        "required": [
+          "value",
+          "thresholds"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "value": {
+            "type": "number"
+          },
+          "target": {
+            "type": "number",
+            "description": "Drawn as an upright tick"
+          },
+          "thresholds": {
+            "type": "array",
+            "items": {
+              "type": "number"
+            },
+            "minItems": 1,
+            "maxItems": 2,
+            "description": "Where the ranges change, ascending: [poor/fair, fair/good] when higher is better"
+          },
+          "min": {
+            "type": "number",
+            "description": "The axis start (default 0)"
+          },
+          "max": {
+            "type": "number",
+            "description": "The axis end (default: a little past the largest number)"
+          }
+        }
+      }
+    },
+    {
+      "type": "goal",
+      "title": "Goal",
+      "question": "Am I on time?",
+      "readings": [
+        "the big number and \"of 600 k€\": where it stands against the target",
+        "the bar's length: the share of the target reached",
+        "the tick on the bar: where the expected pace says it should be today",
+        "the words under it: the share reached, the expected share, ahead or behind"
+      ],
+      "strengths": [
+        "says at once whether the period will end on target",
+        "the pace makes a mid-month number readable"
+      ],
+      "avoid": [
+        "without a period (start and due): use bullet, which reads a value against a target and ranges",
+        "when the target moves every day: use metric"
+      ],
+      "sizes": [
+        "s",
+        "m"
+      ],
+      "options": {
+        "unit": {
+          "type": "string",
+          "description": "Written after the value and the target: \"k€\""
+        },
+        "decimals": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4,
+          "default": 0,
+          "description": "Digits after the decimal point"
+        }
+      },
+      "action": "mode list: open what is left to win (the open quotes, the late orders)",
+      "example": {
+        "envelope": {
+          "title": "Revenue this month (excl. tax)",
+          "status": "good",
+          "source": "sales",
+          "freshness": "2026-11-19T08:00:00Z",
+          "to": "/sales",
+          "size": "s"
+        },
+        "data": {
+          "value": 412,
+          "target": 600,
+          "start": "2026-11-01",
+          "due": "2026-11-30",
+          "now": "2026-11-19"
+        },
+        "options": {
+          "unit": "k€"
+        }
+      },
+      "schema": {
+        "type": "object",
+        "required": [
+          "value",
+          "target"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "value": {
+            "type": "number",
+            "description": "Reached so far"
+          },
+          "target": {
+            "type": "number",
+            "minimum": 0,
+            "description": "The target of the period"
+          },
+          "start": {
+            "type": "string",
+            "description": "The period's first day (ISO date)"
+          },
+          "due": {
+            "type": "string",
+            "description": "The period's last day (ISO date)"
+          },
+          "now": {
+            "type": "string",
+            "description": "Today, when it is not the browser's (ISO date)"
+          }
+        }
+      }
+    },
+    {
+      "type": "metric",
+      "title": "Metric",
+      "question": "How many, and is it going up?",
+      "readings": [
+        "the big number: the value now",
+        "the change chip: how much it moved over the period, its sign and its tone (good or bad news, from higherIs)",
+        "the curve: the recent series, the last point marked",
+        "the hot lines: the few items behind the number that need a look, each one opening its item"
+      ],
+      "strengths": [
+        "one glance gives the level and the direction",
+        "the hot lines lead straight to the items that matter",
+        "fits the smallest size"
+      ],
+      "avoid": [
+        "when the number only means something against a target: use goal or bullet",
+        "when the point is a list of things to process, one gesture each: use queue",
+        "when several values compete: use a ranking or a split"
+      ],
+      "sizes": [
+        "s",
+        "m",
+        "l"
+      ],
+      "options": {
+        "unit": {
+          "type": "string",
+          "description": "Written after the value and the change: \"%\", \"k€\""
+        },
+        "decimals": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4,
+          "default": 0,
+          "description": "Digits after the decimal point"
+        },
+        "higherIs": {
+          "type": "string",
+          "enum": [
+            "better",
+            "worse",
+            "neutral"
+          ],
+          "default": "better",
+          "description": "Whether a rise is good news (sales) or bad news (open returns)"
+        },
+        "hotCount": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 5,
+          "default": 2,
+          "description": "How many hot lines to show"
+        }
+      },
+      "action": "mode next: open the most urgent of the items behind the number (\"Process the 1st\")",
+      "example": {
+        "envelope": {
+          "title": "Orders to process",
+          "status": "critical",
+          "source": "shop",
+          "freshness": "2026-11-19T09:57:00Z",
+          "to": "/orders",
+          "action": {
+            "verb": "Process the 1st",
+            "count": 14,
+            "mode": "next",
+            "to": "/orders/575806"
+          },
+          "size": "s"
+        },
+        "data": {
+          "value": 14,
+          "label": "orders",
+          "badge": "5 urgent",
+          "delta": {
+            "value": 4,
+            "period": "week"
+          },
+          "series": [
+            9,
+            10,
+            8,
+            11,
+            10,
+            12,
+            14
+          ],
+          "hot": [
+            {
+              "label": "575806 · Amazon · ships tonight",
+              "tag": "urgent",
+              "tagStatus": "critical",
+              "to": "/orders/575806"
+            },
+            {
+              "label": "City of Lyon · 24 k€ · transfer",
+              "tag": "approve",
+              "tagStatus": "watch",
+              "to": "/orders/575811"
+            }
+          ]
+        },
+        "options": {
+          "higherIs": "worse",
+          "hotCount": 2
+        }
+      },
+      "schema": {
+        "type": "object",
+        "required": [
+          "value"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "value": {
+            "type": "number",
+            "description": "The value now"
+          },
+          "label": {
+            "type": "string",
+            "description": "What is counted, after the value: \"orders\""
+          },
+          "badge": {
+            "type": "string",
+            "description": "A short word beside the value, in the card's status tone: \"5 urgent\""
+          },
+          "delta": {
+            "type": "object",
+            "required": [
+              "value"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "value": {
+                "type": "number",
+                "description": "The change over the period, signed"
+              },
+              "period": {
+                "type": "string",
+                "description": "The period: \"week\", \"vs yesterday\""
+              }
+            }
+          },
+          "series": {
+            "type": "array",
+            "items": {
+              "type": "number"
+            },
+            "description": "The recent values, oldest first"
+          },
+          "hot": {
+            "type": "array",
+            "description": "The items behind the number that need a look",
+            "items": {
+              "type": "object",
+              "required": [
+                "label"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "label": {
+                  "type": "string"
+                },
+                "tag": {
+                  "type": "string",
+                  "description": "A short word on the right: \"urgent\""
+                },
+                "tagStatus": {
+                  "type": "string",
+                  "enum": [
+                    "critical",
+                    "watch",
+                    "good",
+                    "info"
+                  ]
+                },
+                "to": {
+                  "type": [
+                    "string",
+                    "object"
+                  ],
+                  "description": "The item's route"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "queue",
+      "title": "Queue",
+      "question": "What do I have to do?",
+      "readings": [
+        "the big number: how many are waiting, with a short note (\"1 expires tomorrow\")",
+        "each line: one item to process, with its own gesture",
+        "the background that advances under a line: its age against the promised delay",
+        "its warmth: how urgent it is (cool, warm, overdue), doubled by the age written on the right"
+      ],
+      "strengths": [
+        "the only card whose lines each carry a gesture",
+        "the oldest and the overdue stand out without reading the numbers",
+        "the main action opens the first one, and the run bar takes over from there"
+      ],
+      "avoid": [
+        "when nobody acts on the items: use metric with hot lines",
+        "for more than a handful of lines: link to the list instead"
+      ],
+      "sizes": [
+        "s",
+        "m",
+        "l"
+      ],
+      "options": {
+        "ageUnit": {
+          "type": "string",
+          "enum": [
+            "min",
+            "h",
+            "d"
+          ],
+          "default": "d",
+          "description": "The unit of `age` and `due`"
+        },
+        "maxItems": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 8,
+          "default": 3,
+          "description": "How many lines to show"
+        }
+      },
+      "action": "mode next: open the first item to process, with the run bar over the whole queue (\"Process the 1st\")",
+      "example": {
+        "envelope": {
+          "title": "Open returns",
+          "status": "watch",
+          "source": "after-sales",
+          "freshness": "2026-11-19T09:40:00Z",
+          "to": "/returns",
+          "action": {
+            "verb": "Process the oldest",
+            "count": 3,
+            "mode": "next",
+            "to": "/returns/8812"
+          },
+          "size": "s"
+        },
+        "data": {
+          "total": 3,
+          "note": "1 overdue",
+          "items": [
+            {
+              "label": "Return 8812 · broken screen",
+              "age": 11,
+              "due": 10,
+              "to": "/returns/8812"
+            },
+            {
+              "label": "Return 8840 · wrong series",
+              "age": 7,
+              "due": 10,
+              "to": "/returns/8840"
+            },
+            {
+              "label": "Return 8857 · withdrawal",
+              "age": 3,
+              "due": 14,
+              "to": "/returns/8857",
+              "action": {
+                "verb": "Remind",
+                "to": "/returns/8857/remind"
+              }
+            }
+          ]
+        },
+        "options": {
+          "ageUnit": "d",
+          "maxItems": 3
+        }
+      },
+      "schema": {
+        "type": "object",
+        "required": [
+          "items"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "total": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "How many are waiting (the lines show only the first ones)"
+          },
+          "note": {
+            "type": "string",
+            "description": "A short note after the number: \"1 expires tomorrow\""
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "label"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "label": {
+                  "type": "string"
+                },
+                "age": {
+                  "type": "number",
+                  "minimum": 0,
+                  "description": "How long it has waited, in the ageUnit option"
+                },
+                "due": {
+                  "type": "number",
+                  "minimum": 0,
+                  "description": "The promised delay, in the same unit: the background reaches the end there"
+                },
+                "to": {
+                  "type": [
+                    "string",
+                    "object"
+                  ],
+                  "description": "The item's route"
+                },
+                "action": {
+                  "type": "object",
+                  "required": [
+                    "verb",
+                    "to"
+                  ],
+                  "additionalProperties": false,
+                  "properties": {
+                    "verb": {
+                      "type": "string",
+                      "description": "The line's gesture: \"Remind\""
+                    },
+                    "to": {
+                      "type": [
+                        "string",
+                        "object"
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  ]
+}

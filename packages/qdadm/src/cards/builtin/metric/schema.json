@@ -1,0 +1,35 @@
+{
+  "type": "object",
+  "required": ["value"],
+  "additionalProperties": false,
+  "properties": {
+    "value": { "type": "number", "description": "The value now" },
+    "label": { "type": "string", "description": "What is counted, after the value: \"orders\"" },
+    "badge": { "type": "string", "description": "A short word beside the value, in the card's status tone: \"5 urgent\"" },
+    "delta": {
+      "type": "object",
+      "required": ["value"],
+      "additionalProperties": false,
+      "properties": {
+        "value": { "type": "number", "description": "The change over the period, signed" },
+        "period": { "type": "string", "description": "The period: \"week\", \"vs yesterday\"" }
+      }
+    },
+    "series": { "type": "array", "items": { "type": "number" }, "description": "The recent values, oldest first" },
+    "hot": {
+      "type": "array",
+      "description": "The items behind the number that need a look",
+      "items": {
+        "type": "object",
+        "required": ["label"],
+        "additionalProperties": false,
+        "properties": {
+          "label": { "type": "string" },
+          "tag": { "type": "string", "description": "A short word on the right: \"urgent\"" },
+          "tagStatus": { "type": "string", "enum": ["critical", "watch", "good", "info"] },
+          "to": { "type": ["string", "object"], "description": "The item's route" }
+        }
+      }
+    }
+  }
+}

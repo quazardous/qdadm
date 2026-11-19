@@ -37,7 +37,8 @@ describe('the running phase (#4662)', () => {
 
   it('its bar sweeps, and stops under reduced motion', () => {
     expect(rules('.qd-task-phases-list > .qd-task-phase--running::after').join('')).toMatch(/animation:\s*qd-task-sweep-x/)
-    const reduced = css.slice(css.indexOf('@media (prefers-reduced-motion: reduce)'))
-    expect(reduced.slice(0, reduced.indexOf('}') + 1)).toMatch(/qd-task-phase--running::after\s*\{\s*display:\s*none/)
+    // Any of the stylesheet's reduced-motion blocks may hold it
+    const reduced = css.split('@media (prefers-reduced-motion: reduce)').slice(1).map((block) => block.slice(0, block.indexOf('}') + 1))
+    expect(reduced.some((block) => /qd-task-phase--running::after\s*\{\s*display:\s*none/.test(block))).toBe(true)
   })
 })

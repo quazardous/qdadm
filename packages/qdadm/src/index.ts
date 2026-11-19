@@ -441,6 +441,10 @@ export { useSidebarState, SIDEBAR_COLLAPSED_KEY } from './composables/useSidebar
 // COMPONENTS
 // ════════════════════════════════════════════════════════════════════════════
 export * from './components/index'
+
+// Cards (#5339): the envelope, the registration with sheet and schema, the
+// gallery, and the generic cards (metric, queue, goal, bullet)
+export * from './cards/index'
 export { useTaskRunner, taskAction } from './tasks/useTaskRunner'
 export { useTaskNotifications, useTaskTrayVisible, type TasksConfig } from './tasks/useTaskNotifications'
 export {

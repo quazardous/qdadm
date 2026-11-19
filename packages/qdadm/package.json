@@ -20,6 +20,7 @@
     "test:watch": "vitest",
     "gen:i18n-defaults": "node scripts/gen-i18n-defaults.mjs",
     "gen:debug-css": "node scripts/gen-debug-css.mjs",
+    "cards:index": "npm run build:node && node dist/node/cards/tools/cli.js index src/cards/builtin --index src/cards/builtin/cards-index.json --bestiary ../../docs/cards.md",
     "type-check": "vue-tsc --noEmit && vue-tsc --noEmit -p tsconfig.typetest.json",
     "lint": "eslint src/",
     "lint:fix": "eslint src/ --fix",
@@ -54,7 +55,8 @@
     "./gen": "./src/gen/index.ts",
     "./gen/vite-plugin": "./dist/node/gen/vite-plugin.js",
     "./vite": "./dist/node/vite/qdadmPlugin.js",
-    "./vite-plugin-debug": "./dist/node/vite/qdadmDebugPlugin.js"
+    "./vite-plugin-debug": "./dist/node/vite/qdadmDebugPlugin.js",
+    "./cards/tools": "./dist/node/cards/tools/cardsTool.js"
   },
   "files": [
     "src",
@@ -132,5 +134,8 @@
     "typescript-eslint": "^8.52.0",
     "vitest": "^2.1.8",
     "vue-tsc": "^3.2.2"
+  },
+  "bin": {
+    "qdadm-cards": "./dist/node/cards/tools/cli.js"
   }
 }

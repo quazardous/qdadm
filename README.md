@@ -262,7 +262,7 @@ ctx.block('books-list-header', { id: 'export-btn', component: ExportButton, weig
 - [EmailPreview](docs/email-preview.md) - A captured email in a sandboxed frame: HTML, text, source, headers, attachments
 - [Waiting states](docs/pending.md) - A badge and an area that wait for an asynchronous read, and `useAsyncRead`
 - [TaskRunner](docs/tasks.md) - Long backend tasks: queue, follow live or by polling, cancel, typed confirmation, running-tasks tray
-- [Card dashboards](docs/dashboard.md) - Cards each user reorders, hides and pins (kept in the browser); the same cards in a classic zone
+- [Card dashboards](docs/dashboard.md) - Ready-made cards (envelope, metric, queue, goal, bullet; the [bestiary](docs/cards.md)), and boards each user arranges
 - [Sessions](docs/sessions.md) - Who else is signed in (a banner), the Sessions page and the sign-in history, over an HTTP contract
 - [YAML editors](docs/forms.md#yaml-family) - Live YAML configuration: text and form views that keep comments, check, diff, reason, conflict, history
 - [Sign-in with an OIDC provider](docs/auth-oidc.md) - Keycloak, Auth0, Google: code + PKCE, your backend issues the session

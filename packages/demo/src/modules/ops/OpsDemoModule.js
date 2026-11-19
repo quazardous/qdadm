@@ -109,6 +109,16 @@ export class OpsDemoModule extends Module {
         meta: { layout: 'page' },
       },
     ])
+    // The cards' gallery (#5339): every registered card, in each state, size and
+    // theme, from its sheet's example. The reference for their look.
+    ctx.routes('cards', [
+      {
+        path: '',
+        name: 'cards-gallery',
+        component: () => import('./pages/CardsGallery.vue'),
+        meta: { layout: 'page' },
+      },
+    ])
     // The dashboard's cards (#4320): plain blocks, shown by a classic Zone or by
     // CardsDashboard alike. `card` only adds what arranging needs; the others
     // take their title from their `title` prop.
@@ -127,6 +137,7 @@ export class OpsDemoModule extends Module {
       ctx.block('ops-dashboard', { id, component: DemoCard, props, weight: (i + 1) * 10, ...(Object.keys(card).length ? { card } : {}) })
     })
     ctx.navItem({ section: 'Features', route: 'ops-dashboard', icon: 'pi pi-th-large', label: 'Dashboard' })
+    ctx.navItem({ section: 'Features', route: 'cards-gallery', icon: 'pi pi-clone', label: 'Cards' })
     ctx.navItem({ section: 'Features', route: 'ops-sessions-sim', icon: 'pi pi-users', label: 'Sessions demo' })
     ctx.navItem({ section: 'Features', route: 'ops-log-stream', icon: 'pi pi-align-left', label: 'Log stream' })
     ctx.navItem({ section: 'Features', route: 'ops-timeline', icon: 'pi pi-history', label: 'Timeline' })
