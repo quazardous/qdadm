@@ -64,7 +64,8 @@ const blocks = computed<BlockConfig[]>(() => {
   if (version) {
     void version.value
   }
-  return registry.getBlocks(props.name)
+  // A repeatable card is only a model for CardsDashboard's catalogue (#5348)
+  return registry.getBlocks(props.name).filter((b) => !b.card?.repeatable)
 })
 
 const hasBlocks = computed<boolean>(() => blocks.value.length > 0)

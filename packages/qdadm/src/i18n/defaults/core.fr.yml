@@ -252,6 +252,35 @@ core:
     trayView: Afficher les cartes masquées en
     viewCards: Cartes
     viewCompact: Compact
+    # Le catalogue, les cartes à paramètres, les tailles, les sections (#5348)
+    addCard: Ajouter une carte
+    catalogue: Ajouter une carte
+    catalogueEmpty: Toutes les cartes sont déjà sur le tableau
+    hiddenNow: "Cachée : elle revient à sa place"
+    add: Ajouter
+    addOne: "Ajouter {title}"
+    added: "{title} ajoutée"
+    remove: "Retirer {title}"
+    removed: "{title} retirée"
+    cardTitle: Titre
+    choose: Choisir…
+    inSection: Dans la section
+    paramRequired: À remplir
+    paramInvalid: "Valeur invalide : {problem}"
+    size: "Taille de {title}"
+    sizeS: Petite
+    sizeM: Moyenne
+    sizeL: Grande
+    resized: "{title} : {size}"
+    addSection: Ajouter une section
+    firstSection: Principal
+    newSection: Nouvelle section
+    sectionName: Nom de la section
+    sectionAdded: "Section {title} ajoutée"
+    removeSection: "Supprimer la section {title}"
+    sectionRemoved: "Section {title} supprimée, ses cartes vont dans la première"
+    section: "Section de {title}"
+    movedToSection: "{title} déplacée dans {section}"
   # SessionsModule (#4336)
   sessions:
     title: Sessions

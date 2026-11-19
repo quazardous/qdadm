@@ -62,6 +62,7 @@
  * ```
  */
 
+import type { CardSchema } from '../cards/validate'
 import { shallowRef, type ShallowRef, type Component } from 'vue'
 
 /**
@@ -97,7 +98,22 @@ export interface BlockCard {
   pinned?: boolean
   /** Columns it spans, 1 to 3 (default 1) */
   span?: number
+  /** What it shows, in the catalogue of cards to add (an i18n key works) (#5348) */
+  description?: string
+  /** The sizes a person may pick for it: s, m, l are 1, 2, 3 columns (default all) (#5348) */
+  sizes?: CardSizeName[]
+  /**
+   * Added from the catalogue, as many times as wanted, each with its own
+   * parameters (#5348): the block is not shown itself, its instances are,
+   * with their parameters merged into its props
+   */
+  repeatable?: boolean
+  /** A repeatable card's parameters: a JSON Schema in the cards' subset, a `description` per property */
+  params?: CardSchema
 }
+
+/** A card's size on a dashboard: 1, 2 or 3 columns */
+export type CardSizeName = 's' | 'm' | 'l'
 
 export interface BlockConfig {
   /** Vue component to render */

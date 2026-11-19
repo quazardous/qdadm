@@ -111,6 +111,41 @@ per tile in `shots/cards/`.
 | `fixed` | Keeps its default place: no handle, no pin. The other cards flow around it. |
 | `pinned` | Pinned at the top by default; the user can unpin it. |
 | `span` | Columns the card spans, 1 to 3. On a narrow grid every card takes one column. |
+| `sizes` | The sizes the user may pick: `s`, `m`, `l` are 1, 2, 3 columns. Default all; `span` stays the default size. |
+| `description` | What it shows, in the catalogue (an i18n key works). |
+| `repeatable` | Added from the catalogue, as many times as wanted, each with its own parameters (below). The block itself is not shown, nor by a classic `Zone`. |
+| `params` | A repeatable card's parameters: a JSON Schema in the cards' subset (`type`, `enum`, `required`, `minimum`…), with a `title` and a `description` per property. `enumLabels` gives a choice's words, keyed by value. |
+
+### A card with parameters
+
+A repeatable block is a model: each person adds it from the catalogue with
+its parameters, which arrive as its props, merged into the block's own.
+
+```js
+ctx.block('ops-dashboard', {
+  id: 'saved-search',
+  component: SavedSearchCard,          // props: genre, maxItems
+  card: {
+    title: 'Saved search',
+    description: 'The books of one genre, to review one after the other',
+    repeatable: true,
+    params: {
+      type: 'object',
+      required: ['genre'],
+      properties: {
+        genre: { type: 'string', title: 'Genre', enum: ['fantasy', 'sci-fi'], enumLabels: { 'sci-fi': 'Sci-fi' } },
+        maxItems: { type: 'integer', title: 'Lines', minimum: 1, description: 'How many books it lists' },
+      },
+    },
+  },
+})
+```
+
+The catalogue's form has one field per property: a choice for an `enum`, a
+number for `number` / `integer`, yes / no for `boolean`, text otherwise. The
+values are checked against the schema before the card is added. Each instance
+has its own id, title, size, section and place, and is hidden or removed on its
+own.
 
 ## `CardsDashboard`
 
@@ -124,8 +159,20 @@ per tile in `shots/cards/`.
 | `storage` | `configureDashboards`'s, else `localStorage` | Where the arrangement is kept (see below) |
 | `loadGrace` | `150` | Ms an async load may take before the default order shows |
 
-"Customise" opens edit mode: a bar on each card with a handle, pin and hide, then
-the tray of hidden cards, "Reset" and "Done". Outside edit mode only the cards show.
+"Customise" opens edit mode: a bar on each card with a handle, its size, its
+section, pin and hide (and remove, for an added card), then the tray of hidden
+cards, "Reset" and "Done". Outside edit mode only the cards show.
+
+- **"Add a card"** opens the catalogue: the repeatable cards, each with its
+  description (and its question, for a [ready-made card](cards.md)), and the
+  hidden cards, which come back where they were.
+- **The size:** a choice on the card's bar, among its `sizes`.
+- **"Add a section"** groups the cards under names: the first time, it makes
+  "Main", holding every card, and a new section to name. A section's name is
+  edited in place; removing a section sends its cards to the first one. A card
+  goes to another section with the choice on its bar, and moves within its
+  section. Pinned cards stay on top, above the sections. With no section, the
+  board is one group.
 
 The tray shows the hidden cards whole, dimmed and inert, in the same grid; or,
 with its Cards / Compact switch, as one chip each. "Show" restores a card in its
@@ -146,7 +193,8 @@ Moving a card:
 
 Each user's arrangement is kept under the key `qdadm.dashboard.<id>.<user>`
 (the auth user's id or username, else `anonymous`) as
-`{ v, order, hidden, pinned }`, in `localStorage` by default. Without storage
+`{ v: 2, order, hidden, pinned, sizes, sections, sectionOf, instances }`,
+in `localStorage` by default. A `v: 1` arrangement migrates as it is. Without storage
 (private window, blocked) the arrangement lasts the page.
 
 It is saved once, when the edit ends: "Done" saves it if anything changed,
@@ -188,9 +236,15 @@ On every load it is reconciled with the declared cards:
 - a card the app removed is dropped;
 - a new card takes its default place, after its neighbour in the default order;
 - a `required` card is never hidden, a `fixed` card is back at its default place;
+- an added card whose block is gone, or whose parameters no longer fit its
+  schema, is dropped (with a console warning); a size the card no longer
+  allows is dropped;
 - an unknown version starts from the default.
 
 `useCardsArrangement(storageKey, cards, { storage, autoSave, loadGrace })` is
 the same logic without the UI (it saves at each change unless
 `autoSave: false`, then on `commit()` and `reset()`), and
-`reconcileArrangement()` the reconciliation alone.
+`reconcileArrangement()` the reconciliation alone. It also gives `add`,
+`remove`, `resize`, `addSection`, `renameSection`, `removeSection` and
+`moveToSection`, and the pure functions behind them are exported
+(`addInstance`, `setSize`, `setSection`…).

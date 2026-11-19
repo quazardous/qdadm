@@ -42,7 +42,8 @@ const serverStorage = {
       <p class="hint">
         The same blocks, two ways. In "Customisable", "Customise" lets you reorder the cards (drag the handle, or
         arrow keys on it), pin them at the top or hide them. Sales is required (it cannot be hidden), News is fixed
-        (it does not move). The arrangement is kept in this browser, per user; "Customisable, server" keeps it
+        (it does not move). "Add a card" adds a saved search of books, once per genre; each card's size is yours to
+        pick, and "Add a section" groups them. The arrangement is kept in this browser, per user; "Customisable, server" keeps it
         through a fake server (600 ms per call), saved once when you press Done.
       </p>
       <SelectButton v-model="mode" :options="modes" option-label="label" option-value="value" :allow-empty="false" />

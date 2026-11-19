@@ -252,6 +252,35 @@ core:
     trayView: Show hidden cards as
     viewCards: Cards
     viewCompact: Compact
+    # The catalogue, cards with parameters, sizes, sections (#5348)
+    addCard: Add a card
+    catalogue: Add a card
+    catalogueEmpty: Every card is already on the board
+    hiddenNow: "Hidden: it comes back where it was"
+    add: Add
+    addOne: "Add {title}"
+    added: "{title} added"
+    remove: "Remove {title}"
+    removed: "{title} removed"
+    cardTitle: Title
+    choose: Choose…
+    inSection: In the section
+    paramRequired: Fill this in
+    paramInvalid: "Not a valid value: {problem}"
+    size: "Size of {title}"
+    sizeS: Small
+    sizeM: Medium
+    sizeL: Large
+    resized: "{title}: {size}"
+    addSection: Add a section
+    firstSection: Main
+    newSection: New section
+    sectionName: Name of the section
+    sectionAdded: "Section {title} added"
+    removeSection: "Remove the section {title}"
+    sectionRemoved: "Section {title} removed, its cards moved to the first one"
+    section: "Section of {title}"
+    movedToSection: "{title} moved to {section}"
   # SessionsModule (#4336)
   sessions:
     title: Sessions

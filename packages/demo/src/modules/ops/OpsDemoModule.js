@@ -136,6 +136,32 @@ export class OpsDemoModule extends Module {
     cards.forEach(([id, props, card], i) => {
       ctx.block('ops-dashboard', { id, component: DemoCard, props, weight: (i + 1) * 10, ...(Object.keys(card).length ? { card } : {}) })
     })
+    // A card each person adds from the catalogue, once per genre (#5348): its
+    // parameters are a schema, and arrive as its props
+    ctx.block('ops-dashboard', {
+      id: 'saved-search',
+      component: defineAsyncComponent(() => import('./pages/SavedSearchCard.vue')),
+      weight: 100,
+      card: {
+        title: 'Saved search',
+        description: 'The books of one genre, oldest first, to review one after the other',
+        repeatable: true,
+        sizes: ['s', 'm'],
+        params: {
+          type: 'object',
+          required: ['genre'],
+          properties: {
+            genre: {
+              type: 'string',
+              title: 'Genre',
+              enum: ['fantasy', 'fiction', 'mystery', 'non-fiction', 'sci-fi'],
+              enumLabels: { fantasy: 'Fantasy', fiction: 'Fiction', mystery: 'Mystery', 'non-fiction': 'Non-fiction', 'sci-fi': 'Sci-fi' },
+            },
+            maxItems: { type: 'integer', title: 'Lines', minimum: 1, maximum: 5, description: 'How many books the card lists (default 3)' },
+          },
+        },
+      },
+    })
     ctx.navItem({ section: 'Features', route: 'ops-dashboard', icon: 'pi pi-th-large', label: 'Dashboard' })
     ctx.navItem({ section: 'Features', route: 'cards-gallery', icon: 'pi pi-clone', label: 'Cards' })
     ctx.navItem({ section: 'Features', route: 'ops-sessions-sim', icon: 'pi pi-users', label: 'Sessions demo' })

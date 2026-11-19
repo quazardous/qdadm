@@ -12,6 +12,7 @@ export {
   type WrapperInfo,
   type BlockConfig,
   type BlockCard,
+  type CardSizeName,
   type ZoneConfig,
   type ZoneDefineOptions,
   type ZoneListInfo,

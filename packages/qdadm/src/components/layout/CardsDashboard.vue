@@ -21,15 +21,26 @@
  * Edit mode ("Customise") shows a handle (arrows, Home/End, or drag with
  * mouse, touch or pen), pin and hide on each card, and the hidden cards'
  * tray with Reset. Outside it, only the cards show.
+ *
+ * Since #5348: "Add a card" opens a catalogue (the hidden cards, and the
+ * repeatable blocks, each added with its parameters as many times as wanted),
+ * each card has the size its person picks, and cards go in named sections.
  */
 import { computed, inject, nextTick, onBeforeUnmount, ref, watch, h, defineComponent, type Component, type VNode } from 'vue'
 import QdButton from '../base/QdButton.vue'
+import CardParamsForm from './CardParamsForm.vue'
+import QdCardView from '../../cards/QdCardView.vue'
+import { getCard } from '../../cards/registry'
 import { DASHBOARD_ZONES } from '../../zones/zones'
 import { useAuth } from '../../composables/useAuth'
 import { useI18n } from '../../i18n/useI18n'
 import {
   useCardsArrangement,
   moveCard,
+  cardGroup,
+  cardSizes,
+  cardSpan,
+  sectionOfCard,
   localArrangementStorage,
   type CardDef,
   type CardsArrangement,
@@ -96,6 +107,7 @@ const state = useCardsArrangement(storageKey, cards, {
 })
 
 const editing = ref(false)
+const arrangement = computed(() => state.arrangement.value)
 
 function saveFailed(): void {
   const text = tOr('core.cardsDashboard.saveFailed', 'Could not save the arrangement')
@@ -135,10 +147,105 @@ const root = ref<HTMLElement | null>(null)
 /** The selector of a card's slot: ids are app strings, quoted safely */
 const slotSelector = (id: string) => `[data-card-id="${id.replace(/["\\]/g, '\\$&')}"]`
 const title = (c: CardDef) => tOr(c.card.title, c.card.title)
-const span = (c: CardDef) => Math.max(1, Math.min(3, Math.round(c.card.span ?? 1)))
-const isPinned = (c: CardDef) => state.arrangement.value.pinned.includes(c.id)
-const visible = computed(() => [...state.groups.value.pinned, ...state.groups.value.rest])
-const groupFor = (c: CardDef) => (isPinned(c) ? state.groups.value.pinned : state.groups.value.rest)
+const span = (c: CardDef) => cardSpan(arrangement.value, c)
+const isPinned = (c: CardDef) => arrangement.value.pinned.includes(c.id)
+const groupFor = (c: CardDef) => cardGroup(arrangement.value, cards.value, c.id)
+/** An added card is drawn by its block, its parameters merged into the block's props */
+const blockOf = (c: CardDef) => blockById.value.get(c.block ?? c.id)!
+const propsOf = (c: CardDef) => ({ ...(blockOf(c).props ?? {}), ...(c.params ?? {}) })
+
+// What the grid draws: the pinned cards then the one group, as before; with
+// sections, the pinned cards above them, then one grid per section (#5348)
+const grids = computed(() => {
+  const g = state.groups.value
+  if (!arrangement.value.sections.length) return [{ key: 'all', section: null, cards: [...g.pinned, ...g.rest] }]
+  return [
+    ...(g.pinned.length ? [{ key: 'pinned', section: null, cards: g.pinned }] : []),
+    ...g.sections.map((s) => ({ key: s.section!.id, section: s.section, cards: s.cards })),
+  ]
+})
+
+// ── Size and section (#5348) ──────────────────────────────────────────────
+const SIZE_LABEL = { s: 'core.cardsDashboard.sizeS', m: 'core.cardsDashboard.sizeM', l: 'core.cardsDashboard.sizeL' } as const
+const SIZE_FALLBACK = { s: 'Small', m: 'Medium', l: 'Large' } as const
+const sizeLabel = (size: 's' | 'm' | 'l') => tOr(SIZE_LABEL[size], SIZE_FALLBACK[size])
+const currentSize = (c: CardDef) => (['s', 'm', 'l'] as const)[span(c) - 1]!
+
+function onSize(c: CardDef, size: string): void {
+  if (state.resize(c.id, size as 's' | 'm' | 'l')) announce(tOr('core.cardsDashboard.resized', '{title}: {size}', { title: title(c), size: sizeLabel(size as 's' | 'm' | 'l') }))
+}
+
+const sectionTitle = (id: string | null) => arrangement.value.sections.find((s) => s.id === id)?.title ?? ''
+
+function onSection(c: CardDef, section: string): void {
+  if (state.moveToSection(c.id, section)) {
+    announce(tOr('core.cardsDashboard.movedToSection', '{title} moved to {section}', { title: title(c), section: sectionTitle(section) }))
+    void focusHandle(c.id)
+  }
+}
+
+async function addSection(): Promise<void> {
+  const name = tOr('core.cardsDashboard.newSection', 'New section')
+  const id = state.addSection(arrangement.value.sections.length ? name : tOr('core.cardsDashboard.firstSection', 'Main'))
+  // The first section takes every card; a second one is the one to name
+  const target = arrangement.value.sections.length === 1 ? state.addSection(name) : id
+  announce(tOr('core.cardsDashboard.sectionAdded', 'Section {title} added', { title: sectionTitle(target) }))
+  await nextTick()
+  root.value?.querySelector<HTMLInputElement>(`[data-section-input="${target}"]`)?.select()
+}
+
+function renameSection(id: string, value: string): void {
+  const text = value.trim()
+  if (text) state.renameSection(id, text)
+}
+
+function removeSection(id: string): void {
+  const name = sectionTitle(id)
+  state.removeSection(id)
+  announce(tOr('core.cardsDashboard.sectionRemoved', 'Section {title} removed, its cards moved to the first one', { title: name }))
+}
+
+// ── The catalogue (#5348) ─────────────────────────────────────────────────
+const catalogueOpen = ref(false)
+const adding = ref<CardDef | null>(null)
+const templates = computed(() => cards.value.filter((c) => c.card.repeatable))
+/** What a card type answers, when the block draws a registered card */
+function question(c: CardDef): string | null {
+  const block = blockById.value.get(c.id)
+  const type = block?.component === QdCardView ? (block.props?.type as string | undefined) : undefined
+  const q = type ? getCard(type)?.meta.question : undefined
+  return q ?? null
+}
+const description = (c: CardDef) => (c.card.description ? tOr(c.card.description, c.card.description) : null)
+
+async function openCatalogue(): Promise<void> {
+  catalogueOpen.value = !catalogueOpen.value
+  adding.value = null
+  if (catalogueOpen.value) {
+    await nextTick()
+    root.value?.querySelector<HTMLElement>('.qd-cards-catalogue h2')?.focus()
+  }
+}
+
+async function chooseTemplate(c: CardDef): Promise<void> {
+  adding.value = c
+  await nextTick()
+  root.value?.querySelector<HTMLInputElement>('.qd-cards-catalogue form input, .qd-cards-catalogue form select')?.focus()
+}
+
+function addInstance(c: CardDef, value: { params: Record<string, unknown>; title: string; section: string | null }): void {
+  const id = state.add(c.id, value.params, { title: value.title === title(c) ? undefined : value.title, section: value.section })
+  if (!id) return
+  adding.value = null
+  catalogueOpen.value = false
+  announce(tOr('core.cardsDashboard.added', '{title} added', { title: value.title }))
+  void focusHandle(id)
+}
+
+function removeCard(c: CardDef): void {
+  state.remove(c.id)
+  announce(tOr('core.cardsDashboard.removed', '{title} removed', { title: title(c) }))
+}
 
 function announce(text: string): void {
   // Same text twice must still be read: clear, then set
@@ -206,8 +313,7 @@ function onPointerDown(event: PointerEvent, c: CardDef): void {
   if (c.card.fixed || (event.pointerType === 'mouse' && event.button !== 0)) return
   event.preventDefault()
   // A plain copy: the arrangement's arrays are reactive proxies, which structuredClone refuses
-  const { order, hidden, pinned } = state.arrangement.value
-  snapshot = { v: 1, order: [...order], hidden: [...hidden], pinned: [...pinned] }
+  snapshot = JSON.parse(JSON.stringify(state.arrangement.value)) as CardsArrangement
   dragging.value = c.id
   dragged = c
   window.addEventListener('pointermove', onPointerMove)
@@ -269,12 +375,12 @@ onBeforeUnmount(() => {
 })
 
 // A block with wrappers renders through them, as in Zone
-function render(block: BlockConfig): Component {
+function render(block: BlockConfig, props?: Record<string, unknown>): Component {
   if (!block.wrappers?.length) return block.component
   return defineComponent({
     name: 'WrappedCard',
     render(): VNode {
-      let current: VNode = h(block.component, block.props ?? {})
+      let current: VNode = h(block.component, props ?? block.props ?? {})
       for (const wrapper of [...block.wrappers!].reverse()) {
         const inner = current
         current = h(wrapper.component, wrapper.props || {}, { default: () => inner })
@@ -289,6 +395,26 @@ function render(block: BlockConfig): Component {
   <div ref="root" class="qd-cards-dashboard" :class="{ 'qd-cards-editing': editing }" :data-zone="zone">
     <div v-if="editable && cards.length" class="qd-cards-toolbar">
       <template v-if="editing">
+        <QdButton
+          type="button"
+          size="small"
+          outlined
+          icon="pi pi-plus"
+          class="qd-cards-add"
+          :label="tOr('core.cardsDashboard.addCard', 'Add a card')"
+          :aria-expanded="catalogueOpen"
+          aria-controls="qd-cards-catalogue"
+          @click="openCatalogue"
+        />
+        <QdButton
+          type="button"
+          size="small"
+          text
+          icon="pi pi-folder-plus"
+          class="qd-cards-add-section"
+          :label="tOr('core.cardsDashboard.addSection', 'Add a section')"
+          @click="addSection"
+        />
         <QdButton
           type="button"
           size="small"
@@ -318,55 +444,148 @@ function render(block: BlockConfig): Component {
       />
     </div>
 
-    <div class="qd-cards-grid" :class="{ 'qd-cards-loading': state.loading.value }" :aria-busy="state.loading.value || undefined" :style="{ '--qd-card-min': minCardWidth }">
-      <div
-        v-for="c in visible"
-        :key="c.id"
-        class="qd-cards-slot"
-        :class="{ 'qd-cards-pinned': isPinned(c), 'qd-cards-dragging': dragging === c.id }"
-        :style="{ '--qd-card-span': span(c) }"
-        :data-card-id="c.id"
-        :data-zone-block="c.id"
-      >
-        <div v-if="editing" class="qd-cards-bar">
-          <button
-            v-if="!c.card.fixed"
-            type="button"
-            class="qd-cards-handle"
-            :aria-label="tOr('core.cardsDashboard.move', 'Move {title}', { title: title(c) })"
-            :aria-describedby="`qd-cards-help-${zone}`"
-            @keydown="onHandleKey($event, c)"
-            @pointerdown="onPointerDown($event, c)"
-          >
-            <i class="pi pi-arrows-alt" aria-hidden="true"></i>
-          </button>
-          <span class="qd-cards-title">{{ title(c) }}</span>
-          <button
-            v-if="!c.card.fixed"
-            type="button"
-            class="qd-cards-action"
-            :aria-pressed="isPinned(c)"
-            :aria-label="isPinned(c) ? tOr('core.cardsDashboard.unpin', 'Unpin {title}', { title: title(c) }) : tOr('core.cardsDashboard.pin', 'Pin {title} at the top', { title: title(c) })"
-            :title="isPinned(c) ? tOr('core.cardsDashboard.unpin', 'Unpin {title}', { title: title(c) }) : tOr('core.cardsDashboard.pin', 'Pin {title} at the top', { title: title(c) })"
-            @click="togglePin(c)"
-          >
-            <i :class="isPinned(c) ? 'pi pi-thumbtack qd-cards-on' : 'pi pi-thumbtack'" aria-hidden="true"></i>
-          </button>
-          <button
-            v-if="!c.card.required"
-            type="button"
-            class="qd-cards-action"
-            :aria-label="tOr('core.cardsDashboard.hide', 'Hide {title}', { title: title(c) })"
-            :title="tOr('core.cardsDashboard.hide', 'Hide {title}', { title: title(c) })"
-            @click="hide(c)"
-          >
-            <i class="pi pi-eye-slash" aria-hidden="true"></i>
-          </button>
-        </div>
-        <component :is="render(blockById.get(c.id)!)" v-bind="blockById.get(c.id)!.props ?? {}" />
+    <!-- The catalogue (#5348): the hidden cards, and the cards to add with their parameters -->
+    <section v-if="editing && catalogueOpen" id="qd-cards-catalogue" class="qd-cards-catalogue" aria-labelledby="qd-cards-catalogue-title">
+      <h2 id="qd-cards-catalogue-title" tabindex="-1">{{ tOr('core.cardsDashboard.catalogue', 'Add a card') }}</h2>
+      <template v-if="adding">
+        <h3>{{ title(adding) }}</h3>
+        <p v-if="description(adding)" class="qd-cards-catalogue-desc">{{ description(adding) }}</p>
+        <CardParamsForm
+          :schema="adding.card.params ?? null"
+          :title="title(adding)"
+          :sections="arrangement.sections"
+          :id-prefix="`qd-cards-param-${zone}`"
+          @submit="addInstance(adding!, $event)"
+          @cancel="adding = null"
+        />
+      </template>
+      <template v-else>
+        <ul class="qd-cards-catalogue-list">
+          <li v-for="c in templates" :key="c.id" class="qd-cards-catalogue-item" :data-catalogue-card="c.id">
+            <div class="qd-cards-catalogue-text">
+              <strong>{{ title(c) }}</strong>
+              <span v-if="description(c)">{{ description(c) }}</span>
+              <span v-if="question(c)" class="qd-cards-catalogue-question">{{ question(c) }}</span>
+            </div>
+            <QdButton type="button" size="small" outlined icon="pi pi-plus" :label="tOr('core.cardsDashboard.add', 'Add')" :aria-label="tOr('core.cardsDashboard.addOne', 'Add {title}', { title: title(c) })" @click="chooseTemplate(c)" />
+          </li>
+          <li v-for="c in state.groups.value.hidden" :key="`hidden-${c.id}`" class="qd-cards-catalogue-item" :data-catalogue-hidden="c.id">
+            <div class="qd-cards-catalogue-text">
+              <strong>{{ title(c) }}</strong>
+              <span>{{ tOr('core.cardsDashboard.hiddenNow', 'Hidden: it comes back where it was') }}</span>
+            </div>
+            <QdButton type="button" size="small" text icon="pi pi-eye" :label="tOr('core.cardsDashboard.show', 'Show')" :aria-label="tOr('core.cardsDashboard.restore', 'Show {title}', { title: title(c) })" @click="restore(c)" />
+          </li>
+        </ul>
+        <p v-if="!templates.length && !state.groups.value.hidden.length" class="qd-cards-tray-empty">{{ tOr('core.cardsDashboard.catalogueEmpty', 'Every card is already on the board') }}</p>
+      </template>
+    </section>
+
+    <div v-for="(grid, gi) in grids" :key="grid.key" class="qd-cards-group" :data-section-id="grid.section?.id">
+      <div v-if="grid.section" class="qd-cards-section-head">
+        <input
+          v-if="editing"
+          :data-section-input="grid.section.id"
+          class="qd-cards-section-input p-inputtext p-component"
+          :value="grid.section.title"
+          :aria-label="tOr('core.cardsDashboard.sectionName', 'Name of the section')"
+          @change="renameSection(grid.section.id, ($event.target as HTMLInputElement).value)"
+          @keydown.enter="($event.target as HTMLInputElement).blur()"
+        />
+        <h2 v-else class="qd-cards-section-title">{{ grid.section.title }}</h2>
+        <QdButton
+          v-if="editing"
+          type="button"
+          size="small"
+          text
+          icon="pi pi-trash"
+          :aria-label="tOr('core.cardsDashboard.removeSection', 'Remove the section {title}', { title: grid.section.title })"
+          :title="tOr('core.cardsDashboard.removeSection', 'Remove the section {title}', { title: grid.section.title })"
+          @click="removeSection(grid.section.id)"
+        />
       </div>
-      <div v-for="(b, i) in plainBlocks" :key="`plain-${i}`" class="qd-cards-slot">
-        <component :is="render(b)" v-bind="b.props ?? {}" />
+      <div class="qd-cards-grid" :class="{ 'qd-cards-loading': state.loading.value }" :aria-busy="state.loading.value || undefined" :style="{ '--qd-card-min': minCardWidth }">
+        <div
+          v-for="c in grid.cards"
+          :key="c.id"
+          class="qd-cards-slot"
+          :class="{ 'qd-cards-pinned': isPinned(c), 'qd-cards-dragging': dragging === c.id }"
+          :style="{ '--qd-card-span': span(c) }"
+          :data-card-id="c.id"
+          :data-zone-block="c.block ?? c.id"
+        >
+          <div v-if="editing" class="qd-cards-bar">
+            <button
+              v-if="!c.card.fixed"
+              type="button"
+              class="qd-cards-handle"
+              :aria-label="tOr('core.cardsDashboard.move', 'Move {title}', { title: title(c) })"
+              :aria-describedby="`qd-cards-help-${zone}`"
+              @keydown="onHandleKey($event, c)"
+              @pointerdown="onPointerDown($event, c)"
+            >
+              <i class="pi pi-arrows-alt" aria-hidden="true"></i>
+            </button>
+            <span class="qd-cards-title">{{ title(c) }}</span>
+            <select
+              v-if="cardSizes(c).length > 1"
+              class="qd-cards-size"
+              :value="currentSize(c)"
+              :aria-label="tOr('core.cardsDashboard.size', 'Size of {title}', { title: title(c) })"
+              :title="tOr('core.cardsDashboard.size', 'Size of {title}', { title: title(c) })"
+              @change="onSize(c, ($event.target as HTMLSelectElement).value)"
+            >
+              <option v-for="size in cardSizes(c)" :key="size" :value="size">{{ sizeLabel(size) }}</option>
+            </select>
+            <select
+              v-if="arrangement.sections.length > 1 && !isPinned(c) && !c.card.fixed"
+              class="qd-cards-section"
+              :value="sectionOfCard(arrangement, c.id)"
+              :aria-label="tOr('core.cardsDashboard.section', 'Section of {title}', { title: title(c) })"
+              :title="tOr('core.cardsDashboard.section', 'Section of {title}', { title: title(c) })"
+              @change="onSection(c, ($event.target as HTMLSelectElement).value)"
+            >
+              <option v-for="sec in arrangement.sections" :key="sec.id" :value="sec.id">{{ sec.title }}</option>
+            </select>
+            <button
+              v-if="!c.card.fixed"
+              type="button"
+              class="qd-cards-action"
+              :aria-pressed="isPinned(c)"
+              :aria-label="isPinned(c) ? tOr('core.cardsDashboard.unpin', 'Unpin {title}', { title: title(c) }) : tOr('core.cardsDashboard.pin', 'Pin {title} at the top', { title: title(c) })"
+              :title="isPinned(c) ? tOr('core.cardsDashboard.unpin', 'Unpin {title}', { title: title(c) }) : tOr('core.cardsDashboard.pin', 'Pin {title} at the top', { title: title(c) })"
+              @click="togglePin(c)"
+            >
+              <i :class="isPinned(c) ? 'pi pi-thumbtack qd-cards-on' : 'pi pi-thumbtack'" aria-hidden="true"></i>
+            </button>
+            <button
+              v-if="!c.card.required"
+              type="button"
+              class="qd-cards-action"
+              :aria-label="tOr('core.cardsDashboard.hide', 'Hide {title}', { title: title(c) })"
+              :title="tOr('core.cardsDashboard.hide', 'Hide {title}', { title: title(c) })"
+              @click="hide(c)"
+            >
+              <i class="pi pi-eye-slash" aria-hidden="true"></i>
+            </button>
+            <button
+              v-if="c.block"
+              type="button"
+              class="qd-cards-action qd-cards-remove"
+              :aria-label="tOr('core.cardsDashboard.remove', 'Remove {title}', { title: title(c) })"
+              :title="tOr('core.cardsDashboard.remove', 'Remove {title}', { title: title(c) })"
+              @click="removeCard(c)"
+            >
+              <i class="pi pi-trash" aria-hidden="true"></i>
+            </button>
+          </div>
+          <component :is="render(blockOf(c), propsOf(c))" v-bind="propsOf(c)" />
+        </div>
+        <template v-if="gi === grids.length - 1">
+          <div v-for="(b, i) in plainBlocks" :key="`plain-${i}`" class="qd-cards-slot">
+            <component :is="render(b)" v-bind="b.props ?? {}" />
+          </div>
+        </template>
       </div>
     </div>
 
@@ -410,7 +629,7 @@ function render(block: BlockConfig): Component {
             />
           </div>
           <div class="qd-cards-hidden-body" inert>
-            <component :is="render(blockById.get(c.id)!)" v-bind="blockById.get(c.id)!.props ?? {}" />
+            <component :is="render(blockOf(c), propsOf(c))" v-bind="propsOf(c)" />
           </div>
         </div>
       </div>

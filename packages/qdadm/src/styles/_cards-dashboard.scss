@@ -193,3 +193,193 @@
   clip: rect(0 0 0 0);
   white-space: nowrap;
 }
+
+// ── #5348: sections, size and section choices, the catalogue ───────────────
+
+.qd-cards-toolbar {
+  flex-wrap: wrap;
+}
+
+.qd-cards-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.qd-cards-section-head {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.qd-cards-section-title {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--p-text-color);
+}
+
+.qd-cards-section-input,
+.qd-card-params input[type='text'],
+.qd-card-params input[type='number'],
+.qd-card-params select {
+  height: 2.25rem;
+  padding: 0 0.6rem;
+  border: 1px solid var(--p-content-border-color, #d1d5db);
+  border-radius: var(--p-content-border-radius, 6px);
+  background: var(--p-content-background, #fff);
+  color: var(--p-text-color);
+  font: inherit;
+
+  &:focus-visible {
+    outline: 2px solid var(--p-primary-color);
+    outline-offset: 1px;
+  }
+}
+
+.qd-cards-section-input {
+  width: 100%;
+  max-width: 20rem;
+  font-weight: 600;
+}
+
+// The bar wraps rather than crush the card's title between its choices
+.qd-cards-bar {
+  flex-wrap: wrap;
+}
+
+.qd-cards-bar .qd-cards-title {
+  min-width: 6rem;
+}
+
+.qd-cards-size,
+.qd-cards-section {
+  max-width: 8rem;
+  height: 2rem;
+  padding: 0 0.35rem;
+  border: 1px solid var(--p-content-border-color, #d1d5db);
+  border-radius: var(--p-content-border-radius, 6px);
+  background: var(--p-content-background, #fff);
+  color: var(--p-text-color);
+  font: inherit;
+  font-size: 0.8125rem;
+
+  &:focus-visible {
+    outline: 2px solid var(--p-primary-color);
+    outline-offset: 1px;
+  }
+}
+
+.qd-cards-catalogue {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 1rem;
+  border: 1px solid var(--p-content-border-color, #d1d5db);
+  border-radius: var(--p-content-border-radius, 6px);
+  background: var(--p-content-background, #fff);
+
+  h2 {
+    margin: 0;
+    font-size: 1rem;
+    font-weight: 600;
+
+    // Focused by the code when the catalogue opens, for screen readers: no ring
+    &:focus {
+      outline: none;
+    }
+  }
+
+  h3 {
+    margin: 0;
+    font-size: 0.9375rem;
+    font-weight: 600;
+  }
+}
+
+.qd-cards-catalogue-desc {
+  margin: 0;
+  color: var(--p-text-muted-color, #6b7280);
+}
+
+.qd-cards-catalogue-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(20rem, 100%), 1fr));
+  gap: 0.5rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.qd-cards-catalogue-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.6rem 0.75rem;
+  border: 1px solid var(--p-content-border-color, #d1d5db);
+  border-radius: var(--p-content-border-radius, 6px);
+}
+
+.qd-cards-catalogue-text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 0;
+  font-size: 0.875rem;
+
+  span {
+    color: var(--p-text-muted-color, #6b7280);
+  }
+}
+
+.qd-cards-catalogue-question {
+  font-style: italic;
+}
+
+.qd-card-params {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  max-width: 28rem;
+}
+
+.qd-card-params-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+
+  label {
+    font-weight: 500;
+    font-size: 0.875rem;
+  }
+
+  &.qd-card-params-check {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+
+    small {
+      flex-basis: 100%;
+    }
+  }
+}
+
+.qd-card-params-help {
+  color: var(--p-text-muted-color, #6b7280);
+}
+
+.qd-card-params-error {
+  color: var(--p-red-600, #b42318);
+}
+
+.dark-mode .qd-card-params-error {
+  color: var(--p-red-300, #ff8a7a);
+}
+
+.qd-card-params-actions {
+  display: flex;
+  gap: 0.5rem;
+}

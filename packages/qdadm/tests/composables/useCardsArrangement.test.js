@@ -23,7 +23,7 @@ const ids = (list) => list.map((x) => x.id)
 describe('reconcileArrangement', () => {
   it('falls back to the default on nothing, garbage or an unknown version', () => {
     const def = defaultArrangement(CARDS)
-    expect(def).toEqual({ v: 1, order: ['a', 'b', 'c', 'd', 'e'], hidden: [], pinned: ['d'] })
+    expect(def).toEqual({ v: 2, order: ['a', 'b', 'c', 'd', 'e'], hidden: [], pinned: ['d'], sizes: {}, sections: [], sectionOf: {}, instances: [] })
     expect(reconcileArrangement(null, CARDS)).toEqual(def)
     expect(reconcileArrangement('nope', CARDS)).toEqual(def)
     expect(reconcileArrangement({ v: 99, order: ['e'] }, CARDS)).toEqual(def)
