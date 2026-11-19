@@ -199,7 +199,8 @@
     flex-direction: column;
     gap: 0.5rem;
 
-    .form-actions-left {
+    .form-actions-left,
+    .form-actions-right {
       width: 100%;
       flex-direction: column;
     }

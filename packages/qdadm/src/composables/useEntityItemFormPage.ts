@@ -478,12 +478,21 @@ export function useEntityItemFormPage<T extends Record<string, unknown> = Record
     }
   }
 
+  // The delete action's own words, when addDeleteAction() gives them (#5333)
+  let deleteWording: AddDeleteActionOptions = {}
+
   function confirmDelete(): void {
-    const label = manager.getEntityLabel(data.value) || entityId.value
+    const label = String(manager.getEntityLabel(data.value) || entityId.value)
+    const { confirmMessage, confirmHeader, label: actionLabel, icon } = deleteWording
     requireDeleteConfirmation(confirm, tOr, {
-      message: tOr('core.messages.confirmDeleteItem', 'Delete {entity} "{label}"?', { entity: entityName, label: String(label) }),
-      header: tOr('core.messages.confirmDeleteTitle', 'Confirm Delete'),
+      message:
+        typeof confirmMessage === 'function'
+          ? confirmMessage(data.value as Record<string, unknown>, label)
+          : confirmMessage ?? tOr('core.messages.confirmDeleteItem', 'Delete {entity} "{label}"?', { entity: entityName, label }),
+      header: confirmHeader ?? tOr('core.messages.confirmDeleteTitle', 'Confirm Delete'),
       accept: remove,
+      ...(actionLabel ? { acceptLabel: actionLabel } : {}),
+      ...(icon ? { acceptIcon: icon } : {}),
     })
   }
 
@@ -811,12 +820,13 @@ export function useEntityItemFormPage<T extends Record<string, unknown> = Record
   }
 
   function addDeleteAction(options: AddDeleteActionOptions = {}): void {
-    const { label } = options
+    const { label, icon } = options
     const deleteLabel = () => tOr('core.actions.delete', 'Delete')
+    deleteWording = options
 
     addAction('delete', {
       ...(label ? { label } : { label: deleteLabel(), _label: deleteLabel }),
-      icon: 'pi pi-trash',
+      icon: icon ?? 'pi pi-trash',
       severity: 'danger',
       onClick: confirmDelete,
       visible: () => isEdit.value && manager.canDelete(data.value),

@@ -9,7 +9,7 @@
  */
 import { ref, computed } from 'vue'
 import { useEntityItemFormPage, FormPage, FormField } from '@quazardous/qdadm'
-import { VanillaJsonEditor, JsonStructuredField } from '@quazardous/qdadm/editors'
+import { VanillaJsonEditor, JsonStructuredField } from '@quazardous/qdadm/editors/json'
 import InputText from 'primevue/inputtext'
 import InputNumber from 'primevue/inputnumber'
 import ToggleSwitch from 'primevue/toggleswitch'

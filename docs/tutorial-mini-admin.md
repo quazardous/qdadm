@@ -27,7 +27,7 @@ npm create vite@latest my-admin -- --template vue-ts
 cd my-admin
 npm install
 npm install @quazardous/qdadm primevue @primeuix/themes primeicons vue-router pinia
-npm install -D vanilla-jsoneditor  # only if you import @quazardous/qdadm/editors
+npm install -D vanilla-jsoneditor  # only if you import @quazardous/qdadm/editors/json
 npm install -D sass-embedded       # only if you import @quazardous/qdadm/styles/scss
 ```
 

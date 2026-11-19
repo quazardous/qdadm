@@ -377,7 +377,8 @@
   border-top: 1px solid var(--p-surface-200);
 }
 
-.form-actions-left {
+.form-actions-left,
+.form-actions-right {
   display: flex;
   align-items: center;
   gap: 0.5rem;

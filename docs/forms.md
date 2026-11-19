@@ -147,8 +147,10 @@ are plain components you render where you want them.
 ## 4. Widget catalog
 
 These ship with qdadm and are the "rich" side of the form surface. Most are in
-the main bundle; the `vanilla-jsoneditor`-backed ones live in the
-`@quazardous/qdadm/editors` subpath (so the heavy dep stays opt-in).
+the main bundle; the editors on optional peers live in their own subpaths,
+`@quazardous/qdadm/editors/json` (`vanilla-jsoneditor`) and
+`@quazardous/qdadm/editors/yaml` (`@quazardous/vanilla-yamleditor`), so the heavy
+deps stay opt-in. `@quazardous/qdadm/editors` is the same as `/editors/json`.
 
 ### Entity picker — `LookupField` (+ `LookupPickerDialog`)
 
@@ -179,7 +181,7 @@ The go-to input for a **reference to another entity**, backed by
 | `KeyValueEditor` | array of `{key, value}` | `valueType` (`number`\|`text`), `min`/`max`/`step`, `keySuggestions`, `showSign`, `colorize` |
 | `LanguageEditor` | array of `{code, fluency, primary}` | `label`, `help` |
 | `ScopeEditor` | array of `resource:action` scope strings | `scopeEndpoint`, `scopePrefix`, `defaultResources`, `defaultActions` |
-| `PermissionEditor` | a `namespace:action` permission string | segment-aware autocomplete (type `au` → `auth:` → actions) |
+| `PermissionEditor` | a list of `namespace:action` permissions | segment-aware autocomplete (type `au` → `auth:` → actions) and the wildcards [`PermissionMatcher`](security.md) reads: `**`, `**:read`, `logs:**`, `logs:*:read`. The keys to suggest: `permissions` (a plain `string[]`, labels `permissions.<key>` from the catalogue) or `permissionRegistry` |
 
 ### JSON family
 
@@ -187,12 +189,13 @@ The go-to input for a **reference to another entity**, backed by
 |---|---|---|
 | `JsonViewer` | main | Read-only formatted JSON with syntax highlighting |
 | `JsonEditorFoldable` | main | JSON editor with collapsible top-level sections (`:defaultExpanded`) |
-| `VanillaJsonEditor` | `/editors` | Full tree/text/table editor (`vanilla-jsoneditor`), **inline JSON-Schema validation** via `:schema` |
-| `JsonStructuredField` | `/editors` | **Structured ↔ raw JSON dual** — a slot for your structured editor, a toggle to the raw editor |
+| `VanillaJsonEditor` | `/editors/json` | Full tree/text/table editor (`vanilla-jsoneditor`), **inline JSON-Schema validation** via `:schema` |
+| `StructuredField` | main | **Structured ↔ raw dual**, the raw face in JSON or YAML: a slot for your structured editor, a toggle to the raw editor |
+| `JsonStructuredField` | `/editors/json` | `StructuredField` with the JSON face, under its JSON prop names |
 
 ```js
-// the two vanilla-jsoneditor-backed widgets are opt-in:
-import { VanillaJsonEditor, JsonStructuredField } from '@quazardous/qdadm/editors'
+// the vanilla-jsoneditor-backed widgets are opt-in:
+import { VanillaJsonEditor, JsonStructuredField } from '@quazardous/qdadm/editors/json'
 ```
 
 #### Inline schema validation — `VanillaJsonEditor`
@@ -206,27 +209,60 @@ advanced cases.
 <VanillaJsonEditor v-model="rules" :validator="myValidator" />
 ```
 
-#### The structured/raw dual — `JsonStructuredField`
+#### The structured/raw dual — `StructuredField`
 
-This is the "edit it as a form **or** as raw JSON" pattern: the default slot is
-your structured editor, and a `SelectButton` toggles to an embedded
-`VanillaJsonEditor` for the raw view. Switching back from invalid JSON is guarded
-by default.
+This is the "edit it as a form **or** as raw text" pattern: the default slot is
+your structured editor, and a `SelectButton` toggles to the raw face of the same
+`v-model`, in JSON or YAML. Leaving the raw face while its text is invalid is
+blocked by default.
 
 ```vue
-<JsonStructuredField v-model="myData">
-  <MyStructuredEditor v-model="myData" />   <!-- structured view -->
-</JsonStructuredField>                       <!-- raw view auto-provided -->
+<StructuredField v-model="myData" format="yaml">
+  <MyStructuredEditor v-model="myData" />   <!-- structured face -->
+</StructuredField>                          <!-- raw face provided -->
 ```
+
+The raw faces sit on optional peers, so each comes with its subpath: import
+`@quazardous/qdadm/editors/json` or `@quazardous/qdadm/editors/yaml` once in the
+app (a page, the main file). Without it, the field says which import is missing.
 
 | Prop | Purpose |
 |---|---|
-| `modelValue` | The JSON object (raw view falls back to this if `jsonValue` absent) |
-| `jsonValue` / `@update:jsonValue` | Separate binding when the raw shape differs from the structured one |
-| `mode` / `v-model:mode` | Controlled view mode (`structured` \| `json`) |
-| `defaultMode` | Initial view (default `structured`) |
-| `jsonMode` | Underlying editor mode (default `text`) |
-| `guardInvalidJson` | Block leaving the raw view while JSON is invalid (default `true`) |
+| `modelValue` | The value (the raw face edits it too, unless `rawValue` is given) |
+| `format` | `json` (default) or `yaml` |
+| `rawValue` / `@update:rawValue` | Separate binding when the raw shape differs from the structured one |
+| `mode` / `v-model:mode` | Controlled face (`structured` \| `raw`) |
+| `defaultMode` | Initial face (default `structured`) |
+| `rawHeight` | The raw editor's height (default `400px`) |
+| `rawOptions` | The format's own options; JSON: `{ mode: 'text' \| 'tree' \| 'table' }` |
+| `guardInvalid` | Block leaving the raw face while its text is invalid (default `true`); `@invalid` says when it changes |
+
+The YAML face writes the value as YAML and reads back each valid text; a comment
+typed there does not survive a trip through the structured face, which holds
+only the value.
+
+`JsonStructuredField` is `StructuredField` with `format="json"` under JSON names:
+`jsonValue`, `mode: 'json'`, `jsonHeight`, `jsonMode`, `guardInvalidJson`,
+`invalidJsonMessage`, `@json-error`.
+
+#### Permissions as chips or YAML
+
+```vue
+<script setup>
+import { StructuredField, PermissionEditor } from '@quazardous/qdadm'
+import '@quazardous/qdadm/editors/yaml'
+</script>
+
+<template>
+  <FormField name="scopes" label="Scopes" full-width>
+    <StructuredField v-model="form.data.value.scopes" format="yaml" raw-height="220px">
+      <PermissionEditor v-model="form.data.value.scopes" :permissions="allScopes" />
+    </StructuredField>
+  </FormField>
+</template>
+```
+
+In the demo: Security › API keys, a key's form.
 
 #### Most common structured face — `LookupField multiple` over a catalog
 
@@ -241,7 +277,7 @@ meaningful value. Wrapping it in `FormField` keeps dirty-tracking and validation
 <script setup>
 import { useOptionsLookup } from '@quazardous/qdadm'
 import { LookupField } from '@quazardous/qdadm/components'
-import { JsonStructuredField } from '@quazardous/qdadm/editors'
+import { JsonStructuredField } from '@quazardous/qdadm/editors/json'
 
 // entity-backed: goes through the registered EntityManager/storage,
 // so base URL + auth are applied for you

@@ -545,6 +545,27 @@ describe('useEntityItemFormPage', () => {
       )
     })
 
+    it("addDeleteAction's own words reach the confirmation (#5333)", async () => {
+      mockRouteState = { name: 'book-edit', params: { id: '1' } }
+      const { result } = createWrapper(() => useEntityItemFormPage({ entity: 'books' }))
+      await flushPromises()
+      result.addDeleteAction({
+        label: 'Revoke',
+        icon: 'pi pi-ban',
+        confirmHeader: 'Revoke the key',
+        confirmMessage: (item, label) => `Revoke the key "${label}"?`,
+      })
+      expect(result.getActions().find((a) => a.name === 'delete')).toMatchObject({ label: 'Revoke', icon: 'pi pi-ban' })
+      result.confirmDelete()
+      expect(mockConfirm.require).toHaveBeenCalledWith(expect.objectContaining({
+        header: 'Revoke the key',
+        message: 'Revoke the key "Test Book"?',
+        acceptLabel: 'Revoke',
+        acceptIcon: 'pi pi-ban',
+        rejectLabel: 'Cancel',
+      }))
+    })
+
     it('delete action is hidden in create mode', async () => {
       mockRouteState = { name: 'book-create', params: {} }
       const { result } = createWrapper(() => useEntityItemFormPage({ entity: 'books' }))

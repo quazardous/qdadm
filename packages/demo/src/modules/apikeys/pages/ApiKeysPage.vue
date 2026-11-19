@@ -9,6 +9,7 @@ import Column from 'primevue/column'
 
 const list = useListPage({ entity: 'apikeys' })
 list.addCreateAction()
+list.addEditAction()
 list.addDeleteAction()
 </script>
 
@@ -16,7 +17,11 @@ list.addDeleteAction()
   <ListPage v-bind="list.props.value" v-on="list.events">
     <template #columns>
       <Column v-bind="list.column('name')" sortable />
-      <Column v-bind="list.column('scopes')" />
+      <Column v-bind="list.column('scopes')">
+        <template #body="{ data }">
+          <code>{{ (data.scopes || []).join(', ') }}</code>
+        </template>
+      </Column>
       <Column v-bind="list.column('prefix')" style="width: 140px">
         <template #body="{ data }">
           <code>{{ data.prefix }}…</code>

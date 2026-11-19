@@ -1,59 +1,25 @@
 <script setup lang="ts">
 /**
- * JsonStructuredField - Reusable field with structured/JSON toggle
+ * JsonStructuredField - StructuredField with a JSON raw face (#5333)
  *
- * A form field that shows either a structured view (slot) or raw JSON editor.
- * Uses a mini SelectButton to toggle between views.
+ * The structured face is the slot; a toggle opens the same value as JSON.
  *
- * Usage patterns:
+ *   <JsonStructuredField v-model="myData">
+ *     <MyStructuredEditor v-model="myData" />
+ *   </JsonStructuredField>
  *
- * 1. Simple - same v-model for both views:
- * <JsonStructuredField v-model="myData">
- *   <MyStructuredEditor v-model="myData" />
- * </JsonStructuredField>
- *
- * 2. With separate JSON binding (for complex computed mappings):
- * <JsonStructuredField v-model="myData" :jsonValue="jsonComputed" @update:jsonValue="onJsonUpdate">
- *   <MyStructuredEditor v-model="myData" />
- * </JsonStructuredField>
- *
- * 3. Controlled mode (parent manages viewMode):
- * <JsonStructuredField v-model="myData" v-model:mode="viewMode">
- *   <MyStructuredEditor v-model="myData" />
- * </JsonStructuredField>
- *
- * Props:
- * - modelValue: The JSON object to edit (used for JSON view if jsonValue not provided)
- * - jsonValue: Optional separate binding for JSON editor (for complex computed mappings)
- * - mode: Optional v-model for view mode ('structured' or 'json')
- * - label: Optional label for the field
- * - jsonHeight: Height of JSON editor (default: 400px)
- * - jsonMode: Mode for JSON editor - 'tree', 'text' or 'table' (default: 'text');
- *   string literals accepted so consumers don't need the vanilla-jsoneditor Mode enum (#1280)
- * - defaultMode: Initial mode if not using v-model:mode (default: 'structured')
- * - showToggle: Whether to show the toggle (default: true, useful to hide in nested usage)
- * - guardInvalidJson: Block switching to structured view while JSON is invalid (default: true)
- * - invalidJsonMessage: Error message shown when JSON is invalid (default: 'Invalid JSON — fix errors before switching views')
- *
- * Events:
- * - update:modelValue, update:jsonValue, update:mode: standard v-model
- * - json-error: emitted with true when JSON becomes invalid, false when valid again
+ * Its props are StructuredField's under their JSON names: jsonValue
+ * (rawValue), mode 'json' (raw), jsonHeight, jsonMode ('text' | 'tree' |
+ * 'table'), guardInvalidJson, invalidJsonMessage; `json-error` is `invalid`.
+ * For YAML, use StructuredField with format="yaml".
  */
-
-import { ref, computed, watch } from 'vue'
-import SelectButton from 'primevue/selectbutton'
-import QdMessage from '../base/QdMessage.vue'
-import VanillaJsonEditor from './VanillaJsonEditor.vue'
+import { computed } from 'vue'
+import StructuredField from './structured/StructuredField.vue'
+import './structured/registerJson'
 import type { Mode } from 'vanilla-jsoneditor'
 
 type JsonValue = Record<string, unknown> | unknown[] | string | null
 type ViewMode = 'structured' | 'json'
-
-interface ViewModeOption {
-  label: string
-  value: ViewMode
-  icon: string
-}
 
 interface Props {
   modelValue?: JsonValue
@@ -65,7 +31,7 @@ interface Props {
   defaultMode?: ViewMode
   showToggle?: boolean
   guardInvalidJson?: boolean
-  invalidJsonMessage?: string
+  invalidJsonMessage?: string | null
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -78,7 +44,7 @@ const props = withDefaults(defineProps<Props>(), {
   defaultMode: 'structured',
   showToggle: true,
   guardInvalidJson: true,
-  invalidJsonMessage: 'Invalid JSON — fix errors before switching views'
+  invalidJsonMessage: null,
 })
 
 const emit = defineEmits<{
@@ -88,178 +54,29 @@ const emit = defineEmits<{
   'json-error': [hasError: boolean]
 }>()
 
-// Internal view mode (used when not controlled externally)
-const internalMode = ref<ViewMode>(props.defaultMode)
-
-// Invalid JSON state, tracked from VanillaJsonEditor error/update events
-const hasJsonError = ref<boolean>(false)
-
-// Computed view mode - use external if provided, else internal
-const viewMode = computed<ViewMode>({
-  get: () => props.mode ?? internalMode.value,
-  set: (val: ViewMode) => {
-    // Guard: block json → structured while JSON is invalid
-    if (
-      props.guardInvalidJson &&
-      hasJsonError.value &&
-      (props.mode ?? internalMode.value) === 'json' &&
-      val === 'structured'
-    ) {
-      return
-    }
-    if (props.mode !== null) {
-      emit('update:mode', val)
-    } else {
-      internalMode.value = val
-    }
-  }
-})
-
-const viewModeOptions: ViewModeOption[] = [
-  { label: 'Structured', value: 'structured', icon: 'pi pi-list' },
-  { label: 'JSON', value: 'json', icon: 'pi pi-code' }
-]
-
-// Computed JSON value - use separate jsonValue if provided, else modelValue
-const effectiveJsonValue = computed<JsonValue>(() => {
-  return props.jsonValue !== null ? props.jsonValue : props.modelValue
-})
-
-// Handle JSON editor updates (fires only when JSON is valid)
-function onJsonUpdate(newValue: JsonValue): void {
-  if (hasJsonError.value) {
-    hasJsonError.value = false
-    emit('json-error', false)
-  }
-  if (props.jsonValue !== null) {
-    // Using separate jsonValue binding
-    emit('update:jsonValue', newValue)
-  } else {
-    // Using modelValue for both
-    emit('update:modelValue', newValue)
-  }
-}
-
-// Track invalid JSON state from the editor
-function onJsonError(): void {
-  if (!hasJsonError.value) {
-    hasJsonError.value = true
-    emit('json-error', true)
-  }
-}
-
-// Sync internal mode with prop if it changes
-watch(() => props.mode, (newMode: ViewMode | null | undefined) => {
-  if (newMode !== null && newMode !== undefined) {
-    internalMode.value = newMode
-  }
-})
+const toRaw = (m: ViewMode | null) => (m === null ? null : m === 'json' ? 'raw' : 'structured')
+const rawOptions = computed(() => ({ mode: props.jsonMode }))
 </script>
 
 <template>
-  <div class="json-structured-field">
-    <!-- Header with label and mode toggle -->
-    <div v-if="showToggle || label" class="field-header">
-      <label v-if="label" class="field-label">{{ label }}</label>
-      <SelectButton
-        v-if="showToggle"
-        v-model="viewMode"
-        :options="viewModeOptions"
-        optionLabel="label"
-        optionValue="value"
-        :allowEmpty="false"
-        class="mode-toggle"
-      >
-        <template #option="{ option }">
-          <i :class="option.icon"></i>
-          <span class="toggle-label">{{ option.label }}</span>
-        </template>
-      </SelectButton>
-    </div>
-
-    <!-- JSON View -->
-    <div v-if="viewMode === 'json'" class="json-view">
-      <QdMessage
-        v-if="guardInvalidJson && hasJsonError"
-        severity="error"
-        :closable="false"
-        class="json-error"
-      >
-        {{ invalidJsonMessage }}
-      </QdMessage>
-      <VanillaJsonEditor
-        :modelValue="effectiveJsonValue"
-        :mode="jsonMode"
-        :height="jsonHeight"
-        @update:modelValue="onJsonUpdate"
-        @error="onJsonError"
-      />
-    </div>
-
-    <!-- Structured View (slot) -->
-    <div v-else class="structured-view">
-      <slot></slot>
-    </div>
-  </div>
+  <StructuredField
+    class="json-structured-field"
+    format="json"
+    :modelValue="modelValue"
+    :rawValue="jsonValue !== null ? jsonValue : undefined"
+    :mode="toRaw(mode)"
+    :defaultMode="toRaw(defaultMode)!"
+    :label="label"
+    :rawHeight="jsonHeight"
+    :rawOptions="rawOptions"
+    :showToggle="showToggle"
+    :guardInvalid="guardInvalidJson"
+    :invalidMessage="invalidJsonMessage"
+    @update:modelValue="emit('update:modelValue', $event as JsonValue)"
+    @update:rawValue="emit('update:jsonValue', $event as JsonValue)"
+    @update:mode="emit('update:mode', $event === 'raw' ? 'json' : 'structured')"
+    @invalid="emit('json-error', $event)"
+  >
+    <slot></slot>
+  </StructuredField>
 </template>
-
-<style scoped>
-/*
- * Only keep styles here that REQUIRE scoping (:deep, dynamic binding, component-specific overrides).
- * Generic/reusable styles belong in src/styles/ partials (see _forms.scss, _cards.scss, etc.).
- */
-.json-structured-field {
-  width: 100%;
-}
-
-.field-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 0.75rem;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-}
-
-.field-label {
-  font-weight: 600;
-  font-size: 0.95rem;
-}
-
-.mode-toggle {
-  flex-shrink: 0;
-}
-
-/* Smaller toggle buttons */
-.mode-toggle :deep(.p-button) {
-  padding: 0.35rem 0.6rem;
-  font-size: 0.8rem;
-}
-
-.mode-toggle :deep(.p-button i) {
-  font-size: 0.75rem;
-  margin-right: 0.25rem;
-}
-
-.toggle-label {
-  display: none;
-}
-
-@media (min-width: 640px) {
-  .toggle-label {
-    display: inline;
-  }
-}
-
-.json-view {
-  margin-top: 0.25rem;
-}
-
-.json-error {
-  margin-bottom: 0.5rem;
-}
-
-.structured-view {
-  margin-top: 0.25rem;
-}
-</style>

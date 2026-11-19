@@ -257,8 +257,14 @@ export interface AddSaveActionOptions {
  * Options for addDeleteAction
  */
 export interface AddDeleteActionOptions {
-  /** Custom label (default: 'Delete') */
+  /** Custom label (default: 'Delete'); the confirmation's accept button says it too (#5333) */
   label?: string
+  /** Custom icon (default: 'pi pi-trash') */
+  icon?: string
+  /** The confirmation's title (default: 'Confirm Delete' from the catalogue) */
+  confirmHeader?: string
+  /** The confirmation's question: a string, or built from the record and its label (#5333) */
+  confirmMessage?: string | ((item: Record<string, unknown>, label: string) => string)
 }
 
 /**

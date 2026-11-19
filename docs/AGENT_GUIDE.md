@@ -58,7 +58,8 @@ npm test             # Run tests (from packages/qdadm)
 | PermissionEditor | `qdadm/src/components/editors/PermissionEditor.vue` | `namespace:action` permission |
 | JsonViewer / JsonEditorFoldable | `qdadm/src/components/editors/` | Read-only / foldable JSON (main bundle) |
 | VanillaJsonEditor | `qdadm/src/components/editors/VanillaJsonEditor.vue` | Tree/text/table JSON + `:schema` validation (`/editors` subpath) |
-| JsonStructuredField | `qdadm/src/components/editors/JsonStructuredField.vue` | Structured ↔ raw JSON dual (`/editors` subpath) |
+| StructuredField | `qdadm/src/components/editors/structured/StructuredField.vue` | Structured ↔ raw JSON / YAML dual; the faces come with `/editors/json` and `/editors/yaml` |
+| JsonStructuredField | `qdadm/src/components/editors/JsonStructuredField.vue` | `StructuredField` with the JSON face (`/editors/json` subpath) |
 
 ### Composables (Vue)
 

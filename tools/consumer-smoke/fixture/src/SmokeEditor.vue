@@ -6,7 +6,7 @@
  * JsonStructuredField.jsonMode must accept the same literals (#1280).
  */
 import { ref } from 'vue'
-import { VanillaJsonEditor, JsonStructuredField, Mode } from '@quazardous/qdadm/editors'
+import { VanillaJsonEditor, JsonStructuredField, Mode } from '@quazardous/qdadm/editors/json'
 
 const data = ref<Record<string, unknown>>({ hello: 'world' })
 const enumMode = Mode.text

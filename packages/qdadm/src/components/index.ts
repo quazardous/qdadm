@@ -54,13 +54,19 @@ export { default as KeyValueEditor } from './editors/KeyValueEditor.vue'
 export { default as LanguageEditor } from './editors/LanguageEditor.vue'
 export { default as ScopeEditor } from './editors/ScopeEditor.vue'
 export { default as PermissionEditor } from './editors/PermissionEditor.vue'
+export { permissionRegistryFromList, type PermissionRegistry, type Permission as RegistryPermission } from './editors/permissionSuggestions'
 export { default as RoleGrantsEditor } from './editors/RoleGrantsEditor.vue'
 export { default as JsonEditorFoldable } from './editors/JsonEditorFoldable.vue'
 export { default as JsonViewer } from './editors/JsonViewer.vue'
 
+// A value through a structured face or as raw JSON / YAML (#5333). Its raw
+// faces come with '@quazardous/qdadm/editors/json' and '.../editors/yaml'.
+export { default as StructuredField } from './editors/structured/StructuredField.vue'
+export { registerStructuredFace, type StructuredFormat } from './editors/structured/faces'
+
 // NOTE: VanillaJsonEditor and JsonStructuredField require vanilla-jsoneditor
-// Import from '@quazardous/qdadm/editors' instead:
-// import { VanillaJsonEditor, JsonStructuredField } from '@quazardous/qdadm/editors'
+// Import from '@quazardous/qdadm/editors/json' instead:
+// import { VanillaJsonEditor, JsonStructuredField } from '@quazardous/qdadm/editors/json'
 
 // Dialogs
 export { default as SimpleDialog } from './dialogs/SimpleDialog.vue'

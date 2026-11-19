@@ -365,6 +365,23 @@ export default `core:
     moreKeys: "+{count} more"
     takeTheirs: Load their version
     keepMine: Keep mine and save over it
+  # PermissionEditor (#5333)
+  permissionEditor:
+    placeholder: Type a permission…
+    help: 'Type a permission (e.g. "entity:books:read"), Tab to complete'
+    noMatch: No matching permission
+    noPermissions: No permission to suggest
+    all: All permissions
+    actionEverywhere: "{action}, everywhere"
+    anActionEverywhere: One action, everywhere
+    allUnder: "Everything under {prefix}"
+    directUnder: "Every {prefix} permission, one level"
+    actionUnder: "{action} under {prefix}"
+    subItems: "{count} sub-item | {count} sub-items"
+  # StructuredField: a structured face and a raw JSON / YAML one (#5333)
+  structuredField:
+    structured: Structured
+    invalid: "Invalid {format}: fix it before switching views"
   # Values a create reveals once: a key's token (QdRevealOnce, #5319)
   revealOnce:
     title: "{entity} created"

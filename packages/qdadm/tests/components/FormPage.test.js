@@ -46,13 +46,14 @@ vi.mock('../../src/components/layout/PageHeader.vue', () => ({
 vi.mock('../../src/components/edit/FormActions.vue', () => ({
   default: {
     name: 'FormActions',
-    props: ['isEdit', 'saving', 'dirty', 'showSaveAndClose'],
+    props: ['isEdit', 'saving', 'dirty', 'showSaveAndClose', 'deleteAction'],
     emits: ['save', 'saveAndClose', 'cancel'],
     template: `
       <div class="form-actions">
         <button @click="$emit('save')" :disabled="!dirty || saving">Save</button>
         <button @click="$emit('saveAndClose')" :disabled="!dirty || saving">Save & Close</button>
         <button @click="$emit('cancel')">Cancel</button>
+        <button v-if="deleteAction" class="footer-delete" @click="deleteAction.onClick()">{{ deleteAction.label }}</button>
       </div>
     `
   }
@@ -274,6 +275,18 @@ describe('FormPage', () => {
       const headerButtons = wrapper.findAll('.page-header button')
       expect(headerButtons.length).toBe(1)
       expect(headerButtons[0].text()).toBe('Export')
+    })
+
+    it("hands the form's delete action to the footer (#5333)", async () => {
+      const onClick = vi.fn()
+      const wrapper = mount(FormPage, {
+        props: { title: 'Test', isEdit: true, actions: [{ name: 'delete', label: () => 'Revoke', onClick }] },
+        slots: { fields: '<div>Fields</div>' },
+      })
+      const button = wrapper.find('.form-actions .footer-delete')
+      expect(button.text()).toBe('Revoke')
+      await button.trigger('click')
+      expect(onClick).toHaveBeenCalled()
     })
   })
 

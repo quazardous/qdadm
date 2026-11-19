@@ -125,6 +125,13 @@ const headerActions = computed<ResolvedAction[]>(() =>
   props.actions.filter((a: ResolvedAction) => !['save', 'delete', 'cancel'].includes(a.name))
 )
 
+// The form's delete action, rendered in the footer (#5333): the resolved list holds it only when visible
+const deleteAction = computed(() => {
+  const action = props.actions.find((a: ResolvedAction) => a.name === 'delete')
+  if (!action) return null
+  return { ...action, label: typeof action.label === 'function' ? action.label() : action.label }
+})
+
 // Get error message from fetchError
 const fetchErrorMessage = computed<string | null>(() => formatFetchError(props.fetchError))
 
@@ -224,6 +231,7 @@ function onGuardStay(): void {
               :saving="saving"
               :dirty="dirty"
               :showSaveAndClose="showSaveAndClose"
+              :deleteAction="deleteAction"
               @save="emit('save')"
               @saveAndClose="emit('saveAndClose')"
               @cancel="emit('cancel')"

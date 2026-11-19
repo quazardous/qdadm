@@ -3,10 +3,15 @@
  *
  * Import from '@quazardous/qdadm/editors/yaml' only if you install
  * @quazardous/vanilla-yamleditor (an optional peer): it stays out of the
- * main bundle and of '@quazardous/qdadm/editors'.
+ * main bundle and of '@quazardous/qdadm/editors/json'.
  *
  * import { VanillaYamlEditor, YamlConfigEditor, restYamlAdapter } from '@quazardous/qdadm/editors/yaml'
+ *
+ * Importing it also registers the YAML face of StructuredField (#5333).
  */
+import '../components/editors/structured/registerYaml'
+
+export { default as StructuredField } from '../components/editors/structured/StructuredField.vue'
 export { default as VanillaYamlEditor } from '../components/editors/yaml/VanillaYamlEditor.vue'
 export { default as YamlConfigEditor } from '../components/editors/yaml/YamlConfigEditor.vue'
 export {

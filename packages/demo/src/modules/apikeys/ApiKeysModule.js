@@ -22,7 +22,7 @@ class KeysStorage extends MockApiStorage {
 const keysStorage = new KeysStorage({
   entityName: 'apikeys',
   initialData: [
-    { id: 'k1', name: 'CI pipeline', scopes: 'books:read', prefix: 'qdk_3f9a', state: 'active', created_at: '2026-10-02T09:12:00Z' },
+    { id: 'k1', name: 'CI pipeline', scopes: ['entity:books:read', 'entity:books:list'], prefix: 'qdk_3f9a', state: 'active', created_at: '2026-10-02T09:12:00Z' },
   ],
 })
 
@@ -39,6 +39,7 @@ export class ApiKeysModule extends Module {
           labelPlural: 'API keys',
           fields: { name: 'Name', scopes: 'Scopes', prefix: 'Prefix', state: 'State', created_at: 'Created' },
           reveal: { token: 'Key value' },
+          revoke: { action: 'Revoke', header: 'Revoke the key', message: 'Revoke the key "{label}"? Whatever uses it stops working.' },
         },
       },
       nav: { routes: { apikey: 'API keys' } },
@@ -50,6 +51,7 @@ export class ApiKeysModule extends Module {
           labelPlural: "Clés d'API",
           fields: { name: 'Nom', scopes: 'Portées', prefix: 'Préfixe', state: 'État', created_at: 'Créée le' },
           reveal: { token: 'Valeur de la clé' },
+          revoke: { action: 'Révoquer', header: 'Révoquer la clé', message: "Révoquer la clé « {label} » ? Ce qui l'utilise cessera de marcher." },
         },
       },
       nav: { routes: { apikey: "Clés d'API" } },
@@ -62,7 +64,7 @@ export class ApiKeysModule extends Module {
       revealOnce: { keys: ['token'], item: 'key' },
       fields: {
         name: { type: 'text', required: true, default: '' },
-        scopes: { type: 'text', default: 'books:read' },
+        scopes: { type: 'array', default: ['entity:books:read'] },
         prefix: { type: 'text', readOnly: true },
         state: { type: 'text', readOnly: true },
         created_at: { type: 'datetime', readOnly: true },
@@ -74,7 +76,7 @@ export class ApiKeysModule extends Module {
       'apikeys',
       {
         list: () => import('./pages/ApiKeysPage.vue'),
-        create: () => import('./pages/ApiKeyForm.vue'),
+        form: () => import('./pages/ApiKeyForm.vue'),
       },
       { nav: { section: 'Security', icon: 'pi pi-key' } }
     )

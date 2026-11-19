@@ -65,8 +65,8 @@ So are `ButtonSeverity` and `ShowActionConfig`.
 `OpenAPIConnector` — typed and bundler-loadable; **not** importable from Node,
 see [ADR 0010](adr/0010-build-node-entry-points.md)),
 `/security` (`createLocalStorageRolesProvider`),
-`/utils` (`humanizeFieldName`, `formatFetchError`), `/editors`
-(`VanillaJsonEditor`, `JsonStructuredField`, `Mode`), and the `/styles`
+`/utils` (`humanizeFieldName`, `formatFetchError`), `/editors/json` and its
+alias `/editors` (`VanillaJsonEditor`, `JsonStructuredField`, `Mode`), and the `/styles`
 side-effect import (a compiled stylesheet) with its types condition. `/styles/scss`,
 the raw SCSS, is supported rather than stable.
 

@@ -18,18 +18,29 @@ import { useI18n } from '../../i18n/useI18n'
 
 const { t } = useI18n()
 
+/** The form's delete action, as useEntityItemFormPage resolves it (#5333) */
+interface DeleteAction {
+  label: string
+  icon?: string
+  severity?: string
+  isDisabled?: boolean
+  onClick: () => void | Promise<void>
+}
+
 interface Props {
   isEdit?: boolean
   saving?: boolean
   dirty?: boolean
   showSaveAndClose?: boolean
+  deleteAction?: DeleteAction | null
 }
 
 withDefaults(defineProps<Props>(), {
   isEdit: false,
   saving: false,
   dirty: true,  // Default true for backwards compatibility
-  showSaveAndClose: true
+  showSaveAndClose: true,
+  deleteAction: null
 })
 
 const emit = defineEmits<{
@@ -66,13 +77,26 @@ const emit = defineEmits<{
         <i class="pi pi-circle-fill"></i>
       </span>
     </div>
-    <QdButton
-      type="button"
-      :label="t('core.actions.cancel')"
-      severity="secondary"
-      icon="pi pi-times"
-      @click="emit('cancel')"
-      :disabled="saving"
-    />
+    <div class="form-actions-right">
+      <QdButton
+        v-if="isEdit && deleteAction"
+        type="button"
+        class="form-actions-delete"
+        :label="deleteAction.label"
+        :icon="deleteAction.icon || 'pi pi-trash'"
+        :severity="deleteAction.severity || 'danger'"
+        outlined
+        :disabled="saving || deleteAction.isDisabled"
+        @click="deleteAction.onClick()"
+      />
+      <QdButton
+        type="button"
+        :label="t('core.actions.cancel')"
+        severity="secondary"
+        icon="pi pi-times"
+        @click="emit('cancel')"
+        :disabled="saving"
+      />
+    </div>
   </div>
 </template>

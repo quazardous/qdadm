@@ -36,6 +36,7 @@
     "./composables": "./src/composables/index.ts",
     "./components": "./src/components/index.ts",
     "./editors": "./src/editors/index.ts",
+    "./editors/json": "./src/editors/json.ts",
     "./editors/yaml": "./src/editors/yaml.ts",
     "./email": "./src/email/index.ts",
     "./module": "./src/module/index.ts",

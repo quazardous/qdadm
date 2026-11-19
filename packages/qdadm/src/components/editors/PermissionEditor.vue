@@ -10,30 +10,27 @@
  * Permission format: namespace:action
  * - entity:books:read (namespace=entity:books, action=read)
  * - auth:impersonate (namespace=auth, action=impersonate)
+ *
+ * The permissions to suggest: a `permissionRegistry`, or a plain list of keys
+ * as `permissions` (#5333). Wildcards follow PermissionMatcher (`*` one
+ * segment, `**` any number): `**`, `**:read`, `logs:**`, `logs:*:read`…
+ *
+ * For a raw text face of the same list, put it in a StructuredField:
+ *   <StructuredField v-model="scopes" format="yaml"><PermissionEditor v-model="scopes" :permissions="all" /></StructuredField>
  */
 
 import { ref, computed, nextTick, type ComponentPublicInstance } from 'vue'
 import AutoComplete from 'primevue/autocomplete'
 import Chip from 'primevue/chip'
-
-interface Permission {
-  key: string
-  namespace: string
-  action: string
-  label: string
-}
-
-interface PermissionRegistry {
-  getAll(): Permission[]
-  get(key: string): Permission | undefined
-}
-
-interface Suggestion {
-  label: string
-  value: string
-  type: 'namespace' | 'permission' | 'wildcard' | 'wildcard-action'
-  description: string
-}
+import { useI18n } from '../../i18n/useI18n'
+import {
+  permissionRegistryFromList,
+  suggestPermissions,
+  type PermissionRegistry,
+  type Permission,
+  type Suggestion,
+  type SuggestionTexts,
+} from './permissionSuggestions'
 
 interface PermissionInfo {
   namespace: string
@@ -45,216 +42,77 @@ interface PermissionInfo {
 interface Props {
   modelValue?: string[]
   disabled?: boolean
+  /** The permissions to suggest, as a registry… */
   permissionRegistry?: PermissionRegistry | null
-  placeholder?: string
+  /** …or as a plain list of keys (#5333) */
+  permissions?: string[] | null
+  /** Default from the catalogue */
+  placeholder?: string | null
 }
 
 const props = withDefaults(defineProps<Props>(), {
   modelValue: () => [],
   disabled: false,
-  placeholder: 'Type permission...'
+  permissionRegistry: null,
+  permissions: null,
+  placeholder: null,
 })
 
 const emit = defineEmits<{
   'update:modelValue': [value: string[]]
 }>()
 
+const { tOr } = useI18n()
+
 // Current input value
 const inputValue = ref<string>('')
 const suggestions = ref<Suggestion[]>([])
 const autocompleteRef = ref<ComponentPublicInstance | null>(null)
 
-// Get all permissions from registry
+/** The registry given, or one made from the plain list; labels `permissions.<key>` from the catalogue */
+const registry = computed<PermissionRegistry | null>(() => {
+  if (props.permissionRegistry) return props.permissionRegistry
+  if (props.permissions) return permissionRegistryFromList(props.permissions, (key) => tOr(`permissions.${key}`, key))
+  return null
+})
+
+let warnedNoSource = false
 const allPermissions = computed<Permission[]>(() => {
-  if (!props.permissionRegistry) {
-    console.warn('[PermissionEditor] No permissionRegistry provided')
+  if (!registry.value) {
+    if (!warnedNoSource) {
+      warnedNoSource = true
+      console.warn('[PermissionEditor] No permissionRegistry or permissions given: nothing to suggest')
+    }
     return []
   }
-  const perms = props.permissionRegistry.getAll()
-  return perms
+  return registry.value.getAll()
 })
 
-// Check if registry is available
-const hasRegistry = computed<boolean>(() => {
-  return !!props.permissionRegistry && allPermissions.value.length > 0
-})
+const hasRegistry = computed<boolean>(() => allPermissions.value.length > 0)
+const allPermissionKeys = computed<string[]>(() => allPermissions.value.map((p) => p.key))
+const placeholderText = computed(() => props.placeholder ?? tOr('core.permissionEditor.placeholder', 'Type a permission…'))
 
-// Get all permission keys
-const allPermissionKeys = computed<string[]>(() => {
-  return allPermissions.value.map(p => p.key)
-})
+const texts: SuggestionTexts = {
+  all: () => tOr('core.permissionEditor.all', 'All permissions'),
+  actionEverywhere: (action) => tOr('core.permissionEditor.actionEverywhere', '{action}, everywhere', { action }),
+  anActionEverywhere: () => tOr('core.permissionEditor.anActionEverywhere', 'One action, everywhere'),
+  allUnder: (prefix) => tOr('core.permissionEditor.allUnder', 'Everything under {prefix}', { prefix }),
+  directUnder: (prefix) => tOr('core.permissionEditor.directUnder', 'Every {prefix} permission, one level', { prefix }),
+  actionUnder: (action, prefix) => tOr('core.permissionEditor.actionUnder', '{action} under {prefix}', { action, prefix }),
+  subItems: (count) => tOr('core.permissionEditor.subItems', '{count} sub-item | {count} sub-items', { count }),
+  label: (key) => getPermissionLabel(key),
+}
 
-// Get all unique prefixes at each level
-// e.g., from "entity:books:read" we get ["entity", "entity:books", "entity:books:read"]
-const allPrefixes = computed<string[]>(() => {
-  const prefixes = new Set<string>()
-  for (const key of allPermissionKeys.value) {
-    const parts = key.split(':')
-    let current = ''
-    for (let i = 0; i < parts.length; i++) {
-      const part = parts[i]
-      if (part !== undefined) {
-        current = current ? current + ':' + part : part
-        prefixes.add(current)
-      }
-    }
-  }
-  return [...prefixes].sort()
-})
-
-// Get unique actions across all namespaces
-const allActions = computed<string[]>(() => {
-  const actions = new Set<string>()
-  for (const perm of allPermissions.value) {
-    actions.add(perm.action)
-  }
-  return [...actions].sort()
-})
-
-/**
- * Generate suggestions based on current input
- * Supports multi-level fragment completion:
- * - "ent" → "entity:"
- * - "entity:bo" → "entity:books:"
- * - "entity:books:re" → "entity:books:read"
- */
+/** Suggestions for the current input: next segments and the wildcards that make sense */
 function searchSuggestions(event: { query?: string }): void {
-  const query = event.query ?? ''
-  const queryLower = query.toLowerCase()
-
-  // Handle super wildcard **
-  if (query === '**') {
-    suggestions.value = [{
-      label: '**',
-      value: '**',
-      type: 'wildcard',
-      description: 'All permissions (super admin)'
-    }]
-    return
-  }
-
-  // Handle wildcard patterns
-  if (query.includes('*')) {
-    suggestions.value = generateWildcardSuggestions(query)
-    return
-  }
-
-  // Check if query ends with ':'  - user wants next level suggestions
-  const endsWithColon = query.endsWith(':')
-
-  const results: Suggestion[] = []
-
-  // Add wildcard option if at start or after colon
-  if (query === '' || endsWithColon) {
-    results.push({
-      label: query + '*:',
-      value: query + '*:',
-      type: 'namespace',
-      description: 'Wildcard (all at this level)'
-    })
-  }
-
-  // Find matching prefixes that are NEXT level completions
-  for (const prefix of allPrefixes.value) {
-    const prefixLower = prefix.toLowerCase()
-
-    if (endsWithColon) {
-      // After "entity:", suggest "entity:books", "entity:users", etc.
-      if (prefixLower.startsWith(queryLower) && prefix !== query.slice(0, -1)) {
-        const isComplete = allPermissionKeys.value.includes(prefix)
-        results.push({
-          label: isComplete ? prefix : prefix + ':',
-          value: isComplete ? prefix : prefix + ':',
-          type: isComplete ? 'permission' : 'namespace',
-          description: isComplete ? getPermissionLabel(prefix) : `${countChildren(prefix)} sub-items`
-        })
-      }
-    } else {
-      // Partial match: "ent" matches "entity", "entity:books:re" matches "entity:books:read"
-      if (prefixLower.startsWith(queryLower) || (query === '' && true)) {
-        // Only suggest if it's a progression from current input
-        if (prefix.toLowerCase() !== queryLower) {
-          const isComplete = allPermissionKeys.value.includes(prefix)
-          // Find the next colon boundary for namespace suggestions
-          const nextColonIdx = prefix.indexOf(':', query.length)
-          const suggestionValue = nextColonIdx > -1 ? prefix.slice(0, nextColonIdx + 1) : (isComplete ? prefix : prefix + ':')
-
-          // Avoid duplicates
-          if (!results.some(r => r.value === suggestionValue)) {
-            results.push({
-              label: suggestionValue,
-              value: suggestionValue,
-              type: suggestionValue.endsWith(':') ? 'namespace' : 'permission',
-              description: isComplete && !suggestionValue.endsWith(':') ? getPermissionLabel(prefix) : `${countChildren(suggestionValue.replace(/:$/, ''))} sub-items`
-            })
-          }
-        }
-      }
-    }
-  }
-
-  // Sort: namespaces first, then permissions
-  results.sort((a, b) => {
-    if (a.type === 'namespace' && b.type !== 'namespace') return -1
-    if (a.type !== 'namespace' && b.type === 'namespace') return 1
-    return a.label.localeCompare(b.label)
-  })
-
-  suggestions.value = results.slice(0, 20) // Limit to 20 suggestions
-}
-
-/**
- * Generate wildcard suggestions
- */
-function generateWildcardSuggestions(query: string): Suggestion[] {
-  const results: Suggestion[] = []
-
-  // *: pattern - suggest actions
-  if (query === '*:' || query.startsWith('*:')) {
-    const actionPart = query.slice(2).toLowerCase()
-
-    results.push({
-      label: '*:*',
-      value: '*:*',
-      type: 'wildcard',
-      description: 'All permissions'
-    })
-
-    for (const action of allActions.value) {
-      if (actionPart === '' || action.toLowerCase().startsWith(actionPart)) {
-        results.push({
-          label: '*:' + action,
-          value: '*:' + action,
-          type: 'wildcard-action',
-          description: `All ${action} permissions`
-        })
-      }
-    }
-  } else if (query === '*') {
-    // Just * - suggest *: to continue
-    results.push({
-      label: '*:',
-      value: '*:',
-      type: 'namespace',
-      description: 'All namespaces (wildcard)'
-    })
-  }
-
-  return results
-}
-
-/**
- * Count children of a prefix
- */
-function countChildren(prefix: string): number {
-  return allPrefixes.value.filter(p => p.startsWith(prefix + ':') || p === prefix).length
+  suggestions.value = suggestPermissions(event.query ?? '', allPermissionKeys.value, texts)
 }
 
 /**
  * Get permission label
  */
 function getPermissionLabel(key: string): string {
-  const perm = props.permissionRegistry?.get(key)
+  const perm = registry.value?.get(key)
   return perm?.label || key
 }
 
@@ -344,7 +202,7 @@ function getPermissionInfo(permKey: string): PermissionInfo {
     return {
       namespace: '',
       action: '**',
-      label: 'All permissions',
+      label: tOr('core.permissionEditor.all', 'All permissions'),
       isWildcard: true
     }
   }
@@ -362,7 +220,7 @@ function getPermissionInfo(permKey: string): PermissionInfo {
     }
   }
 
-  const perm = props.permissionRegistry?.get(permKey)
+  const perm = registry.value?.get(permKey)
   if (perm) {
     return {
       namespace: perm.namespace,
@@ -426,7 +284,7 @@ function getSuggestionClass(item: Suggestion): string {
           :suggestions="suggestions"
           optionLabel="label"
           :disabled="disabled"
-          :placeholder="placeholder"
+          :placeholder="placeholderText"
           :minLength="0"
           completeOnFocus
           @complete="searchSuggestions"
@@ -444,18 +302,18 @@ function getSuggestionClass(item: Suggestion): string {
           </template>
           <template #empty>
             <div class="suggestion-empty">
-              No matching permissions
+              {{ tOr('core.permissionEditor.noMatch', 'No matching permission') }}
             </div>
           </template>
         </AutoComplete>
         <small class="text-color-secondary mt-1 block">
-          Type permission path (e.g., "entity:books:read"), Tab to complete
+          {{ tOr('core.permissionEditor.help', 'Type a permission (e.g. "entity:books:read"), Tab to complete') }}
         </small>
       </template>
       <template v-else>
         <div class="no-registry">
           <i class="pi pi-info-circle"></i>
-          <span>No permissions registered in the system</span>
+          <span>{{ tOr('core.permissionEditor.noPermissions', 'No permission to suggest') }}</span>
         </div>
       </template>
     </div>

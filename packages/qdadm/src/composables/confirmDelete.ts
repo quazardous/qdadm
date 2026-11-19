@@ -9,6 +9,9 @@ export interface DeleteConfirmation {
   message: string
   header: string
   accept: () => void
+  /** The accept button, when the action has its own word ("Revoke"); default Delete (#5333) */
+  acceptLabel?: string
+  acceptIcon?: string
 }
 
 /** The part of PrimeVue's confirm service a delete confirmation uses. */
@@ -35,14 +38,14 @@ export type TranslateOr = (key: string, fallback: string) => string
  * The buttons say what they do, in the app's language (#5323): Delete / Cancel
  * from the catalogue, not PrimeVue's own Yes / No.
  */
-export function requireDeleteConfirmation(confirm: ConfirmRequire, tOr: TranslateOr, { message, header, accept }: DeleteConfirmation): void {
+export function requireDeleteConfirmation(confirm: ConfirmRequire, tOr: TranslateOr, { message, header, accept, acceptLabel, acceptIcon }: DeleteConfirmation): void {
   confirm.require({
     message,
     header,
     icon: 'pi pi-exclamation-triangle',
     acceptClass: 'p-button-danger',
-    acceptLabel: tOr('core.actions.delete', 'Delete'),
-    acceptIcon: 'pi pi-trash',
+    acceptLabel: acceptLabel ?? tOr('core.actions.delete', 'Delete'),
+    acceptIcon: acceptIcon ?? 'pi pi-trash',
     rejectLabel: tOr('core.actions.cancel', 'Cancel'),
     rejectClass: 'p-button-secondary p-button-text',
     closeOnEscape: true,

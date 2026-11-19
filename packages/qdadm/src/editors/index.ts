@@ -1,17 +1,7 @@
 /**
- * qdadm/editors - Optional editors that require vanilla-jsoneditor
+ * qdadm/editors - the JSON editors, as '@quazardous/qdadm/editors/json'
  *
- * Import from '@quazardous/qdadm/editors' only if you need VanillaJsonEditor.
- * This keeps vanilla-jsoneditor out of the main bundle.
- *
- * Usage:
- * import { VanillaJsonEditor, JsonStructuredField } from '@quazardous/qdadm/editors'
+ * Kept so existing imports work; new code imports
+ * '@quazardous/qdadm/editors/json' (and '@quazardous/qdadm/editors/yaml').
  */
-
-export { default as VanillaJsonEditor } from '../components/editors/VanillaJsonEditor.vue'
-export { default as JsonStructuredField } from '../components/editors/JsonStructuredField.vue'
-
-// Re-export the mode enum so consumers who want it don't need to depend on
-// vanilla-jsoneditor directly (#1253). String literals ('tree' | 'text' |
-// 'table') are accepted by VanillaJsonEditor's `mode` prop anyway.
-export { Mode } from 'vanilla-jsoneditor'
+export * from './json'

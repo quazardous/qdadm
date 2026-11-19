@@ -468,7 +468,7 @@ form.addDeleteAction()
 | `getFieldConfig(name)` | Get resolved field config |
 | `group(name, fields, { label, icon })` | Organize into groups |
 | `addSaveAction({ andClose? })` | Save button |
-| `addDeleteAction()` | Delete button (hidden in create mode) |
+| `addDeleteAction({ label?, icon?, confirmHeader?, confirmMessage? })` | Delete button in the footer (hidden in create mode). Its own words when the gesture is not a deletion (`label: 'Revoke'`; `confirmMessage` a string or `(item, label) => string`); the confirmation's accept button says the label |
 | `addCancelAction()` | Cancel navigation |
 | `addAction(name, { label, icon, onClick, … })` | Custom action; `label` may be `() => t('…')`, read at each render so it follows the locale |
 
