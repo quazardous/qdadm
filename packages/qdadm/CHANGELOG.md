@@ -1,5 +1,15 @@
 # Changelog
 
+## 2.50.0
+
+### Minor Changes
+
+- 798ea75: A value shown once (#5319): an entity's `revealOnce: { keys, item? }` takes the values a create answer reveals once (an API key's token, a generated password) out of it before the cache, the postsave hooks and the signals see it. `manager.createRevealing(data)` returns `{ entity, revealed }`, and the create form shows them in the new `QdRevealOnce` dialog (copy button, a warning, "I have copied it") before it navigates, keeping them in the page's memory only. The clipboard code LogStream used is now a shared `copyText` helper.
+
+### Patch Changes
+
+- 6b0cec5: A tabbed item (#4978): inside the `ctx.itemTabs()` frame the breadcrumb no longer repeats the tabs. Its default sibling links and the View mode link are left out (the Details tab is the View), Edit stays. Outside a frame nothing changes.
+
 ## 2.49.0
 
 ### Minor Changes
