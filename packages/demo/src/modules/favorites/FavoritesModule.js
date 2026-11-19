@@ -1,10 +1,10 @@
 /**
  * Favorites Module - Module-Centric Pattern
  *
- * Self-contained module that owns:
- * - Entity definition (fields, storage)
- * - Routes (CRUD)
- * - Navigation
+ * Declares the two entities qdadm's favourites and recents live in (#5349):
+ * `favorites` (the star beside a page title, "Save this search") and
+ * `recents` (the records opened lately). qdadm reads and writes them through
+ * their managers; here they are kept in the browser.
  *
  * Demonstrates LocalStorage (persistent across browser sessions).
  */
@@ -15,9 +15,15 @@ import { Module, LocalStorage } from '@quazardous/qdadm'
 // STORAGE
 // ============================================================================
 
-const favoritesStorage = new LocalStorage({
-  key: 'qdadm-demo-favorites'
-})
+const favoritesStorage = new LocalStorage({ key: 'qdadm-demo-favorites' })
+const recentsStorage = new LocalStorage({ key: 'qdadm-demo-recents' })
+
+const KINDS = [
+  { label: 'Record', value: 'item' },
+  { label: 'List', value: 'list' },
+  { label: 'Search', value: 'search' },
+  { label: 'Board', value: 'board' },
+]
 
 // ============================================================================
 // MODULE
@@ -38,14 +44,18 @@ export class FavoritesModule extends Module {
           label: 'Favorite',
           labelPlural: 'Favorites',
           fields: {
-            name: 'Name',
-            type: {
-              _label: 'Type',
-              options: { book: 'Book', user: 'User', genre: 'Genre', loan: 'Loan' },
-            },
-            entityId: 'Entity ID',
-            createdAt: 'Created at',
+            label: 'Name',
+            kind: { _label: 'Kind', options: { item: 'Record', list: 'List', search: 'Search', board: 'Board' } },
+            entity: 'Entity',
+            itemId: 'Record',
+            to: 'Page',
+            at: 'Added',
           },
+        },
+        recents: {
+          label: 'Recent record',
+          labelPlural: 'Recent records',
+          fields: { label: 'Name', entity: 'Entity', itemId: 'Record', to: 'Page', at: 'Opened' },
         },
       },
       nav: {
@@ -59,14 +69,18 @@ export class FavoritesModule extends Module {
           label: 'Favori',
           labelPlural: 'Favoris',
           fields: {
-            name: 'Nom',
-            type: {
-              _label: 'Type',
-              options: { book: 'Livre', user: 'Utilisateur', genre: 'Genre', loan: 'Emprunt' },
-            },
-            entityId: "Identifiant d'entité",
-            createdAt: 'Créé le',
+            label: 'Nom',
+            kind: { _label: 'Sorte', options: { item: 'Fiche', list: 'Liste', search: 'Recherche', board: 'Tableau' } },
+            entity: 'Entité',
+            itemId: 'Fiche',
+            to: 'Page',
+            at: 'Ajouté le',
           },
+        },
+        recents: {
+          label: 'Fiche récente',
+          labelPlural: 'Fiches récentes',
+          fields: { label: 'Nom', entity: 'Entité', itemId: 'Fiche', to: 'Page', at: 'Ouverte le' },
         },
       },
       nav: {
@@ -76,30 +90,36 @@ export class FavoritesModule extends Module {
     })
 
     // ════════════════════════════════════════════════════════════════════════
-    // ENTITY
+    // ENTITIES: the fields qdadm writes (#5349)
     // ════════════════════════════════════════════════════════════════════════
     ctx.entity('favorites', {
       name: 'favorites',
-      labelField: 'name',
+      labelField: 'label',
       fields: {
         id: { type: 'text', label: 'ID', readOnly: true },
-        name: { type: 'text', label: 'Name', required: true, default: '' },
-        entityType: {
-          type: 'select',
-          label: 'Type',
-          required: true,
-          default: 'book',
-          options: [
-            { label: 'Book', value: 'book' },
-            { label: 'User', value: 'user' },
-            { label: 'Genre', value: 'genre' },
-            { label: 'Loan', value: 'loan' }
-          ]
-        },
-        entityId: { type: 'text', label: 'Entity ID', required: true, default: '' },
-        createdAt: { type: 'datetime', label: 'Created At', readOnly: true }
+        label: { type: 'text', label: 'Name', required: true, default: '' },
+        kind: { type: 'select', label: 'Kind', required: true, default: 'item', options: KINDS },
+        entity: { type: 'text', label: 'Entity', default: '' },
+        // Not written by qdadm: the form's book picker fills it, then `to`
+        itemId: { type: 'text', label: 'Record', default: '' },
+        to: { type: 'text', label: 'Page', default: '' },
+        at: { type: 'datetime', label: 'Added', readOnly: true },
       },
-      storage: favoritesStorage
+      storage: favoritesStorage,
+    })
+
+    ctx.entity('recents', {
+      name: 'recents',
+      labelField: 'label',
+      fields: {
+        id: { type: 'text', label: 'ID', readOnly: true },
+        label: { type: 'text', label: 'Name' },
+        entity: { type: 'text', label: 'Entity' },
+        itemId: { type: 'text', label: 'Record' },
+        to: { type: 'text', label: 'Page' },
+        at: { type: 'datetime', label: 'Opened', readOnly: true },
+      },
+      storage: recentsStorage,
     })
 
     // ════════════════════════════════════════════════════════════════════════

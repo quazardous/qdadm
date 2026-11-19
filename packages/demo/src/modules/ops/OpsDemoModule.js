@@ -8,7 +8,7 @@
  * a card dashboard each user arranges (#4320).
  */
 import { defineAsyncComponent } from 'vue'
-import { Module, registerTaskKind } from '@quazardous/qdadm'
+import { Module, registerTaskKind, QdFavoritesCard, QdRecentCard } from '@quazardous/qdadm'
 import { getTask, cancelTask, readLog, readPhases, createTask } from './fakeTasks'
 
 export class OpsDemoModule extends Module {
@@ -136,6 +136,9 @@ export class OpsDemoModule extends Module {
     cards.forEach(([id, props, card], i) => {
       ctx.block('ops-dashboard', { id, component: DemoCard, props, weight: (i + 1) * 10, ...(Object.keys(card).length ? { card } : {}) })
     })
+    // The person's favourites and the records they opened lately (#5349), live
+    ctx.block('ops-dashboard', { id: 'favorites', component: QdFavoritesCard, weight: 5, card: { title: 'Favourites', pinned: true } })
+    ctx.block('ops-dashboard', { id: 'recent', component: QdRecentCard, weight: 6, card: { title: 'Recent' } })
     // A card each person adds from the catalogue, once per genre (#5348): its
     // parameters are a schema, and arrive as its props
     ctx.block('ops-dashboard', {

@@ -189,6 +189,65 @@ Moving a card:
 - Pinned cards and the others are two groups: a card moves within its group,
   and pinning moves it to the other.
 
+## Favourites and recents
+
+What a person follows, and the records they just opened. They live in two
+entities the app declares, `favorites` and `recents`, and qdadm reads and
+writes them through their managers: their storage decides where they are
+kept and whose they are (a server answers the current user's).
+
+```js
+ctx.entity('favorites', {
+  labelField: 'label',
+  fields: { label: {}, kind: {}, entity: {}, to: {}, at: { type: 'datetime' } },
+  storage: new ApiStorage({ endpoint: '/me/favorites' }),
+})
+ctx.entity('recents', {
+  labelField: 'label',
+  fields: { label: {}, entity: {}, itemId: {}, to: {}, at: { type: 'datetime' } },
+  storage: new ApiStorage({ endpoint: '/me/recents' }),
+})
+```
+
+qdadm writes `{ kind, label, to, entity, at }` in a favourite (`kind` is
+`item`, `list`, `search` or `board`, `to` the page's path) and
+`{ entity, itemId, label, to, at }` in a recent; `at` is an ISO date. A field
+the app adds is kept. The person needs the grants to create and delete them
+(`entity:favorites:*`, `entity:recents:*`).
+
+`configureFavorites({ favorites: 'stars', recents: 'seen' })` names other
+entities; `false` turns one off. Without its entity, the star and "Save this
+search" do not show, nothing is recorded, and the cards say so (a console
+warning in development says what to declare).
+
+- **The star** beside a page title adds the page to the favourites, or
+  removes it. `ListPage`, `ShowPage` and `FormPage` (in edit mode) draw it;
+  `:favorite="false"` turns it off. A page of the app's own puts
+  `<QdFavoriteStar :label="title" kind="board" />` where it wants. The star is
+  `aria-pressed` and says "Add Dune to favourites" / "Remove …".
+- **"Save this search"** shows on a list while a filter or a search is on. It
+  asks for a name, by default the filter in words, and keeps the list's URL
+  with its query: the favourite opens the list filtered again.
+- **Recents:** the show and edit pages record the record they open, the last
+  one first, at most 20 (the older ones are deleted). Deleting a record takes
+  it out of the recents and the favourites.
+- **The cards:** `QdFavoritesCard` (by kind: records, lists, searches,
+  boards) and `QdRecentCard` (with when) show them live, and read them again
+  when they appear; put them on a dashboard as blocks. They draw the
+  [card types](cards.md) `favorites` and `recent`.
+
+```js
+import { QdFavoritesCard, QdRecentCard } from '@quazardous/qdadm'
+
+ctx.block(DASHBOARD_ZONES.WIDGETS, { id: 'favorites', component: QdFavoritesCard, card: { title: 'Favourites', pinned: true } })
+ctx.block(DASHBOARD_ZONES.WIDGETS, { id: 'recent', component: QdRecentCard, card: { title: 'Recent' } })
+```
+
+`useFavorites()` gives `available`, `list`, `has(to)`, `find(to)`, `add`,
+`remove`, `toggle`, `rename`, `forgetPath` and `reload`; `useRecent()` gives
+`available`, `list`, `record`, `forget` and `reload`. Both are shared by every
+component of the tab; a write that fails leaves the list as it was.
+
 ## Saved arrangement
 
 Each user's arrangement is kept under the key `qdadm.dashboard.<id>.<user>`

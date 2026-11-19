@@ -22,6 +22,7 @@ import ActionButtons from './ActionButtons.vue'
 import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
 import QdButton from '../base/QdButton.vue'
+import QdSaveSearch from './QdSaveSearch.vue'
 import SeverityTag from '../SeverityTag.vue'
 import { useI18n } from '../../i18n/useI18n'
 import ShowDisplay from '../show/ShowDisplay.vue'
@@ -82,6 +83,12 @@ const props = defineProps({
   title: { type: String, default: '' },
   subtitle: { type: String as PropType<string | null>, default: null },
   headerActions: { type: Array as PropType<ResolvedHeaderAction[]>, default: () => [] },
+  /** The entity listed, for its favourites (#5349) */
+  entity: { type: String as PropType<string | null>, default: null },
+  /** The favourite star beside the title (#5349) */
+  favorite: { type: Boolean, default: true },
+  /** The filter in words while one is on: offers "Save this search" (#5349) */
+  searchLabel: { type: String as PropType<string | null>, default: null },
 
   // Cards
   cards: { type: Array as PropType<CardConfig[]>, default: () => [] },
@@ -350,9 +357,10 @@ function getFilterClass(filter: FilterConfig): Record<string, boolean> {
     <!-- Nav slot for PageNav (child routes) -->
     <slot name="nav" />
 
-    <PageHeader :title="title" :subtitle="subtitle">
+    <PageHeader :title="title" :subtitle="subtitle" :favorite="favorite ? { kind: 'list', entity } : null">
       <template #actions>
         <slot name="header-actions" ></slot>
+        <QdSaveSearch v-if="searchLabel" :default-name="searchLabel" :entity="entity" />
         <!-- Mobile: split button (primary action + dropdown) -->
         <template v-if="isMobile && headerActions.length > 0 && primaryHeaderAction">
           <!-- Single action: just a button -->

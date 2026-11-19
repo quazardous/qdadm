@@ -20,6 +20,7 @@
  */
 import { computed, inject, type Ref } from 'vue'
 import Tag from 'primevue/tag'
+import QdFavoriteStar from './QdFavoriteStar.vue'
 import type { ButtonSeverity } from '../../types'
 
 interface TitleParts {
@@ -34,18 +35,28 @@ interface BadgeConfig {
   severity?: ButtonSeverity
 }
 
+/** The favourite star beside the title (#5349): what kind of page this is */
+interface FavoriteConfig {
+  kind: 'item' | 'list' | 'search' | 'board'
+  entity?: string | null
+  itemId?: string | number | null
+}
+
 interface Props {
   title?: string | null
   titleParts?: TitleParts | null
   subtitle?: string | null
   badges?: BadgeConfig[]
+  /** Draw the favourite star (#5349); null: none */
+  favorite?: FavoriteConfig | null
 }
 
 const props = withDefaults(defineProps<Props>(), {
   title: null,
   titleParts: null,
   subtitle: null,
-  badges: () => []
+  badges: () => [],
+  favorite: null
 })
 
 // Auto-injected title from the form composables (if available)
@@ -62,6 +73,15 @@ const simpleTitle = computed((): string | undefined => effectiveTitleParts.value
 // Compute title display
 const hasDecoratedTitle = computed((): boolean => {
   return !!effectiveTitleParts.value?.entityLabel
+})
+
+// The favourite's name: the title as shown
+const favoriteLabel = computed((): string => {
+  if (simpleTitle.value) return simpleTitle.value
+  const parts = effectiveTitleParts.value
+  if (parts?.entityLabel) return parts.entityLabel
+  if (parts) return [parts.action, parts.entityName].filter(Boolean).join(' ')
+  return props.title ?? ''
 })
 </script>
 
@@ -88,6 +108,7 @@ const hasDecoratedTitle = computed((): boolean => {
             </h1>
             <p v-if="subtitle" class="page-subtitle">{{ subtitle }}</p>
           </div>
+          <QdFavoriteStar v-if="favorite && favoriteLabel" :label="favoriteLabel" :kind="favorite.kind" :entity="favorite.entity ?? null" :item-id="favorite.itemId ?? null" />
           <slot name="subtitle" ></slot>
         </div>
         <div class="header-actions">

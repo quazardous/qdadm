@@ -32,7 +32,7 @@ the session captured in the GIF above:
 // 1. What am I looking at?
 const q = window.__qdadm
 q.orchestrator.getRegisteredNames()
-// → ['users','countries','products','settings','favorites','jp_users',
+// → ['users','countries','products','settings','jp_users',
 //    'posts','todos','books','genres','loans','roles']
 q.router.getRoutes().length          // → 43
 

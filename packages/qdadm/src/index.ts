@@ -460,6 +460,7 @@ export * from './components/index'
 // gallery, and the generic cards (metric, queue, goal, bullet)
 export * from './cards/index'
 export * from './run/index'
+export * from './favorites/index'
 export { useTaskRunner, taskAction } from './tasks/useTaskRunner'
 export { useTaskNotifications, useTaskTrayVisible, type TasksConfig } from './tasks/useTaskNotifications'
 export {

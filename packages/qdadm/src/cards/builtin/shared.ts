@@ -44,3 +44,16 @@ export function deltaTone(value: number, higherIs: 'better' | 'worse' | 'neutral
   if (value === 0 || higherIs === 'neutral') return 'neutral'
   return (value > 0) === (higherIs === 'better') ? 'good' : 'critical'
 }
+
+/** "3 minutes ago", "yesterday": a moment against now, in the app's language */
+export function relativeTime(at: string | number | Date, locale: string, now = Date.now()): string | null {
+  const date = at instanceof Date ? at : new Date(at)
+  if (Number.isNaN(date.getTime())) return null
+  const seconds = Math.round((date.getTime() - now) / 1000)
+  const rtf = new Intl.RelativeTimeFormat(locale, { numeric: 'auto' })
+  const abs = Math.abs(seconds)
+  if (abs < 45) return rtf.format(0, 'second')
+  if (abs < 3600) return rtf.format(Math.round(seconds / 60), 'minute')
+  if (abs < 86400) return rtf.format(Math.round(seconds / 3600), 'hour')
+  return rtf.format(Math.round(seconds / 86400), 'day')
+}

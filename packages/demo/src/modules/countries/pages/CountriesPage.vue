@@ -22,7 +22,7 @@ import { useFavoriteAction } from '@/composables/useFavoriteAction'
 const list = useListPage({ entity: 'countries' })
 
 // ============ FAVORITE ACTION ============
-useFavoriteAction(list, 'country', { labelField: (c) => c.name?.common || c.cca3 })
+useFavoriteAction(list, { labelField: (c) => c.name?.common || c.cca3 })
 
 // ============ SEARCH ============
 list.setSearch({

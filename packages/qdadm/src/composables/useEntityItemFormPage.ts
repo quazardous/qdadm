@@ -56,6 +56,7 @@ import type {
 } from './useEntityItemFormPage.types'
 import { createOrchestratorToast } from './useOrchestratorToast'
 import { useRun } from '../run/useRun'
+import { useFavorites, useRecent } from '../favorites/useFavorites'
 import { useActionRegistry } from './useActionRegistry'
 import { TYPE_MAPPINGS, TYPE_VALIDATORS, snakeCaseToTitle, isEmpty } from './useEntityItemFormPage.types'
 
@@ -310,6 +311,9 @@ export function useEntityItemFormPage<T extends Record<string, unknown> = Record
       // Update active stack
       hydrator.setCurrentData(transformed)
 
+      // The item pages seen lately (#5349): this one, now
+      if (route?.path) void recent.record({ entity, itemId: String(entityId.value), label: manager.getEntityLabel(transformed as never) || `#${entityId.value}`, to: route.path })
+
       if (onLoadSuccess) {
         await onLoadSuccess(transformed as T)
       }
@@ -439,6 +443,11 @@ export function useEntityItemFormPage<T extends Record<string, unknown> = Record
     }
   }
 
+  // ============ RECENTS AND FAVOURITES (#5349) ============
+
+  const recent = useRecent()
+  const favorites = useFavorites()
+
   // ============ RUN (#5343) ============
 
   // The run this page walks, if its URL carries one
@@ -471,6 +480,10 @@ export function useEntityItemFormPage<T extends Record<string, unknown> = Record
 
     try {
       await manager.delete(entityId.value!)
+      // A deleted record leaves the recents and the favourites (#5349)
+      void recent.forget(entity, entityId.value!)
+      void favorites.forgetItem(entity, entityId.value!)
+      if (route?.path) void favorites.forgetPath(route.path)
       toast.add({
         severity: 'success',
         summary: 'Deleted',
@@ -922,6 +935,8 @@ export function useEntityItemFormPage<T extends Record<string, unknown> = Record
     submitted: submitted.value,
     guardDialog,
     revealed: revealed.value,
+    entity,
+    entityId: entityId.value ?? null,
   }))
 
   const formEvents: FormPageEvents = {

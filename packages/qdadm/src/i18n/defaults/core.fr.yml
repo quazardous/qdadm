@@ -463,6 +463,25 @@ core:
       done: traité
       urgent: urgent
       todo: à traiter
+  # Favoris et récents : l'étoile, « Enregistrer cette recherche », les deux cartes (#5349)
+  favorites:
+    add: "Ajouter {label} aux favoris"
+    remove: "Retirer {label} des favoris"
+    saveSearch: Enregistrer cette recherche
+    searchSaved: Recherche enregistrée
+    searchName: Nom de la recherche
+    save: Enregistrer
+    title: Favoris
+    none: "Aucun favori : l'étoile à côté du titre d'une page en ajoute un"
+    recentTitle: Récents
+    noneRecent: Rien d'ouvert pour l'instant
+    noEntity: Aucune entité de favoris n'est déclarée
+    noRecentsEntity: Aucune entité de récents n'est déclarée
+    kind:
+      item: Fiches
+      list: Listes
+      search: Recherches
+      board: Tableaux
   # NotFoundPage
   notFound:
     title: Page introuvable

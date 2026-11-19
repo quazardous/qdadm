@@ -324,6 +324,10 @@ export interface UseListPageOptions<T = unknown> {
  */
 export interface ListPageProps {
   title: string | undefined
+  /** The entity listed, for its favourites (#5349) */
+  entity?: string
+  /** The filter in words while one is on: offers "Save this search" (#5349) */
+  searchLabel?: string | null
   subtitle: string | null
   headerActions: ResolvedHeaderAction[]
   cards: CardConfig[]

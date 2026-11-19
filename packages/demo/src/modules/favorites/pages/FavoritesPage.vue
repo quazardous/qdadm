@@ -25,18 +25,18 @@ const list = useListPage({ entity: 'favorites' })
 // ============ SEARCH ============
 list.setSearch({
   placeholder: 'Search favorites...',
-  fields: ['name']
+  fields: ['label']
 })
 
 // ============ FILTERS ============
-list.addFilter('entityType', {
-  placeholder: 'All Types',
+list.addFilter('kind', {
+  placeholder: 'All kinds',
   options: [
-    { label: 'All Types', value: '' },
-    { label: 'Book', value: 'book' },
-    { label: 'User', value: 'user' },
-    { label: 'Genre', value: 'genre' },
-    { label: 'Loan', value: 'loan' }
+    { label: 'All kinds', value: '' },
+    { label: 'Record', value: 'item' },
+    { label: 'List', value: 'list' },
+    { label: 'Search', value: 'search' },
+    { label: 'Board', value: 'board' }
   ]
 })
 
@@ -47,10 +47,10 @@ list.addDeleteAction()
 
 // ============ SEVERITY MAP ============
 const entityTypeSeverity = {
-  book: 'info',
-  user: 'success',
-  genre: 'warn',
-  loan: 'secondary'
+  item: 'info',
+  list: 'success',
+  search: 'warn',
+  board: 'secondary'
 }
 
 function getTypeSeverity(type) {
@@ -67,10 +67,12 @@ function formatDate(isoString) {
 // ============ DEMO: ADD SAMPLE DATA ============
 async function addSampleFavorites() {
   const manager = getManager('favorites')
+  // The shape qdadm's star writes (#5349)
+  const at = new Date().toISOString()
   const samples = [
-    { name: 'Le Petit Prince', entityType: 'book', entityId: '1' },
-    { name: 'Admin User', entityType: 'user', entityId: '1' },
-    { name: 'Science Fiction', entityType: 'genre', entityId: 'sci-fi' }
+    { label: 'Dune', kind: 'item', entity: 'books', to: '/books/01JFXYZ010BOOK0DUNE0001', at },
+    { label: 'Books', kind: 'list', entity: 'books', to: '/books', at },
+    { label: 'Genres', kind: 'list', entity: 'genres', to: '/genres', at }
   ]
 
   for (const sample of samples) {
@@ -103,16 +105,20 @@ async function addSampleFavorites() {
     </template>
 
     <template #columns>
-      <Column v-bind="list.column('name', { header: 'Name' })" sortable />
-      <Column v-bind="list.column('entityType', { header: 'Type' })" sortable style="width: 150px">
+      <Column v-bind="list.column('label')" sortable />
+      <Column v-bind="list.column('kind')" sortable style="width: 130px">
         <template #body="{ data }">
-          <Tag :value="data.entityType" :severity="getTypeSeverity(data.entityType)" />
+          <Tag :value="data.kind" :severity="getTypeSeverity(data.kind)" />
         </template>
       </Column>
-      <Column v-bind="list.column('entityId', { header: 'Entity ID' })" style="width: 150px" />
-      <Column v-bind="list.column('createdAt', { header: 'Created' })" sortable style="width: 180px">
+      <Column v-bind="list.column('to')">
         <template #body="{ data }">
-          {{ formatDate(data.createdAt) }}
+          <RouterLink v-if="data.to" :to="data.to">{{ data.to }}</RouterLink>
+        </template>
+      </Column>
+      <Column v-bind="list.column('at')" sortable style="width: 180px">
+        <template #body="{ data }">
+          {{ formatDate(data.at) }}
         </template>
       </Column>
     </template>

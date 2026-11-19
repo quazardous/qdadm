@@ -111,7 +111,12 @@ const props = defineProps({
   // UI options
   showFormActions: { type: Boolean, default: true },
   showSaveAndClose: { type: Boolean, default: true },
-  cardWrapper: { type: Boolean, default: true }
+  cardWrapper: { type: Boolean, default: true },
+  /** The favourite star beside the title, in edit mode (#5349) */
+  favorite: { type: Boolean, default: true },
+  /** The entity and the record, for the favourite (#5349) */
+  entity: { type: String as PropType<string | null>, default: null },
+  entityId: { type: [String, Number] as PropType<string | number | null>, default: null }
 })
 
 const emit = defineEmits<{
@@ -170,7 +175,7 @@ function onGuardStay(): void {
     <!-- Nav slot for PageNav (child routes) -->
     <slot name="nav" />
 
-    <PageHeader :title="title" :title-parts="titleParts">
+    <PageHeader :title="title" :title-parts="titleParts" :favorite="favorite && isEdit ? { kind: 'item', entity, itemId: entityId } : null">
       <template #actions>
         <slot name="header-actions" />
         <!-- Header actions from builder (excludes save/delete/cancel) -->

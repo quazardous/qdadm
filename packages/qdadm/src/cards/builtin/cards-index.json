@@ -106,6 +106,113 @@
       }
     },
     {
+      "type": "favorites",
+      "title": "Favourites",
+      "question": "What do I follow?",
+      "readings": [
+        "the pages the person starred and the searches they saved, by kind",
+        "each line opens its page, filtered as it was for a search"
+      ],
+      "strengths": [
+        "one click back to what someone follows, whatever its domain",
+        "read live: a star clicked in a header shows at once"
+      ],
+      "avoid": [
+        "for what everyone must see: that is a board's own card, not a favourite"
+      ],
+      "sizes": [
+        "s",
+        "m"
+      ],
+      "options": {
+        "maxItems": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 20,
+          "default": 8,
+          "description": "How many lines to show"
+        },
+        "groupByKind": {
+          "type": "boolean",
+          "default": true,
+          "description": "Group the lines by kind (records, lists, searches, boards)"
+        }
+      },
+      "action": "none: each line is its own gesture",
+      "example": {
+        "envelope": {
+          "title": "Favourites",
+          "status": "info",
+          "size": "s"
+        },
+        "data": {
+          "items": [
+            {
+              "label": "Order 575806",
+              "to": "/orders/575806",
+              "kind": "item"
+            },
+            {
+              "label": "Returns",
+              "to": "/returns",
+              "kind": "list"
+            },
+            {
+              "label": "Orders to ship tonight",
+              "to": "/orders?status=todo",
+              "kind": "search"
+            }
+          ]
+        },
+        "options": {
+          "maxItems": 8,
+          "groupByKind": true
+        }
+      },
+      "schema": {
+        "type": "object",
+        "required": [
+          "items"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "label",
+                "to"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "label": {
+                  "type": "string"
+                },
+                "to": {
+                  "type": [
+                    "string",
+                    "object"
+                  ],
+                  "description": "The page it opens"
+                },
+                "kind": {
+                  "type": "string",
+                  "enum": [
+                    "item",
+                    "list",
+                    "search",
+                    "board"
+                  ],
+                  "description": "What it is: a record, a list, a saved search, a board"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
       "type": "goal",
       "title": "Goal",
       "question": "Am I on time?",
@@ -539,6 +646,111 @@
                       ]
                     }
                   }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "recent",
+      "title": "Recent",
+      "question": "What was I just looking at?",
+      "readings": [
+        "the last records the person opened, the last one first",
+        "what each one is, and when it was seen"
+      ],
+      "strengths": [
+        "finds again what someone was working on, without searching",
+        "filled on its own: nothing to set up"
+      ],
+      "avoid": [
+        "as a history of changes: it says what was seen, not what was done"
+      ],
+      "sizes": [
+        "s",
+        "m"
+      ],
+      "options": {
+        "maxItems": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 20,
+          "default": 5,
+          "description": "How many lines to show"
+        }
+      },
+      "action": "none: each line opens its record",
+      "example": {
+        "envelope": {
+          "title": "Recent",
+          "status": "info",
+          "size": "s"
+        },
+        "data": {
+          "items": [
+            {
+              "label": "Order 575806",
+              "to": "/orders/575806",
+              "at": "2026-11-19T09:38:00Z",
+              "note": "Order"
+            },
+            {
+              "label": "Mairie de Lyon",
+              "to": "/customers/88",
+              "at": "2026-11-19T08:12:00Z",
+              "note": "Customer"
+            },
+            {
+              "label": "Return 8812",
+              "to": "/returns/8812",
+              "at": "2026-11-18T16:40:00Z",
+              "note": "Return"
+            }
+          ]
+        },
+        "options": {
+          "maxItems": 5
+        }
+      },
+      "schema": {
+        "type": "object",
+        "required": [
+          "items"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "label",
+                "to"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "label": {
+                  "type": "string"
+                },
+                "to": {
+                  "type": [
+                    "string",
+                    "object"
+                  ],
+                  "description": "The page it opens"
+                },
+                "at": {
+                  "type": [
+                    "string",
+                    "number"
+                  ],
+                  "description": "When it was seen: an ISO string or a timestamp in ms"
+                },
+                "note": {
+                  "type": "string",
+                  "description": "What it is: \"Book\", \"Order\""
                 }
               }
             }

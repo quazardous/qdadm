@@ -1,0 +1,21 @@
+{
+  "type": "object",
+  "required": ["items"],
+  "additionalProperties": false,
+  "properties": {
+    "items": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["label", "to"],
+        "additionalProperties": false,
+        "properties": {
+          "label": { "type": "string" },
+          "to": { "type": ["string", "object"], "description": "The page it opens" },
+          "at": { "type": ["string", "number"], "description": "When it was seen: an ISO string or a timestamp in ms" },
+          "note": { "type": "string", "description": "What it is: \"Book\", \"Order\"" }
+        }
+      }
+    }
+  }
+}

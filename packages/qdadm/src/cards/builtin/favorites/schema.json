@@ -1,0 +1,20 @@
+{
+  "type": "object",
+  "required": ["items"],
+  "additionalProperties": false,
+  "properties": {
+    "items": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["label", "to"],
+        "additionalProperties": false,
+        "properties": {
+          "label": { "type": "string" },
+          "to": { "type": ["string", "object"], "description": "The page it opens" },
+          "kind": { "type": "string", "enum": ["item", "list", "search", "board"], "description": "What it is: a record, a list, a saved search, a board" }
+        }
+      }
+    }
+  }
+}

@@ -1417,6 +1417,8 @@ export function useListPage<T = unknown>(config: UseListPageOptions<T>): UseList
 
   const listProps = computed<ListPageProps>(() => ({
     title: manager.labelPlural,
+    entity,
+    searchLabel: hasActiveFilters.value ? (filterText() ?? null) : null,
     subtitle: config.subtitle !== undefined ? config.subtitle : (manager.description ?? null),
     headerActions: headerActions.value,
     cards: cards.value,

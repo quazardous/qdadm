@@ -113,6 +113,9 @@ export interface PageTitleParts {
  * Form props for FormPage component
  */
 export interface FormPageProps {
+  /** The entity and the record, for the favourite (#5349) */
+  entity?: string
+  entityId?: string | number | null
   isEdit: boolean
   mode: 'create' | 'edit'
   loading: boolean

@@ -1,128 +1,44 @@
 /**
- * useFavoriteAction - DRY composable for adding favorite action to list pages
+ * useFavoriteAction - a star on each row of a list, over qdadm's favourites
+ * (#5349): the row's record becomes a favourite of kind `item`, the same one
+ * the star beside its page's title adds, shown in the favourites card.
  *
  * Usage:
  *   const list = useListPage({ entity: 'books' })
- *   useFavoriteAction(list, 'book')
- *
- * This adds a star icon action that toggles favorites for each row.
+ *   useFavoriteAction(list, { labelField: 'title' })
  */
-
-import { ref, onMounted } from 'vue'
-import { useOrchestrator, useSignalToast } from '@quazardous/qdadm'
+import { useRouter } from 'vue-router'
+import { useFavorites } from '@quazardous/qdadm'
 
 /**
- * Add favorite toggle action to a list builder
  * @param {object} listBuilder - useListPage instance
- * @param {string} entityType - Entity type for favorites (e.g., 'book', 'product')
- * @param {object} options - Optional config
- * @param {string} options.labelField - Field to use as favorite name (default: 'title' or 'name')
+ * @param {object} options
+ * @param {string|function} options.labelField - the field (or a function of the row) naming the favourite
  */
-export function useFavoriteAction(listBuilder, entityType, options = {}) {
-  const toast = useSignalToast('FavoriteAction')
-
-  // Use qdadm's orchestrator to get the favorites manager
-  const { getManager, hasManager } = useOrchestrator()
-  const favoritesManager = hasManager('favorites') ? getManager('favorites') : null
-
-  // Cache of favorite IDs for quick lookup
-  const favoriteIds = ref(new Set())
-  let favoritesLoaded = false
-
-  // Load favorites on first access
-  async function loadFavorites() {
-    if (favoritesLoaded || !favoritesManager) return
-    try {
-      const result = await favoritesManager.list({ page_size: 1000 })
-      favoriteIds.value = new Set(
-        result.items
-          .filter(f => f.entityType === entityType)
-          .map(f => f.entityId)
-      )
-      favoritesLoaded = true
-    } catch (e) {
-      console.error('[favorites] Failed to load:', e)
-    }
+export function useFavoriteAction(listBuilder, options = {}) {
+  const router = useRouter()
+  const favorites = useFavorites()
+  const manager = listBuilder.manager
+  const prefix = manager.routePrefix
+  const routeName = [`${prefix}-show`, `${prefix}-edit`].find((name) => router.hasRoute(name))
+  if (!routeName) {
+    console.warn(`[demo] useFavoriteAction: "${manager.name}" has no show or edit page to make a favourite of`)
+    return
   }
 
-  // Check if entity is favorited
-  function isFavorite(entityId) {
-    return favoriteIds.value.has(String(entityId))
+  const idOf = (row) => String(row[manager.idField || 'id'])
+  const pathOf = (row) => router.resolve({ name: routeName, params: { [manager.idField || 'id']: idOf(row) } }).path
+  const labelOf = (row) => {
+    const field = options.labelField || manager.labelField || 'title'
+    return typeof field === 'function' ? field(row) : row[field] || row.name || idOf(row)
   }
+  // A record's favourite, whichever of its pages (show, edit, this row) added it
+  const on = (row) => !!favorites.findItem(manager.name, idOf(row))
 
-  // Find favorite record by entityId
-  async function findFavorite(entityId) {
-    if (!favoritesManager) return null
-    const result = await favoritesManager.list({
-      page_size: 1000,
-      filters: { entityType, entityId: String(entityId) }
-    })
-    return result.items.find(f => f.entityId === String(entityId))
-  }
-
-  // Toggle favorite status
-  async function toggleFavorite(row) {
-    if (!favoritesManager) return
-
-    const manager = listBuilder.manager
-    const entityId = String(row[manager.idField || 'id'])
-    const labelField = options.labelField || manager.labelField || 'title'
-    const label = typeof labelField === 'function' ? labelField(row) : row[labelField] || row.name || entityId
-
-    try {
-      if (isFavorite(entityId)) {
-        // Remove favorite
-        const favorite = await findFavorite(entityId)
-        if (favorite) {
-          await favoritesManager.delete(favorite.id)
-          favoriteIds.value.delete(entityId)
-          toast.info('Removed from favorites', label, 2000)
-        }
-      } else {
-        // Add favorite
-        await favoritesManager.create({
-          name: label,
-          entityType,
-          entityId,
-          createdAt: new Date().toISOString()
-        })
-        favoriteIds.value.add(entityId)
-        toast.success('Added to favorites', label, 2000)
-      }
-    } catch (e) {
-      console.error('[favorites] Toggle failed:', e)
-      toast.error('Error', 'Failed to update favorites')
-    }
-  }
-
-  // Load favorites after component mount
-  onMounted(() => {
-    loadFavorites()
-  })
-
-  // Add the action to the list builder
   listBuilder.addAction('favorite', {
-    icon: (row) => {
-      const manager = listBuilder.manager
-      const entityId = String(row[manager.idField || 'id'])
-      return isFavorite(entityId) ? 'pi pi-star-fill' : 'pi pi-star'
-    },
-    tooltip: (row) => {
-      const manager = listBuilder.manager
-      const entityId = String(row[manager.idField || 'id'])
-      return isFavorite(entityId) ? 'Remove from favorites' : 'Add to favorites'
-    },
-    severity: (row) => {
-      const manager = listBuilder.manager
-      const entityId = String(row[manager.idField || 'id'])
-      return isFavorite(entityId) ? 'warn' : 'secondary'
-    },
-    onClick: toggleFavorite
+    icon: (row) => (on(row) ? 'pi pi-star-fill' : 'pi pi-star'),
+    tooltip: (row) => (on(row) ? `Remove ${labelOf(row)} from favourites` : `Add ${labelOf(row)} to favourites`),
+    severity: (row) => (on(row) ? 'warn' : 'secondary'),
+    onClick: (row) => favorites.toggle({ kind: 'item', label: labelOf(row), to: pathOf(row), entity: manager.name, itemId: idOf(row) }),
   })
-
-  return {
-    isFavorite,
-    toggleFavorite,
-    loadFavorites
-  }
 }

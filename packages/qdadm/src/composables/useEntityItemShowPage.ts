@@ -63,6 +63,7 @@ import type { LiveEntityPolicy } from '../entity/EntityManager.types'
 import type { ButtonSeverity, EntityRecord } from '../types'
 import { useActionRegistry } from './useActionRegistry'
 import { useLiveEntity } from './useLiveEntity'
+import { useFavorites, useRecent } from '../favorites/useFavorites'
 
 // #1191 — shared structural view (manager tier from useEntityItemPage)
 type Orchestrator = OrchestratorLike<EntityManager>
@@ -140,6 +141,9 @@ interface PageTitleParts {
  * Show props for ShowPage component
  */
 export interface ShowPageProps {
+  /** The entity and the record, for the favourite (#5349) */
+  entity?: string
+  entityId?: string | number | null
   loading: boolean
   title: string
   titleParts: PageTitleParts
@@ -306,12 +310,24 @@ export function useEntityItemShowPage<T = Record<string, unknown>>(
     lazyResolvedStates.value = newStates
   }
 
+  // The item pages seen lately (#5349): this one, now
+  const recent = useRecent()
+  const favorites = useFavorites()
+  function rememberSeen(record: T): void {
+    if (!route?.path) return
+    const id = route.params?.[(manager as { idField?: string }).idField ?? 'id'] ?? null
+    if (id === null || Array.isArray(id)) return
+    const label = manager.getEntityLabel(record as never) || `#${id}`
+    void recent.record({ entity, itemId: String(id), label: String(label), to: route.path })
+  }
+
   // Use base composable — wrap onLoadSuccess to run lazy resolvers after entity load
   const base = useEntityItemPage<T>({
     entity,
     loadOnMount,
     transformLoad,
     onLoadSuccess: async (entityData) => {
+      rememberSeen(entityData)
       await runLazyResolvers(entityData)
       if (onLoadSuccess) await onLoadSuccess(entityData)
     },
@@ -585,6 +601,10 @@ export function useEntityItemShowPage<T = Record<string, unknown>>(
 
     try {
       await manager.delete(entityId.value)
+      // A deleted record leaves the recents and the favourites (#5349)
+      void recent.forget(entity, entityId.value)
+      void favorites.forgetItem(entity, entityId.value)
+      if (route?.path) void favorites.forgetPath(route.path)
       orchestrator.toast?.success(`${manager.label || entity} deleted`)
       goBack()
     } catch (err) {
@@ -608,6 +628,8 @@ export function useEntityItemShowPage<T = Record<string, unknown>>(
     data: data.value as Record<string, unknown> | null,
     actions: actions.value,
     fetchError: error.value,
+    entity,
+    entityId: entityId.value ?? null,
   }))
 
   const events: ShowPageEvents = {

@@ -69,6 +69,62 @@ Data that does not fit the schema draws the `invalid` state with the path and th
 }
 ```
 
+## `favorites`: What do I follow?
+
+**Readings**
+
+- the pages the person starred and the searches they saved, by kind
+- each line opens its page, filtered as it was for a search
+
+**Strengths**
+
+- one click back to what someone follows, whatever its domain
+- read live: a star clicked in a header shows at once
+
+**Avoid it**
+
+- for what everyone must see: that is a board's own card, not a favourite
+
+**Sizes**: s, m. **Main action**: none: each line is its own gesture
+
+| Option | Type | Default | What it does |
+|---|---|---|---|
+| `maxItems` | integer | `8` | How many lines to show |
+| `groupByKind` | boolean | `true` | Group the lines by kind (records, lists, searches, boards) |
+
+**Data**: required `items`; the full shape is in `favorites/schema.json`.
+
+**Example**
+
+```json
+{
+  "type": "favorites",
+  "data": {
+    "items": [
+      {
+        "label": "Order 575806",
+        "to": "/orders/575806",
+        "kind": "item"
+      },
+      {
+        "label": "Returns",
+        "to": "/returns",
+        "kind": "list"
+      },
+      {
+        "label": "Orders to ship tonight",
+        "to": "/orders?status=todo",
+        "kind": "search"
+      }
+    ]
+  },
+  "options": {
+    "maxItems": 8,
+    "groupByKind": true
+  }
+}
+```
+
 ## `goal`: Am I on time?
 
 **Readings**
@@ -256,6 +312,63 @@ Data that does not fit the schema draws the `invalid` state with the path and th
   "options": {
     "ageUnit": "d",
     "maxItems": 3
+  }
+}
+```
+
+## `recent`: What was I just looking at?
+
+**Readings**
+
+- the last records the person opened, the last one first
+- what each one is, and when it was seen
+
+**Strengths**
+
+- finds again what someone was working on, without searching
+- filled on its own: nothing to set up
+
+**Avoid it**
+
+- as a history of changes: it says what was seen, not what was done
+
+**Sizes**: s, m. **Main action**: none: each line opens its record
+
+| Option | Type | Default | What it does |
+|---|---|---|---|
+| `maxItems` | integer | `5` | How many lines to show |
+
+**Data**: required `items`; the full shape is in `recent/schema.json`.
+
+**Example**
+
+```json
+{
+  "type": "recent",
+  "data": {
+    "items": [
+      {
+        "label": "Order 575806",
+        "to": "/orders/575806",
+        "at": "2026-11-19T09:38:00Z",
+        "note": "Order"
+      },
+      {
+        "label": "Mairie de Lyon",
+        "to": "/customers/88",
+        "at": "2026-11-19T08:12:00Z",
+        "note": "Customer"
+      },
+      {
+        "label": "Return 8812",
+        "to": "/returns/8812",
+        "at": "2026-11-18T16:40:00Z",
+        "note": "Return"
+      }
+    ]
+  },
+  "options": {
+    "maxItems": 5
   }
 }
 ```

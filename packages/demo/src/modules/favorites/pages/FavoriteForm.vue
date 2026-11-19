@@ -4,7 +4,8 @@
  *
  * DEMO: LookupField with two picker modes
  * ==========================================
- * The entityId field uses LookupField to select a book.
+ * The itemId field uses LookupField to select a book (kind "Record", entity "books"); the
+ * picked book becomes the favourite's page on save.
  * Two modes are demonstrated via a toggle:
  * - **inline**: AutoComplete with dropdown — type to filter, user sees title only (hidden display).
  * - **picker**: Readonly input + search button — opens a modal DataTable for rich search.
@@ -34,7 +35,15 @@ const pickerModeOptions = [
   { label: 'Picker', value: 'picker' },
 ]
 
-const form = useEntityItemFormPage({ entity: 'favorites' })
+// A book picked here becomes the favourite's page (#5349: qdadm reads `to`)
+const form = useEntityItemFormPage({
+  entity: 'favorites',
+  transformSave: (data) => ({
+    ...data,
+    ...(data.kind === 'item' && data.entity === 'books' && data.itemId && !data.to ? { to: `/books/${data.itemId}` } : {}),
+    at: data.at || new Date().toISOString(),
+  }),
+})
 
 form.generateFields()
 form.addSaveAction({ andClose: true })
@@ -43,8 +52,8 @@ if (form.isEdit.value) {
   form.addDeleteAction()
 }
 
-// Show book lookup only when entityType is 'book'
-const showBookLookup = computed(() => form.data.value.entityType === 'book')
+// Show the book lookup for a record of the books
+const showBookLookup = computed(() => form.data.value.kind === 'item' && form.data.value.entity === 'books')
 </script>
 
 <template>
@@ -52,8 +61,8 @@ const showBookLookup = computed(() => form.data.value.entityType === 'book')
     <template #fields>
       <div class="form-grid">
         <FormField v-for="f in form.fields.value" :key="f.name" :name="f.name" :label="f.label">
-          <!-- entityId when type=book: LookupField with mode toggle -->
-          <template v-if="f.name === 'entityId' && showBookLookup">
+          <!-- itemId for a record of the books: LookupField with mode toggle -->
+          <template v-if="f.name === 'itemId' && showBookLookup">
             <div class="flex flex-column gap-2">
               <SelectButton
                 v-model="pickerMode"

@@ -125,6 +125,11 @@ const props = defineProps({
   // UI options
   showActions: { type: Boolean, default: true },
   cardWrapper: { type: Boolean, default: true },
+  // The favourite star beside the title (#5349)
+  favorite: { type: Boolean, default: true },
+  // The entity and the record, for the favourite (#5349)
+  entity: { type: String as PropType<string | null>, default: null },
+  entityId: { type: [String, Number] as PropType<string | number | null>, default: null },
   horizontalFields: { type: Boolean, default: true },
   labelWidth: { type: String, default: '140px' },
   // Media zone options
@@ -186,7 +191,7 @@ type ShowFieldValue = string | number | boolean | Date | Record<string, unknown>
     <!-- Nav slot for PageNav (child routes) -->
     <slot name="nav" />
 
-    <PageHeader :title="title" :title-parts="titleParts" :badges="badges">
+    <PageHeader :title="title" :title-parts="titleParts" :badges="badges" :favorite="favorite ? { kind: 'item', entity, itemId: entityId } : null">
       <template #actions>
         <slot name="header-actions" />
         <!-- Header actions from builder (e.g., edit) -->

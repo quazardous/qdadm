@@ -22,7 +22,7 @@ import { useFavoriteAction } from '@/composables/useFavoriteAction'
 const list = useListPage({ entity: 'books' })
 
 // ============ FAVORITE ACTION ============
-useFavoriteAction(list, 'book', { labelField: 'title' })
+useFavoriteAction(list, { labelField: 'title' })
 
 // ============ SEARCH ============
 list.setSearch({

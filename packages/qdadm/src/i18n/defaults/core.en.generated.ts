@@ -465,6 +465,25 @@ export default `core:
       done: done
       urgent: urgent
       todo: to do
+  # Favourites and recents: the star, "Save this search", the two cards (#5349)
+  favorites:
+    add: "Add {label} to favourites"
+    remove: "Remove {label} from favourites"
+    saveSearch: Save this search
+    searchSaved: Search saved
+    searchName: Name of the search
+    save: Save
+    title: Favourites
+    none: "No favourites yet: the star beside a page title adds one"
+    recentTitle: Recent
+    noneRecent: Nothing opened yet
+    noEntity: No favorites entity is declared
+    noRecentsEntity: No recents entity is declared
+    kind:
+      item: Records
+      list: Lists
+      search: Searches
+      board: Boards
   # NotFoundPage
   notFound:
     title: Page not found

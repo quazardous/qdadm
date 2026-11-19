@@ -9,7 +9,7 @@
  */
 import { ref } from 'vue'
 import Checkbox from 'primevue/checkbox'
-import { usePageTitle, CardsDashboard, Zone } from '@quazardous/qdadm'
+import { usePageTitle, CardsDashboard, Zone, QdFavoriteStar } from '@quazardous/qdadm'
 import SelectButton from 'primevue/selectbutton'
 
 usePageTitle('Dashboard')
@@ -46,6 +46,7 @@ const serverStorage = {
         pick, and "Add a section" groups them. The arrangement is kept in this browser, per user; "Customisable, server" keeps it
         through a fake server (600 ms per call), saved once when you press Done.
       </p>
+      <QdFavoriteStar label="Dashboard" kind="board" />
       <SelectButton v-model="mode" :options="modes" option-label="label" option-value="value" :allow-empty="false" />
     </div>
     <label v-if="mode === 'server'" class="fail-saves">

@@ -61,7 +61,8 @@ const kernel = new Kernel({
           ROLE_ADMIN: ['ROLE_USER']
         },
         role_permissions: {
-          ROLE_USER: ['entity:*:read', 'entity:*:list'],
+          // Everyone keeps their own favourites and recents (#5349)
+          ROLE_USER: ['entity:*:read', 'entity:*:list', 'entity:favorites:*', 'entity:recents:*'],
           ROLE_ADMIN: ['entity:*:create', 'entity:*:update', 'entity:*:delete', 'admin:**', 'security:**', 'auth:impersonate']
         },
         role_labels: {
