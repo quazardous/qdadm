@@ -377,10 +377,19 @@ export function useNavContext(_options: UseNavContextOptions = {}): UseNavContex
     return route.params[parentConfig.value.param]
   })
 
+  // A page of a tabbed item (#4963): the frame's tabs are its navigation, so
+  // the breadcrumb's sibling links would only repeat them (#4978). The frame
+  // is a matched record, which the breadcrumb (rendered above it) can read.
+  const inItemTabs = computed(() => {
+    const parent = parentConfig.value?.entity
+    if (!parent) return false
+    return route.matched.some((r) => (r.meta?.itemTabs as { entity?: string } | undefined)?.entity === parent)
+  })
+
   const navlinks = computed(() => {
     void i18nLocale.value // "Details" label re-resolves on locale change
 
-    if (!parentConfig.value) return []
+    if (!parentConfig.value || inItemTabs.value) return []
 
     const { entity: parentEntity, param, itemRoute } = parentConfig.value
     const parentManager = getManager(parentEntity)
@@ -523,7 +532,9 @@ export function useNavContext(_options: UseNavContextOptions = {}): UseNavContex
     const manager = getManager(parentConfig.value.entity)
     if (!manager?.routePrefix) return []
 
-    return (['show', 'edit'] as const)
+    // In a tabbed item the Details tab is the View link; Edit has no tab
+    const targets = inItemTabs.value ? (['edit'] as const) : (['show', 'edit'] as const)
+    return targets
       .map((target) => buildModeLink(manager, target, parentId.value, entityData.value))
       .filter((link): link is BreadcrumbModeToggle => link !== null)
   })

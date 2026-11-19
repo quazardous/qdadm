@@ -873,8 +873,9 @@ ctx.itemTabs('instances', { header: InstanceHeader })
   from the active stack, so it follows changes like `parentData` does.
 - **The pages** stay what they are. Their names, paths, guards and breadcrumb
   do not change: they become children of one frame route, whose component is
-  `EntityItemLayout` (or `component` for your own frame). A `<PageNav/>` in a
-  page stays silent inside the frame.
+  `EntityItemLayout` (or `component` for your own frame). The tabs are the
+  navigation: the breadcrumb leaves out its sibling links and the View link
+  (the Details tab), and keeps Edit; a `<PageNav/>` in a page stays silent.
 - Without a show page, the item opens on its first tab.
 
 Every page of the item must use the same param for the item's id. A child

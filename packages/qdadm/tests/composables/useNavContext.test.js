@@ -230,6 +230,43 @@ describe('useNavContext modeLinks on child pages (#1353)', () => {
   })
 })
 
+describe('useNavContext inside a tabbed item (#4978)', () => {
+  // The frame of ctx.itemTabs('bots'): the tabs are the navigation
+  function createFramedRouter({ framed = true } = {}) {
+    const pages = [
+      { path: '', name: 'bots-show', meta: { entity: 'bots' }, component: Stub },
+      { path: 'tasks', name: 'bot-tasks', meta: { entity: 'tasks', layout: 'list', parent: { entity: 'bots', param: 'id' } }, component: Stub },
+      { path: 'guide', name: 'bot-guide', meta: { layout: 'page', parent: { entity: 'bots', param: 'id' } }, component: Stub },
+    ]
+    const routes = [
+      { path: '/', name: 'home', component: Stub },
+      { path: '/bots', name: 'bots', meta: { entity: 'bots' }, component: Stub },
+      { path: '/bots/:id/edit', name: 'bots-edit', meta: { entity: 'bots' }, component: Stub },
+    ]
+    if (framed) {
+      routes.push({ path: '/bots/:id', component: Stub, meta: { itemTabs: { entity: 'bots', param: 'id' } }, children: pages })
+    } else {
+      for (const p of pages) routes.push({ ...p, path: p.path ? `/bots/:id/${p.path}` : '/bots/:id' })
+    }
+    return createRouter({ history: createMemoryHistory(), routes })
+  }
+
+  it('the sibling links and View go quiet; Edit stays', async () => {
+    const { nav } = await mountNav(createFramedRouter(), { path: '/bots/1/guide' })
+    expect(nav.navlinks.value).toEqual([])
+    expect(nav.modeLinks.value).toEqual([
+      { target: 'edit', to: { name: 'bots-edit', params: { id: '1' } }, label: 'Edit' },
+    ])
+  })
+
+  it('outside a frame, nothing changes', async () => {
+    const { nav } = await mountNav(createFramedRouter({ framed: false }), { path: '/bots/1/guide' })
+    // The registry holds no siblings here: the Details link alone
+    expect(nav.navlinks.value.map((l) => l.label)).toEqual(['Details'])
+    expect(nav.modeLinks.value.map((l) => l.target)).toEqual(['show', 'edit'])
+  })
+})
+
 describe('useNavContext labels follow the i18n locale (#4147)', () => {
   it('reads Home and Create from the catalog, English without a kernel', async () => {
     const i18n = new I18n({ defaultLocale: 'fr' })
