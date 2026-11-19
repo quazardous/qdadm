@@ -1,0 +1,48 @@
+{
+  "type": "object",
+  "required": [
+    "items"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "now": {
+      "type": [
+        "string",
+        "number"
+      ],
+      "description": "Today, for the words \"tomorrow\"; default the clock"
+    },
+    "items": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "at",
+          "label"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "at": {
+            "type": [
+              "string",
+              "number"
+            ]
+          },
+          "label": {
+            "type": "string"
+          },
+          "to": {
+            "type": [
+              "string",
+              "object"
+            ],
+            "description": "Where it opens"
+          },
+          "allDay": {
+            "type": "boolean"
+          }
+        }
+      }
+    }
+  }
+}

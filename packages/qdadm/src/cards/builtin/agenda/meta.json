@@ -1,0 +1,60 @@
+{
+  "type": "agenda",
+  "title": "Agenda",
+  "question": "What is coming?",
+  "readings": [
+    "each line: when (a time today, \"tomorrow\", a date) and what",
+    "the first ones first"
+  ],
+  "strengths": [
+    "what to get ready for, in the order it comes",
+    "each line opens its item"
+  ],
+  "avoid": [
+    "for what already happened: use feed",
+    "for items to process now: use queue"
+  ],
+  "sizes": [
+    "s",
+    "m"
+  ],
+  "options": {
+    "maxItems": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 10,
+      "default": 4,
+      "description": "How many lines"
+    }
+  },
+  "action": "mode list: the whole calendar",
+  "example": {
+    "envelope": {
+      "title": "Today",
+      "status": "info",
+      "source": "logistics",
+      "to": "/pickups",
+      "size": "s"
+    },
+    "data": {
+      "now": "2026-11-19T09:00:00",
+      "items": [
+        {
+          "at": "2026-11-19T14:00:00",
+          "label": "DPD pickup · 41 parcels, 48 ready"
+        },
+        {
+          "at": "2026-11-19T16:30:00",
+          "label": "Chronopost pickup · 12 parcels"
+        },
+        {
+          "at": "2026-11-20T10:00:00",
+          "label": "Ingram delivery · 3 purchases expected"
+        }
+      ]
+    },
+    "options": {
+      "maxItems": 4
+    }
+  }
+}

@@ -139,6 +139,11 @@ export class OpsDemoModule extends Module {
     // The person's favourites and the records they opened lately (#5349), live
     ctx.block('ops-dashboard', { id: 'favorites', component: QdFavoritesCard, weight: 5, card: { title: 'Favourites', pinned: true } })
     ctx.block('ops-dashboard', { id: 'recent', component: QdRecentCard, weight: 6, card: { title: 'Recent' } })
+    // Ready-made cards fed from the books (#5355)
+    const BooksCard = defineAsyncComponent(() => import('./pages/BooksCard.vue'))
+    ctx.block('ops-dashboard', { id: 'books-ranking', component: BooksCard, props: { kind: 'ranking' }, weight: 80, card: { title: 'Most loaned' } })
+    ctx.block('ops-dashboard', { id: 'books-split', component: BooksCard, props: { kind: 'split' }, weight: 81, card: { title: 'Catalogue by genre' } })
+    ctx.block('ops-dashboard', { id: 'loans-agenda', component: BooksCard, props: { kind: 'agenda' }, weight: 82, card: { title: 'Loans coming back' } })
     // A card each person adds from the catalogue, once per genre (#5348): its
     // parameters are a schema, and arrive as its props
     ctx.block('ops-dashboard', {

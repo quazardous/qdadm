@@ -1,0 +1,35 @@
+{
+  "type": "object",
+  "required": [
+    "items"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "items": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "label",
+          "value"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "label": {
+            "type": "string"
+          },
+          "value": {
+            "type": "number"
+          },
+          "to": {
+            "type": [
+              "string",
+              "object"
+            ],
+            "description": "Where it opens"
+          }
+        }
+      }
+    }
+  }
+}

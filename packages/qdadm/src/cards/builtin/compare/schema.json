@@ -1,0 +1,40 @@
+{
+  "type": "object",
+  "required": [
+    "now",
+    "then"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "now": {
+      "type": "object",
+      "required": [
+        "value"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "value": {
+          "type": "number"
+        },
+        "label": {
+          "type": "string"
+        }
+      }
+    },
+    "then": {
+      "type": "object",
+      "required": [
+        "value"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "value": {
+          "type": "number"
+        },
+        "label": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}

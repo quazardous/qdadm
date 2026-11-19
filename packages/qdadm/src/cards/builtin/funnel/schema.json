@@ -1,0 +1,37 @@
+{
+  "type": "object",
+  "required": [
+    "steps"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "steps": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "label",
+          "value"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "label": {
+            "type": "string"
+          },
+          "value": {
+            "type": "number",
+            "minimum": 0
+          },
+          "to": {
+            "type": [
+              "string",
+              "object"
+            ],
+            "description": "Where it opens"
+          }
+        }
+      }
+    }
+  }
+}

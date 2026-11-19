@@ -408,6 +408,24 @@ export default `core:
     invalid: Données invalides
     moreProblems: "et {count} de plus"
     overdue: en retard
+    compare:
+      points: pt
+    trend:
+      within: Dans la normale
+      outside: "{count} point hors de la normale | {count} points hors de la normale"
+    split:
+      others: Autres
+    funnel:
+      loss: "−{count} entre {from} et {to}"
+    heat:
+      low: Moins
+      high: "Plus (jusqu'à {max})"
+    agenda:
+      today: Aujourd'hui
+      tomorrow: Demain
+      yesterday: Hier
+      tomorrowAt: "Demain {time}"
+      yesterdayAt: "Hier {time}"
     ageUnit:
       min: min
       h: h

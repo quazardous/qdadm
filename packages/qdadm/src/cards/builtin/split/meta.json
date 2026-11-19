@@ -1,0 +1,72 @@
+{
+  "type": "split",
+  "title": "Split",
+  "question": "Where does it come from?",
+  "readings": [
+    "the total",
+    "one bar split in parts, a fixed colour per part",
+    "the legend: each part's name and value, written, so colour is never needed"
+  ],
+  "strengths": [
+    "the weight of each source in one line",
+    "the biggest parts first, the small ones grouped in \"others\""
+  ],
+  "avoid": [
+    "for more than a handful of parts: use ranking",
+    "for a change over time: use trend"
+  ],
+  "sizes": [
+    "s",
+    "m"
+  ],
+  "options": {
+    "maxParts": {
+      "type": "integer",
+      "minimum": 2,
+      "maximum": 6,
+      "default": 4,
+      "description": "Parts drawn; the rest go into \"others\""
+    },
+    "unit": {
+      "type": "string",
+      "description": "Written after the total"
+    }
+  },
+  "action": "mode list: the detail by part",
+  "example": {
+    "envelope": {
+      "title": "Today's orders",
+      "status": "info",
+      "source": "marketplaces",
+      "to": "/orders",
+      "size": "s"
+    },
+    "data": {
+      "parts": [
+        {
+          "label": "Amazon FR",
+          "value": 82
+        },
+        {
+          "label": "Shop",
+          "value": 50
+        },
+        {
+          "label": "Cdiscount",
+          "value": 35
+        },
+        {
+          "label": "Fnac",
+          "value": 12
+        },
+        {
+          "label": "Rakuten",
+          "value": 7
+        }
+      ]
+    },
+    "options": {
+      "maxParts": 3
+    }
+  }
+}

@@ -1,0 +1,58 @@
+{
+  "type": "object",
+  "required": [
+    "series"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "label": {
+      "type": "string",
+      "description": "What the last value is: \"orders this hour\""
+    },
+    "normal": {
+      "type": "object",
+      "required": [
+        "low",
+        "high"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "low": {
+          "type": "number"
+        },
+        "high": {
+          "type": "number"
+        }
+      },
+      "description": "One band for the whole curve"
+    },
+    "series": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "value"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "value": {
+            "type": "number"
+          },
+          "at": {
+            "type": [
+              "string",
+              "number"
+            ]
+          },
+          "low": {
+            "type": "number",
+            "description": "This point's own band"
+          },
+          "high": {
+            "type": "number"
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,40 @@
+{
+  "type": "object",
+  "required": [
+    "parts"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "total": {
+      "type": "number",
+      "description": "The total, when the parts do not sum to it"
+    },
+    "parts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "label",
+          "value"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "label": {
+            "type": "string"
+          },
+          "value": {
+            "type": "number",
+            "minimum": 0
+          },
+          "to": {
+            "type": [
+              "string",
+              "object"
+            ],
+            "description": "Where it opens"
+          }
+        }
+      }
+    }
+  }
+}

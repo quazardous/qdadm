@@ -1,0 +1,71 @@
+{
+  "type": "ranking",
+  "title": "Ranking",
+  "question": "What works?",
+  "readings": [
+    "the rank, the name, the value: the first ones of a list",
+    "the bar, when asked: each value against the first"
+  ],
+  "strengths": [
+    "the few that count, in order",
+    "each line opens its item"
+  ],
+  "avoid": [
+    "when the items are to process: use queue",
+    "for shares of a whole: use split"
+  ],
+  "sizes": [
+    "s",
+    "m"
+  ],
+  "options": {
+    "maxItems": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 10,
+      "default": 5,
+      "description": "How many lines"
+    },
+    "unit": {
+      "type": "string",
+      "description": "Written after each value"
+    },
+    "bars": {
+      "type": "boolean",
+      "default": false,
+      "description": "Draw a bar per line, scaled to the first"
+    }
+  },
+  "action": "mode list: the whole ranking",
+  "example": {
+    "envelope": {
+      "title": "Best sellers (7 d)",
+      "status": "info",
+      "source": "catalogue",
+      "to": "/products",
+      "size": "s"
+    },
+    "data": {
+      "items": [
+        {
+          "label": "iiyama ProLite 27\" screen",
+          "value": 142,
+          "to": "/products/1"
+        },
+        {
+          "label": "Brother MFC-J5345DW",
+          "value": 97,
+          "to": "/products/2"
+        },
+        {
+          "label": "Samsung 24\" S3",
+          "value": 88,
+          "to": "/products/3"
+        }
+      ]
+    },
+    "options": {
+      "maxItems": 5
+    }
+  }
+}

@@ -1,0 +1,53 @@
+{
+  "type": "funnel",
+  "title": "Funnel",
+  "question": "Where is it lost?",
+  "readings": [
+    "each step with its count",
+    "the bars, scaled to the first step",
+    "the loss between two steps, in words"
+  ],
+  "strengths": [
+    "shows the step that leaks",
+    "the losses are written, not guessed from bars"
+  ],
+  "avoid": [
+    "for parts that are not steps of one path: use split"
+  ],
+  "sizes": [
+    "s",
+    "m"
+  ],
+  "options": {},
+  "action": "mode list: the items stuck at the leaking step",
+  "example": {
+    "envelope": {
+      "title": "Quotes this month",
+      "status": "info",
+      "source": "sales",
+      "to": "/quotes",
+      "size": "s"
+    },
+    "data": {
+      "steps": [
+        {
+          "label": "sent",
+          "value": 84
+        },
+        {
+          "label": "followed up",
+          "value": 51
+        },
+        {
+          "label": "signed",
+          "value": 26
+        },
+        {
+          "label": "delivered",
+          "value": 20
+        }
+      ]
+    },
+    "options": {}
+  }
+}

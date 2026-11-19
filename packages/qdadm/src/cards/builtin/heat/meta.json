@@ -1,0 +1,101 @@
+{
+  "type": "heat",
+  "title": "Heat",
+  "question": "When?",
+  "readings": [
+    "the grid: rows and columns (days × hours, weeks × days)",
+    "each cell's shade: its value on a sequential scale, from the lightest to the darkest",
+    "the legend: what the lightest and the darkest mean; each cell gives its value in its title too"
+  ],
+  "strengths": [
+    "the busy hours of a week at a glance",
+    "patterns a curve hides"
+  ],
+  "avoid": [
+    "for exact values: use a ranking or a table",
+    "for one series over time: use trend"
+  ],
+  "sizes": [
+    "m",
+    "l"
+  ],
+  "options": {},
+  "action": "mode list: the items of a busy cell",
+  "example": {
+    "envelope": {
+      "title": "Orders by hour",
+      "status": "info",
+      "source": "shop",
+      "to": "/orders",
+      "size": "m"
+    },
+    "data": {
+      "columns": [
+        "8h",
+        "10h",
+        "12h",
+        "14h",
+        "16h",
+        "18h"
+      ],
+      "rows": [
+        {
+          "label": "Mon",
+          "cells": [
+            3,
+            8,
+            12,
+            9,
+            7,
+            4
+          ]
+        },
+        {
+          "label": "Tue",
+          "cells": [
+            2,
+            9,
+            14,
+            10,
+            8,
+            5
+          ]
+        },
+        {
+          "label": "Wed",
+          "cells": [
+            4,
+            7,
+            11,
+            12,
+            6,
+            3
+          ]
+        },
+        {
+          "label": "Thu",
+          "cells": [
+            3,
+            10,
+            15,
+            11,
+            9,
+            6
+          ]
+        },
+        {
+          "label": "Fri",
+          "cells": [
+            5,
+            12,
+            18,
+            13,
+            11,
+            2
+          ]
+        }
+      ]
+    },
+    "options": {}
+  }
+}

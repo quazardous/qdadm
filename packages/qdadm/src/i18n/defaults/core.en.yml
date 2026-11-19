@@ -406,6 +406,24 @@ core:
     invalid: Invalid data
     moreProblems: "and {count} more"
     overdue: overdue
+    compare:
+      points: pt
+    trend:
+      within: Within the normal
+      outside: "{count} point outside the normal | {count} points outside the normal"
+    split:
+      others: Others
+    funnel:
+      loss: "−{count} between {from} and {to}"
+    heat:
+      low: Fewer
+      high: "More (up to {max})"
+    agenda:
+      today: Today
+      tomorrow: Tomorrow
+      yesterday: Yesterday
+      tomorrowAt: "Tomorrow {time}"
+      yesterdayAt: "Yesterday {time}"
     ageUnit:
       min: min
       h: h

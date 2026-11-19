@@ -1,0 +1,81 @@
+{
+  "type": "trend",
+  "title": "Trend",
+  "question": "Is this normal?",
+  "readings": [
+    "the curve: the values over time, the last one written",
+    "the band: where the values usually sit",
+    "the marked points: the ones outside the band, counted in words"
+  ],
+  "strengths": [
+    "says at once whether today is unusual",
+    "the band carries the context a bare curve lacks"
+  ],
+  "avoid": [
+    "without a notion of normal: use metric",
+    "for two moments only: use compare"
+  ],
+  "sizes": [
+    "m",
+    "l"
+  ],
+  "options": {
+    "unit": {
+      "type": "string",
+      "description": "Written after the last value"
+    },
+    "decimals": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 4,
+      "default": 0,
+      "description": "Digits after the decimal point"
+    }
+  },
+  "action": "mode list: the points outside the normal",
+  "example": {
+    "envelope": {
+      "title": "Orders per hour",
+      "status": "watch",
+      "source": "shop",
+      "to": "/orders",
+      "size": "m"
+    },
+    "data": {
+      "label": "orders this hour",
+      "normal": {
+        "low": 20,
+        "high": 40
+      },
+      "series": [
+        {
+          "value": 28
+        },
+        {
+          "value": 31
+        },
+        {
+          "value": 26
+        },
+        {
+          "value": 35
+        },
+        {
+          "value": 44
+        },
+        {
+          "value": 38
+        },
+        {
+          "value": 17
+        },
+        {
+          "value": 29
+        }
+      ]
+    },
+    "options": {
+      "decimals": 0
+    }
+  }
+}

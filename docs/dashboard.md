@@ -54,7 +54,7 @@ what does not fit draws the `invalid` state with the path and the reason, and
 the rest of the board keeps working. Options are declared in the sheet, with
 their defaults; a card is set by its options, not by CSS.
 
-The generic cards: `metric`, `queue`, `goal`, `bullet`.
+The generic cards: `metric`, `queue`, `goal`, `bullet`, `compare`, `trend`, `ranking`, `split`, `funnel`, `heat`, `agenda`, `feed`, and `favorites` and `recent` (below). The [bestiary](cards.md) says which question each answers.
 
 ### A card type of your own
 

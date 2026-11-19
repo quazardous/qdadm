@@ -2,6 +2,114 @@
   "generatedBy": "qdadm-cards index",
   "cards": [
     {
+      "type": "agenda",
+      "title": "Agenda",
+      "question": "What is coming?",
+      "readings": [
+        "each line: when (a time today, \"tomorrow\", a date) and what",
+        "the first ones first"
+      ],
+      "strengths": [
+        "what to get ready for, in the order it comes",
+        "each line opens its item"
+      ],
+      "avoid": [
+        "for what already happened: use feed",
+        "for items to process now: use queue"
+      ],
+      "sizes": [
+        "s",
+        "m"
+      ],
+      "options": {
+        "maxItems": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 10,
+          "default": 4,
+          "description": "How many lines"
+        }
+      },
+      "action": "mode list: the whole calendar",
+      "example": {
+        "envelope": {
+          "title": "Today",
+          "status": "info",
+          "source": "logistics",
+          "to": "/pickups",
+          "size": "s"
+        },
+        "data": {
+          "now": "2026-11-19T09:00:00",
+          "items": [
+            {
+              "at": "2026-11-19T14:00:00",
+              "label": "DPD pickup · 41 parcels, 48 ready"
+            },
+            {
+              "at": "2026-11-19T16:30:00",
+              "label": "Chronopost pickup · 12 parcels"
+            },
+            {
+              "at": "2026-11-20T10:00:00",
+              "label": "Ingram delivery · 3 purchases expected"
+            }
+          ]
+        },
+        "options": {
+          "maxItems": 4
+        }
+      },
+      "schema": {
+        "type": "object",
+        "required": [
+          "items"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "now": {
+            "type": [
+              "string",
+              "number"
+            ],
+            "description": "Today, for the words \"tomorrow\"; default the clock"
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "at",
+                "label"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "at": {
+                  "type": [
+                    "string",
+                    "number"
+                  ]
+                },
+                "label": {
+                  "type": "string"
+                },
+                "to": {
+                  "type": [
+                    "string",
+                    "object"
+                  ],
+                  "description": "Where it opens"
+                },
+                "allDay": {
+                  "type": "boolean"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
       "type": "bullet",
       "title": "Bullet",
       "question": "Is the value good, fair or poor, and how far from the target?",
@@ -101,6 +209,125 @@
           "max": {
             "type": "number",
             "description": "The axis end (default: a little past the largest number)"
+          }
+        }
+      }
+    },
+    {
+      "type": "compare",
+      "title": "Compare",
+      "question": "Better or worse than before?",
+      "readings": [
+        "the two values side by side: now, and the one it is compared with, each with its label",
+        "the change: signed, in points or in percent, toned good or bad by higherIs"
+      ],
+      "strengths": [
+        "answers \"compared with what?\" without a curve",
+        "the change is written, not only drawn"
+      ],
+      "avoid": [
+        "for a level over many periods: use trend or metric",
+        "for more than two values: use ranking"
+      ],
+      "sizes": [
+        "s",
+        "m"
+      ],
+      "options": {
+        "unit": {
+          "type": "string",
+          "description": "Written after both values: \"%\", \"k€\""
+        },
+        "decimals": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4,
+          "default": 1,
+          "description": "Digits after the decimal point"
+        },
+        "higherIs": {
+          "type": "string",
+          "enum": [
+            "better",
+            "worse",
+            "neutral"
+          ],
+          "default": "better",
+          "description": "Whether a rise is good news"
+        },
+        "changeAs": {
+          "type": "string",
+          "enum": [
+            "points",
+            "percent"
+          ],
+          "default": "points",
+          "description": "The change as a difference (points) or as a share of the old value (percent)"
+        }
+      },
+      "action": "mode list: the detail behind the two values",
+      "example": {
+        "envelope": {
+          "title": "Average margin",
+          "status": "watch",
+          "source": "sales",
+          "to": "/margins",
+          "size": "s"
+        },
+        "data": {
+          "now": {
+            "value": 11.8,
+            "label": "November"
+          },
+          "then": {
+            "value": 13.1,
+            "label": "November 2025"
+          }
+        },
+        "options": {
+          "unit": "%",
+          "decimals": 1,
+          "higherIs": "better",
+          "changeAs": "points"
+        }
+      },
+      "schema": {
+        "type": "object",
+        "required": [
+          "now",
+          "then"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "now": {
+            "type": "object",
+            "required": [
+              "value"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "value": {
+                "type": "number"
+              },
+              "label": {
+                "type": "string"
+              }
+            }
+          },
+          "then": {
+            "type": "object",
+            "required": [
+              "value"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "value": {
+                "type": "number"
+              },
+              "label": {
+                "type": "string"
+              }
+            }
           }
         }
       }
@@ -213,6 +440,214 @@
       }
     },
     {
+      "type": "feed",
+      "title": "Feed",
+      "question": "What happened?",
+      "readings": [
+        "each line: when, and what happened",
+        "its status, when it has one: a side mark and a word"
+      ],
+      "strengths": [
+        "the notable events, the latest first",
+        "each line opens its item"
+      ],
+      "avoid": [
+        "for a full log: link to it",
+        "for what is coming: use agenda"
+      ],
+      "sizes": [
+        "s",
+        "m"
+      ],
+      "options": {
+        "maxItems": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 10,
+          "default": 4,
+          "description": "How many lines"
+        }
+      },
+      "action": "mode list: all the events",
+      "example": {
+        "envelope": {
+          "title": "Worth knowing",
+          "status": "info",
+          "source": "all",
+          "to": "/events",
+          "size": "s"
+        },
+        "data": {
+          "now": "2026-11-19T11:00:00",
+          "items": [
+            {
+              "at": "2026-11-19T10:42:00",
+              "label": "€24k order (Mairie de Lyon) to approve",
+              "status": "watch",
+              "to": "/orders/575806"
+            },
+            {
+              "at": "2026-11-19T09:15:00",
+              "label": "Westcoast: 258 products back on sale",
+              "status": "good"
+            },
+            {
+              "at": "2026-11-19T08:03:00",
+              "label": "2/5 customer review on Amazon, order 575806",
+              "status": "critical"
+            }
+          ]
+        },
+        "options": {
+          "maxItems": 4
+        }
+      },
+      "schema": {
+        "type": "object",
+        "required": [
+          "items"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "now": {
+            "type": [
+              "string",
+              "number"
+            ],
+            "description": "Now, to say \"today\"; default the clock"
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "at",
+                "label"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "at": {
+                  "type": [
+                    "string",
+                    "number"
+                  ]
+                },
+                "label": {
+                  "type": "string"
+                },
+                "to": {
+                  "type": [
+                    "string",
+                    "object"
+                  ],
+                  "description": "Where it opens"
+                },
+                "status": {
+                  "type": "string",
+                  "enum": [
+                    "critical",
+                    "watch",
+                    "good",
+                    "info"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "funnel",
+      "title": "Funnel",
+      "question": "Where is it lost?",
+      "readings": [
+        "each step with its count",
+        "the bars, scaled to the first step",
+        "the loss between two steps, in words"
+      ],
+      "strengths": [
+        "shows the step that leaks",
+        "the losses are written, not guessed from bars"
+      ],
+      "avoid": [
+        "for parts that are not steps of one path: use split"
+      ],
+      "sizes": [
+        "s",
+        "m"
+      ],
+      "options": {},
+      "action": "mode list: the items stuck at the leaking step",
+      "example": {
+        "envelope": {
+          "title": "Quotes this month",
+          "status": "info",
+          "source": "sales",
+          "to": "/quotes",
+          "size": "s"
+        },
+        "data": {
+          "steps": [
+            {
+              "label": "sent",
+              "value": 84
+            },
+            {
+              "label": "followed up",
+              "value": 51
+            },
+            {
+              "label": "signed",
+              "value": 26
+            },
+            {
+              "label": "delivered",
+              "value": 20
+            }
+          ]
+        },
+        "options": {}
+      },
+      "schema": {
+        "type": "object",
+        "required": [
+          "steps"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "steps": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "object",
+              "required": [
+                "label",
+                "value"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "label": {
+                  "type": "string"
+                },
+                "value": {
+                  "type": "number",
+                  "minimum": 0
+                },
+                "to": {
+                  "type": [
+                    "string",
+                    "object"
+                  ],
+                  "description": "Where it opens"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
       "type": "goal",
       "title": "Goal",
       "question": "Am I on time?",
@@ -296,6 +731,146 @@
           "now": {
             "type": "string",
             "description": "Today, when it is not the browser's (ISO date)"
+          }
+        }
+      }
+    },
+    {
+      "type": "heat",
+      "title": "Heat",
+      "question": "When?",
+      "readings": [
+        "the grid: rows and columns (days × hours, weeks × days)",
+        "each cell's shade: its value on a sequential scale, from the lightest to the darkest",
+        "the legend: what the lightest and the darkest mean; each cell gives its value in its title too"
+      ],
+      "strengths": [
+        "the busy hours of a week at a glance",
+        "patterns a curve hides"
+      ],
+      "avoid": [
+        "for exact values: use a ranking or a table",
+        "for one series over time: use trend"
+      ],
+      "sizes": [
+        "m",
+        "l"
+      ],
+      "options": {},
+      "action": "mode list: the items of a busy cell",
+      "example": {
+        "envelope": {
+          "title": "Orders by hour",
+          "status": "info",
+          "source": "shop",
+          "to": "/orders",
+          "size": "m"
+        },
+        "data": {
+          "columns": [
+            "8h",
+            "10h",
+            "12h",
+            "14h",
+            "16h",
+            "18h"
+          ],
+          "rows": [
+            {
+              "label": "Mon",
+              "cells": [
+                3,
+                8,
+                12,
+                9,
+                7,
+                4
+              ]
+            },
+            {
+              "label": "Tue",
+              "cells": [
+                2,
+                9,
+                14,
+                10,
+                8,
+                5
+              ]
+            },
+            {
+              "label": "Wed",
+              "cells": [
+                4,
+                7,
+                11,
+                12,
+                6,
+                3
+              ]
+            },
+            {
+              "label": "Thu",
+              "cells": [
+                3,
+                10,
+                15,
+                11,
+                9,
+                6
+              ]
+            },
+            {
+              "label": "Fri",
+              "cells": [
+                5,
+                12,
+                18,
+                13,
+                11,
+                2
+              ]
+            }
+          ]
+        },
+        "options": {}
+      },
+      "schema": {
+        "type": "object",
+        "required": [
+          "columns",
+          "rows"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "columns": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "rows": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "label",
+                "cells"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "label": {
+                  "type": "string"
+                },
+                "cells": {
+                  "type": "array",
+                  "items": {
+                    "type": "number",
+                    "minimum": 0
+                  }
+                }
+              }
+            }
           }
         }
       }
@@ -654,6 +1229,112 @@
       }
     },
     {
+      "type": "ranking",
+      "title": "Ranking",
+      "question": "What works?",
+      "readings": [
+        "the rank, the name, the value: the first ones of a list",
+        "the bar, when asked: each value against the first"
+      ],
+      "strengths": [
+        "the few that count, in order",
+        "each line opens its item"
+      ],
+      "avoid": [
+        "when the items are to process: use queue",
+        "for shares of a whole: use split"
+      ],
+      "sizes": [
+        "s",
+        "m"
+      ],
+      "options": {
+        "maxItems": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 10,
+          "default": 5,
+          "description": "How many lines"
+        },
+        "unit": {
+          "type": "string",
+          "description": "Written after each value"
+        },
+        "bars": {
+          "type": "boolean",
+          "default": false,
+          "description": "Draw a bar per line, scaled to the first"
+        }
+      },
+      "action": "mode list: the whole ranking",
+      "example": {
+        "envelope": {
+          "title": "Best sellers (7 d)",
+          "status": "info",
+          "source": "catalogue",
+          "to": "/products",
+          "size": "s"
+        },
+        "data": {
+          "items": [
+            {
+              "label": "iiyama ProLite 27\" screen",
+              "value": 142,
+              "to": "/products/1"
+            },
+            {
+              "label": "Brother MFC-J5345DW",
+              "value": 97,
+              "to": "/products/2"
+            },
+            {
+              "label": "Samsung 24\" S3",
+              "value": 88,
+              "to": "/products/3"
+            }
+          ]
+        },
+        "options": {
+          "maxItems": 5
+        }
+      },
+      "schema": {
+        "type": "object",
+        "required": [
+          "items"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "label",
+                "value"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "label": {
+                  "type": "string"
+                },
+                "value": {
+                  "type": "number"
+                },
+                "to": {
+                  "type": [
+                    "string",
+                    "object"
+                  ],
+                  "description": "Where it opens"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
       "type": "recent",
       "title": "Recent",
       "question": "What was I just looking at?",
@@ -751,6 +1432,257 @@
                 "note": {
                   "type": "string",
                   "description": "What it is: \"Book\", \"Order\""
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "split",
+      "title": "Split",
+      "question": "Where does it come from?",
+      "readings": [
+        "the total",
+        "one bar split in parts, a fixed colour per part",
+        "the legend: each part's name and value, written, so colour is never needed"
+      ],
+      "strengths": [
+        "the weight of each source in one line",
+        "the biggest parts first, the small ones grouped in \"others\""
+      ],
+      "avoid": [
+        "for more than a handful of parts: use ranking",
+        "for a change over time: use trend"
+      ],
+      "sizes": [
+        "s",
+        "m"
+      ],
+      "options": {
+        "maxParts": {
+          "type": "integer",
+          "minimum": 2,
+          "maximum": 6,
+          "default": 4,
+          "description": "Parts drawn; the rest go into \"others\""
+        },
+        "unit": {
+          "type": "string",
+          "description": "Written after the total"
+        }
+      },
+      "action": "mode list: the detail by part",
+      "example": {
+        "envelope": {
+          "title": "Today's orders",
+          "status": "info",
+          "source": "marketplaces",
+          "to": "/orders",
+          "size": "s"
+        },
+        "data": {
+          "parts": [
+            {
+              "label": "Amazon FR",
+              "value": 82
+            },
+            {
+              "label": "Shop",
+              "value": 50
+            },
+            {
+              "label": "Cdiscount",
+              "value": 35
+            },
+            {
+              "label": "Fnac",
+              "value": 12
+            },
+            {
+              "label": "Rakuten",
+              "value": 7
+            }
+          ]
+        },
+        "options": {
+          "maxParts": 3
+        }
+      },
+      "schema": {
+        "type": "object",
+        "required": [
+          "parts"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "total": {
+            "type": "number",
+            "description": "The total, when the parts do not sum to it"
+          },
+          "parts": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "label",
+                "value"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "label": {
+                  "type": "string"
+                },
+                "value": {
+                  "type": "number",
+                  "minimum": 0
+                },
+                "to": {
+                  "type": [
+                    "string",
+                    "object"
+                  ],
+                  "description": "Where it opens"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "trend",
+      "title": "Trend",
+      "question": "Is this normal?",
+      "readings": [
+        "the curve: the values over time, the last one written",
+        "the band: where the values usually sit",
+        "the marked points: the ones outside the band, counted in words"
+      ],
+      "strengths": [
+        "says at once whether today is unusual",
+        "the band carries the context a bare curve lacks"
+      ],
+      "avoid": [
+        "without a notion of normal: use metric",
+        "for two moments only: use compare"
+      ],
+      "sizes": [
+        "m",
+        "l"
+      ],
+      "options": {
+        "unit": {
+          "type": "string",
+          "description": "Written after the last value"
+        },
+        "decimals": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4,
+          "default": 0,
+          "description": "Digits after the decimal point"
+        }
+      },
+      "action": "mode list: the points outside the normal",
+      "example": {
+        "envelope": {
+          "title": "Orders per hour",
+          "status": "watch",
+          "source": "shop",
+          "to": "/orders",
+          "size": "m"
+        },
+        "data": {
+          "label": "orders this hour",
+          "normal": {
+            "low": 20,
+            "high": 40
+          },
+          "series": [
+            {
+              "value": 28
+            },
+            {
+              "value": 31
+            },
+            {
+              "value": 26
+            },
+            {
+              "value": 35
+            },
+            {
+              "value": 44
+            },
+            {
+              "value": 38
+            },
+            {
+              "value": 17
+            },
+            {
+              "value": 29
+            }
+          ]
+        },
+        "options": {
+          "decimals": 0
+        }
+      },
+      "schema": {
+        "type": "object",
+        "required": [
+          "series"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "label": {
+            "type": "string",
+            "description": "What the last value is: \"orders this hour\""
+          },
+          "normal": {
+            "type": "object",
+            "required": [
+              "low",
+              "high"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "low": {
+                "type": "number"
+              },
+              "high": {
+                "type": "number"
+              }
+            },
+            "description": "One band for the whole curve"
+          },
+          "series": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "value"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "value": {
+                  "type": "number"
+                },
+                "at": {
+                  "type": [
+                    "string",
+                    "number"
+                  ]
+                },
+                "low": {
+                  "type": "number",
+                  "description": "This point's own band"
+                },
+                "high": {
+                  "type": "number"
                 }
               }
             }

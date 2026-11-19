@@ -1,0 +1,79 @@
+{
+  "type": "compare",
+  "title": "Compare",
+  "question": "Better or worse than before?",
+  "readings": [
+    "the two values side by side: now, and the one it is compared with, each with its label",
+    "the change: signed, in points or in percent, toned good or bad by higherIs"
+  ],
+  "strengths": [
+    "answers \"compared with what?\" without a curve",
+    "the change is written, not only drawn"
+  ],
+  "avoid": [
+    "for a level over many periods: use trend or metric",
+    "for more than two values: use ranking"
+  ],
+  "sizes": [
+    "s",
+    "m"
+  ],
+  "options": {
+    "unit": {
+      "type": "string",
+      "description": "Written after both values: \"%\", \"k€\""
+    },
+    "decimals": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 4,
+      "default": 1,
+      "description": "Digits after the decimal point"
+    },
+    "higherIs": {
+      "type": "string",
+      "enum": [
+        "better",
+        "worse",
+        "neutral"
+      ],
+      "default": "better",
+      "description": "Whether a rise is good news"
+    },
+    "changeAs": {
+      "type": "string",
+      "enum": [
+        "points",
+        "percent"
+      ],
+      "default": "points",
+      "description": "The change as a difference (points) or as a share of the old value (percent)"
+    }
+  },
+  "action": "mode list: the detail behind the two values",
+  "example": {
+    "envelope": {
+      "title": "Average margin",
+      "status": "watch",
+      "source": "sales",
+      "to": "/margins",
+      "size": "s"
+    },
+    "data": {
+      "now": {
+        "value": 11.8,
+        "label": "November"
+      },
+      "then": {
+        "value": 13.1,
+        "label": "November 2025"
+      }
+    },
+    "options": {
+      "unit": "%",
+      "decimals": 1,
+      "higherIs": "better",
+      "changeAs": "points"
+    }
+  }
+}

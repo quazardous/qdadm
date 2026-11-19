@@ -18,6 +18,59 @@ Each card answers one question. Pick the card by its question, then give it data
 
 Data that does not fit the schema draws the `invalid` state with the path and the reason; the rest of the board keeps working.
 
+## `agenda`: What is coming?
+
+**Readings**
+
+- each line: when (a time today, "tomorrow", a date) and what
+- the first ones first
+
+**Strengths**
+
+- what to get ready for, in the order it comes
+- each line opens its item
+
+**Avoid it**
+
+- for what already happened: use feed
+- for items to process now: use queue
+
+**Sizes**: s, m. **Main action**: mode list: the whole calendar
+
+| Option | Type | Default | What it does |
+|---|---|---|---|
+| `maxItems` | integer | `4` | How many lines |
+
+**Data**: required `items`; the full shape is in `agenda/schema.json`.
+
+**Example**
+
+```json
+{
+  "type": "agenda",
+  "data": {
+    "now": "2026-11-19T09:00:00",
+    "items": [
+      {
+        "at": "2026-11-19T14:00:00",
+        "label": "DPD pickup · 41 parcels, 48 ready"
+      },
+      {
+        "at": "2026-11-19T16:30:00",
+        "label": "Chronopost pickup · 12 parcels"
+      },
+      {
+        "at": "2026-11-20T10:00:00",
+        "label": "Ingram delivery · 3 purchases expected"
+      }
+    ]
+  },
+  "options": {
+    "maxItems": 4
+  }
+}
+```
+
 ## `bullet`: Is the value good, fair or poor, and how far from the target?
 
 **Readings**
@@ -65,6 +118,58 @@ Data that does not fit the schema draws the `invalid` state with the path and th
   "options": {
     "unit": "%",
     "decimals": 1
+  }
+}
+```
+
+## `compare`: Better or worse than before?
+
+**Readings**
+
+- the two values side by side: now, and the one it is compared with, each with its label
+- the change: signed, in points or in percent, toned good or bad by higherIs
+
+**Strengths**
+
+- answers "compared with what?" without a curve
+- the change is written, not only drawn
+
+**Avoid it**
+
+- for a level over many periods: use trend or metric
+- for more than two values: use ranking
+
+**Sizes**: s, m. **Main action**: mode list: the detail behind the two values
+
+| Option | Type | Default | What it does |
+|---|---|---|---|
+| `unit` | string |  | Written after both values: "%", "k€" |
+| `decimals` | integer | `1` | Digits after the decimal point |
+| `higherIs` | `better` \| `worse` \| `neutral` | `"better"` | Whether a rise is good news |
+| `changeAs` | `points` \| `percent` | `"points"` | The change as a difference (points) or as a share of the old value (percent) |
+
+**Data**: required `now`, `then`; the full shape is in `compare/schema.json`.
+
+**Example**
+
+```json
+{
+  "type": "compare",
+  "data": {
+    "now": {
+      "value": 11.8,
+      "label": "November"
+    },
+    "then": {
+      "value": 13.1,
+      "label": "November 2025"
+    }
+  },
+  "options": {
+    "unit": "%",
+    "decimals": 1,
+    "higherIs": "better",
+    "changeAs": "points"
   }
 }
 ```
@@ -125,6 +230,113 @@ Data that does not fit the schema draws the `invalid` state with the path and th
 }
 ```
 
+## `feed`: What happened?
+
+**Readings**
+
+- each line: when, and what happened
+- its status, when it has one: a side mark and a word
+
+**Strengths**
+
+- the notable events, the latest first
+- each line opens its item
+
+**Avoid it**
+
+- for a full log: link to it
+- for what is coming: use agenda
+
+**Sizes**: s, m. **Main action**: mode list: all the events
+
+| Option | Type | Default | What it does |
+|---|---|---|---|
+| `maxItems` | integer | `4` | How many lines |
+
+**Data**: required `items`; the full shape is in `feed/schema.json`.
+
+**Example**
+
+```json
+{
+  "type": "feed",
+  "data": {
+    "now": "2026-11-19T11:00:00",
+    "items": [
+      {
+        "at": "2026-11-19T10:42:00",
+        "label": "€24k order (Mairie de Lyon) to approve",
+        "status": "watch",
+        "to": "/orders/575806"
+      },
+      {
+        "at": "2026-11-19T09:15:00",
+        "label": "Westcoast: 258 products back on sale",
+        "status": "good"
+      },
+      {
+        "at": "2026-11-19T08:03:00",
+        "label": "2/5 customer review on Amazon, order 575806",
+        "status": "critical"
+      }
+    ]
+  },
+  "options": {
+    "maxItems": 4
+  }
+}
+```
+
+## `funnel`: Where is it lost?
+
+**Readings**
+
+- each step with its count
+- the bars, scaled to the first step
+- the loss between two steps, in words
+
+**Strengths**
+
+- shows the step that leaks
+- the losses are written, not guessed from bars
+
+**Avoid it**
+
+- for parts that are not steps of one path: use split
+
+**Sizes**: s, m. **Main action**: mode list: the items stuck at the leaking step
+
+**Data**: required `steps`; the full shape is in `funnel/schema.json`.
+
+**Example**
+
+```json
+{
+  "type": "funnel",
+  "data": {
+    "steps": [
+      {
+        "label": "sent",
+        "value": 84
+      },
+      {
+        "label": "followed up",
+        "value": 51
+      },
+      {
+        "label": "signed",
+        "value": 26
+      },
+      {
+        "label": "delivered",
+        "value": 20
+      }
+    ]
+  },
+  "options": {}
+}
+```
+
 ## `goal`: Am I on time?
 
 **Readings**
@@ -168,6 +380,104 @@ Data that does not fit the schema draws the `invalid` state with the path and th
   "options": {
     "unit": "k€"
   }
+}
+```
+
+## `heat`: When?
+
+**Readings**
+
+- the grid: rows and columns (days × hours, weeks × days)
+- each cell's shade: its value on a sequential scale, from the lightest to the darkest
+- the legend: what the lightest and the darkest mean; each cell gives its value in its title too
+
+**Strengths**
+
+- the busy hours of a week at a glance
+- patterns a curve hides
+
+**Avoid it**
+
+- for exact values: use a ranking or a table
+- for one series over time: use trend
+
+**Sizes**: m, l. **Main action**: mode list: the items of a busy cell
+
+**Data**: required `columns`, `rows`; the full shape is in `heat/schema.json`.
+
+**Example**
+
+```json
+{
+  "type": "heat",
+  "data": {
+    "columns": [
+      "8h",
+      "10h",
+      "12h",
+      "14h",
+      "16h",
+      "18h"
+    ],
+    "rows": [
+      {
+        "label": "Mon",
+        "cells": [
+          3,
+          8,
+          12,
+          9,
+          7,
+          4
+        ]
+      },
+      {
+        "label": "Tue",
+        "cells": [
+          2,
+          9,
+          14,
+          10,
+          8,
+          5
+        ]
+      },
+      {
+        "label": "Wed",
+        "cells": [
+          4,
+          7,
+          11,
+          12,
+          6,
+          3
+        ]
+      },
+      {
+        "label": "Thu",
+        "cells": [
+          3,
+          10,
+          15,
+          11,
+          9,
+          6
+        ]
+      },
+      {
+        "label": "Fri",
+        "cells": [
+          5,
+          12,
+          18,
+          13,
+          11,
+          2
+        ]
+      }
+    ]
+  },
+  "options": {}
 }
 ```
 
@@ -316,6 +626,63 @@ Data that does not fit the schema draws the `invalid` state with the path and th
 }
 ```
 
+## `ranking`: What works?
+
+**Readings**
+
+- the rank, the name, the value: the first ones of a list
+- the bar, when asked: each value against the first
+
+**Strengths**
+
+- the few that count, in order
+- each line opens its item
+
+**Avoid it**
+
+- when the items are to process: use queue
+- for shares of a whole: use split
+
+**Sizes**: s, m. **Main action**: mode list: the whole ranking
+
+| Option | Type | Default | What it does |
+|---|---|---|---|
+| `maxItems` | integer | `5` | How many lines |
+| `unit` | string |  | Written after each value |
+| `bars` | boolean | `false` | Draw a bar per line, scaled to the first |
+
+**Data**: required `items`; the full shape is in `ranking/schema.json`.
+
+**Example**
+
+```json
+{
+  "type": "ranking",
+  "data": {
+    "items": [
+      {
+        "label": "iiyama ProLite 27\" screen",
+        "value": 142,
+        "to": "/products/1"
+      },
+      {
+        "label": "Brother MFC-J5345DW",
+        "value": 97,
+        "to": "/products/2"
+      },
+      {
+        "label": "Samsung 24\" S3",
+        "value": 88,
+        "to": "/products/3"
+      }
+    ]
+  },
+  "options": {
+    "maxItems": 5
+  }
+}
+```
+
 ## `recent`: What was I just looking at?
 
 **Readings**
@@ -369,6 +736,139 @@ Data that does not fit the schema draws the `invalid` state with the path and th
   },
   "options": {
     "maxItems": 5
+  }
+}
+```
+
+## `split`: Where does it come from?
+
+**Readings**
+
+- the total
+- one bar split in parts, a fixed colour per part
+- the legend: each part's name and value, written, so colour is never needed
+
+**Strengths**
+
+- the weight of each source in one line
+- the biggest parts first, the small ones grouped in "others"
+
+**Avoid it**
+
+- for more than a handful of parts: use ranking
+- for a change over time: use trend
+
+**Sizes**: s, m. **Main action**: mode list: the detail by part
+
+| Option | Type | Default | What it does |
+|---|---|---|---|
+| `maxParts` | integer | `4` | Parts drawn; the rest go into "others" |
+| `unit` | string |  | Written after the total |
+
+**Data**: required `parts`; the full shape is in `split/schema.json`.
+
+**Example**
+
+```json
+{
+  "type": "split",
+  "data": {
+    "parts": [
+      {
+        "label": "Amazon FR",
+        "value": 82
+      },
+      {
+        "label": "Shop",
+        "value": 50
+      },
+      {
+        "label": "Cdiscount",
+        "value": 35
+      },
+      {
+        "label": "Fnac",
+        "value": 12
+      },
+      {
+        "label": "Rakuten",
+        "value": 7
+      }
+    ]
+  },
+  "options": {
+    "maxParts": 3
+  }
+}
+```
+
+## `trend`: Is this normal?
+
+**Readings**
+
+- the curve: the values over time, the last one written
+- the band: where the values usually sit
+- the marked points: the ones outside the band, counted in words
+
+**Strengths**
+
+- says at once whether today is unusual
+- the band carries the context a bare curve lacks
+
+**Avoid it**
+
+- without a notion of normal: use metric
+- for two moments only: use compare
+
+**Sizes**: m, l. **Main action**: mode list: the points outside the normal
+
+| Option | Type | Default | What it does |
+|---|---|---|---|
+| `unit` | string |  | Written after the last value |
+| `decimals` | integer | `0` | Digits after the decimal point |
+
+**Data**: required `series`; the full shape is in `trend/schema.json`.
+
+**Example**
+
+```json
+{
+  "type": "trend",
+  "data": {
+    "label": "orders this hour",
+    "normal": {
+      "low": 20,
+      "high": 40
+    },
+    "series": [
+      {
+        "value": 28
+      },
+      {
+        "value": 31
+      },
+      {
+        "value": 26
+      },
+      {
+        "value": 35
+      },
+      {
+        "value": 44
+      },
+      {
+        "value": 38
+      },
+      {
+        "value": 17
+      },
+      {
+        "value": 29
+      }
+    ]
+  },
+  "options": {
+    "decimals": 0
   }
 }
 ```

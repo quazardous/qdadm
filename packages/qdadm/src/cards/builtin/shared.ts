@@ -2,6 +2,7 @@
  * What qdadm's generic cards share (#5339): numbers in the app's language,
  * the line of a series.
  */
+import type { TranslateParams } from '../../i18n/types'
 
 /** A number as the app's locale writes it, with a unit when given */
 export function formatNumber(value: number, locale: string, { decimals, unit }: { decimals?: number; unit?: string } = {}): string {
@@ -56,4 +57,27 @@ export function relativeTime(at: string | number | Date, locale: string, now = D
   if (abs < 3600) return rtf.format(Math.round(seconds / 60), 'minute')
   if (abs < 86400) return rtf.format(Math.round(seconds / 3600), 'hour')
   return rtf.format(Math.round(seconds / 86400), 'day')
+}
+
+/**
+ * When, in a dated list: a time for today, "tomorrow" / "yesterday", else a
+ * short date; `withTime` adds the time to tomorrow's and yesterday's.
+ */
+export function dayWords(
+  at: Date,
+  now: Date,
+  locale: string,
+  t: (key: string, params?: TranslateParams) => string,
+  withTime = true
+): { when: string; full: string; iso: string } {
+  const iso = Number.isNaN(at.getTime()) ? '' : at.toISOString()
+  if (!iso) return { when: '', full: '', iso }
+  const day = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime()
+  const diff = Math.round((day(at) - day(now)) / 86400000)
+  const time = at.toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' })
+  const full = at.toLocaleString(locale)
+  if (diff === 0) return { when: withTime ? time : t('core.cards.agenda.today'), full, iso }
+  if (diff === 1) return { when: withTime ? t('core.cards.agenda.tomorrowAt', { time }) : t('core.cards.agenda.tomorrow'), full, iso }
+  if (diff === -1) return { when: withTime ? t('core.cards.agenda.yesterdayAt', { time }) : t('core.cards.agenda.yesterday'), full, iso }
+  return { when: at.toLocaleDateString(locale, { day: 'numeric', month: 'short' }), full, iso }
 }
