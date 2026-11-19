@@ -363,6 +363,14 @@ export default `core:
     moreKeys: "+{count} autres"
     takeTheirs: Charger sa version
     keepMine: Garder la mienne et l'enregistrer par-dessus
+  # Values a create reveals once: a key's token (QdRevealOnce, #5319)
+  revealOnce:
+    title: "{entity} : création réussie"
+    warning: Copiez-la maintenant. Elle n'est montrée que cette fois et ne pourra plus être relue.
+    copy: Copier
+    copied: Copié
+    copyFailed: "Échec de la copie : {error}"
+    confirm: J'ai copié
   # NotFoundPage
   notFound:
     title: Page introuvable

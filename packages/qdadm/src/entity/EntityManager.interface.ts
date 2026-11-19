@@ -115,6 +115,10 @@ export interface EntityManagerCrud<T = unknown> extends EntityManagerRead<T> {
   // getFieldConfig inherited (required) from EntityManagerRead since #1253
   resolveReferenceOptions: (fieldName: string) => Promise<unknown[]>
   create: (data: unknown, context?: unknown) => Promise<T>
+  /** What a create response reveals once (#5319), or null */
+  revealOnce?: { keys: string[]; item?: string } | null
+  /** create(), and the values its response reveals once (#5319) */
+  createRevealing?: (data: unknown, context?: unknown) => Promise<{ entity: T; revealed: Record<string, unknown> }>
   update: (id: string | number, data: unknown, context?: unknown) => Promise<T>
   patch: (id: string | number, data: unknown, context?: unknown) => Promise<T>
   // Optional BY DESIGN (#1253): the severity/badge presentation capability —

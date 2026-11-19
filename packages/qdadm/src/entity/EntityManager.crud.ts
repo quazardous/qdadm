@@ -414,6 +414,20 @@ export function applyCrudMethods(EntityManagerClass: { prototype: any }): void {
     data: Partial<any>,
     context?: RoutingContext
   ): Promise<any> {
+    // The values shown once are dropped here: a caller wanting them uses createRevealing()
+    return (await this.createRevealing(data, context)).entity
+  }
+
+  /**
+   * Create a new entity, and hand back the values its response reveals once
+   * (#5319, `revealOnce`). They are taken out of the response before the
+   * cache, the postsave hooks and the signals see it.
+   */
+  proto.createRevealing = async function (
+    this: Self,
+    data: Partial<any>,
+    context?: RoutingContext
+  ): Promise<{ entity: any; revealed: Record<string, unknown> }> {
     const { storage, endpoint } = this._normalizeResolveResult(
       this.resolveStorage('create', context),
       context
@@ -428,16 +442,17 @@ export function applyCrudMethods(EntityManagerClass: { prototype: any }): void {
       await this._invokeHook('presave', presaveContext as unknown as Record<string, unknown>)
 
       // Use request() with endpoint for multi-storage routing, otherwise use create()
-      let result: any
+      let response: any
       if (endpoint && storage.request) {
-        const response = (await storage.request('POST', endpoint, {
+        const raw = (await storage.request('POST', endpoint, {
           data: presaveContext.record,
           context,
         })) as { data?: any }
-        result = (response.data ?? response)
+        response = (raw.data ?? raw)
       } else {
-        result = await storage.create(presaveContext.record)
+        response = await storage.create(presaveContext.record)
       }
+      const { entity: result, revealed } = splitRevealed(response, this.revealOnce)
       this.invalidateCache()
 
       // Invoke postsave hooks (for side effects)
@@ -450,7 +465,7 @@ export function applyCrudMethods(EntityManagerClass: { prototype: any }): void {
         id: result?.[this.idField],
       })
       this._emitDataInvalidate('created', result?.[this.idField] as string | number | undefined)
-      return result
+      return { entity: result, revealed }
     }
     throw new Error(`[EntityManager:${this.name}] create() not implemented`)
   }
@@ -625,4 +640,32 @@ export function applyCrudMethods(EntityManagerClass: { prototype: any }): void {
   ): void {
     this._orchestrator = orchestrator
   }
+}
+
+/**
+ * Take the values shown once out of a create response (#5319): the entity is
+ * `response[item]` when the config names one, else the response without them.
+ */
+export function splitRevealed(
+  response: unknown,
+  config: { keys: string[]; item?: string } | null
+): { entity: any; revealed: Record<string, unknown> } {
+  if (!config || !response || typeof response !== 'object') return { entity: response, revealed: {} }
+  const source = response as Record<string, unknown>
+  const revealed: Record<string, unknown> = {}
+  for (const key of config.keys) {
+    if (source[key] !== undefined && source[key] !== null) revealed[key] = source[key]
+  }
+  if (config.item) {
+    const item = source[config.item]
+    if (item && typeof item === 'object') {
+      // The item itself never carries a revealed key either
+      const entity = { ...(item as Record<string, unknown>) }
+      for (const key of config.keys) delete entity[key]
+      return { entity, revealed }
+    }
+  }
+  const entity = { ...source }
+  for (const key of config.keys) delete entity[key]
+  return { entity, revealed }
 }

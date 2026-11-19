@@ -37,11 +37,12 @@ import { GUARD_DIALOG_HOST } from '../../composables/useGuardStore'
 import PageHeader from '../layout/PageHeader.vue'
 import FormActions from './FormActions.vue'
 import UnsavedChangesDialog from '../dialogs/UnsavedChangesDialog.vue'
+import QdRevealOnce from '../dialogs/QdRevealOnce.vue'
 import CardShell from '../layout/CardShell.vue'
 import { formatFetchError } from '../../utils/errors'
 import QdButton from '../base/QdButton.vue'
 import QdMessage from '../base/QdMessage.vue'
-import type { ResolvedAction, ResolvedFieldConfig } from '../../composables/useEntityItemFormPage'
+import type { ResolvedAction, ResolvedFieldConfig, RevealedValues } from '../../composables/useEntityItemFormPage'
 import type { GuardDialogState } from '../../composables/useUnsavedChangesGuard'
 
 /**
@@ -99,6 +100,9 @@ const props = defineProps({
   // Guard dialog (from useUnsavedChangesGuard)
   guardDialog: { type: Object as PropType<GuardDialogState | null>, default: null },
 
+  // Values a create revealed once (#5319), shown until confirmed
+  revealed: { type: Object as PropType<RevealedValues | null>, default: null },
+
   // Error for fetch failures (separate from validation errors)
   fetchError: { type: [String, Object] as PropType<string | FetchError | null>, default: null },
 
@@ -113,6 +117,7 @@ const emit = defineEmits<{
   (e: 'saveAndClose'): void
   (e: 'cancel'): void
   (e: 'delete'): void
+  (e: 'revealConfirmed'): void
 }>()
 
 // Header actions: all actions except save, delete, cancel (those go in footer)
@@ -238,5 +243,8 @@ function onGuardStay(): void {
       @leave="onGuardLeave"
       @stay="onGuardStay"
     />
+
+    <!-- Values a create revealed once (#5319) -->
+    <QdRevealOnce :revealed="revealed" @confirm="emit('revealConfirmed')" />
   </div>
 </template>

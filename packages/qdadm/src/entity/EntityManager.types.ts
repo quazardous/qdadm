@@ -265,6 +265,26 @@ export interface LiveRefreshPolicy {
 export type LiveUpdateEntry = Omit<NewNotification, 'severity'> & Partial<Pick<NewNotification, 'severity'>>
 
 /**
+ * What a create response reveals once (#5319).
+ *
+ *   POST /keys → { key: { name, scopes, … }, token: 'sbx_…' }
+ *   revealOnce: { keys: ['token'], item: 'key' }
+ */
+export interface RevealOnceConfig {
+  /** The response keys shown once and never kept */
+  keys: string[]
+  /** Where the entity sits in the response; the rest of it when absent */
+  item?: string
+}
+
+/** What `createRevealing()` returns: the entity, and the values shown once */
+export interface CreateRevealingResult<T> {
+  entity: T
+  /** The revealed values, by key; empty when the response carried none */
+  revealed: Record<string, unknown>
+}
+
+/**
  * EntityManager constructor options
  */
 export interface EntityManagerOptions<T extends EntityRecord = EntityRecord> {
@@ -302,6 +322,14 @@ export interface EntityManagerOptions<T extends EntityRecord = EntityRecord> {
   /** Detail cache max size (0=unlimited (default), >0=max items). Oldest entries are evicted when exceeded. Only used when asymmetric=true. */
   detailCacheMaxSize?: number
   readOnly?: boolean
+  /**
+   * Values the create response carries once and that are never kept (#5319):
+   * a key's token, a generated password. `create()` takes them out of the
+   * response before anything else sees it (the cache, the signals, the
+   * postsave hooks); `createRevealing()` hands them to the caller, and the
+   * create form shows them once.
+   */
+  revealOnce?: RevealOnceConfig
   warmup?: boolean
   authSensitive?: boolean
   /**

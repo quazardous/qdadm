@@ -69,6 +69,7 @@ export type {
   ResolvedAction,
   FormPageProps,
   FormPageEvents,
+  RevealedValues,
   UseEntityItemFormPageOptions,
   UseEntityItemFormPageReturn,
   GenerateFieldsOptions,
@@ -86,6 +87,7 @@ import type {
   ResolvedAction,
   FormPageProps,
   FormPageEvents,
+  RevealedValues,
   UseEntityItemFormPageOptions,
   UseEntityItemFormPageReturn,
   GenerateFieldsOptions,
@@ -358,7 +360,13 @@ export function useEntityItemFormPage<T extends Record<string, unknown> = Record
           parentConfig.value && parentId.value
             ? { parentChain: [{ entity: parentConfig.value.entity, id: parentId.value }] }
             : undefined
-        responseData = await manager.create(payload, context)
+        if (manager.revealOnce && manager.createRevealing) {
+          const { entity: created, revealed: values } = await manager.createRevealing(payload, context)
+          responseData = created
+          if (Object.keys(values).length) pendingReveal = values
+        } else {
+          responseData = await manager.create(payload, context)
+        }
       }
 
       toast.add({
@@ -373,6 +381,17 @@ export function useEntityItemFormPage<T extends Record<string, unknown> = Record
       data.value = savedData as T
       originalData.value = deepClone(savedData)
       takeSnapshot()
+
+      // Values shown once (#5319): held here only, until the user says they copied them
+      if (pendingReveal) {
+        const values = pendingReveal
+        pendingReveal = null
+        saving.value = false
+        await new Promise<void>((resolve) => {
+          revealResolve = resolve
+          revealed.value = { entity, values }
+        })
+      }
 
       if (onSaveSuccess) {
         await onSaveSuccess(responseData, andClose)
@@ -409,6 +428,25 @@ export function useEntityItemFormPage<T extends Record<string, unknown> = Record
       saving.value = false
     }
   }
+
+  // ============ VALUES SHOWN ONCE (#5319) ============
+
+  // Component memory only: never in data, the snapshot, a payload or a store
+  const revealed = ref<RevealedValues | null>(null)
+  let pendingReveal: Record<string, unknown> | null = null
+  let revealResolve: (() => void) | null = null
+
+  function confirmRevealed(): void {
+    revealed.value = null
+    const resolve = revealResolve
+    revealResolve = null
+    resolve?.()
+  }
+
+  onUnmounted(() => {
+    revealed.value = null
+    revealResolve = null
+  })
 
   // ============ DELETE ============
 
@@ -855,6 +893,7 @@ export function useEntityItemFormPage<T extends Record<string, unknown> = Record
     errorSummary: showErrorSummary ? errorSummary.value : null,
     submitted: submitted.value,
     guardDialog,
+    revealed: revealed.value,
   }))
 
   const formEvents: FormPageEvents = {
@@ -862,6 +901,7 @@ export function useEntityItemFormPage<T extends Record<string, unknown> = Record
     saveAndClose: () => submit(true),
     cancel,
     delete: confirmDelete,
+    revealConfirmed: confirmRevealed,
   }
 
   // ============ BUILDER API ============
@@ -957,6 +997,10 @@ export function useEntityItemFormPage<T extends Record<string, unknown> = Record
 
     // Guard dialog
     guardDialog,
+
+    // Values shown once (#5319)
+    revealed,
+    confirmRevealed,
 
     // Title helpers
     entityLabel,

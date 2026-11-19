@@ -324,6 +324,47 @@ describe('useEntityItemFormPage', () => {
     })
   })
 
+  describe('values a create reveals once (#5319)', () => {
+    it('shows them, and navigates only once the user confirms', async () => {
+      mockManager = createMockManager({
+        revealOnce: { keys: ['token'] },
+        createRevealing: vi.fn().mockResolvedValue({ entity: { id: 7, title: 'ci' }, revealed: { token: 'sbx_x' } }),
+      })
+      mockRouteState = { name: 'book-create', params: {} }
+      const { result } = createWrapper(() => useEntityItemFormPage({ entity: 'books' }))
+      await flushPromises()
+      result.data.value.title = 'ci'
+
+      const done = result.submit(true)
+      await flushPromises()
+      expect(mockManager.create).not.toHaveBeenCalled()
+      expect(result.revealed.value).toEqual({ entity: 'books', values: { token: 'sbx_x' } })
+      expect(result.props.value.revealed).toEqual(result.revealed.value)
+      // Nowhere else: not in the form's data
+      expect(JSON.stringify(result.data.value)).not.toContain('sbx_x')
+      expect(mockRouter.push).not.toHaveBeenCalled()
+
+      result.events.revealConfirmed()
+      await done
+      expect(result.revealed.value).toBeNull()
+      expect(mockRouter.push).toHaveBeenCalled()
+    })
+
+    it('a create that reveals nothing goes on as before', async () => {
+      mockManager = createMockManager({
+        revealOnce: { keys: ['token'] },
+        createRevealing: vi.fn().mockResolvedValue({ entity: { id: 7, title: 'ci' }, revealed: {} }),
+      })
+      mockRouteState = { name: 'book-create', params: {} }
+      const { result } = createWrapper(() => useEntityItemFormPage({ entity: 'books' }))
+      await flushPromises()
+      result.data.value.title = 'ci'
+      await result.submit(true)
+      expect(result.revealed.value).toBeNull()
+      expect(mockRouter.push).toHaveBeenCalled()
+    })
+  })
+
   describe('submit', () => {
     it('creates entity in create mode', async () => {
       mockRouteState = { name: 'book-create', params: {} }

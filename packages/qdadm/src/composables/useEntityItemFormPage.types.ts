@@ -129,6 +129,14 @@ export interface FormPageProps {
   errorSummary: ErrorSummaryItem[] | null
   submitted: boolean
   guardDialog: GuardDialogState | null
+  /** The values a create revealed once (#5319), shown until confirmed; null otherwise */
+  revealed: RevealedValues | null
+}
+
+/** The values a create response revealed once (#5319): the entity's name, and the values by key */
+export interface RevealedValues {
+  entity: string
+  values: Record<string, unknown>
 }
 
 /**
@@ -139,6 +147,8 @@ export interface FormPageEvents {
   saveAndClose: () => Promise<unknown>
   cancel: () => void
   delete: () => void
+  /** The user copied the values shown once (#5319) */
+  revealConfirmed: () => void
 }
 
 /**
@@ -357,6 +367,11 @@ export interface UseEntityItemFormPageReturn<T extends Record<string, unknown> =
 
   // Guard dialog (for UnsavedChangesDialog - pass to PageLayout)
   guardDialog: GuardDialogState | null
+
+  // Values shown once (#5319): set after a create whose response revealed some,
+  // until confirmRevealed(); submit() waits for it before navigating
+  revealed: Ref<RevealedValues | null>
+  confirmRevealed: () => void
 
   // Title helpers
   entityLabel: ComputedRef<string>

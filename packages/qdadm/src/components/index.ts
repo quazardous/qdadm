@@ -67,6 +67,7 @@ export { default as SimpleDialog } from './dialogs/SimpleDialog.vue'
 export { default as MultiStepDialog } from './dialogs/MultiStepDialog.vue'
 export { default as BulkStatusDialog } from './dialogs/BulkStatusDialog.vue'
 export { default as UnsavedChangesDialog } from './dialogs/UnsavedChangesDialog.vue'
+export { default as QdRevealOnce } from './dialogs/QdRevealOnce.vue'
 
 // Display
 export { default as CardsGrid } from './display/CardsGrid.vue'

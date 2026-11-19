@@ -50,6 +50,8 @@ export type {
   SeverityMap,
   EntityManagerOptions,
   GetOptions,
+  RevealOnceConfig,
+  CreateRevealingResult,
 } from './EntityManager.types'
 
 // Import concrete types needed in method signatures
@@ -67,6 +69,8 @@ import type {
   SeverityDescriptor,
   EntityManagerOptions,
   LiveEntityPolicy,
+  RevealOnceConfig,
+  CreateRevealingResult,
 } from './EntityManager.types'
 
 /**
@@ -102,6 +106,7 @@ export class EntityManager<T extends EntityRecord = EntityRecord> {
   protected _detailCacheMaxSize: number
   protected _detailInflight: Map<string, Promise<T>> = new Map()
   protected _readOnly: boolean
+  protected _revealOnce: RevealOnceConfig | null
   protected _warmup: boolean
   protected _authSensitive: boolean
   /** Reaction policy for changes made outside this session (#1888). */
@@ -175,6 +180,7 @@ export class EntityManager<T extends EntityRecord = EntityRecord> {
       detailCacheTtlMs = 0,
       detailCacheMaxSize = 0,
       readOnly = false,
+      revealOnce = null,
       warmup = true,
       authSensitive,
       live,
@@ -209,6 +215,7 @@ export class EntityManager<T extends EntityRecord = EntityRecord> {
     this._detailCacheTtlMs = detailCacheTtlMs
     this._detailCacheMaxSize = detailCacheMaxSize
     this._readOnly = readOnly
+    this._revealOnce = revealOnce?.keys?.length ? revealOnce : null
     this._warmup = warmup
     this._authSensitive = authSensitive ?? this._getStorageRequiresAuth()
     // Pre-wired defaults: the common case declares nothing.
@@ -673,6 +680,11 @@ export class EntityManager<T extends EntityRecord = EntityRecord> {
     return this._readOnly
   }
 
+  /** What a create response reveals once (#5319), or null */
+  get revealOnce(): RevealOnceConfig | null {
+    return this._revealOnce
+  }
+
   /**
    * Whether this entity is one the framework provides (roles, users). Owned
    * by qdadm — see `EntityManagerOptions.system`.
@@ -1032,6 +1044,7 @@ export interface EntityManager<T extends EntityRecord = EntityRecord> {
   get(id: string | number, context?: RoutingContext, options?: GetOptions): Promise<T>
   getMany(ids: Array<string | number>, context?: RoutingContext): Promise<T[]>
   create(data: Partial<T>, context?: RoutingContext): Promise<T>
+  createRevealing(data: Partial<T>, context?: RoutingContext): Promise<CreateRevealingResult<T>>
   update(id: string | number, data: Partial<T>, context?: RoutingContext): Promise<T>
   patch(id: string | number, data: Partial<T>, context?: RoutingContext): Promise<T>
   delete(id: string | number, context?: RoutingContext): Promise<void>

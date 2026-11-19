@@ -533,6 +533,42 @@ back to the first group. To own it — restore it, keep it in the URL — bind
 <FieldGroups :groups="show.groups.value" :data="show.data.value" layout="tabs" v-model:active="tab" />
 ```
 
+### A value shown once
+
+An API key's value, a generated password, a recovery code: the server hands
+it back once, in the create answer, and keeps only its hash. Say so on the
+entity, with the response keys to reveal and, when the entity is nested in
+the answer, where it sits:
+
+```js
+// POST /keys → { key: { id, name, scopes, … }, token: 'sbx_…' }
+ctx.entity('keys', {
+  storage,
+  revealOnce: { keys: ['token'], item: 'key' },
+  fields: { … },
+})
+```
+
+`create()` takes them out of the answer before anything else sees it: the
+entity it returns, the cache, the postsave hooks and the `entity:created`
+signal never carry them. `manager.createRevealing(data)` returns
+`{ entity, revealed }` for code that wants them.
+
+The create form does the rest. After the save, before it navigates, it shows
+the values in `QdRevealOnce`: each one in monospace with a Copy button, a
+warning that it will not be shown again, and one way out, "I have copied it".
+The values live in the page's memory only (not in `data`, the dirty snapshot
+or a store) and go when the user confirms. A reload finds nothing to replay.
+Labels come from `entities.<entity>.reveal.<key>`, else the key.
+
+A custom form page that does not use `FormPage` renders the dialog itself:
+
+```vue
+<QdRevealOnce :revealed="form.revealed.value" @confirm="form.confirmRevealed" />
+```
+
+In the demo: Security › API keys.
+
 ---
 
 ## Show Page

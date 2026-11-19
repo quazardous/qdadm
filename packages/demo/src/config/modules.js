@@ -13,6 +13,7 @@ import { CountriesModule } from '../modules/countries/CountriesModule'
 import { ProductsModule } from '../modules/products/ProductsModule'
 import { SettingsModule } from '../modules/settings/SettingsModule'
 import { FavoritesModule } from '../modules/favorites/FavoritesModule'
+import { ApiKeysModule } from '../modules/apikeys/ApiKeysModule'
 import { JsonPlaceholderModule } from '../modules/jsonplaceholder/JsonPlaceholderModule'
 import { NotificationsDemoModule } from '../modules/notifications/NotificationsDemoModule'
 import { OpsDemoModule } from '../modules/ops/OpsDemoModule'
@@ -28,6 +29,7 @@ export const moduleDefs = [
   ProductsModule,
   SettingsModule,
   FavoritesModule,
+  ApiKeysModule,
   JsonPlaceholderModule,
   NotificationsDemoModule,
   OpsDemoModule,

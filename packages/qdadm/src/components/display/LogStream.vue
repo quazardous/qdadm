@@ -24,6 +24,7 @@ import InputText from 'primevue/inputtext'
 import QdButton from '../base/QdButton.vue'
 import { useI18n } from '../../i18n/useI18n'
 import { ansiStyleToCss } from '../../utils/ansi'
+import { copyText } from '../../utils/clipboard'
 import { useLogStream, type LogLine, type LogSource, type UseLogStreamReturn } from '../../composables/useLogStream'
 import { linesOfPhase } from '../../tasks/taskPhases'
 
@@ -298,40 +299,13 @@ function download(): void {
 const copyStatus = ref<{ ok: boolean; text: string } | null>(null)
 let copyTimer: ReturnType<typeof setTimeout> | null = null
 
-/** Without navigator.clipboard (a page served over plain http): a selected textarea */
-function copyByCommand(text: string): void {
-  const area = document.createElement('textarea')
-  area.value = text
-  area.setAttribute('readonly', '')
-  area.style.position = 'fixed'
-  area.style.opacity = '0'
-  document.body.appendChild(area)
-  const focused = document.activeElement as HTMLElement | null
-  area.select()
-  try {
-    if (!document.execCommand?.('copy')) throw new Error('the browser refused to copy')
-  } finally {
-    area.remove()
-    focused?.focus?.()
-  }
-}
-
 /** Every line received at this moment, as plain text; resolves to the line count. */
 async function copy(): Promise<number> {
   // Taken now: lines streaming in during the write are not part of it
   const lines = log.lines.value.map((l) => l.text)
   const text = lines.join('\n')
   try {
-    try {
-      if (!navigator.clipboard?.writeText) throw new Error('no clipboard on this page (it needs HTTPS)')
-      await navigator.clipboard.writeText(text)
-    } catch (err) {
-      try {
-        copyByCommand(text)
-      } catch {
-        throw err
-      }
-    }
+    await copyText(text)
     copyStatus.value = { ok: true, text: t('core.log.copied', { count: lines.length }) }
   } catch (err) {
     copyStatus.value = { ok: false, text: t('core.log.copyFailed', { error: (err as Error)?.message ?? String(err) }) }
