@@ -482,6 +482,15 @@ core:
       list: Lists
       search: Searches
       board: Boards
+  # A domain's board (QdDomainBoard, #5352)
+  board:
+    source: "Source: {source}"
+    readAt: "read {when}"
+    openSource: "open {source}"
+    retry: Try again
+    change: "{change} on the period before"
+    same: Same as the period before
+    timelineBars: "Volume from {from} to {to}"
   # NotFoundPage
   notFound:
     title: Page not found

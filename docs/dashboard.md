@@ -98,6 +98,46 @@ it on a route: it is the reference for the look. Each tile carries
 it at `/cards`, and `npm run cards:shots` in `packages/demo` writes one PNG
 per tile in `shots/cards/`.
 
+## A domain's board
+
+`QdDomainBoard` is the level between a dashboard and a list: what a card's
+surface opens. The app declares typed blocks on a grid of 12 columns; the
+component knows only the types.
+
+```vue
+<QdDomainBoard
+  :source="{ label: 'LegacyLog', freshness: readAt, to: 'https://logs.example' }"
+  :blocks="[
+    { type: 'kpi', data: { label: 'Open', value: 69, note: 'signatures not handled' } },
+    { type: 'kpi', data: { label: 'Fatal', value: 0, status: 'good', note: 'no broken page' } },
+    { type: 'breakdown', title: 'By kind', load: () => errors.byKind() },
+    { type: 'top', title: 'Most frequent', load: () => errors.top(5), more: { label: 'All 69', to: { name: 'php-error' } } },
+    { type: 'timeline', title: 'Per day', load: () => errors.perDay(14) },
+  ]" />
+```
+
+- **The header:** the source, how fresh it is, and a link to it (an outside
+  address opens in a new tab). The breadcrumb stays the app's.
+- **The grid:** each block has a `span` of 12 (default: kpi 3, breakdown 5,
+  top 7, timeline 12). Narrower, the figures go two by two and the rest one
+  per row.
+- **The data:** `data`, or `load()`, read like `useAsyncRead`. Each block
+  draws its own states: loading, unreachable (with its reason and "Try
+  again"), empty (`emptyText`), and invalid when the data does not fit the
+  type's JSON Schema (with the path and the reason). One slow source never
+  holds the board.
+- `more: { label, to }` adds the link to the full list under a block.
+
+| Type | Data | Draws |
+|---|---|---|
+| `kpi` | `{ label, value, unit?, decimals?, note?, status?, to? }` | The number, its note, its status as a side bar and a word |
+| `breakdown` | `{ groups: [{ title?, rows: [{ label, value, to? }] }], note? }` | A bar per line, scaled within its group, the value written |
+| `top` | `{ columns: [{ key, label, type? }], rows: [{ values, to? }] }` | A small table; `type` is `text`, `mono`, `tags` (`[{ label, status }]`), `number` or `spark` (a list of numbers); a row's first cell opens it |
+| `timeline` | `{ points: [{ at, value }], bucket?, label?, previous?, higherIs? }` | One bar per day (or hour), the latest outlined; the total and its change on the period before |
+
+`registerBoardBlock(type, { component, schema, span, isEmpty? })` adds a type
+of the app's own: the component gets the block's `data`.
+
 ## Arranged cards
 
 - Any block with an `id` is a card: the id is its key in the saved arrangement.

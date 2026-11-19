@@ -482,6 +482,15 @@ core:
       list: Listes
       search: Recherches
       board: Tableaux
+  # Le tableau d'un domaine (QdDomainBoard, #5352)
+  board:
+    source: "Source : {source}"
+    readAt: "relevé {when}"
+    openSource: "ouvrir {source}"
+    retry: Réessayer
+    change: "{change} sur la période précédente"
+    same: Autant que la période précédente
+    timelineBars: "Volume du {from} au {to}"
   # NotFoundPage
   notFound:
     title: Page introuvable

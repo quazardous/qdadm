@@ -98,7 +98,7 @@ export class BooksModule extends Module {
       },
       nav: {
         sections: { Library: 'Library' },
-        routes: { book: 'Books', genre: 'Genres', 'book-stats': 'Stats' },
+        routes: { book: 'Books', genre: 'Genres', 'book-stats': 'Stats', 'book-board': 'Library board' },
       },
     })
 
@@ -133,7 +133,7 @@ export class BooksModule extends Module {
       },
       nav: {
         sections: { Library: 'Bibliothèque' },
-        routes: { book: 'Livres', genre: 'Genres', 'book-stats': 'Statistiques' },
+        routes: { book: 'Livres', genre: 'Genres', 'book-stats': 'Statistiques', 'book-board': 'Tableau de la bibliothèque' },
       },
     })
 
@@ -228,6 +228,21 @@ export class BooksModule extends Module {
         }
       }
     ])
+
+    // The library's domain board (#5352): typed blocks, each reading its own data
+    ctx.routes('books/board', [
+      {
+        path: '',
+        name: 'book-board',
+        component: () => import('./pages/LibraryBoard.vue'),
+        meta: {
+          breadcrumb: [
+            { kind: 'route', route: 'book-board', label: 'Library' }
+          ]
+        }
+      }
+    ])
+    ctx.navItem({ section: 'Library', route: 'book-board', icon: 'pi pi-th-large', label: 'Library board' })
 
     // Optional: add nav item for custom page
     ctx.navItem({

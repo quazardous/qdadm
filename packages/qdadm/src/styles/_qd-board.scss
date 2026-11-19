@@ -1,0 +1,359 @@
+/**
+ * QdDomainBoard (#5352): a domain's board, typed blocks on a grid of 12.
+ * It takes the cards' tokens (_qd-cards.scss), light and .dark-mode.
+ */
+
+.qd-board {
+  container-type: inline-size;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.qd-board-source {
+  margin: 0;
+  text-align: right;
+  font-size: 0.875rem;
+  color: var(--qd-card-muted);
+
+  a {
+    color: var(--qd-card-accent);
+  }
+}
+
+.qd-board-grid {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.qd-board-cell {
+  grid-column: span var(--qd-board-span, 12);
+  min-width: 0;
+  display: flex;
+}
+
+// Narrower: the figures two by two, the rest one per row
+@container (max-width: 56rem) {
+  .qd-board-cell {
+    grid-column: span 12;
+  }
+
+  .qd-board-cell[data-board-type='kpi'] {
+    grid-column: span 6;
+  }
+}
+
+@container (max-width: 28rem) {
+  .qd-board-cell[data-board-type='kpi'] {
+    grid-column: span 12;
+  }
+}
+
+.qd-board-block {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  min-width: 0;
+  padding: 1rem 1.1rem;
+  background: var(--qd-card-bg);
+  border: 1px solid var(--qd-card-border);
+  border-radius: 10px;
+  color: var(--qd-card-ink);
+}
+
+.qd-board-title,
+.qd-board-subtitle,
+.qd-board-kpi-label {
+  margin: 0;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--qd-card-muted);
+}
+
+.qd-board-state {
+  margin: 0;
+  color: var(--qd-card-muted);
+
+  &--error {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.4rem;
+    color: var(--qd-tone-critical);
+  }
+}
+
+.qd-board-problems {
+  margin: 0;
+  padding-left: 1rem;
+  font-size: 0.8125rem;
+}
+
+.qd-board-note {
+  margin: 0;
+  font-size: 0.8125rem;
+  color: var(--qd-card-muted);
+}
+
+.qd-board-more {
+  align-self: flex-start;
+  color: var(--qd-card-accent);
+  font-weight: 600;
+  text-decoration: none;
+
+  &:hover {
+    text-decoration: underline;
+  }
+}
+
+// ── kpi ───────────────────────────────────────────────────────────────────
+
+.qd-board-block--kpi {
+  padding: 0;
+  overflow: hidden;
+}
+
+.qd-board-kpi {
+  --qd-sev: transparent;
+  flex: 1;
+  display: flex;
+  border-left: 4px solid var(--qd-sev);
+
+  &--critical { --qd-sev: var(--qd-tone-critical); }
+  &--watch { --qd-sev: var(--qd-tone-watch); }
+  &--good { --qd-sev: var(--qd-tone-good); }
+  &--info { --qd-sev: var(--qd-tone-info); }
+}
+
+.qd-board-kpi-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  padding: 1rem 1.1rem;
+  color: inherit;
+  text-decoration: none;
+
+  &:is(a):hover .qd-board-kpi-value {
+    text-decoration: underline;
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--qd-card-accent);
+    outline-offset: -2px;
+  }
+}
+
+.qd-board-kpi-value {
+  font-size: 2rem;
+  font-weight: 700;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+  color: var(--qd-card-ink-strong);
+}
+
+.qd-board-kpi--critical .qd-board-kpi-value {
+  color: var(--qd-tone-critical);
+}
+
+.qd-board-kpi-status {
+  align-self: flex-start;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--qd-sev);
+}
+
+.qd-board-kpi-note {
+  font-size: 0.875rem;
+  color: var(--qd-card-muted);
+}
+
+// ── breakdown ─────────────────────────────────────────────────────────────
+
+.qd-board-breakdown {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+
+  ul {
+    margin: 0.35rem 0 0;
+    padding: 0;
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+  }
+}
+
+.qd-board-breakdown-row {
+  display: grid;
+  grid-template-columns: minmax(6rem, 2fr) 3fr minmax(2.5rem, auto);
+  align-items: center;
+  gap: 0.75rem;
+  color: inherit;
+  text-decoration: none;
+
+  &:is(a):hover .qd-board-breakdown-label {
+    text-decoration: underline;
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--qd-card-accent);
+    outline-offset: 2px;
+    border-radius: 3px;
+  }
+}
+
+.qd-board-breakdown-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.qd-board-breakdown-track {
+  height: 0.5rem;
+  border-radius: 999px;
+  background: var(--qd-card-track);
+  overflow: hidden;
+}
+
+.qd-board-breakdown-bar {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--qd-card-accent);
+}
+
+.qd-board-breakdown-value {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  font-family: var(--qd-card-mono);
+}
+
+// ── top ───────────────────────────────────────────────────────────────────
+
+.qd-board-top {
+  overflow-x: auto;
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.875rem;
+  }
+
+  th {
+    padding: 0.4rem 0.5rem;
+    text-align: left;
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--qd-card-muted);
+    border-bottom: 1px solid var(--qd-card-border);
+  }
+
+  td {
+    padding: 0.5rem;
+    border-bottom: 1px solid var(--qd-card-border);
+    vertical-align: middle;
+  }
+
+  .qd-card-tag {
+    margin-right: 0.25rem;
+  }
+}
+
+.qd-board-col--mono {
+  font-family: var(--qd-card-mono);
+}
+
+.qd-board-col--number {
+  text-align: right !important;
+  font-variant-numeric: tabular-nums;
+}
+
+.qd-board-col--spark {
+  width: 7rem;
+}
+
+.qd-board-top-link {
+  color: var(--qd-card-ink);
+  font-family: inherit;
+
+  &:hover {
+    color: var(--qd-card-accent);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--qd-card-accent);
+    outline-offset: 2px;
+  }
+}
+
+.qd-board-spark {
+  display: block;
+  width: 100%;
+  height: 1.5rem;
+
+  path {
+    fill: none;
+    stroke: var(--qd-tone-critical);
+    stroke-width: 1.5;
+  }
+}
+
+// ── timeline ──────────────────────────────────────────────────────────────
+
+.qd-board-timeline-head {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.qd-board-timeline-label {
+  color: var(--qd-card-muted);
+}
+
+.qd-board-timeline-bars {
+  display: flex;
+  align-items: flex-end;
+  gap: 3px;
+  height: 6rem;
+  margin: 0.5rem 0 0;
+  padding: 0;
+  list-style: none;
+
+  li {
+    flex: 1;
+    display: flex;
+    align-items: flex-end;
+    height: 100%;
+    min-width: 2px;
+  }
+}
+
+.qd-board-timeline-bar {
+  display: block;
+  width: 100%;
+  border-radius: 2px 2px 0 0;
+  background: color-mix(in srgb, var(--qd-card-accent) 45%, transparent);
+}
+
+// The latest: full colour, and outlined so it reads apart without its hue
+.qd-board-timeline-latest .qd-board-timeline-bar {
+  background: var(--qd-card-accent);
+  outline: 2px solid var(--qd-card-ink);
+  outline-offset: 1px;
+}
+
+.qd-board-timeline-axis {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.75rem;
+  color: var(--qd-card-muted);
+}

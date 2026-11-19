@@ -68,7 +68,7 @@ onMounted(async () => {
       <QdCardView
         v-if="stats.toCheck.total"
         type="queue"
-        :envelope="{ title: 'Books to check', status: 'watch', source: 'books', action: { verb: 'Check the 1st', mode: 'next', count: stats.toCheck.total, run: stats.run } }"
+        :envelope="{ title: 'Books to check', status: 'watch', source: 'books', to: { name: 'book-board' }, action: { verb: 'Check the 1st', mode: 'next', count: stats.toCheck.total, run: stats.run } }"
         :data="stats.toCheck"
         data-demo-run-card
       />
