@@ -41,7 +41,10 @@ and the [bestiary](cards.md), generated from the sheets, says which.
 **The envelope** (`QdCard`) has two zones, one gesture each. The surface (the
 title's link, stretched over the card) opens the domain's board; the action
 button does the main gesture, `mode: 'next'` for the most urgent item or
-`'list'` for the filtered list. A link or a button inside the body stops there.
+`'list'` for the filtered list: `to` opens a route, `run` walks the items
+behind the card one after the other with the [run bar](crud.md#a-run-one-item-after-the-other),
+`onClick` does a gesture of the app's own. A link or a button inside the body
+stops there.
 The status is a side bar, a hue and a word, never the hue alone. `state`
 draws `loading`, `unreachable` (with `error`) or `empty` (with `emptyText`)
 instead of the body. `size` is `s`, `m` or `l`: 1, 2 or 3 columns.

@@ -6,7 +6,7 @@
  * Uses the orchestrator to fetch data and compute stats.
  */
 import { ref, onMounted } from 'vue'
-import { useOrchestrator, PageLayout } from '@quazardous/qdadm'
+import { useOrchestrator, PageLayout, QdCardView } from '@quazardous/qdadm'
 import Card from 'primevue/card'
 
 const { getManager } = useOrchestrator()
@@ -29,7 +29,27 @@ onMounted(async () => {
     return acc
   }, {})
 
+  // A queue card whose button walks the old books one after the other (#5343)
+  const old = items.filter((book) => book.year < 1970).sort((a, b) => a.year - b.year)
+  const toCheck = {
+    total: old.length,
+    note: 'published before 1970',
+    items: old.slice(0, 3).map((book) => ({
+      label: `${book.title} · ${book.year}`,
+      to: { name: 'book-edit', params: { bookId: book.bookId } },
+    })),
+  }
+  const run = {
+    entity: 'books',
+    items: old.map((book) => ({ id: book.bookId, label: book.title, urgent: book.year < 1930 })),
+    label: 'to check',
+    order: 'year',
+    filter: 'published before 1970',
+  }
+
   stats.value = {
+    toCheck,
+    run,
     total: items.length,
     byGenre: Object.entries(byGenre).sort((a, b) => b[1] - a[1]),
     byDecade: Object.entries(byDecade).sort((a, b) => a[0] - b[0])
@@ -45,6 +65,14 @@ onMounted(async () => {
     </div>
 
     <div v-else class="stats-grid">
+      <QdCardView
+        v-if="stats.toCheck.total"
+        type="queue"
+        :envelope="{ title: 'Books to check', status: 'watch', source: 'books', action: { verb: 'Check the 1st', mode: 'next', count: stats.toCheck.total, run: stats.run } }"
+        :data="stats.toCheck"
+        data-demo-run-card
+      />
+
       <Card class="stats-card stats-card--highlight">
         <template #title>
           <div class="stats-card-header">

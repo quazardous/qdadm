@@ -712,6 +712,60 @@ const formatBytes = useFormatBytes()
 
 ---
 
+## A run: one item after the other
+
+A run walks a set of items of one entity from their edit page (or show page),
+without going back to the list: "Book 3 of 14 to process", with Previous /
+Next. `FormPage` and `ShowPage` draw the bar (`QdRunBar`) when the URL carries
+`?run=<key>`; the page needs nothing else.
+
+```
+← Previous K    Book 3 of 14 to process                              Next J →
+                sorted by Year ↑ · filter: Fiction · 2 done since it started
+                ▰▰▣▰▱▱▱▱▱▱▱▱▱▱
+```
+
+- **The strip:** one segment per item: done (filled), urgent (warm), current
+  (outlined). Each says its state in its title too, and opens its item.
+- **J and K** go to the next and the previous item, except while typing in a field.
+- **In a form, Save & Close becomes "Save and go to the next":** it saves,
+  marks the item done and opens the next one still to do. With nothing
+  changed, it goes on without saving. Leaving a changed form for another item
+  asks first, as leaving the page does.
+- **At the end,** "The 14 items are done", and back where the run started.
+
+**Where runs start:**
+
+- **A filtered list starts one on its own:** opening a row of a list with a
+  filter or a search walks the list's rows, in their order, from that row.
+  The bar says the filter and the order. An unfiltered list opens the row as
+  before. `list.startRun({ label })` walks the rows from the first.
+- **A card's action:** `action: { verb: 'Process the 1st', mode: 'next', run }`,
+  where `run` holds the items behind the card.
+- **Anywhere,** with `useRun()`:
+
+```ts
+import { useRun } from '@quazardous/qdadm'
+
+const run = useRun()
+await run.start({
+  entity: 'orders',
+  items: orders.map((o) => ({ id: o.id, urgent: o.late, label: o.number })),
+  label: 'to process',     // after "3 of 14"
+  order: 'urgency',        // "sorted by urgency"
+  filter: 'to process, all markets',
+})
+```
+
+The items open on the entity's edit page, else its show page (`route: { name,
+param }` to choose). On a show page, the page's own main gesture calls
+`run.doneAndNext()` once it has done its work; `run.markDone()` marks the item
+without moving. `useRun()` also gives `position`, `total`, `remaining`,
+`prev`, `next`, `goTo(i)` and `end()`.
+
+A run is kept in the tab (`sessionStorage`), under the key the URL carries: a
+reload keeps it, another tab does not see it.
+
 ## Child Entity List
 
 Parent filter is auto-applied from `route.meta.parent`. No extra config needed in the composable.

@@ -492,6 +492,8 @@ export interface UseListPageReturn<T = unknown> {
   goToCreate: () => void
   goToEdit: (item: unknown) => void
   goToShow: (item: unknown) => void
+  /** Walk the rows one after the other, with the run bar (#5343) */
+  startRun: (init?: Partial<import('../run/run').RunInit>) => Promise<void>
 
   // Mobile row tap
   isMobile: Ref<boolean>

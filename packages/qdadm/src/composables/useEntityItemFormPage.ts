@@ -55,6 +55,7 @@ import type {
   PageTitleParts,
 } from './useEntityItemFormPage.types'
 import { createOrchestratorToast } from './useOrchestratorToast'
+import { useRun } from '../run/useRun'
 import { useActionRegistry } from './useActionRegistry'
 import { TYPE_MAPPINGS, TYPE_VALIDATORS, snakeCaseToTitle, isEmpty } from './useEntityItemFormPage.types'
 
@@ -329,6 +330,12 @@ export function useEntityItemFormPage<T extends Record<string, unknown> = Record
   // ============ SUBMIT ============
 
   async function submit(andClose = true): Promise<unknown> {
+    // In a run (#5343), Save & Close goes to the next item: with nothing to save, straight there
+    if (andClose && inRun.value && !dirty.value) {
+      await run.doneAndNext()
+      return null
+    }
+
     // Mark as submitted (shows all errors in UI)
     submitted.value = true
 
@@ -397,7 +404,10 @@ export function useEntityItemFormPage<T extends Record<string, unknown> = Record
         await onSaveSuccess(responseData, andClose)
       }
 
-      if (andClose) {
+      if (andClose && inRun.value) {
+        // A run (#5343): this item is done, on to the next one still to do
+        await run.doneAndNext()
+      } else if (andClose) {
         // Navigate to list route (or previous page)
         const listRoute = findListRoute()
         router.push(listRoute as { name: string })
@@ -428,6 +438,12 @@ export function useEntityItemFormPage<T extends Record<string, unknown> = Record
       saving.value = false
     }
   }
+
+  // ============ RUN (#5343) ============
+
+  // The run this page walks, if its URL carries one
+  const run = useRun()
+  const inRun = computed(() => isEdit.value && run.active.value)
 
   // ============ VALUES SHOWN ONCE (#5319) ============
 
@@ -804,7 +820,9 @@ export function useEntityItemFormPage<T extends Record<string, unknown> = Record
     const { label, andClose = true } = options
     // The catalogue's, by mode: Create / Update, and & Close (#4686)
     const saveLabel = () =>
-      andClose
+      andClose && inRun.value
+        ? tOr('core.run.saveAndNext', 'Save and go to the next')
+        : andClose
         ? isEdit.value ? tOr('core.actions.updateAndClose', 'Save & Close') : tOr('core.actions.createAndClose', 'Save & Close')
         : tOr('core.actions.save', 'Save')
 
@@ -814,7 +832,7 @@ export function useEntityItemFormPage<T extends Record<string, unknown> = Record
       severity: andClose ? 'success' : 'primary',
       onClick: async () => { await submit(andClose) },
       visible: () => (isEdit.value ? manager.canUpdate() : manager.canCreate()),
-      disabled: ({ dirty, saving }) => !dirty || saving,
+      disabled: ({ dirty, saving }) => (!dirty && !(andClose && inRun.value)) || saving,
       loading: () => saving.value,
     })
   }
@@ -1011,6 +1029,9 @@ export function useEntityItemFormPage<T extends Record<string, unknown> = Record
     // Values shown once (#5319)
     revealed,
     confirmRevealed,
+
+    // The run this page walks (#5343)
+    run,
 
     // Title helpers
     entityLabel,

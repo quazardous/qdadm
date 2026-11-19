@@ -10,7 +10,7 @@
  */
 
 import { onBeforeUnmount, ref, type Ref } from 'vue'
-import { onBeforeRouteLeave, type NavigationGuardNext } from 'vue-router'
+import { onBeforeRouteLeave, onBeforeRouteUpdate, type NavigationGuardNext } from 'vue-router'
 
 /**
  * Guard dialog state
@@ -136,6 +136,22 @@ export function useUnsavedChangesGuard(
     pendingNext.value = next
     showDialog.value = true
   })
+
+  // The same page on another record (a run's next item, #5343) leaves this one too
+  // (Guarded: a test mocking vue-router may not provide it)
+  try {
+    onBeforeRouteUpdate((to, from, next) => {
+      const sameRecord = JSON.stringify(to.params) === JSON.stringify(from.params)
+      if (sameRecord || !dirty.value) {
+        next()
+        return
+      }
+      pendingNext.value = next
+      showDialog.value = true
+    })
+  } catch {
+    // no router hook to register: nothing to guard
+  }
 
   return {
     dirty,

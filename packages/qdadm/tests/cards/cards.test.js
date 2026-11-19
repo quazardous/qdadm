@@ -83,10 +83,10 @@ describe('QdCard, the envelope', () => {
   })
 
   it('the action runs its gesture, or opens its route', async () => {
-    const run = vi.fn()
-    const { wrapper } = await mountWith(QdCard, { title: 'x', action: { verb: 'Process the 1st', run } })
+    const onClick = vi.fn()
+    const { wrapper } = await mountWith(QdCard, { title: 'x', action: { verb: 'Process the 1st', onClick } })
     await wrapper.find('.qd-card-action').trigger('click')
-    expect(run).toHaveBeenCalled()
+    expect(onClick).toHaveBeenCalled()
 
     const mounted = await mountWith(QdCard, { title: 'x', action: { verb: 'Open', to: '/orders/1' } })
     await mounted.wrapper.find('.qd-card-action').trigger('click')

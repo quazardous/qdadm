@@ -11,6 +11,7 @@ import type { ParentConfig, EntityManager } from './useEntityItemPage'
 import type { FieldGroup, GroupDefinition, GroupOptions, MoveFieldPosition } from './useFieldManager'
 import type { StackHydratorReturn } from '../chain/useStackHydrator'
 import type { OrchestratorLike } from '../entity/EntityManager.interface'
+import type { UseRunReturn } from '../run/useRun'
 
 /**
  * Orchestrator interface
@@ -378,6 +379,10 @@ export interface UseEntityItemFormPageReturn<T extends Record<string, unknown> =
   // until confirmRevealed(); submit() waits for it before navigating
   revealed: Ref<RevealedValues | null>
   confirmRevealed: () => void
+
+  // The run this page walks, if its URL carries `?run=` (#5343): in one,
+  // Save & Close saves and opens the next item still to do
+  run: UseRunReturn
 
   // Title helpers
   entityLabel: ComputedRef<string>

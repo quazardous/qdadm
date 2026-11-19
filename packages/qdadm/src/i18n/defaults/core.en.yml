@@ -418,6 +418,22 @@ core:
     copied: Copied
     copyFailed: "Copy failed: {error}"
     confirm: I have copied it
+  # The run bar: walking a set of items one after the other (QdRunBar, useRun, #5343)
+  run:
+    bar: Run
+    position: "{position} of {total}"
+    order: "sorted by {order}"
+    filter: "filter: {filter}"
+    doneSince: "{count} done since it started | {count} done since it started"
+    prev: Previous
+    next: Next
+    saveAndNext: Save and go to the next
+    finished: "The item is done | The {count} items are done"
+    state:
+      current: current
+      done: done
+      urgent: urgent
+      todo: to do
   # NotFoundPage
   notFound:
     title: Page not found

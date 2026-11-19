@@ -1,0 +1,135 @@
+/**
+ * The run bar (#5343): where an item is in the run it was opened from.
+ * It takes the cards' tokens (_qd-cards.scss), light and .dark-mode.
+ */
+
+.qd-run-bar {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin: 0 0 1rem;
+  padding: 0.75rem 1rem;
+  background: var(--qd-card-bg);
+  border: 1px solid var(--qd-card-border);
+  border-radius: 10px;
+  color: var(--qd-card-ink);
+}
+
+.qd-run-where {
+  flex: 1;
+  min-width: 0;
+}
+
+.qd-run-heading {
+  font-weight: 600;
+}
+
+.qd-run-details {
+  color: var(--qd-card-muted);
+  font-size: 0.875rem;
+  margin-top: 0.1rem;
+}
+
+.qd-run-strip {
+  display: flex;
+  gap: 4px;
+  list-style: none;
+  margin: 0.45rem 0 0;
+  padding: 0;
+
+  li {
+    flex: 1;
+    min-width: 4px;
+    max-width: 5rem;
+  }
+}
+
+.qd-run-seg {
+  display: block;
+  width: 100%;
+  height: 6px;
+  padding: 0;
+  border: 0;
+  border-radius: 3px;
+  background: var(--qd-card-track);
+  cursor: pointer;
+
+  &[data-state='done'] {
+    background: var(--qd-tone-good);
+  }
+
+  &[data-state='urgent'] {
+    background: var(--qd-tone-critical);
+  }
+
+  // Current: outlined, so it reads apart from done and urgent without its colour
+  &[data-state='current'] {
+    background: var(--qd-card-accent);
+    outline: 2px solid var(--qd-card-accent);
+    outline-offset: 2px;
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--qd-card-ink);
+    outline-offset: 2px;
+  }
+}
+
+.qd-run-step {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  flex-shrink: 0;
+  padding: 0.5rem 0.8rem;
+  border: 1px solid var(--qd-card-border);
+  border-radius: 6px;
+  background: var(--qd-card-bg);
+  color: var(--qd-card-ink);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+
+  kbd {
+    font-family: var(--qd-card-mono);
+    font-size: 0.75rem;
+    padding: 0 0.3rem;
+    border: 1px solid currentColor;
+    border-radius: 3px;
+    opacity: 0.7;
+  }
+
+  &:disabled {
+    opacity: 0.45;
+    cursor: default;
+  }
+}
+
+.qd-run-next:not(:disabled) {
+  background: var(--qd-card-accent);
+  border-color: var(--qd-card-accent);
+  color: #fff;
+}
+
+.dark-mode .qd-run-next:not(:disabled) {
+  color: #0d1512;
+}
+
+@media (max-width: 640px) {
+  .qd-run-bar {
+    flex-wrap: wrap;
+  }
+
+  .qd-run-where {
+    order: -1;
+    flex-basis: 100%;
+  }
+
+  .qd-run-step {
+    flex: 1;
+    justify-content: center;
+  }
+
+  .qd-run-step kbd {
+    display: none;
+  }
+}

@@ -42,6 +42,7 @@
 import { computed, type PropType } from 'vue'
 import PageHeader from '../layout/PageHeader.vue'
 import CardShell from '../layout/CardShell.vue'
+import QdRunBar from '../run/QdRunBar.vue'
 import { formatFetchError } from '../../utils/errors'
 import QdButton from '../base/QdButton.vue'
 import QdMessage from '../base/QdMessage.vue'
@@ -201,6 +202,9 @@ type ShowFieldValue = string | number | boolean | Date | Record<string, unknown>
         />
       </template>
     </PageHeader>
+
+    <!-- Where this item is in the run it was opened from (#5343) -->
+    <QdRunBar :entity-label="titleParts?.entityName ?? null" />
 
     <!-- Toolbar slot (between header and content) -->
     <slot name="toolbar" />

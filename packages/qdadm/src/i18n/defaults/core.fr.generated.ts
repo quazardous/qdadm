@@ -420,6 +420,22 @@ export default `core:
     copied: Copié
     copyFailed: "Échec de la copie : {error}"
     confirm: J'ai copié
+  # La barre de parcours : traiter des éléments l'un après l'autre (QdRunBar, useRun, #5343)
+  run:
+    bar: Parcours
+    position: "{position} sur {total}"
+    order: "triés par {order}"
+    filter: "filtre : {filter}"
+    doneSince: "{count} traité depuis l'ouverture | {count} traités depuis l'ouverture"
+    prev: Précédent
+    next: Suivant
+    saveAndNext: Enregistrer et passer au suivant
+    finished: "L'élément est traité | Les {count} éléments sont traités"
+    state:
+      current: en cours
+      done: traité
+      urgent: urgent
+      todo: à traiter
   # NotFoundPage
   notFound:
     title: Page introuvable

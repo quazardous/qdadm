@@ -5,6 +5,7 @@
  */
 import type { Component } from 'vue'
 import type { RouteLocationRaw } from 'vue-router'
+import type { RunInit } from '../run/run'
 import type { CardSchema } from './validate'
 
 /** How things stand: a hue, a side bar and a word, never the hue alone */
@@ -26,7 +27,10 @@ export interface CardAction {
   count?: number
   mode?: 'next' | 'list'
   to?: RouteLocationRaw
-  run?: () => void | Promise<void>
+  /** `mode: 'next'`: the items behind the card, walked one after the other with the run bar (#5343) */
+  run?: RunInit
+  /** A gesture of the app's own, instead of a route or a run */
+  onClick?: () => void | Promise<void>
 }
 
 /** What the envelope shows around the body */

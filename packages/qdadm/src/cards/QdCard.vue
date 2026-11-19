@@ -21,6 +21,7 @@ import { RouterLink, useRouter } from 'vue-router'
 import { useI18n } from '../i18n/useI18n'
 import type { CardAction, CardSize, CardState, CardStatus } from './types'
 import type { SchemaProblem } from './validate'
+import { useRun } from '../run/useRun'
 import type { RouteLocationRaw } from 'vue-router'
 
 const props = withDefaults(
@@ -54,6 +55,7 @@ const props = withDefaults(
 
 const { t, locale } = useI18n()
 const router = useRouter()
+const run = useRun()
 
 const STATUS_ICONS: Record<CardStatus, string> = {
   critical: 'pi pi-exclamation-circle',
@@ -87,13 +89,15 @@ const running = ref(false)
 async function onAction(): Promise<void> {
   const action = props.action
   if (!action || running.value) return
-  if (action.run) {
+  if (action.onClick) {
     running.value = true
     try {
-      await action.run()
+      await action.onClick()
     } finally {
       running.value = false
     }
+  } else if (action.run) {
+    await run.start(action.run)
   } else if (action.to) {
     await router.push(action.to)
   }

@@ -109,6 +109,8 @@ import { useListFilters } from './useListPage.filters'
 import { useListAlterHooks } from './useListPage.alterHooks'
 import { useOrchestrator } from '../orchestrator/useOrchestrator.js'
 import { createOrchestratorToast } from './useOrchestratorToast'
+import { useRun } from '../run/useRun'
+import type { RunInit } from '../run/run'
 
 // Re-export PAGE_SIZE_OPTIONS so existing consumers (qdadm/index.ts,
 // composables/index.ts) keep their import path.
@@ -1029,15 +1031,81 @@ export function useListPage<T = unknown>(config: UseListPageOptions<T>): UseList
   }
 
   function goToEdit(item: unknown): void {
+    if (openInRun('edit', item)) return
     pushNamedRoute(`${routePrefix}-edit`, {
       [manager.idField]: (item as Record<string, unknown>)[resolvedDataKey] as string,
     })
   }
 
   function goToShow(item: unknown): void {
+    if (openInRun('show', item)) return
     pushNamedRoute(`${routePrefix}-show`, {
       [manager.idField]: (item as Record<string, unknown>)[resolvedDataKey] as string,
     })
+  }
+
+  // ============ RUNS (#5343) ============
+
+  const run = useRun()
+
+  /** The list's filter, in words: the values chosen, and the search */
+  function filterText(): string | undefined {
+    const parts: string[] = []
+    for (const [name, def] of filtersMap.value.entries()) {
+      const value = filterValues.value[name]
+      if (value === null || value === undefined || value === '' || value === (def.default ?? null)) continue
+      const values = Array.isArray(value) ? value : [value]
+      parts.push(values.map((v) => String(def.options?.find((o) => o.value === v)?.label ?? v)).join(', '))
+    }
+    if (searchQuery.value) parts.push(`"${searchQuery.value}"`)
+    return parts.length ? parts.join(', ') : undefined
+  }
+
+  /** The list's order, in words: "Title ↑" */
+  function orderText(): string | undefined {
+    if (!sortField.value) return undefined
+    return `${column(sortField.value).header ?? sortField.value} ${sortOrder.value === -1 ? '↓' : '↑'}`
+  }
+
+  /**
+   * A run over the list's rows, in their order, with its filter and order in
+   * words; the route of `start` (or of the first row), or null when the
+   * entity has no such page.
+   */
+  function runRoute(target: 'edit' | 'show', start?: unknown, init: Partial<RunInit> = {}) {
+    const name = `${routePrefix}-${target}`
+    if (!router.hasRoute(name)) return null
+    const ids = (items.value as Array<Record<string, unknown>>).map((row) => String(row[resolvedDataKey]))
+    if (!ids.length) return null
+    const params = { ...(route.params as Record<string, string>) }
+    delete params[manager.idField]
+    return run.startRun({
+      entity,
+      items: ids,
+      filter: filterText(),
+      order: orderText(),
+      route: { name, param: manager.idField, params },
+      ...(start !== undefined ? { start: String((start as Record<string, unknown>)[resolvedDataKey]) } : {}),
+      ...init,
+    })
+  }
+
+  /** Opening a row of a filtered list walks that list (#5343) */
+  function openInRun(target: 'edit' | 'show', item: unknown): boolean {
+    if (!hasActiveFilters.value || items.value.length < 2) return false
+    const to = runRoute(target, item)
+    if (!to) return false
+    router.push(to)
+    return true
+  }
+
+  /**
+   * Walk the list's rows one after the other, from the first: its edit page,
+   * else its show page, with the run bar (#5343)
+   */
+  async function startRun(init: Partial<RunInit> = {}): Promise<void> {
+    const to = runRoute(router.hasRoute(`${routePrefix}-edit`) ? 'edit' : 'show', undefined, init)
+    if (to) await router.push(to)
   }
 
   // ============ MOBILE ROW TAP ============
@@ -1497,6 +1565,7 @@ export function useListPage<T = unknown>(config: UseListPageOptions<T>): UseList
     goToCreate,
     goToEdit,
     goToShow,
+    startRun,
 
     // Mobile row tap
     isMobile,

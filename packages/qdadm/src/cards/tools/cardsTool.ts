@@ -89,7 +89,7 @@ export function renderBestiary(cards: CardFolder[], title = 'Cards'): string {
     '| `status` | `critical`, `watch`, `good` or `info`: a side bar, a hue and a word |',
     '| `source`, `freshness` | Where the data comes from, and when it was read |',
     '| `to` | The surface: the whole card opens the domain\'s board |',
-    '| `action` | `{ verb, count, mode, to \\| run }`: the one gesture. `mode: next` opens the most urgent item, `list` the filtered list |',
+    '| `action` | `{ verb, count, mode, to \\| run \\| onClick }`: the one gesture. `mode: next` opens the most urgent item, `list` the filtered list; `run` walks the items behind the card with the run bar |',
     '| `state` | `ready`, or `loading`, `unreachable` (with `error`), `empty` (with `emptyText`): drawn instead of the body |',
     '| `size` | `s`, `m` or `l`: 1, 2 or 3 columns, among the card\'s sizes |',
     '',

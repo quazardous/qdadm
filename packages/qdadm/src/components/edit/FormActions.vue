@@ -33,6 +33,8 @@ interface Props {
   dirty?: boolean
   showSaveAndClose?: boolean
   deleteAction?: DeleteAction | null
+  /** In a run (#5343): Save & Close becomes "Save and go to the next", enabled even with nothing changed */
+  inRun?: boolean
 }
 
 withDefaults(defineProps<Props>(), {
@@ -40,7 +42,8 @@ withDefaults(defineProps<Props>(), {
   saving: false,
   dirty: true,  // Default true for backwards compatibility
   showSaveAndClose: true,
-  deleteAction: null
+  deleteAction: null,
+  inRun: false
 })
 
 const emit = defineEmits<{
@@ -65,13 +68,14 @@ const emit = defineEmits<{
       <QdButton
         v-if="showSaveAndClose"
         type="button"
-        :label="isEdit ? t('core.actions.updateAndClose') : t('core.actions.createAndClose')"
+        :label="inRun ? t('core.run.saveAndNext') : isEdit ? t('core.actions.updateAndClose') : t('core.actions.createAndClose')"
         :loading="saving"
-        :disabled="!dirty || saving"
-        icon="pi pi-check-circle"
+        :disabled="(!dirty && !inRun) || saving"
+        :icon="inRun ? 'pi pi-arrow-right' : 'pi pi-check-circle'"
         severity="success"
+        data-save-and-close
         @click="emit('saveAndClose')"
-        v-tooltip.top="t('core.tooltips.saveAndReturn')"
+        v-tooltip.top="inRun ? undefined : t('core.tooltips.saveAndReturn')"
       />
       <span v-if="dirty" class="dirty-indicator" v-tooltip.top="t('core.tooltips.unsavedChanges')">
         <i class="pi pi-circle-fill"></i>

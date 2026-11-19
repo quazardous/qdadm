@@ -39,6 +39,8 @@ import FormActions from './FormActions.vue'
 import UnsavedChangesDialog from '../dialogs/UnsavedChangesDialog.vue'
 import QdRevealOnce from '../dialogs/QdRevealOnce.vue'
 import CardShell from '../layout/CardShell.vue'
+import QdRunBar from '../run/QdRunBar.vue'
+import { useRun } from '../../run/useRun'
 import { formatFetchError } from '../../utils/errors'
 import QdButton from '../base/QdButton.vue'
 import QdMessage from '../base/QdMessage.vue'
@@ -133,6 +135,10 @@ const deleteAction = computed(() => {
 })
 
 // Get error message from fetchError
+// A run (#5343): the bar, and Save & Close goes to the next item instead
+const run = useRun()
+const inRun = computed(() => props.isEdit && run.active.value)
+
 const fetchErrorMessage = computed<string | null>(() => formatFetchError(props.fetchError))
 
 // A qdadm layout (AppLayout, BaseLayout) renders the registered guard dialog: rendering it here too
@@ -181,6 +187,9 @@ function onGuardStay(): void {
         />
       </template>
     </PageHeader>
+
+    <!-- Where this item is in the run it was opened from (#5343) -->
+    <QdRunBar :entity-label="titleParts?.entityName ?? null" />
 
     <!-- Toolbar slot (between header and form) -->
     <slot name="toolbar" />
@@ -232,6 +241,7 @@ function onGuardStay(): void {
               :dirty="dirty"
               :showSaveAndClose="showSaveAndClose"
               :deleteAction="deleteAction"
+              :inRun="inRun"
               @save="emit('save')"
               @saveAndClose="emit('saveAndClose')"
               @cancel="emit('cancel')"
