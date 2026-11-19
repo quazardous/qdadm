@@ -151,6 +151,8 @@ export interface ActionConfig {
   name: string
   icon?: string | ((row: unknown) => string)
   tooltip?: string | ((row: unknown) => string)
+  /** The button's accessible name; the tooltip when absent (#5323) */
+  ariaLabel?: string | ((row: unknown) => string)
   severity?: string | ((row: unknown) => string)
   onClick: (row: unknown) => void | Promise<void>
   visible?: (row: unknown) => boolean
@@ -164,6 +166,8 @@ export interface ResolvedAction {
   name: string
   icon: string | undefined
   tooltip: string | undefined
+  /** The button's accessible name (#5323) */
+  ariaLabel: string | undefined
   severity: string
   isDisabled: boolean
   handler: () => void | Promise<void>

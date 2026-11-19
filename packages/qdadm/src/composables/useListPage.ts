@@ -764,6 +764,8 @@ export function useListPage<T = unknown>(config: UseListPageOptions<T>): UseList
         name: action.name,
         icon: action.icon ? resolveValue(action.icon, row) : undefined,
         tooltip: action.tooltip ? resolveValue(action.tooltip, row) : undefined,
+        // An icon alone has no name: the label read aloud, and the one a test finds it by (#5323)
+        ariaLabel: action.ariaLabel ? resolveValue(action.ariaLabel, row) : action.tooltip ? resolveValue(action.tooltip, row) : undefined,
         severity: resolveValue(action.severity || 'secondary', row),
         isDisabled: action.disabled ? action.disabled(row) : false,
         handler: () => action.onClick(row),
@@ -1097,7 +1099,7 @@ export function useListPage<T = unknown>(config: UseListPageOptions<T>): UseList
 
   function confirmDelete(item: unknown, labelField = 'name'): void {
     const itemRecord = item as Record<string, unknown>
-    requireDeleteConfirmation(confirm, {
+    requireDeleteConfirmation(confirm, tOr, {
       message: tOr('core.messages.confirmDeleteItem', 'Delete {entity} "{label}"?', {
         entity: entityName,
         label: String(itemRecord[labelField] || itemRecord[resolvedDataKey]),
@@ -1151,9 +1153,12 @@ export function useListPage<T = unknown>(config: UseListPageOptions<T>): UseList
 
   function confirmBulkDelete(): void {
     const count = selected.value.length
-    requireDeleteConfirmation(confirm, {
-      message: `Delete ${count} ${count > 1 ? entityNamePlural : entityName}?`,
-      header: 'Confirm Bulk Delete',
+    requireDeleteConfirmation(confirm, tOr, {
+      message: tOr('core.messages.confirmBulkDelete', 'Delete {count} {entities}?', {
+        count,
+        entities: count > 1 ? entityNamePlural : entityName,
+      }),
+      header: tOr('core.messages.confirmBulkDeleteTitle', 'Confirm Bulk Delete'),
       accept: bulkDelete,
     })
   }

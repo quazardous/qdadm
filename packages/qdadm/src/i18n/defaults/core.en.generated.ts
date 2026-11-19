@@ -65,6 +65,8 @@ export default `core:
     confirmDeleteTitle: Confirm Delete
     confirmDeleteItem: 'Delete {entity} "{label}"?'
     confirmDeleteThis: Are you sure you want to delete this {entity}?
+    confirmBulkDelete: "Delete {count} {entities}?"
+    confirmBulkDeleteTitle: Confirm Bulk Delete
   errors:
     required: Required
     tooShort: Too short (min {min})

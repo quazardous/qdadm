@@ -269,6 +269,15 @@ describe('useListPage - Permission features', () => {
       expect(actions.find(a => a.name === 'delete')).toBeUndefined()
     })
 
+    it('the row actions carry an accessible name: their label (#5323)', async () => {
+      const { result } = createWrapper(() => useListPage({ entity: 'books' }))
+      result.addEditAction()
+      result.addDeleteAction()
+      result.addAction('archive', { icon: 'pi pi-box', tooltip: 'Archive', ariaLabel: (row) => `Archive ${row.title}`, onClick: vi.fn() })
+      const names = Object.fromEntries(result.getActions({ id: 1, title: 'Dune' }).map((a) => [a.name, a.ariaLabel]))
+      expect(names).toEqual({ edit: 'Edit', delete: 'Delete', archive: 'Archive Dune' })
+    })
+
     it('shows delete action when canDelete returns true for row', async () => {
       mockManager = createMockManager({
         canDelete: () => true
@@ -1654,7 +1663,7 @@ describe('useListPage - delete confirmations close on Escape (#2269)', () => {
     result.confirmDelete({ id: 1, title: 'Book 1' }, 'title')
 
     expect(mockConfirm.require).toHaveBeenCalledWith(
-      expect.objectContaining({ header: 'Confirm Delete', acceptClass: 'p-button-danger', closeOnEscape: true })
+      expect.objectContaining({ header: 'Confirm Delete', acceptClass: 'p-button-danger', closeOnEscape: true, acceptLabel: 'Delete', rejectLabel: 'Cancel' })
     )
     expect(mockManager.delete).not.toHaveBeenCalled()
 

@@ -11,16 +11,23 @@ describe('requireDeleteConfirmation (#2269)', () => {
     const confirm = { require: vi.fn() }
     const accept = vi.fn()
 
-    requireDeleteConfirmation(confirm, { message: 'Delete book "Dune"?', header: 'Confirm Delete', accept })
+    requireDeleteConfirmation(confirm, (_key, fallback) => fallback, { message: 'Delete book "Dune"?', header: 'Confirm Delete', accept })
 
-    expect(confirm.require).toHaveBeenCalledWith({
+    expect(confirm.require).toHaveBeenCalledWith(expect.objectContaining({
       message: 'Delete book "Dune"?',
       header: 'Confirm Delete',
       icon: 'pi pi-exclamation-triangle',
       acceptClass: 'p-button-danger',
       closeOnEscape: true,
       accept,
-    })
+    }))
     expect(accept).not.toHaveBeenCalled()
+  })
+
+  it("names its buttons by what they do, in the app's language (#5323)", () => {
+    const confirm = { require: vi.fn() }
+    const fr = { 'core.actions.delete': 'Supprimer', 'core.actions.cancel': 'Annuler' }
+    requireDeleteConfirmation(confirm, (key, fallback) => fr[key] ?? fallback, { message: 'm', header: 'h', accept: vi.fn() })
+    expect(confirm.require).toHaveBeenCalledWith(expect.objectContaining({ acceptLabel: 'Supprimer', rejectLabel: 'Annuler' }))
   })
 })

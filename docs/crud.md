@@ -305,7 +305,8 @@ list.addAction('favorite', {
 | Action field | Static or `(row) => …` | Purpose |
 |---|---|---|
 | `icon` | both | PrimeVue icon class |
-| `tooltip` | both | Hover text |
+| `tooltip` | both | Hover text, and the button's accessible name |
+| `ariaLabel` | both | The accessible name, when it should differ from the tooltip |
 | `severity` | both | Button severity/color |
 | `visible` | `(row) => boolean` | Omit the action for this row |
 | `disabled` | `(row) => boolean` | Render but disable |

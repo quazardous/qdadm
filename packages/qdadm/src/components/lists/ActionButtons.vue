@@ -18,6 +18,8 @@ interface Action {
   name: string
   icon?: string
   tooltip?: string
+  /** The button's accessible name: an icon alone has none (#5323) */
+  ariaLabel?: string
   severity: string
   handler: () => void | Promise<void>
   isDisabled?: boolean
@@ -40,6 +42,7 @@ defineProps<Props>()
       text
       rounded
       :disabled="action.isDisabled"
+      :aria-label="action.ariaLabel ?? action.tooltip"
       @click="action.handler"
       v-tooltip.top="action.tooltip"
     />

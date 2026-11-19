@@ -480,7 +480,7 @@ export function useEntityItemFormPage<T extends Record<string, unknown> = Record
 
   function confirmDelete(): void {
     const label = manager.getEntityLabel(data.value) || entityId.value
-    requireDeleteConfirmation(confirm, {
+    requireDeleteConfirmation(confirm, tOr, {
       message: tOr('core.messages.confirmDeleteItem', 'Delete {entity} "{label}"?', { entity: entityName, label: String(label) }),
       header: tOr('core.messages.confirmDeleteTitle', 'Confirm Delete'),
       accept: remove,

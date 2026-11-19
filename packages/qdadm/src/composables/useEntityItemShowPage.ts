@@ -476,7 +476,7 @@ export function useEntityItemShowPage<T = Record<string, unknown>>(
       severity: 'danger',
       onClick: () => {
         if (confirmDelete) {
-          requireDeleteConfirmation(confirm, {
+          requireDeleteConfirmation(confirm, tOr, {
             message: tOr('core.messages.confirmDeleteThis', 'Are you sure you want to delete this {entity}?', { entity: manager.label || entity }),
             header: tOr('core.messages.confirmDeleteTitle', 'Confirm Delete'),
             accept: () => deleteEntity(),

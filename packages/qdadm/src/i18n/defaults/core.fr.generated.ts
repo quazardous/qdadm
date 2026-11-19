@@ -65,6 +65,8 @@ export default `core:
     confirmDeleteTitle: Confirmer la suppression
     confirmDeleteItem: "Supprimer {entity} « {label} » ?"
     confirmDeleteThis: "Êtes-vous sûr de vouloir supprimer cet élément ({entity}) ?"
+    confirmBulkDelete: "Supprimer {count} {entities} ?"
+    confirmBulkDeleteTitle: Confirmer la suppression groupée
   errors:
     required: Requis
     tooShort: Trop court (min {min})
