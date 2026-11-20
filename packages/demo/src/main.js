@@ -86,7 +86,9 @@ const kernel = new Kernel({
   },
   homeRoute: {
     name: 'home',
-    component: () => import('./pages/WelcomePage.vue')
+    component: () => import('./pages/WelcomePage.vue'),
+    // its own address; / redirects there
+    path: 'welcome'
   },
 
   // Branding

@@ -77,7 +77,8 @@ const kernel = new Kernel({
   // pages.layout is REQUIRED. qdadm's AppLayout gives you the full
   // admin shell (sidebar, menu, breadcrumb, user zone) for free.
   pages: { layout: AppLayout },
-  homeRoute: { name: 'home', component: () => import('./pages/HomePage.vue') },
+  // the home page, on /welcome; / redirects there (docs/navigation.md)
+  homeRoute: { name: 'home', component: () => import('./pages/HomePage.vue'), path: 'welcome' },
   primevue: { plugin: PrimeVue, theme: Aura },
   app: { name: 'My Admin' },
 })

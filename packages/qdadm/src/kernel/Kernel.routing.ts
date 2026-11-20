@@ -9,6 +9,7 @@ import {
 import { getRoutes, getItemTabs } from '../module/moduleRegistry'
 import { nestItemTabs } from './itemTabs'
 import { installChunkReload } from './chunkReload'
+import { homeRouteRecords } from './homeRoute'
 import { routeEntity, routePermissions, missingPermission, entityDenial } from '../security/routeAccess'
 import type { Kernel } from './Kernel'
 // #1196 Phase B — this-typing against the real Kernel shape (was Self = any)
@@ -59,20 +60,8 @@ export function applyRoutingMethods(KernelClass: { prototype: Kernel }): void {
       throw new Error('[Kernel] pages.layout is required')
     }
 
-    let homeRouteConfig: RouteRecordRaw
-    if (typeof homeRoute === 'object' && homeRoute?.component) {
-      homeRouteConfig = {
-        path: '',
-        name: homeRoute.name || '_home',
-        component: homeRoute.component,
-      }
-    } else {
-      homeRouteConfig = {
-        path: '',
-        name: '_home',
-        redirect: { name: (homeRoute as string) || 'home' },
-      }
-    }
+    // The home page: on its own path, '/' redirecting to it (#5365)
+    const homeRecords = homeRouteRecords(homeRoute)
 
     // An entity shown as tabs gets its item's pages nested under one frame route (#4963)
     const moduleRoutes = nestItemTabs(getRoutes() as RouteRecordRaw[], getItemTabs())
@@ -94,7 +83,7 @@ export function applyRoutingMethods(KernelClass: { prototype: Kernel }): void {
     }
 
     const layoutChildren: RouteRecordRaw[] = [
-      homeRouteConfig,
+      ...homeRecords,
       ...(coreRoutes || []),
       ...protectedRoutes,
     ]

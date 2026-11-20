@@ -216,7 +216,11 @@ export interface NotificationsConfig {
 /**
  * Home route configuration
  */
-export type HomeRoute = string | { name?: string; component?: Component }
+/**
+ * The home page: a route name `/` redirects to, or a page of its own. Give that
+ * page a `path` so it keeps an address when the home changes (#5365).
+ */
+export type HomeRoute = string | { name?: string; component?: Component; path?: string }
 
 /**
  * Kernel options

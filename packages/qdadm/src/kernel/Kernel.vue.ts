@@ -23,6 +23,7 @@ import { warnWithoutQdadmVitePlugin } from './vitePluginCheck'
 import { currentPageState } from '../composables/usePageState'
 import { explainGrant } from '../security/explainGrant'
 import type { Kernel } from './Kernel'
+import { homeRouteName as homeRouteNameOf } from './homeRoute'
 // #1196 Phase B — this-typing against the real Kernel shape (was Self = any)
 type Self = Kernel
 
@@ -263,8 +264,7 @@ export function applyVueMethods(KernelClass: { prototype: Kernel }): void {
     this._pendingComponents.clear()
 
     const { homeRoute } = this.options
-    const homeRouteName =
-      typeof homeRoute === 'object' ? homeRoute?.name : homeRoute
+    const homeRouteName = homeRouteNameOf(homeRoute)
 
     app.provide('qdadmZoneRegistry', this.zoneRegistry)
     app.provide('qdadmActiveStack', this.activeStack)

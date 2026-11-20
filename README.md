@@ -100,7 +100,7 @@ const kernel = new Kernel({
   root: App,
   moduleDefs,                                  // your modules (see below)
   pages: { layout: AppLayout },                // required — the admin shell
-  homeRoute: { name: 'home', component: HomePage },
+  homeRoute: { name: 'home', component: HomePage, path: 'welcome' }, // / redirects there
   primevue: { plugin: PrimeVue, theme: Aura },
   app: { name: 'My Admin' }
 })

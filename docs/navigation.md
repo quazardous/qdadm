@@ -9,6 +9,27 @@ Rendered by `AppLayout`'s inline breadcrumb bar (the default layout) and by
 `DefaultBreadcrumb` (the `breadcrumb` zone default in `BaseLayout`). Both read
 the same composable and render the same structure.
 
+## The home page: `homeRoute`
+
+`homeRoute` says what `/` shows. Give the home page an address of its own, so
+a link to it still works the day the home changes:
+
+```js
+// a page of its own: mounted on /welcome, and / redirects there
+homeRoute: { name: 'home', component: () => import('./pages/WelcomePage.vue'), path: 'welcome' }
+
+// or a route a module already declares: / redirects to it
+homeRoute: 'log-errors'
+```
+
+`{ name, component }` without `path` mounts the page on `/` only: it has no
+address of its own, and development warns about it.
+
+Whatever its name, the route `homeRoute` names is the home everywhere: the
+first crumb of the breadcrumb, with the house icon, and the target of the
+404 page's "Back to Home" (a route named `home` or `dashboard` when
+`homeRoute` names none that exists).
+
 ## The semantic breadcrumb
 
 `useSemanticBreadcrumb()` derives a semantic trail from the current **URL

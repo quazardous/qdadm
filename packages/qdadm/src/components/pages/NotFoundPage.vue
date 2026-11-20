@@ -4,15 +4,18 @@
  *
  * Simple page with link to home. Can be replaced via pages.notFound option.
  */
-import { computed, type ComputedRef } from 'vue'
+import { computed, inject, type ComputedRef } from 'vue'
 import { useRouter, type RouteRecordName } from 'vue-router'
 import { useI18n } from '../../i18n/useI18n'
 
 const router = useRouter()
 const { tOr } = useI18n()
 
+const declaredHome = inject<string | null>('qdadmHomeRoute', null)
+
 const homeRoute: ComputedRef<RouteRecordName | string> = computed(() => {
-  // Find home route (first route or named 'home'/'dashboard')
+  // The home the app declares (homeRoute), else a route named 'home' or 'dashboard', else '/' (#5365)
+  if (declaredHome && router.hasRoute(declaredHome)) return declaredHome
   const routes = router.getRoutes()
   const home = routes.find(r => r.name === 'home' || r.name === 'dashboard')
   return home?.name || '/'

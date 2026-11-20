@@ -142,7 +142,7 @@ export function useBreadcrumb(options: UseBreadcrumbOptions = {}): UseBreadcrumb
       const routeName = item.route!
       displayItem.label = item.label || label(routeName) || capitalize(routeName)
       displayItem.to = isLast ? null : routeExists(routeName) ? { name: routeName } : null
-      if (routeName === 'home') {
+      if (routeName === 'home' || routeName === homeRouteName) {
         displayItem.icon = 'pi pi-home'
       }
     } else if (item.kind.startsWith('entity-')) {
