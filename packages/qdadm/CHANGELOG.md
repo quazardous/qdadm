@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.53.0
+
+### Minor Changes
+
+- 31c81fc: A domain's bar (#5389). `ctx.domain(name, { label, icon, to, nav, indicators, entities })` declares a domain once; `QdDomainBar` is drawn at the top of the content area of each of its pages (the routes of the module that declares it, the pages of the entities it lists, any route whose `meta.domain` names it), through the `_app:domain-bar` zone. Its navigation marks the current entry; its indicators are mini cards, each of a registered type read from its own `load` (with a `refresh` period) or `data`, checked against the type's schema and drawn as a pill; a count shows as a `QdBadge`, toned by the card's status (`watch`, `critical`) and hidden at zero, and a nav entry shows an indicator's badge. Compact: one line of icons and badges, on its own once the page scrolls (the bar is sticky) or by a toggle kept per account. A card type gets a pill form with `registerCard({ pill })`; `metric`, `queue`, `goal`, `compare` and `split` have one. `ctx.routes()` now tags each route with its module (`meta.module`).
+
 ## 2.52.0
 
 ### Minor Changes
