@@ -509,6 +509,17 @@ core:
     change: "{change} sur la période précédente"
     same: Autant que la période précédente
     timelineBars: "Volume du {from} au {to}"
+  # Le cartouche de domaine (#5389)
+  domainBar:
+    label: "{domain} : ses pages et ses indicateurs"
+    nav: "Pages de {domain}"
+    indicators: "Indicateurs de {domain}"
+    compact: Cartouche compact
+    expand: Cartouche complet
+    badge: "{count} — {title}"
+    unreachable: "{title} : injoignable ({error})"
+    invalid: "{title} : données qui ne correspondent pas"
+    loading: "{title} : chargement"
   # NotFoundPage
   notFound:
     title: Page introuvable

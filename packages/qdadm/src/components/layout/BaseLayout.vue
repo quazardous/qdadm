@@ -34,6 +34,7 @@ import { useSlots, provide, ref } from 'vue'
 import { RouterView } from 'vue-router'
 import ConfirmDialog from 'primevue/confirmdialog'
 import Zone from './Zone.vue'
+import QdDomainBarZone from '../../domain/QdDomainBarZone.vue'
 import AppBanner from './AppBanner.vue'
 import { LAYOUT_ZONES } from '../../zones/zones'
 import { useGuardDialog, GUARD_DIALOG_HOST } from '../../composables/useGuardStore'
@@ -99,6 +100,9 @@ provide('qdadmNavlinksOverride', navlinksOverride)
 
     <!-- Main content area -->
     <div class="main-area">
+      <!-- The domain's bar, on every page of a domain (#5389) -->
+      <QdDomainBarZone />
+
       <!-- Breadcrumb zone -->
       <Zone
         :name="LAYOUT_ZONES.BREADCRUMB"

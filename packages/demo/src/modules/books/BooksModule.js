@@ -311,6 +311,59 @@ export class BooksModule extends Module {
       label: 'Books'
     })
 
+    // ════════════════════════════════════════════════════════════════════════
+    // DOMAIN (#5389): the Library's bar on top of each of its pages
+    // ════════════════════════════════════════════════════════════════════════
+    // Its pages: this module's (books, genres, the board, the stats) and,
+    // through `entities`, the loans pages the loans module declares.
+    const list = (entity) => ctx.orchestrator.get(entity).list({ page_size: 1000 }).then((r) => r.items)
+    ctx.domain('library', {
+      label: 'Library',
+      icon: 'pi pi-building-columns',
+      to: { name: 'book-board' },
+      entities: ['loans'],
+      nav: [
+        { label: 'Board', route: 'book-board', icon: 'pi pi-th-large' },
+        { label: 'Books', route: 'book', icon: 'pi pi-book', badge: 'toCheck' },
+        { label: 'Loans', route: 'loan', icon: 'pi pi-arrow-right-arrow-left', badge: 'onLoan' },
+        { label: 'Stats', route: 'book-stats', icon: 'pi pi-chart-bar' },
+      ],
+      indicators: [
+        {
+          id: 'onLoan',
+          card: 'metric',
+          title: 'On loan',
+          icon: 'pi pi-arrow-right-arrow-left',
+          refresh: 60,
+          load: async () => ({ value: (await list('loans')).filter((l) => !l.returned_at).length, label: 'books' }),
+          // More than a few books out: worth a look
+          status: (data) => (data.value > 3 ? 'watch' : null),
+          to: { name: 'loan' },
+        },
+        {
+          id: 'toCheck',
+          card: 'queue',
+          title: 'To check',
+          icon: 'pi pi-search',
+          load: async () => {
+            const old = (await list('books')).filter((b) => b.year < 1970)
+            return { total: old.length, items: old.slice(0, 3).map((b) => ({ label: b.title })) }
+          },
+          status: (data) => (data.total ? 'critical' : null),
+          to: { name: 'book-stats' },
+        },
+        {
+          id: 'readGoal',
+          card: 'goal',
+          title: 'Read',
+          icon: 'pi pi-flag',
+          load: async () => {
+            const loans = await list('loans')
+            return { value: loans.filter((l) => l.read).length, target: loans.length || 1 }
+          },
+        },
+      ],
+    })
   }
 }
 

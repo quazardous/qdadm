@@ -28,6 +28,8 @@ import type { RouteParamResolverContext } from './KernelContext.routing'
 
 /** Extended Module interface with internal cleanup method */
 export interface ModuleWithCleanup {
+  /** The module's name (Module.name); routes are tagged with it (#5389) */
+  name?: string
   constructor?: { name?: string }
   _addSignalCleanup?: (cleanup: () => void) => void
 }

@@ -511,6 +511,17 @@ export default `core:
     change: "{change} on the period before"
     same: Same as the period before
     timelineBars: "Volume from {from} to {to}"
+  # The domain bar (#5389)
+  domainBar:
+    label: "{domain}: its pages and indicators"
+    nav: "{domain} pages"
+    indicators: "{domain} indicators"
+    compact: Compact bar
+    expand: Full bar
+    badge: "{count} — {title}"
+    unreachable: "{title}: unreachable ({error})"
+    invalid: "{title}: data that does not fit"
+    loading: "{title}: loading"
   # NotFoundPage
   notFound:
     title: Page not found

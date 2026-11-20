@@ -81,6 +81,16 @@ export interface CardMeta {
   }
 }
 
+/**
+ * A card reduced to a pill (#5389): what the domain bar shows of it. `count`
+ * is the badge's number, `null` when the card counts nothing.
+ */
+export interface CardPill {
+  /** The value as written: "14", "68 / 100" */
+  value: string
+  count: number | null
+}
+
 /** A card type, as registerCard takes it */
 export interface CardDefinition {
   type: string
@@ -89,6 +99,8 @@ export interface CardDefinition {
   meta: CardMeta
   /** The JSON Schema of `data` */
   schema: CardSchema
+  /** Its pill form, for the domain bar (#5389); without it, the type is not offered there */
+  pill?: (data: unknown, options: Record<string, unknown>, locale: string) => CardPill
 }
 
 /** What a body receives */

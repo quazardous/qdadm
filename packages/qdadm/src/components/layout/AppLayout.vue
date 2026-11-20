@@ -31,6 +31,7 @@ import SidebarBox from './SidebarBox.vue'
 import Zone from './Zone.vue'
 import AppBanner from './AppBanner.vue'
 import NavlinksGroup from './NavlinksGroup.vue'
+import QdDomainBarZone from '../../domain/QdDomainBarZone.vue'
 import qdadmLogo from '../../assets/logo.svg'
 import { version as qdadmVersion } from '../../../package.json'
 
@@ -408,6 +409,9 @@ const showBreadcrumb = computed<boolean>(() => {
         />
         <span class="mobile-header-title">{{ app.name }}</span>
       </div>
+
+      <!-- The domain's bar, on every page of a domain (#5389) -->
+      <QdDomainBarZone />
 
       <!-- Breadcrumb + Navlinks bar -->
       <div v-if="showBreadcrumb" class="layout-nav-bar">

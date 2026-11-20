@@ -18,6 +18,7 @@ import type { ItemTabsOptions } from '../module/moduleRegistry'
 import type { RouteRecordRaw } from 'vue-router'
 import pluralize from '../utils/pluralize'
 import { registry, getRoutes } from '../module/moduleRegistry'
+import { registerDomain, type DomainConfig } from '../domain/registry'
 import type {
   ChildPageOptions,
   CrudOptions,
@@ -150,7 +151,15 @@ export function applyRoutingMethods(KernelContextClass: { prototype: KernelConte
     routes: RouteRecordRaw[],
     opts: RouteOptions = {}
   ): Self {
-    registry.addRoutes(basePath, routes, opts)
+    // Each route knows its module, so a domain the module declares finds its pages (#5389)
+    const module = this._module?.name
+    const tagged = module ? routes.map((r) => ({ ...r, meta: { module, ...r.meta } }) as RouteRecordRaw) : routes
+    registry.addRoutes(basePath, tagged, opts)
+    return this
+  }
+
+  proto.domain = function (this: Self, name: string, config: DomainConfig): Self {
+    registerDomain(name, config, this._module?.name ?? null)
     return this
   }
 

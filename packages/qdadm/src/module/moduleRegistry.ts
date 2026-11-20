@@ -52,6 +52,10 @@ export interface ModuleRouteMeta {
   title?: string
   /** Who may open the page (#4332): enforced by the router guard; a list needs every entry */
   permission?: string | string[]
+  /** The module that declared the route (#5389), set by ctx.routes() */
+  module?: string
+  /** The domain whose bar the page shows (#5389); false: none, even its module's */
+  domain?: string | false
   [key: string]: unknown
 }
 

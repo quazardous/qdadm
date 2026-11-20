@@ -1,0 +1,159 @@
+/**
+ * The domain bar (#5389): a domain's title, its navigation and its indicators
+ * as pills with badges, on top of its pages. Sticky; compact in one line of
+ * icons and badges. Tones from the card tokens (_qd-cards.scss).
+ */
+
+// The zone's wrapper steps aside, so the bar sticks within the whole content column
+.qd-domain-bar-zone {
+  display: contents;
+}
+
+.qd-domain-bar-sentinel {
+  height: 1px;
+  margin-bottom: -1px;
+}
+
+.qd-domain-bar {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 1rem;
+  margin: 0.75rem 1rem 0;
+  padding: 0.5rem 0.75rem;
+  background: var(--qd-card-bg);
+  border: 1px solid var(--qd-card-border);
+  border-radius: 8px;
+  color: var(--qd-card-ink);
+  font-size: 0.875rem;
+}
+
+.qd-domain-bar-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-weight: 600;
+  font-size: 1rem;
+  color: var(--qd-card-ink-strong);
+  text-decoration: none;
+}
+a.qd-domain-bar-title:hover .qd-domain-bar-name { text-decoration: underline; }
+
+.qd-domain-bar-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+}
+
+.qd-domain-bar-entry {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.3rem 0.6rem;
+  border-radius: 6px;
+  color: var(--qd-card-muted);
+  text-decoration: none;
+  border-bottom: 2px solid transparent;
+
+  &:hover { color: var(--qd-card-ink); background: var(--qd-card-track); }
+  &:focus-visible { outline: 2px solid var(--qd-card-accent); outline-offset: 1px; }
+}
+
+.qd-domain-bar-entry--current {
+  color: var(--qd-card-ink-strong);
+  font-weight: 600;
+  border-bottom-color: var(--qd-card-accent);
+  border-radius: 6px 6px 0 0;
+}
+
+.qd-domain-bar-indicators {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin: 0 0 0 auto;
+  padding: 0;
+  list-style: none;
+}
+
+.qd-domain-pill-body {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.25rem 0.55rem;
+  border: 1px solid var(--qd-card-border);
+  border-radius: 999px;
+  color: var(--qd-card-ink);
+  text-decoration: none;
+  white-space: nowrap;
+}
+a.qd-domain-pill-body:hover { background: var(--qd-card-track); }
+a.qd-domain-pill-body:focus-visible { outline: 2px solid var(--qd-card-accent); outline-offset: 1px; }
+
+.qd-domain-pill[data-status='critical'] .qd-domain-pill-body { border-color: var(--qd-tone-critical); }
+.qd-domain-pill[data-status='watch'] .qd-domain-pill-body { border-color: var(--qd-tone-watch); }
+
+.qd-domain-pill-title { color: var(--qd-card-muted); }
+.qd-domain-pill-value { font-weight: 600; font-variant-numeric: tabular-nums; }
+.qd-domain-pill-value--zero { color: var(--qd-card-muted); font-weight: 400; }
+.qd-domain-pill[data-state='unreachable'] .qd-domain-pill-mark,
+.qd-domain-pill[data-state='invalid'] .qd-domain-pill-mark { color: var(--qd-tone-watch); }
+.qd-domain-pill[data-state='loading'] .qd-domain-pill-mark { color: var(--qd-card-muted); }
+
+.qd-domain-bar-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--qd-card-muted);
+  cursor: pointer;
+
+  &:hover { background: var(--qd-card-track); color: var(--qd-card-ink); }
+  &:focus-visible { outline: 2px solid var(--qd-card-accent); }
+  &[aria-pressed='true'] { color: var(--qd-card-accent); }
+}
+
+// The badge: a count, its tone from how things stand
+.qd-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.25rem;
+  height: 1.25rem;
+  padding: 0 0.35rem;
+  border-radius: 999px;
+  background: var(--qd-tone-neutral-bg);
+  color: var(--qd-card-ink-strong);
+  font-size: 0.75rem;
+  font-weight: 700;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+.qd-badge--critical { background: var(--qd-tone-critical); color: var(--qd-card-bg); }
+.qd-badge--watch { background: var(--qd-tone-watch); color: var(--qd-card-bg); }
+
+// Compact: one line of icons and badges
+.qd-domain-bar--compact {
+  flex-wrap: nowrap;
+  gap: 0.5rem;
+  padding: 0.25rem 0.5rem;
+  overflow-x: auto;
+  box-shadow: 0 2px 6px rgb(0 0 0 / 8%);
+
+  .qd-domain-bar-title { font-size: 0.875rem; }
+  .qd-domain-bar-nav, .qd-domain-bar-indicators { flex-wrap: nowrap; }
+  .qd-domain-bar-entry { padding: 0.2rem 0.4rem; }
+  .qd-domain-pill-body { padding: 0.15rem 0.4rem; }
+  .qd-domain-bar-toggle { width: 1.75rem; height: 1.75rem; }
+}
+
+@media (max-width: 700px) {
+  .qd-domain-bar { margin: 0.5rem 0.5rem 0; }
+  .qd-domain-bar-indicators { margin-left: 0; }
+}

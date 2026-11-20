@@ -36,6 +36,7 @@
  */
 
 import type { ItemTabsOptions } from '../module/moduleRegistry'
+import type { DomainConfig } from '../domain/registry'
 import type { App, Component } from 'vue'
 import type { Router, RouteRecordRaw } from 'vue-router'
 import type { ListenerOptions } from '@quazardous/quarkernel'
@@ -210,6 +211,12 @@ export interface KernelContext {
   childPage(parentRouteName: string, pageName: string, options: ChildPageOptions): this
   /** Show an entity's item as tabs: its header, a tab per page of the item, the page below (#4963) */
   itemTabs(entity: string, options?: ItemTabsOptions): this
+  /**
+   * A domain (#5389): a bar on top of each of its pages, with its navigation
+   * and its indicators. Its pages: this module's routes, the pages of the
+   * entities it lists, and any route whose `meta.domain` names it.
+   */
+  domain(name: string, config: DomainConfig): this
 
   // Zones / Vue (KernelContext.zones.ts)
   zone(name: string, options?: ZoneOptions): this

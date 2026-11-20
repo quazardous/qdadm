@@ -23,6 +23,7 @@ export type {
   CardOptionSheet,
   CardDefinition,
   CardBodyProps,
+  CardPill,
 } from './types'
 
 registerBuiltinCards()

@@ -138,6 +138,49 @@ component knows only the types.
 `registerBoardBlock(type, { component, schema, span, isEmpty? })` adds a type
 of the app's own: the component gets the block's `data`.
 
+## A domain's bar
+
+A domain, declared once by its module, gets a bar on top of each of its pages,
+at the top of the content area (the sidebar does not change): its title, its
+navigation and its permanent indicators. It is a small dashboard: each
+indicator is a card of a registered type, read from its own source, drawn as a
+pill; a count shows as a badge, coloured when the card's status is `watch` or
+`critical`, hidden at zero.
+
+```js
+// in the books module's connect(ctx)
+ctx.domain('library', {
+  label: 'Library', icon: 'pi pi-building-columns', to: { name: 'book-board' },
+  entities: ['loans'],               // the loans pages join, though another module declares them
+  nav: [
+    { label: 'Board', route: 'book-board', icon: 'pi pi-th-large' },
+    { label: 'Books', route: 'book', icon: 'pi pi-book', badge: 'toCheck' },  // the indicator's count
+  ],
+  indicators: [
+    {
+      id: 'toCheck', card: 'queue', title: 'To check', icon: 'pi pi-search',
+      load: async () => ({ total: 5, items: [] }), refresh: 300,      // seconds
+      status: (data) => (data.total ? 'critical' : null),
+      to: { name: 'book-stats' },
+    },
+  ],
+})
+```
+
+- **Its pages:** the routes of the module that declares it, the pages of the
+  entities it lists (`entities`), and any route whose `meta.domain` names it;
+  `meta.domain: false` keeps a page out.
+- **Indicators:** `card` is a type with a pill form. `metric`, `queue` and
+  `split` give a count (the badge); `goal` and `compare` give a value. A type
+  of your own gets one with `registerCard({ …, pill: (data, options, locale)
+  => ({ value, count }) })`. Data that does not fit the type's schema, or a
+  read that fails, marks the pill, with the reason in its title.
+- **Compact:** one line of icons and badges, on its own once the page
+  scrolls (the bar stays on top), or by the toggle at its end, the choice kept
+  per account.
+- **Your own bar:** a block in the `_app:domain-bar` zone replaces it; it
+  receives `domain`. `QdDomainBar` and `QdBadge` are exported.
+
 ## Arranged cards
 
 - Any block with an `id` is a card: the id is its key in the saved arrangement.

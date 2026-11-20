@@ -46,6 +46,7 @@ import FavoritesCard from './favorites/FavoritesCard.vue'
 import favoritesMeta from './favorites/meta.json'
 import favoritesSchema from './favorites/schema.json'
 import RecentCard from './recent/RecentCard.vue'
+import { PILLS } from './pills'
 import recentMeta from './recent/meta.json'
 import recentSchema from './recent/schema.json'
 
@@ -53,14 +54,14 @@ import recentSchema from './recent/schema.json'
 export const BUILTIN_CARDS = ['metric', 'queue', 'goal', 'bullet', 'compare', 'trend', 'ranking', 'split', 'funnel', 'heat', 'agenda', 'feed', 'favorites', 'recent'] as const
 
 export function registerBuiltinCards(): void {
-  registerCard({ type: 'metric', component: MetricCard, meta: metricMeta as CardMeta, schema: metricSchema as CardSchema })
-  registerCard({ type: 'queue', component: QueueCard, meta: queueMeta as CardMeta, schema: queueSchema as CardSchema })
-  registerCard({ type: 'goal', component: GoalCard, meta: goalMeta as CardMeta, schema: goalSchema as CardSchema })
+  registerCard({ type: 'metric', component: MetricCard, meta: metricMeta as CardMeta, schema: metricSchema as CardSchema, pill: PILLS.metric })
+  registerCard({ type: 'queue', component: QueueCard, meta: queueMeta as CardMeta, schema: queueSchema as CardSchema, pill: PILLS.queue })
+  registerCard({ type: 'goal', component: GoalCard, meta: goalMeta as CardMeta, schema: goalSchema as CardSchema, pill: PILLS.goal })
   registerCard({ type: 'bullet', component: BulletCard, meta: bulletMeta as CardMeta, schema: bulletSchema as CardSchema })
-  registerCard({ type: 'compare', component: CompareCard, meta: compareMeta as CardMeta, schema: compareSchema as CardSchema })
+  registerCard({ type: 'compare', component: CompareCard, meta: compareMeta as CardMeta, schema: compareSchema as CardSchema, pill: PILLS.compare })
   registerCard({ type: 'trend', component: TrendCard, meta: trendMeta as CardMeta, schema: trendSchema as CardSchema })
   registerCard({ type: 'ranking', component: RankingCard, meta: rankingMeta as CardMeta, schema: rankingSchema as CardSchema })
-  registerCard({ type: 'split', component: SplitCard, meta: splitMeta as CardMeta, schema: splitSchema as CardSchema })
+  registerCard({ type: 'split', component: SplitCard, meta: splitMeta as CardMeta, schema: splitSchema as CardSchema, pill: PILLS.split })
   registerCard({ type: 'funnel', component: FunnelCard, meta: funnelMeta as CardMeta, schema: funnelSchema as CardSchema })
   registerCard({ type: 'heat', component: HeatCard, meta: heatMeta as CardMeta, schema: heatSchema as CardSchema })
   registerCard({ type: 'agenda', component: AgendaCard, meta: agendaMeta as CardMeta, schema: agendaSchema as CardSchema })
