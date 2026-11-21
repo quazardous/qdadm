@@ -1,5 +1,6 @@
 import { computed, inject, type ComputedRef, type Ref } from 'vue'
 import { useRouter } from 'vue-router'
+import { routeCrumbLabel } from './routeCrumbLabel'
 import { useSemanticBreadcrumb, type SemanticBreadcrumbItem } from './useSemanticBreadcrumb'
 import { useStackHydrator, type HydratedLevel } from '../chain/useStackHydrator'
 import { useI18n } from '../i18n/useI18n'
@@ -140,7 +141,8 @@ export function useBreadcrumb(options: UseBreadcrumbOptions = {}): UseBreadcrumb
     if (item.kind === 'route') {
       // Generic route
       const routeName = item.route!
-      displayItem.label = item.label || label(routeName) || capitalize(routeName)
+      // A route nothing names is left out: a raw route name is no label (#5443)
+      displayItem.label = item.label || label(routeName) || routeCrumbLabel(routeName, router, tOr) || ''
       displayItem.to = isLast ? null : routeExists(routeName) ? { name: routeName } : null
       if (routeName === 'home' || routeName === homeRouteName) {
         displayItem.icon = 'pi pi-home'
@@ -226,6 +228,10 @@ export function useBreadcrumb(options: UseBreadcrumbOptions = {}): UseBreadcrumb
       items.push(homeItem)
     }
 
+    // The home page: Home alone, whatever it resolves to (#5443)
+    const current = router.currentRoute?.value?.name
+    if (homeItem && current === homeRouteName) return [{ ...homeItem, to: null }]
+
     // Resolve semantic items to display items
     const semanticItems = semanticBreadcrumb.value
     for (let i = 0; i < semanticItems.length; i++) {
@@ -233,6 +239,7 @@ export function useBreadcrumb(options: UseBreadcrumbOptions = {}): UseBreadcrumb
       if (!semanticItem) continue
       const isLast = i === semanticItems.length - 1
       const displayItem = resolveItem(semanticItem, i, entity, isLast)
+      if (semanticItem.kind === 'route' && !displayItem.label) continue
       items.push(displayItem)
     }
 

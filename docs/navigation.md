@@ -23,12 +23,14 @@ homeRoute: 'log-errors'
 ```
 
 `{ name, component }` without `path` mounts the page on `/` only: it has no
-address of its own, and development warns about it.
+address of its own, and development warns about it. `meta` and `props` go
+on the page's route as given (`meta: { title, domain }`…).
 
 Whatever its name, the route `homeRoute` names is the home everywhere: the
 first crumb of the breadcrumb, with the house icon, and the target of the
 404 page's "Back to Home" (a route named `home` or `dashboard` when
-`homeRoute` names none that exists).
+`homeRoute` names none that exists). On the home page itself, the trail is
+Home alone, whatever domain the page belongs to (its bar stays).
 
 ## The settings menu, behind the gear
 
@@ -111,6 +113,11 @@ Two prerequisites, both provided automatically by `ctx.crud()`:
 
 A route can override the whole trail with `meta.breadcrumb` (an array of
 semantic items) — used for custom pages that want a hand-built trail.
+
+A page with no entity is a route crumb, labelled by `meta.navLabel`, then
+`meta.title`, then the catalogue's `breadcrumb.<route name>`. A route none of
+these names is left out of the trail (its raw name is no label), and
+development warns, naming the route.
 
 ## `useNavContext()` — the rendering contract
 

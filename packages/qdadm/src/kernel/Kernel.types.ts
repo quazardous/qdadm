@@ -4,7 +4,7 @@
  * Extracted from Kernel.ts for maintainability.
  */
 import type { Component } from 'vue'
-import type { RouteLocationRaw, RouteRecordRaw } from 'vue-router'
+import type { RouteLocationRaw, RouteMeta, RouteRecordRaw } from 'vue-router'
 import type { SignalBus } from './SignalBus'
 import type { RoutesConfig } from './EventRouter'
 import type { EntityManager } from '../entity/EntityManager'
@@ -252,7 +252,17 @@ export interface NotificationsConfig {
  * The home page: a route name `/` redirects to, or a page of its own. Give that
  * page a `path` so it keeps an address when the home changes (#5365).
  */
-export type HomeRoute = string | { name?: string; component?: Component; path?: string }
+export type HomeRoute =
+  | string
+  | {
+      name?: string
+      component?: Component
+      path?: string
+      /** The page route's meta (#5443): its title, its breadcrumb, its domain… */
+      meta?: RouteMeta
+      /** The page route's props */
+      props?: RouteRecordRaw['props']
+    }
 
 /**
  * Kernel options

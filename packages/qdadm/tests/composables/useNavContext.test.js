@@ -4,7 +4,7 @@
  * The View↔Edit breadcrumb toggle: non-null only on an entity-show/entity-edit
  * terminal whose twin-mode route exists, permission-gated on the Edit side.
  */
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
 import { defineComponent, h, ref } from 'vue'
 import { createRouter, createMemoryHistory } from 'vue-router'
@@ -50,7 +50,7 @@ function createManager(overrides = {}) {
   }
 }
 
-async function mountNav(router, { manager = createManager(), path = '/bots/1', i18n = null, home = null } = {}) {
+async function mountNav(router, { manager = createManager(), path = '/bots/1', i18n = null, home = null, domain = null } = {}) {
   await router.push(path)
   await router.isReady()
 
@@ -68,6 +68,7 @@ async function mountNav(router, { manager = createManager(), path = '/bots/1', i
   }
   if (i18n) provide[I18N_INJECTION_KEY] = i18n
   if (home) provide.qdadmHomeRoute = home
+  if (domain) provide.qdadmActiveStack = { getLevels: () => [], getDomain: () => ({ name: domain }) }
 
   const wrapper = mount(Harness, { global: { plugins: [router], provide } })
   await flushPromises()
@@ -285,5 +286,61 @@ describe("a record's crumb opens the record (#4685)", () => {
     expect(both.nav.navChain.value.find((s) => s.type === 'item').routeName).toBe('bots-show')
     const editOnly = await mountNav(createTestRouter({ withShow: false }), { path: '/bots/1/edit' })
     expect(editOnly.nav.navChain.value.find((s) => s.type === 'item').routeName).toBe('bots-edit')
+  })
+})
+
+describe('the home trail and unnamed routes (#5443)', () => {
+  const routes = () =>
+    createRouter({
+      history: createMemoryHistory(),
+      routes: [
+        { path: '/home', name: 'home', component: Stub },
+        { path: '/stats', name: 'book-stats', component: Stub },
+        { path: '/report', name: 'report', meta: { navLabel: 'Report' }, component: Stub },
+      ],
+    })
+
+  it('the home page: Home alone', async () => {
+    const { nav } = await mountNav(routes(), { path: '/home', home: 'home' })
+    expect(nav.breadcrumb.value).toEqual([{ label: 'Home', to: null, icon: 'pi pi-home' }])
+  })
+
+  it('a route nothing names is left out, with a warning; a named one keeps its label', async () => {
+    const { resetRouteCrumbWarnings } = await import('../../src/composables/routeCrumbLabel')
+    resetRouteCrumbWarnings()
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const env = import.meta.env.DEV
+    import.meta.env.DEV = true
+    try {
+      const { nav } = await mountNav(routes(), { path: '/stats', home: 'home' })
+      expect(nav.breadcrumb.value.map((c) => c.label)).toEqual(['Home'])
+      expect(warn.mock.calls.flat().join(' ')).toMatch(/the route 'book-stats' has no label/)
+      const named = await mountNav(routes(), { path: '/report', home: 'home' })
+      expect(named.nav.breadcrumb.value.map((c) => c.label)).toEqual(['Home', 'Report'])
+    } finally {
+      import.meta.env.DEV = env
+      warn.mockRestore()
+    }
+  })
+})
+
+describe("the domain's crumb on its own board (#5443)", () => {
+  it('the board says the domain once, as on its other pages', async () => {
+    const { registerDomain, resetDomains } = await import('../../src/domain/registry')
+    resetDomains()
+    registerDomain('library', { label: 'Library', to: { name: 'board' } })
+    const router = createRouter({
+      history: createMemoryHistory(),
+      routes: [
+        { path: '/home', name: 'home', component: Stub },
+        { path: '/board', name: 'board', meta: { navLabel: 'Library' }, component: Stub },
+        { path: '/report', name: 'report', meta: { navLabel: 'Report' }, component: Stub },
+      ],
+    })
+    const board = await mountNav(router, { path: '/board', home: 'home', domain: 'library' })
+    expect(board.nav.breadcrumb.value.map((c) => c.label)).toEqual(['Home', 'Library'])
+    const other = await mountNav(router, { path: '/report', home: 'home', domain: 'library' })
+    expect(other.nav.breadcrumb.value.map((c) => [c.label, c.to?.name ?? null])).toEqual([['Home', 'home'], ['Library', 'board'], ['Report', null]])
+    resetDomains()
   })
 })

@@ -22,6 +22,14 @@ export function homeRouteName(homeRoute: HomeRoute | undefined | null): string {
 
 const isDev = (): boolean => (import.meta as unknown as { env?: { DEV?: boolean } }).env?.DEV === true
 
+/** What the app sets on its home page's route (#5443): meta, props */
+function own(homeRoute: Exclude<HomeRoute, string>): Partial<RouteRecordRaw> {
+  return {
+    ...(homeRoute.meta ? { meta: homeRoute.meta } : {}),
+    ...(homeRoute.props !== undefined ? { props: homeRoute.props } : {}),
+  } as Partial<RouteRecordRaw>
+}
+
 /** The routes, under the layout, that `homeRoute` declares */
 export function homeRouteRecords(homeRoute: HomeRoute | undefined | null, warn: (m: string) => void = console.warn): RouteRecordRaw[] {
   const name = homeRouteName(homeRoute)
@@ -34,11 +42,11 @@ export function homeRouteRecords(homeRoute: HomeRoute | undefined | null, warn: 
             `Give it one (homeRoute: { name, component, path: 'welcome' }), or name a module's route (homeRoute: 'books').`
         )
       }
-      return [{ path: '', name, component: homeRoute.component }]
+      return [{ path: '', name, component: homeRoute.component, ...own(homeRoute) } as RouteRecordRaw]
     }
     return [
       { path: '', name: '_home', redirect: { name } },
-      { path, name, component: homeRoute.component },
+      { path, name, component: homeRoute.component, ...own(homeRoute) } as RouteRecordRaw,
     ]
   }
   return [{ path: '', name: '_home', redirect: { name } }]

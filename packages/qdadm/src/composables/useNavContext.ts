@@ -25,6 +25,7 @@ import { useI18n } from '../i18n/useI18n'
 import { useActiveStack } from '../chain/useActiveStack'
 import type { ActiveStack } from '../chain/ActiveStack'
 import { getDomain } from '../domain/registry'
+import { routeCrumbLabel } from './routeCrumbLabel'
 import type { EntityManagerLike, OrchestratorLike } from '../entity/EntityManager.interface'
 
 // #1191 — shared minimal structural views (was: local redeclarations)
@@ -234,15 +235,13 @@ export function useNavContext(_options: UseNavContextOptions = {}): UseNavContex
       } else if (item.kind === 'route') {
         // Generic route (like /books/stats)
         // Use label from semantic item if provided (custom breadcrumb), else lookup route
-        const routeRecord = router.getRoutes().find((r) => r.name === item.route)
+        // A route nothing names is left out: a raw route name is no label (#5443)
+        const label = routeCrumbLabel(item.route!, router, tOr, item.label)
+        if (label === null) continue
         chain.push({
           type: 'route',
           route: item.route,
-          label:
-            item.label ||
-            (routeRecord?.meta?.navLabel as string) ||
-            (routeRecord?.meta?.title as string) ||
-            item.route,
+          label,
           routeName: item.route,
         })
       }
@@ -315,6 +314,12 @@ export function useNavContext(_options: UseNavContextOptions = {}): UseNavContex
   // The page's domain (#5412), first after home: its name, leading to its
   // board, unless that board is the next crumb anyway
   const stackForDomain = inject<ActiveStack | null>('qdadmActiveStack', null) ? useActiveStack() : null
+  // Its board's route name, linked or not (on the board itself the crumb has no link)
+  const domainBoard = computed<string | null>(() => {
+    const level = stackForDomain?.domain.value
+    const to = level ? getDomain(level.name)?.to : null
+    return to && typeof to === 'object' && 'name' in to && typeof to.name === 'string' ? to.name : null
+  })
   const domainItem = computed<BreadcrumbItem | null>(() => {
     const level = stackForDomain?.domain.value
     const domain = level ? getDomain(level.name) : null
@@ -329,6 +334,11 @@ export function useNavContext(_options: UseNavContextOptions = {}): UseNavContex
     const items: BreadcrumbItem[] = []
     const chain = navChain.value
 
+    // The home page: Home alone, whatever domain it resolves to (#5443)
+    if (homeItem.value && homeRouteName && route.name === homeRouteName) {
+      return [{ ...homeItem.value, to: null }]
+    }
+
     // Home
     if (homeItem.value) {
       items.push(homeItem.value)
@@ -337,7 +347,9 @@ export function useNavContext(_options: UseNavContextOptions = {}): UseNavContex
     // The domain, unless its board is the next crumb (the same page, said twice)
     const dom = domainItem.value
     const next = chain[0]
-    if (dom && !(dom.to && next?.routeName === dom.to.name)) items.push(dom)
+    // (#5443: on the board itself too, where the domain crumb has no link)
+    const board = domainBoard.value
+    if (dom && !(board && next?.routeName === board)) items.push(dom)
 
     // Build from chain
     for (let i = 0; i < chain.length; i++) {

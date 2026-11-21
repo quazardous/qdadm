@@ -112,3 +112,13 @@ describe('the breadcrumb and the home (#5365)', () => {
     expect(homeCrumbs.every((i) => i.icon === 'pi pi-home')).toBe(true)
   })
 })
+
+describe('homeRoute meta and props (#5443)', () => {
+  it("the page route carries the app's meta and props", () => {
+    const C = Page('home')
+    const [, page] = homeRouteRecords({ name: 'home', path: 'home', component: C, meta: { title: 'Welcome', breadcrumb: [] }, props: { mode: 'board' } })
+    expect(page).toMatchObject({ name: 'home', path: 'home', meta: { title: 'Welcome', breadcrumb: [] }, props: { mode: 'board' } })
+    const [only] = homeRouteRecords({ name: 'home', component: C, meta: { domain: 'global' } }, () => {})
+    expect(only.meta).toEqual({ domain: 'global' })
+  })
+})
