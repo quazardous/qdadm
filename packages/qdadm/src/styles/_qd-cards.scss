@@ -164,6 +164,7 @@
 
 .qd-card-foot {
   display: flex;
+  flex-wrap: wrap; // short of room, the CTA zone goes under the text (#5413)
   align-items: center;
   justify-content: space-between;
   gap: 0.75rem;
@@ -174,6 +175,7 @@
 }
 
 .qd-card-meta {
+  flex: 1 1 8rem;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -187,14 +189,27 @@
   display: inline-flex;
   flex-wrap: wrap;
   align-items: center;
+  justify-content: flex-end;
   gap: 0.25rem 0.75rem;
+  min-width: 0;
+  max-width: 100%;
   margin-left: auto;
+}
+
+// A label too long for the card is cut; its icon stays (#5413)
+.qd-card-cta-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .qd-card-link {
   display: inline-flex;
   align-items: center;
   gap: 0.3rem;
+  min-width: 0;
+  max-width: 100%;
   padding: 0;
   border: 0;
   background: none;
@@ -219,7 +234,8 @@
   display: inline-flex;
   align-items: center;
   gap: 0.4rem;
-  flex-shrink: 0;
+  min-width: 0;
+  max-width: 100%;
   padding: 0.35rem 0.75rem;
   border: 0;
   border-radius: 6px;
@@ -248,8 +264,13 @@
   }
 
   .pi {
+    flex-shrink: 0;
     font-size: 0.75rem;
   }
+}
+
+.qd-card-link .pi {
+  flex-shrink: 0;
 }
 
 // The states that replace the body

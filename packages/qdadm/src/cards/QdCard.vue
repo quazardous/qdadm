@@ -177,14 +177,16 @@ const actionIcon = computed(() => (props.action?.mode === 'list' ? 'pi pi-list' 
         <time v-if="freshnessText" :title="freshnessTitle" class="qd-card-fresh">{{ freshnessText }}</time>
       </span>
       <!-- The CTA zone (#5405): every gesture of the foot together, the
-           native ones (links, the action) and the app's own (#cta slot) -->
+           native ones (links, the action) and the app's own (#cta slot).
+           Short of room it goes under the text; a label too long is cut,
+           whole in title and aria-label (#5413) -->
       <span v-if="hasCta" class="qd-card-cta" data-card-cta>
         <template v-for="(link, i) in allLinks" :key="i">
-          <RouterLink v-if="link.to" :to="link.to" class="qd-card-link" data-card-link>
-            <i v-if="link.icon" :class="link.icon" aria-hidden="true"></i>{{ link.label }}
+          <RouterLink v-if="link.to" :to="link.to" class="qd-card-link" :title="link.label" :aria-label="link.label" data-card-link>
+            <i v-if="link.icon" :class="link.icon" aria-hidden="true"></i><span class="qd-card-cta-label">{{ link.label }}</span>
           </RouterLink>
-          <button v-else type="button" class="qd-card-link" data-card-link @click="onLink(link)">
-            <i v-if="link.icon" :class="link.icon" aria-hidden="true"></i>{{ link.label }}
+          <button v-else type="button" class="qd-card-link" :title="link.label" :aria-label="link.label" data-card-link @click="onLink(link)">
+            <i v-if="link.icon" :class="link.icon" aria-hidden="true"></i><span class="qd-card-cta-label">{{ link.label }}</span>
           </button>
         </template>
         <slot name="cta" :links="allLinks" :action="action" :state="state"></slot>
@@ -195,9 +197,11 @@ const actionIcon = computed(() => (props.action?.mode === 'list' ? 'pi pi-list' 
           :class="{ 'qd-card-action--busy': running }"
           :disabled="running"
           :data-mode="action.mode || 'next'"
+          :title="action.verb"
+          :aria-label="action.verb"
           @click="onAction"
         >
-          <span>{{ action.verb }}</span>
+          <span class="qd-card-cta-label">{{ action.verb }}</span>
           <i :class="actionIcon" aria-hidden="true"></i>
         </button>
       </span>

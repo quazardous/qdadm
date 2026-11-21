@@ -50,3 +50,21 @@ describe('the CTA zone (#5405)', () => {
     expect(w.find('.qd-card-foot').exists()).toBe(false)
   })
 })
+
+describe('a CTA label too long for the card (#5413)', () => {
+  it('sits in a span that can be cut, the whole label in title and aria-label', () => {
+    const verb = 'Sort the 8 new unhandled errors now'
+    const w = mount(QdCardView, {
+      props: { type: 'metric', data: metric, envelope: { title: 'T', action: { verb, to: '/go' }, links: [{ label: 'See all of them', icon: 'pi pi-list', to: '/all' }] } },
+      global: { plugins: [router] },
+    })
+    const action = w.find('.qd-card-action')
+    expect(action.attributes('title')).toBe(verb)
+    expect(action.attributes('aria-label')).toBe(verb)
+    expect(action.find('.qd-card-cta-label').text()).toBe(verb)
+    const link = w.find('[data-card-link]')
+    expect(link.attributes('title')).toBe('See all of them')
+    expect(link.attributes('aria-label')).toBe('See all of them')
+    expect(link.find('.qd-card-cta-label').text()).toBe('See all of them')
+  })
+})
