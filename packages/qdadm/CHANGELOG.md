@@ -1,5 +1,14 @@
 # Changelog
 
+## 2.56.0
+
+### Minor Changes
+
+- 75ab3bf: The domain bar's default look is now `toolbox`: one low line glued to the top edge of the content, full width, a rule at the bottom, drawn like the side menu (its sizes, square entries, the current one tinted and underlined). `look: 'card'` keeps the card. The `ribbon` look of 2.55 is withdrawn: it draws the toolbox, with a warning in development; its `--qd-ribbon-*` properties are gone, the toolbox's are `--qd-toolbox-*`.
+- 6632ec6: Favourites have one symbol, the bookmark (filled once a favourite), icon alone with its words in aria-label and tooltip, for a page and for a search; a list's search bookmark sits in its filter zone, and a click on a saved one takes it out again. The look is the app's: `features.favorites` (`icon`, `iconActive`, `saveSearch: 'filters' | 'header' | false`, `labels`), each use overriding it by props (`icon`, `iconOn`, `labelled`, ListPage's `save-search`, QdFavoritesCard's `icon`).
+- 579be24: `QdTabs`: tabs on a page of the app's own, over PrimeVue's Tabs. The current tab is in the address (`?tab=…`, replaced, so no history entry), a badge per tab (`QdBadge`, toned, hidden at zero), a tab with `permission` is not drawn for a user without it, and a panel mounts when first opened, then stays. `v-model`, `query` (or `false`) and `lazy` are its props.
+- 9d962b3: A settings menu behind a gear at the foot of the side menu: entries with `menu: 'settings'` (`ctx.navItem`, `ctx.crud` nav) or whole sections named in `features.settingsMenu.sections` leave the main menu for it. It shows for whoever sees one of its entries and passes `features.settingsMenu.visible(user)`. A click slides the main menu away (a swap under reduced motion); the gear is a button with `aria-expanded`, the closed menu is inert, the focus follows; a settings page opens it by itself. `useSettingsMenu()` and `QdSidebarMenus` for layouts of an app's own.
+
 ## 2.55.0
 
 ### Minor Changes
