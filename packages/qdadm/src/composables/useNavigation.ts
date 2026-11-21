@@ -68,6 +68,18 @@ export interface NavSection {
 /**
  * Return type for useNavigation
  */
+/** The settings menu's name, icon and look (#5401, #5410) */
+export interface SettingsMenuLook {
+  label: string
+  icon: string
+  /** A "← Menu" row at its head */
+  back: boolean
+  /** Section titles: `null` when there are several, `true` never, `false` always */
+  flat: boolean | null
+  /** Its own colours (`--qd-settings-menu-*`) */
+  tone: boolean
+}
+
 export interface UseNavigationReturn {
   /** The main menu's sections (filtered by permissions) */
   navSections: ComputedRef<NavSection[]>
@@ -77,8 +89,8 @@ export interface UseNavigationReturn {
   hasSettingsMenu: ComputedRef<boolean>
   /** The page on screen is one of the settings menu's */
   settingsActive: ComputedRef<boolean>
-  /** The settings menu's name and icon (`features.settingsMenu`) */
-  settingsMenu: { label: string; icon: string }
+  /** The settings menu's name, icon and look (`features.settingsMenu`) */
+  settingsMenu: SettingsMenuLook
   /** Whether menu:alter has completed */
   isReady: Ref<boolean>
   /** Check if nav item is active */
@@ -198,7 +210,7 @@ export function useNavigation(): UseNavigationReturn {
   // alteration or locale change.
   // The settings menu (#5401): its entries say `menu: 'settings'`; the app
   // may narrow who sees it beyond its entries' permissions
-  const features = inject<{ settingsMenu?: { visible?: (user: unknown) => boolean; label?: string; icon?: string; sections?: string[] } } | null>('qdadmFeatures', null)
+  const features = inject<{ settingsMenu?: { visible?: (user: unknown) => boolean; label?: string; icon?: string; sections?: string[]; back?: boolean; flat?: boolean; tone?: boolean } } | null>('qdadmFeatures', null)
   const { user } = useAuth()
   const settingsConfig = features?.settingsMenu ?? {}
   const settingsSectionNames = new Set(settingsConfig.sections ?? [])
@@ -296,6 +308,9 @@ export function useNavigation(): UseNavigationReturn {
     settingsMenu: {
       label: settingsConfig.label ?? resolveNavLabel('core.settingsMenu.label', 'Settings'),
       icon: settingsConfig.icon ?? 'pi pi-cog',
+      back: settingsConfig.back === true,
+      flat: typeof settingsConfig.flat === 'boolean' ? settingsConfig.flat : null,
+      tone: settingsConfig.tone !== false,
     },
 
     // Ready state (menu:alter completed)

@@ -488,6 +488,7 @@ export default `core:
   settingsMenu:
     label: Settings
     back: Back to the menu
+    menu: Menu
   favorites:
     seeAll: See all
     seeAllCount: "See all ({count})"

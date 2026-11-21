@@ -505,3 +505,92 @@ $nav-item-content-left: calc((var(--fad-sidebar-width-collapsed) + #{$nav-item-i
 .sidebar--collapsed .sidebar-settings-toggle span {
   opacity: 0;
 }
+
+/* =============================================================================
+   The settings menu's own colours (#5410): a deeper blue, light electric blue
+   accents. Themable: set the --qd-settings-menu-* properties on :root or
+   .sidebar (and under .dark-mode for the dark theme); features.settingsMenu.tone
+   false keeps the main menu's colours.
+   ============================================================================= */
+
+.sidebar-menu--toned,
+.sidebar-settings-toggle--toned {
+  --_qd-sm-bg: var(--qd-settings-menu-bg, #0d2e55);
+  --_qd-sm-text: var(--qd-settings-menu-text, #e0f2fe);
+  --_qd-sm-muted: var(--qd-settings-menu-muted, #7dd3fc);
+  --_qd-sm-accent: var(--qd-settings-menu-accent, #38bdf8);
+  --_qd-sm-active-bg: var(--qd-settings-menu-active-bg, rgba(56, 189, 248, 0.2));
+  --_qd-sm-hover-bg: var(--qd-settings-menu-hover-bg, rgba(56, 189, 248, 0.12));
+  --_qd-sm-border: var(--qd-settings-menu-border, rgba(56, 189, 248, 0.4));
+}
+
+.dark-mode .sidebar-menu--toned,
+.dark-mode .sidebar-settings-toggle--toned {
+  --_qd-sm-bg: var(--qd-settings-menu-bg, #0a2240);
+}
+
+.sidebar-menus .sidebar-nav.sidebar-menu--toned {
+  background: var(--_qd-sm-bg);
+  box-shadow: inset 0 1px 0 var(--_qd-sm-border);
+
+  .nav-item {
+    color: var(--_qd-sm-text);
+  }
+
+  .nav-item i {
+    color: var(--_qd-sm-muted);
+  }
+
+  .nav-item:hover {
+    background: var(--_qd-sm-hover-bg);
+    color: var(--p-surface-0, white);
+  }
+
+  .nav-item-active,
+  .nav-item-active:hover {
+    background: var(--_qd-sm-active-bg);
+    color: var(--_qd-sm-accent);
+    border-left-color: var(--_qd-sm-accent);
+  }
+
+  .nav-item-active i {
+    color: var(--_qd-sm-accent);
+  }
+
+  .nav-section-title {
+    color: var(--_qd-sm-muted);
+    opacity: 0.85;
+  }
+
+  .nav-section-title:hover {
+    color: var(--_qd-sm-text);
+    opacity: 1;
+  }
+
+  .nav-section-active {
+    color: var(--_qd-sm-accent);
+    opacity: 1;
+  }
+}
+
+// The gear, while the settings are open, in their colours
+.sidebar-settings-toggle--toned {
+  transition: color var(--fad-transition-fast), background var(--fad-transition-fast);
+}
+
+.sidebar-settings-toggle--toned.sidebar-settings-toggle--open {
+  background: var(--_qd-sm-bg);
+  color: var(--_qd-sm-accent);
+  border-top-color: var(--_qd-sm-border);
+
+  &:hover {
+    background: var(--_qd-sm-bg);
+    color: var(--_qd-sm-text);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sidebar-settings-toggle--toned {
+    transition: none;
+  }
+}

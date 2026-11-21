@@ -297,6 +297,7 @@ export {
 export {
   useNavigation,
   type UseNavigationReturn,
+  type SettingsMenuLook,
   type NavSection,
   // NavItem already exported from kernel
 } from './composables/useNavigation'

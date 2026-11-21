@@ -4,6 +4,11 @@
  * marked; and, when the app declares one (#5401), the settings menu behind
  * the gear: the main menu slides up and the settings take its place, the
  * closed one inert. AppLayout and DefaultMenu draw it; the gear is theirs.
+ *
+ * The settings menu (#5410): no head row unless `settingsMenu.back` (then
+ * "← Menu"), Escape takes it back to the gear; a section alone there has no
+ * title (it would repeat the menu's name), unless `settingsMenu.flat` says
+ * otherwise; its own colours (`--qd-settings-menu-*`) unless `tone: false`.
  */
 import { computed, inject, onMounted, ref, watch } from 'vue'
 import { RouterLink, useRoute } from 'vue-router'
@@ -39,8 +44,12 @@ function toggleSection(title: string): void {
   }
 }
 const titleOf = (section: NavSection) => section.title || section.label || ''
-/** Never folded while it holds the current entry */
-const isSectionExpanded = (section: NavSection) => sectionHasActiveItem(section) || !collapsedSections.value[titleOf(section)]
+type PaneKey = 'main' | 'settings'
+/** The settings' sections have titles when there are several, unless flat says otherwise */
+const titled = (pane: PaneKey, count: number) => pane === 'main' || (props.settings.flat === null ? count > 1 : !props.settings.flat)
+/** Never folded while it holds the current entry; nor without a title to unfold it */
+const isSectionExpanded = (section: NavSection, pane: PaneKey = 'main', count = 2) =>
+  !titled(pane, count) || sectionHasActiveItem(section) || !collapsedSections.value[titleOf(section)]
 
 // The section of the current page unfolds (not saved: the person may fold it again)
 watch(
@@ -52,9 +61,9 @@ watch(
   }
 )
 
-const panes = computed(() => [
-  { key: 'main' as const, id: SETTINGS_MENU_IDS.main, sections: nav.navSections.value },
-  { key: 'settings' as const, id: SETTINGS_MENU_IDS.settings, sections: nav.settingsSections.value },
+const panes = computed<{ key: PaneKey; id: string; sections: NavSection[] }[]>(() => [
+  { key: 'main', id: SETTINGS_MENU_IDS.main, sections: nav.navSections.value },
+  { key: 'settings', id: SETTINGS_MENU_IDS.settings, sections: nav.settingsSections.value },
 ])
 const shownPane = computed(() => (props.settings.open.value ? 'settings' : 'main'))
 </script>
@@ -69,15 +78,16 @@ const shownPane = computed(() => (props.settings.open.value ? 'settings' : 'main
         v-if="pane.key === 'main' || settings.available.value"
         :id="pane.id"
         class="sidebar-nav"
-        :class="`sidebar-menu sidebar-menu--${pane.key}`"
+        :class="[`sidebar-menu sidebar-menu--${pane.key}`, { 'sidebar-menu--toned': pane.key === 'settings' && settings.tone }]"
         :aria-label="pane.key === 'settings' ? settings.label : undefined"
         :inert="settings.available.value && pane.key !== shownPane ? true : undefined"
         :aria-hidden="settings.available.value && pane.key !== shownPane ? 'true' : undefined"
         :data-menu="pane.key"
+        @keydown.esc="pane.key === 'settings' && settings.close()"
       >
-        <!-- The settings' own head: back to the main menu -->
+        <!-- The settings' own head, when asked for: back to the main menu -->
         <button
-          v-if="pane.key === 'settings'"
+          v-if="pane.key === 'settings' && settings.back"
           type="button"
           class="nav-item sidebar-menu-back"
           :aria-label="tOr('core.settingsMenu.back', 'Back to the menu')"
@@ -86,18 +96,19 @@ const shownPane = computed(() => (props.settings.open.value ? 'settings' : 'main
           @click="settings.close()"
         >
           <i class="pi pi-arrow-left" aria-hidden="true"></i>
-          <span>{{ settings.label }}</span>
+          <span>{{ tOr('core.settingsMenu.menu', 'Menu') }}</span>
         </button>
         <div v-for="section in pane.sections" :key="titleOf(section)" class="nav-section">
           <div
+            v-if="titled(pane.key, pane.sections.length)"
             class="nav-section-title"
             :class="{ 'nav-section-active': sectionHasActiveItem(section) }"
             @click="toggleSection(titleOf(section))"
           >
             <span>{{ section.title }}</span>
-            <i class="nav-section-chevron pi" :class="isSectionExpanded(section) ? 'pi-chevron-down' : 'pi-chevron-right'"></i>
+            <i class="nav-section-chevron pi" :class="isSectionExpanded(section, pane.key, pane.sections.length) ? 'pi-chevron-down' : 'pi-chevron-right'"></i>
           </div>
-          <div class="nav-section-items" :class="{ 'nav-section-collapsed': !isSectionExpanded(section) }">
+          <div class="nav-section-items" :class="{ 'nav-section-collapsed': !isSectionExpanded(section, pane.key, pane.sections.length) }">
             <template v-for="item in section.items" :key="item.route ?? item.href">
               <a v-if="item.href" :href="item.href" :target="item.target" :rel="item.rel" class="nav-item nav-item-link">
                 <i :class="item.icon"></i>

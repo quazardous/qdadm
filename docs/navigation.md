@@ -35,8 +35,8 @@ first crumb of the breadcrumb, with the house icon, and the target of the
 The admin pages (settings, groups, security, sessions) can leave the side
 menu for a second one, behind a gear at its foot, between the user block and
 "powered by". A click slides the main menu up and the settings menu takes its
-place, with the same sections, entries and current-entry marking; the gear,
-or the "← Settings" row at the top, brings the main menu back.
+place, in colours of its own, with the same sections, entries and
+current-entry marking; the gear, or Escape, brings the main menu back.
 
 ```js
 // One entry
@@ -51,6 +51,9 @@ createKernel({
       visible: (user) => user?.role === 'ROLE_ADMIN',
       label: 'Settings', // default: core.settingsMenu.label
       icon: 'pi pi-cog',
+      back: false, // true: a "← Menu" row at its head
+      flat: undefined, // section titles: true never, false always
+      tone: true, // false: the main menu's colours
     },
   },
 })
@@ -62,9 +65,20 @@ createKernel({
   is not the protection: a page keeps its route's `permission`.
 - **The current page:** a settings page (a link, a reload) opens the settings
   menu by itself; a page of the main menu brings the main menu back.
+- **Sections:** it holds as many as are declared, each with its title; a
+  section alone there has no title, which would repeat the menu's name.
+  `flat: true` draws no title, `flat: false` always draws them.
+- **Its colours:** a deeper blue, light electric blue for the current entry
+  and the accents, the gear the same while it is open. Each is a CSS custom
+  property, to set on `:root` or `.sidebar` (and under `.dark-mode` for the
+  dark theme): `--qd-settings-menu-bg`, `--qd-settings-menu-text`,
+  `--qd-settings-menu-muted` (section titles, icons),
+  `--qd-settings-menu-accent`, `--qd-settings-menu-active-bg`,
+  `--qd-settings-menu-hover-bg`, `--qd-settings-menu-border`.
 - **Accessibility:** the gear is a button with `aria-expanded` and
   `aria-controls`; the closed menu is `inert`; the focus goes to the first
-  entry of the menu opened, and back to the gear when it closes. Under
+  entry of the menu opened, and back to the gear when it closes (the gear,
+Escape, or the back row when there is one). Under
   `prefers-reduced-motion`, the menus swap without sliding.
 - `useSettingsMenu()` gives the state (`available`, `open`, `toggle`,
   `close`) to a layout of the app's own; `useNavigation()` gives

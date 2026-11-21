@@ -71,6 +71,12 @@ export interface Features {
     icon?: string
     /** Whole sections that belong to it (a module's own, say 'Security'), as declared, before i18n */
     sections?: string[]
+    /** A "← Menu" row at its head (#5410); off by default: the gear goes back */
+    back?: boolean
+    /** Section titles: drawn when there are several (default); `true` never, `false` always (#5410) */
+    flat?: boolean
+    /** Its own colours, `--qd-settings-menu-*` (#5410); `false` keeps the main menu's */
+    tone?: boolean
   }
   /**
    * The favourites' look (#5402): the symbol, filled once a favourite; where a

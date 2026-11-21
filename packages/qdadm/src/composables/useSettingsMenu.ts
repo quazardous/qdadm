@@ -3,6 +3,8 @@
  * a gear. Open on a settings page by itself (a link, a reload), closed on a
  * page of the main menu; opened and closed by the gear or the back row, the
  * focus following: to the first entry of the menu opened, back to the gear.
+ * Escape in the settings closes them too. Its own colours (#5410), unless
+ * `features.settingsMenu.tone` is false.
  *
  *   const settings = useSettingsMenu()
  *   <QdSidebarMenus :settings="settings" />
@@ -30,6 +32,12 @@ export interface UseSettingsMenuReturn {
   close: () => void
   label: string
   icon: string
+  /** A "← Menu" row at its head (`features.settingsMenu.back`, off by default) */
+  back: boolean
+  /** Section titles: `null` when there are several, `true` never, `false` always */
+  flat: boolean | null
+  /** Its own colours, `--qd-settings-menu-*` (`features.settingsMenu.tone`, on by default) */
+  tone: boolean
 }
 
 async function focusIn(id: string): Promise<void> {
@@ -47,7 +55,7 @@ export function useSettingsMenu(given: UseNavigationReturn = useNavigation()): U
     settingsSections: given.settingsSections ?? computed(() => []),
     hasSettingsMenu: given.hasSettingsMenu ?? computed(() => false),
     settingsActive: given.settingsActive ?? computed(() => false),
-    settingsMenu: given.settingsMenu ?? { label: 'Settings', icon: 'pi pi-cog' },
+    settingsMenu: { label: 'Settings', icon: 'pi pi-cog', back: false, flat: null, tone: true, ...(given.settingsMenu as Partial<UseNavigationReturn['settingsMenu']> | undefined) },
   }
   const route = useRoute() as ReturnType<typeof useRoute> | undefined
   const available = computed(() => nav.hasSettingsMenu.value)
@@ -76,5 +84,6 @@ export function useSettingsMenu(given: UseNavigationReturn = useNavigation()): U
     void focusIn(SETTINGS_MENU_IDS.settings)
   }
 
-  return { nav, available, open, toggle, close, label: nav.settingsMenu.label, icon: nav.settingsMenu.icon }
+  const { label, icon, back, flat, tone } = nav.settingsMenu
+  return { nav, available, open, toggle, close, label, icon, back, flat, tone }
 }

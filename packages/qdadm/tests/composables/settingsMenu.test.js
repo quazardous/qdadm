@@ -109,7 +109,7 @@ describe('the settings menu (#5401)', () => {
   })
 
   it('the gear opens it, the focus on its first entry; the back row closes it, the focus on the gear', async () => {
-    const { w } = await mountSidebar()
+    const { w } = await mountSidebar({ features: { settingsMenu: { back: true } } })
     expect(shown(w)).toBe('main')
     await w.find('[data-settings-toggle]').trigger('click')
     await nextTick()
@@ -143,5 +143,72 @@ describe('settingsMenu.sections (#5401)', () => {
     const { w } = await mountSidebar({ features: { settingsMenu: { sections: ['Security'] } } })
     expect(labels(w, 'main')).toEqual(['Books'])
     expect(labels(w, 'settings')).toEqual(['Roles'])
+  })
+})
+
+describe('the settings menu, lighter (#5410)', () => {
+  const titles = (w, menu) => w.findAll(`[data-menu="${menu}"] .nav-section-title span`).map((s) => s.text())
+
+  // The menu is read once and kept: each case declares its own
+  const declare = (two = false) => {
+    resetRegistry()
+    registry.addNavItem({ section: 'Library', route: 'books', label: 'Books' })
+    registry.addNavItem({ section: 'Access', route: 'groups', label: 'Groups', menu: 'settings' })
+    if (two) registry.addNavItem({ section: 'System', route: 'security', label: 'Security', menu: 'settings' })
+  }
+  beforeEach(() => declare())
+
+  it('has no back row by default; with back: true, it says where it goes', async () => {
+    const plain = await mountSidebar()
+    expect(plain.w.find('[data-settings-back]').exists()).toBe(false)
+    const withBack = await mountSidebar({ features: { settingsMenu: { back: true } } })
+    const row = withBack.w.find('[data-settings-back]')
+    expect(row.text()).toBe('Menu')
+    expect(row.attributes('aria-label')).toBe('Back to the menu')
+  })
+
+  it('Escape closes it, the focus back on the gear', async () => {
+    const { w } = await mountSidebar({ at: '/groups' })
+    expect(shown(w)).toBe('settings')
+    await w.find('[data-menu="settings"] a.nav-item').trigger('keydown', { key: 'Escape' })
+    await nextTick()
+    await nextTick()
+    expect(shown(w)).toBe('main')
+    expect(document.activeElement?.id).toBe(SETTINGS_MENU_IDS.toggle)
+    w.unmount()
+  })
+
+  it('a lone section has no title there; several keep theirs; the main menu keeps its own', async () => {
+    const lone = await mountSidebar()
+    expect(titles(lone.w, 'settings')).toEqual([])
+    expect(labels(lone.w, 'settings')).toEqual(['Groups'])
+    expect(titles(lone.w, 'main')).toEqual(['Library'])
+    declare(true)
+    const two = await mountSidebar()
+    expect(titles(two.w, 'settings')).toEqual(['Access', 'System'])
+  })
+
+  it('flat says otherwise, both ways', async () => {
+    const always = await mountSidebar({ features: { settingsMenu: { flat: false } } })
+    expect(titles(always.w, 'settings')).toEqual(['Access'])
+    declare(true)
+    const never = await mountSidebar({ features: { settingsMenu: { flat: true } } })
+    expect(titles(never.w, 'settings')).toEqual([])
+    expect(labels(never.w, 'settings')).toEqual(['Groups', 'Security'])
+  })
+
+  it('a section without its title is never left folded', async () => {
+    localStorage.setItem('qdadm_nav_collapsed', JSON.stringify({ Access: true }))
+    const { w } = await mountSidebar()
+    expect(w.find('[data-menu="settings"] .nav-section-collapsed').exists()).toBe(false)
+    localStorage.removeItem('qdadm_nav_collapsed')
+  })
+
+  it('wears its own colours, unless tone: false', async () => {
+    const toned = await mountSidebar()
+    expect(toned.w.find('[data-menu="settings"]').classes()).toContain('sidebar-menu--toned')
+    expect(toned.w.find('[data-menu="main"]').classes()).not.toContain('sidebar-menu--toned')
+    const plain = await mountSidebar({ features: { settingsMenu: { tone: false } } })
+    expect(plain.w.find('[data-menu="settings"]').classes()).not.toContain('sidebar-menu--toned')
   })
 })

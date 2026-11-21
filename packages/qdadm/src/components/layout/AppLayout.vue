@@ -284,7 +284,7 @@ const showBreadcrumb = computed<boolean>(() => {
           :id="SETTINGS_MENU_IDS.toggle"
           type="button"
           class="sidebar-settings-toggle"
-          :class="{ 'sidebar-settings-toggle--open': settingsMenu.open.value }"
+          :class="{ 'sidebar-settings-toggle--open': settingsMenu.open.value, 'sidebar-settings-toggle--toned': settingsMenu.tone }"
           :aria-expanded="settingsMenu.open.value ? 'true' : 'false'"
           :aria-controls="SETTINGS_MENU_IDS.settings"
           :aria-label="settingsMenu.open.value ? tOr('core.settingsMenu.back', 'Back to the menu') : settingsMenu.label"
