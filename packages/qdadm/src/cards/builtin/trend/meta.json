@@ -30,6 +30,12 @@
       "maximum": 4,
       "default": 0,
       "description": "Digits after the decimal point"
+    },
+    "chart": {
+      "type": "string",
+      "default": "line",
+      "minLength": 1,
+      "description": "How the curve is drawn: line, area, or the name of a chart the app registered with registerChart()"
     }
   },
   "action": "mode list: the points outside the normal",

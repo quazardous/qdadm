@@ -13,7 +13,7 @@
 import { installQdadmRelayConnector } from '@quazardous/qdadm-mcp/connector'
 installQdadmRelayConnector()
 
-import { Kernel } from '@quazardous/qdadm'
+import { Kernel, registerChart } from '@quazardous/qdadm'
 import { debugBar } from '@quazardous/qdadm/modules/debug'
 import { createLocalStorageRolesProvider } from '@quazardous/qdadm/security'
 import PrimeVue from 'primevue/config'
@@ -24,6 +24,7 @@ import '@quazardous/qdadm/styles/scss'
 import 'primeicons/primeicons.css'
 
 import App from './App.vue'
+import DotsChart from './charts/DotsChart.vue'
 import { version } from '../package.json'
 import { authAdapter } from './adapters/authAdapter'
 import { moduleDefs, modulesOptions, sectionOrder, registerHooks } from './config'
@@ -31,6 +32,9 @@ import { moduleDefs, modulesOptions, sectionOrder, registerHooks } from './confi
 // ============================================================================
 // KERNEL BOOTSTRAP
 // ============================================================================
+
+// The app's own chart (#5441): any `chart: 'dots'` draws with it
+registerChart('dots', DotsChart)
 
 const kernel = new Kernel({
   root: App,

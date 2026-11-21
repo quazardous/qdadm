@@ -95,6 +95,46 @@ import { checkCards } from '@quazardous/qdadm/cards/tools'
 expect(checkCards('src/cards', { index: 'src/cards/cards-index.json', bestiary: 'docs/cards.md' })).toEqual([])
 ```
 
+### Charts
+
+A chart (the `viz` block, the `metric`'s curve) draws as many series as it
+is given, each `{ label, points, tone }`: in, out, errors… `chart` is `line`
+(the default), `area` or `bars`; `stacked: true` stacks the series, areas
+each on the one below or bars one on the other (`chart: 'stacked'` is
+stacked bars). The range runs from the lowest value to the highest (bars
+from zero), so a high, flat series still shows its moves. Every card draws
+its charts this way: a `viz` block in a `blocks` card or under any card
+(`envelope.blocks`, a dashboard block's `card.blocks`); a `trend` takes
+`options.chart`; a `metric` takes `options: { chart, stacked }` and N series
+in `data.series`, a sparkline at size `s`, and with several series at `m`
+or `l` the full chart (time axis, legend, tooltip). Its domain bar pill
+draws the same chart:
+
+```js
+{ id: 'traffic', card: 'metric', title: 'Traffic', load: readTraffic,   // { value, series: [{ label: 'in', points }, { label: 'out', points }] }
+  options: { chart: 'area', stacked: true } }
+```
+
+**A chart of your own:** register a component under a name, and every
+`chart: '<name>'` draws with it, in a `viz` block, a `metric` card and its
+pill. qdadm keeps no charting library: wrap the one you like.
+
+```js
+import { registerChart } from '@quazardous/qdadm'
+import EChartsSpark from './charts/EChartsSpark.vue'
+
+registerChart('echarts', EChartsSpark)
+```
+
+It receives `series` (each point read: `{ t, v, low, high }`, `t` a
+timestamp or null), `stacked`, `compact` and `height`, `unit` and
+`decimals`, `warning`, `critical` and `normal`, `label`, `dot`, `colors`
+(each series' colour as a CSS value, `var(--qd-cat-1)`, to read with
+`getComputedStyle` when the library wants a colour) and `mode` (the domain
+bar's mode in a bar, null elsewhere). qdadm's own names (`line`, `area`,
+`bars`, `stacked`) are not taken; a name nobody registered draws a line,
+with a warning in development.
+
 ### The gallery
 
 `<QdCardsGallery />` shows every registered card, qdadm's and the app's, in
@@ -256,8 +296,11 @@ ctx.domain('library', {
   drawn, `full` or `compact` (and why: `chosen` by the person, or
   `scrolled`), and says it in `data-mode`, for the app's CSS. A card's pill
   form receives it (`pill(data, options, locale, mode)`) and may return
-  `blocks`, drawn across the mini card or in the pill. `options: { spark:
-  false }` takes a `metric`'s sparkline away, `compact: { options: { spark:
+  `blocks`, drawn across the mini card or in the pill. A `metric`'s
+  sparkline is the card's own [chart](#charts) (a line by default, N
+  series, `options: { chart, stacked }`); with several named series, the
+  pill's tooltip gives each one's last value. `options: { spark:
+  false }` takes it away, `compact: { options: { spark:
   false } }` only in compact. The app decides the rest, per indicator:
 
   ```js

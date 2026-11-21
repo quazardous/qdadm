@@ -4,6 +4,7 @@
  */
 import type { CardPill, CardPillMode } from '../types'
 import { formatNumber } from './shared'
+import { metricViz, type MetricSeries } from './metric/viz'
 
 type Opts = Record<string, unknown>
 const fmt = (n: number, o: Opts, locale: string): string =>
@@ -19,10 +20,11 @@ export const PILLS: Record<string, (data: unknown, options: Opts, locale: string
   },
   // Its series as a sparkline (#5422): the bar draws it in its mini card, or
   // in its compact pill while the line has room (#5424)
+  // The same chart as the card's (#5441): a line by default, one series or several
   metric: (d, o, l) => {
-    const { value: v, series } = d as { value: number; series?: number[] }
-    const spark = o.spark !== false && (series?.length ?? 0) > 1
-    return { value: fmt(v, o, l), count: count(v), ...(spark ? { blocks: [{ kind: 'viz', chart: 'area', series: series!, compact: true, dot: true }] } : {}) }
+    const { value: v, series } = d as { value: number; series?: MetricSeries }
+    const viz = o.spark !== false ? metricViz(series, o) : null
+    return { value: fmt(v, o, l), count: count(v), ...(viz ? { blocks: [viz] } : {}) }
   },
   queue: (d, _o, l) => {
     const q = d as { total?: number; items: unknown[] }

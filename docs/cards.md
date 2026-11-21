@@ -28,7 +28,7 @@ A card is a few blocks in order, its foot the CTA zone; a `flash` banner goes to
 | Kind | Fields | Draws |
 |---|---|---|
 | `value` | `value`, `unit`, `decimals`, `label`, `badge`, `delta: { value, period }`, `higherIs`; or `then: { value, label }` with `changeAs` (`points`, `percent`) | The number, what it counts, its change toned by `higherIs`; with `then`, now and then side by side and the change |
-| `viz` | `series`: numbers, or `[{ label, points, tone }]` with points as `[time, value]`, `{ t, v, low, high }` or numbers; `chart` (`line`, `area`, `bars`, `stacked`); `period` (`24h`, `7d`, `30d`); `warning`, `critical`; `normal: { low, high }`; `unit`, `decimals`; `compact`; `dot`; `label` | A small chart, Munin-like: the thresholds as dashed lines, the band of normal and the points outside it. At size `s` (or `compact`) a sparkline; larger, the time axis, the y range, a legend for several series, and a tooltip per column on hover or with the arrow keys |
+| `viz` | `series`: numbers, or `[{ label, points, tone }]` with points as `[time, value]`, `{ t, v, low, high }` or numbers; `chart` (`line`, `area`, `bars`, `stacked`, or a chart the app registered with `registerChart`); `stacked` (areas or bars); `period` (`24h`, `7d`, `30d`); `warning`, `critical`; `normal: { low, high }`; `unit`, `decimals`; `compact`; `dot`; `label` | A small chart, Munin-like: the thresholds as dashed lines, the band of normal and the points outside it. At size `s` (or `compact`) a sparkline; larger, the time axis, the y range, a legend for several series, and a tooltip per column on hover or with the arrow keys |
 | `list` | `items: [{ label, to, tag, tagStatus, at, status, value, age, due, action }]`, `look` (`hot`, `queue`, `feed`, `ranking`), `max`, `more`, `now`, `ageUnit`, `unit`, `bars` | Lines, each opening its item: hot lines with a tag; a queue warming with age; a feed, latest first; a ranking with bars |
 | `text` | `text`, `tone`, `strong`, `look` (`note`, `reading`) | A short text in its tone, a word in bold after it |
 | `progress` | `value`, `target`, `look` (`goal`, `bullet`); goal: `start`, `due`, `now`; bullet: `thresholds`, `min`, `max`, `higherIs`; `unit`, `decimals` | A goal's bar and pace, or a bullet graph with its ranges |
@@ -664,7 +664,7 @@ A card is a few blocks in order, its foot the CTA zone; a `flash` banner goes to
 
 - the big number: the value now
 - the change chip: how much it moved over the period, its sign and its tone (good or bad news, from higherIs)
-- the curve: the recent series, the last point marked
+- the curve: the recent series, one or several (in, out…), the last point marked
 - the hot lines: the few items behind the number that need a look, each one opening its item
 
 **Strengths**
@@ -688,6 +688,8 @@ A card is a few blocks in order, its foot the CTA zone; a `flash` banner goes to
 | `higherIs` | `better` \| `worse` \| `neutral` | `"better"` | Whether a rise is good news (sales) or bad news (open returns) |
 | `hotCount` | integer | `2` | How many hot lines to show |
 | `spark` | boolean | `true` | In a domain bar: the series as a sparkline, in the mini card, or in the compact pill while there is room |
+| `chart` | string | `"line"` | How the curve is drawn, in the card and in a domain bar: line, area, bars, or the name of a chart the app registered with registerChart() |
+| `stacked` | boolean | `false` | With several series: stack them (areas, each on the one below, or bars) |
 
 **Data**: required `value`; the full shape is in `metric/schema.json`.
 
@@ -1004,6 +1006,7 @@ A card is a few blocks in order, its foot the CTA zone; a `flash` banner goes to
 |---|---|---|---|
 | `unit` | string |  | Written after the last value |
 | `decimals` | integer | `0` | Digits after the decimal point |
+| `chart` | string | `"line"` | How the curve is drawn: line, area, or the name of a chart the app registered with registerChart() |
 
 **Data**: required `series`; the full shape is in `trend/schema.json`.
 

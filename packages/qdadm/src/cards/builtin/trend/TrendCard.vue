@@ -23,7 +23,7 @@ interface Point {
 }
 const props = defineProps<{
   data: { series: Point[]; normal?: { low: number; high: number }; label?: string }
-  options: { unit?: string; decimals?: number }
+  options: { unit?: string; decimals?: number; chart?: string }
   size: CardSize
 }>()
 const { t } = useI18n()
@@ -35,7 +35,8 @@ const blocks = computed<CardBlock[]>(() => {
   if (last) out.push({ kind: 'value', value: last.value, label: d.label, unit: o.unit, decimals: o.decimals })
   out.push({
     kind: 'viz',
-    chart: 'line',
+    // line (default), area, or a chart the app registered (#5441)
+    chart: typeof o.chart === 'string' && o.chart ? o.chart : 'line',
     series: [{ points: d.series.map((p) => ({ ...(p.at !== undefined ? { t: p.at } : {}), v: p.value, ...(p.low !== undefined ? { low: p.low } : {}), ...(p.high !== undefined ? { high: p.high } : {}) })) }],
     ...(d.normal ? { normal: d.normal } : {}),
     unit: o.unit,

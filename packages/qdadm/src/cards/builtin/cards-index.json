@@ -1098,7 +1098,7 @@
       "readings": [
         "the big number: the value now",
         "the change chip: how much it moved over the period, its sign and its tone (good or bad news, from higherIs)",
-        "the curve: the recent series, the last point marked",
+        "the curve: the recent series, one or several (in, out…), the last point marked",
         "the hot lines: the few items behind the number that need a look, each one opening its item"
       ],
       "strengths": [
@@ -1149,6 +1149,17 @@
           "type": "boolean",
           "default": true,
           "description": "In a domain bar: the series as a sparkline, in the mini card, or in the compact pill while there is room"
+        },
+        "chart": {
+          "type": "string",
+          "default": "line",
+          "minLength": 1,
+          "description": "How the curve is drawn, in the card and in a domain bar: line, area, bars, or the name of a chart the app registered with registerChart()"
+        },
+        "stacked": {
+          "type": "boolean",
+          "default": false,
+          "description": "With several series: stack them (areas, each on the one below, or bars)"
         }
       },
       "action": "mode next: open the most urgent of the items behind the number (\"Process the 1st\")",
@@ -1241,11 +1252,83 @@
             }
           },
           "series": {
-            "type": "array",
-            "items": {
-              "type": "number"
-            },
-            "description": "The recent values, oldest first"
+            "description": "The recent values, oldest first: one series (a list of numbers), or several, each { label, points, tone }",
+            "anyOf": [
+              {
+                "type": "array",
+                "items": {
+                  "type": "number"
+                }
+              },
+              {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "required": [
+                    "points"
+                  ],
+                  "additionalProperties": false,
+                  "properties": {
+                    "label": {
+                      "type": "string",
+                      "description": "Its name: \"in\", \"out\""
+                    },
+                    "points": {
+                      "type": "array",
+                      "items": {
+                        "anyOf": [
+                          {
+                            "type": "number"
+                          },
+                          {
+                            "type": "array",
+                            "minItems": 2,
+                            "maxItems": 2,
+                            "items": {
+                              "type": [
+                                "string",
+                                "number"
+                              ]
+                            }
+                          },
+                          {
+                            "type": "object",
+                            "required": [
+                              "v"
+                            ],
+                            "additionalProperties": false,
+                            "properties": {
+                              "t": {
+                                "type": [
+                                  "string",
+                                  "number"
+                                ]
+                              },
+                              "v": {
+                                "type": "number"
+                              },
+                              "low": {
+                                "type": "number"
+                              },
+                              "high": {
+                                "type": "number"
+                              }
+                            }
+                          }
+                        ]
+                      }
+                    },
+                    "tone": {
+                      "type": [
+                        "string",
+                        "integer"
+                      ],
+                      "description": "A status tone, or a palette rank (1 to 6)"
+                    }
+                  }
+                }
+              }
+            ]
           },
           "hot": {
             "type": "array",
@@ -1806,6 +1889,12 @@
           "maximum": 4,
           "default": 0,
           "description": "Digits after the decimal point"
+        },
+        "chart": {
+          "type": "string",
+          "default": "line",
+          "minLength": 1,
+          "description": "How the curve is drawn: line, area, or the name of a chart the app registered with registerChart()"
         }
       },
       "action": "mode list: the points outside the normal",

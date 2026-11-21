@@ -21,7 +21,7 @@
  * passed to its card's pill form and to the app's own component, with
  * `compact` overrides.
  */
-import { computed, inject, markRaw, nextTick, onBeforeUnmount, onMounted, onUpdated, ref, toRaw, watch, type Component, type Ref } from 'vue'
+import { computed, inject, provide, markRaw, nextTick, onBeforeUnmount, onMounted, onUpdated, ref, toRaw, watch, type Component, type Ref } from 'vue'
 import { RouterLink, useRoute, useRouter, type RouteLocationRaw } from 'vue-router'
 import { useI18n } from '../i18n/useI18n'
 import { useAuth } from '../composables/useAuth'
@@ -30,6 +30,8 @@ import { getCard, checkCardInput, resolveCardOptions } from '../cards/registry'
 import type { CardPillMode, CardStatus } from '../cards/types'
 import type { CardBlock } from '../cards/blocks/types'
 import QdCardBlocks from '../cards/blocks/QdCardBlocks.vue'
+import { CHART_MODE } from '../cards/blocks/charts'
+import { normalizeSeries } from '../cards/blocks/viz'
 import QdBadge from './QdBadge.vue'
 import { badgeTone, type DomainDefinition, type DomainIndicator, type DomainIndicatorProps, type DomainLook, type DomainNavEntry } from './registry'
 
@@ -92,6 +94,8 @@ const compact = computed(() => chosen.value || scrolled.value)
 const mode = computed<CardPillMode>(() =>
   compact.value ? { mode: 'compact', reason: chosen.value ? 'chosen' : 'scrolled' } : { mode: 'full', reason: null }
 )
+// The app's charts in the bar are told its mode (#5441)
+provide(CHART_MODE, mode)
 
 // ── The indicators: each its own read, its own state ──────────────────────────
 interface IndicatorView {
@@ -248,7 +252,17 @@ function pillTitle(i: IndicatorView): string {
   if (i.state === 'unreachable') return tOr('core.domainBar.unreachable', '{title}: unreachable ({error})', { title, error: i.reason ?? '' })
   if (i.state === 'invalid') return tOr('core.domainBar.invalid', '{title}: data that does not fit', { title }) + (i.reason ? ` (${i.reason})` : '')
   if (i.state === 'loading') return tOr('core.domainBar.loading', '{title}: loading', { title })
-  return i.value ? `${title}: ${i.value}` : title
+  const head = i.value ? `${title}: ${i.value}` : title
+  // A chart of several named series: each one's last value (#5441)
+  const named: string[] = []
+  for (const b of i.blocks) {
+    if (b.kind !== 'viz') continue
+    for (const s of normalizeSeries(b.series)) {
+      const last = s.points.at(-1)
+      if (s.label && last) named.push(`${s.label} ${new Intl.NumberFormat(locale.value).format(last.v)}`)
+    }
+  }
+  return named.length ? `${head} (${named.join(', ')})` : head
 }
 </script>
 

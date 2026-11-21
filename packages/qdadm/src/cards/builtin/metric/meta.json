@@ -5,7 +5,7 @@
   "readings": [
     "the big number: the value now",
     "the change chip: how much it moved over the period, its sign and its tone (good or bad news, from higherIs)",
-    "the curve: the recent series, the last point marked",
+    "the curve: the recent series, one or several (in, out…), the last point marked",
     "the hot lines: the few items behind the number that need a look, each one opening its item"
   ],
   "strengths": [
@@ -56,6 +56,17 @@
       "type": "boolean",
       "default": true,
       "description": "In a domain bar: the series as a sparkline, in the mini card, or in the compact pill while there is room"
+    },
+    "chart": {
+      "type": "string",
+      "default": "line",
+      "minLength": 1,
+      "description": "How the curve is drawn, in the card and in a domain bar: line, area, bars, or the name of a chart the app registered with registerChart()"
+    },
+    "stacked": {
+      "type": "boolean",
+      "default": false,
+      "description": "With several series: stack them (areas, each on the one below, or bars)"
     }
   },
   "action": "mode next: open the most urgent of the items behind the number (\"Process the 1st\")",

@@ -56,7 +56,9 @@ export const BLOCK_SCHEMAS: Record<string, CardSchema> = {
     additionalProperties: false,
     properties: {
       kind: { const: 'viz' },
-      chart: { type: 'string', enum: ['line', 'area', 'bars', 'stacked'] },
+      // line, area, bars, stacked, or a chart the app registered (#5441)
+      chart: { type: 'string', minLength: 1 },
+      stacked: { type: 'boolean' },
       series: {
         type: 'array',
         items: {

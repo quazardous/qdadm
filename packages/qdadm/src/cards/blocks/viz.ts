@@ -73,14 +73,27 @@ export interface VizGeometry {
 
 const f = (n: number) => n.toFixed(2)
 
+const BUILTIN = ['line', 'area', 'bars', 'stacked'] as const
+/** The chart qdadm draws: its own, or the line in place of a name it does not know (#5441) */
+export function builtinChart(chart: string | undefined): (typeof BUILTIN)[number] {
+  return (BUILTIN as readonly string[]).includes(chart ?? '') ? (chart as (typeof BUILTIN)[number]) : 'line'
+}
+
 export function vizGeometry(block: VizBlock, height: number, pad = 3): VizGeometry {
   const W = 100
   const H = height
-  const chart = block.chart ?? 'line'
+  const chart = builtinChart(block.chart)
   const series = normalizeSeries(block.series)
   const n = Math.max(0, ...series.map((s) => s.points.length))
   const timed = series.length > 0 && series.every((s) => s.points.length > 0 && s.points.every((p) => p.t !== null))
   const barred = chart === 'bars' || chart === 'stacked'
+  // Stacked (#5441): bars (`stacked`, or `bars` with the flag) and areas
+  const stacked = chart === 'stacked' || (!!block.stacked && (chart === 'bars' || chart === 'area'))
+  // Each series' level at each point: its value, on top of the ones below when stacked
+  const levels: number[][] = []
+  for (let k = 0; k < series.length; k++) {
+    levels.push(series[k]!.points.map((p, i) => (stacked && k ? (levels[k - 1]![i] ?? 0) : 0) + p.v))
+  }
 
   // The x of point i of a series: by time when every point has one, else by rank
   const times = timed ? series.flatMap((s) => s.points.map((p) => p.t as number)) : []
@@ -99,10 +112,10 @@ export function vizGeometry(block: VizBlock, height: number, pad = 3): VizGeomet
 
   // The range: values (sums when stacked), bands, thresholds; bars start at 0
   const values: number[] = []
-  if (chart === 'stacked') {
+  if (stacked && barred) {
     for (let i = 0; i < n; i++) values.push(series.reduce((sum, s) => sum + (s.points[i]?.v ?? 0), 0))
   } else {
-    for (const s of series) for (const p of s.points) values.push(p.v)
+    for (const l of levels) values.push(...l)
   }
   for (const s of series) for (const p of s.points) {
     const lo = lows(p)
@@ -121,19 +134,26 @@ export function vizGeometry(block: VizBlock, height: number, pad = 3): VizGeomet
   const lines: VizGeometry['lines'] = []
   const bars: VizGeometry['bars'] = []
   if (!barred) {
-    for (const s of series) {
-      if (!s.points.length) continue
-      const pts = s.points.map((p, i) => [xAt(p, i), y(p.v)] as const)
+    series.forEach((s, k) => {
+      if (!s.points.length) return
+      const pts = s.points.map((p, i) => [xAt(p, i), y(levels[k]![i]!)] as const)
       const line = pts.map(([x, yy], i) => `${i ? 'L' : 'M'}${f(x)},${f(yy)}`).join(' ')
-      const area = chart === 'area' ? `${line} L${f(pts[pts.length - 1]![0])},${H} L${f(pts[0]![0])},${H} Z` : ''
+      let area = ''
+      if (chart === 'area') {
+        // Down to the frame's bottom; stacked, down to the series below
+        const below = stacked && k ? s.points.map((p, i) => [xAt(p, i), y(levels[k - 1]![i] ?? min)] as const).reverse() : null
+        area = below
+          ? `${line} ${below.map(([x, yy]) => `L${f(x)},${f(yy)}`).join(' ')} Z`
+          : `${line} L${f(pts[pts.length - 1]![0])},${H} L${f(pts[0]![0])},${H} Z`
+      }
       lines.push({ tone: s.tone, line, area })
-    }
+    })
   } else {
     const group = band * 0.7
     const zero = y(Math.max(min, 0))
     for (let i = 0; i < n; i++) {
       const left = band * i + (band - group) / 2
-      if (chart === 'stacked') {
+      if (stacked) {
         let acc = 0
         for (const s of series) {
           const v = s.points[i]?.v ?? 0
@@ -185,8 +205,11 @@ export function vizGeometry(block: VizBlock, height: number, pad = 3): VizGeomet
     columns.push({ x: xAt(ref, i), t: ref.t, values: series.map((s) => ({ label: s.label, tone: s.tone, v: s.points[i]?.v ?? null })) })
   }
 
-  const lastPoint = first?.points.at(-1)
-  const last = lastPoint && !barred ? { x: xAt(lastPoint, first!.points.length - 1), y: y(lastPoint.v) } : null
+  // The dot: on the first series; stacked, on the top of the pile
+  const top = stacked ? series.length - 1 : 0
+  const lastPoint = series[top]?.points.at(-1)
+  const lastIndex = (series[top]?.points.length ?? 0) - 1
+  const last = lastPoint && !barred ? { x: xAt(lastPoint, lastIndex), y: y(levels[top]![lastIndex]!) } : null
 
   return { width: W, height: H, min, max, timed, y, lines, bars, band: bandPath, thresholds, outside, columns, last }
 }

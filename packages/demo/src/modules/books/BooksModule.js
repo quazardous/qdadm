@@ -372,6 +372,23 @@ export class BooksModule extends Module {
             return { value: loans.filter((l) => l.read).length, target: loans.length || 1 }
           },
         },
+        // Several series, stacked (#5441): the library's door, in and out over
+        // the last 12 hours (simulated). Full, a stacked area; compact, the
+        // app's own chart, registered in main.js
+        {
+          id: 'door',
+          card: 'metric',
+          title: 'Door',
+          icon: 'pi pi-users',
+          load: async () => {
+            const wave = (base, k) => Array.from({ length: 12 }, (_, h) => Math.round(base + base * 0.6 * Math.sin((h + k) / 2)))
+            const enter = wave(20, 0)
+            const leave = wave(14, 1)
+            return { value: enter.at(-1) + leave.at(-1), label: 'people', series: [{ label: 'in', points: enter }, { label: 'out', points: leave }] }
+          },
+          options: { chart: 'area', stacked: true },
+          compact: { options: { chart: 'dots' } },
+        },
         // Dynamic indicators (#5438): which genre leads, and a slot that
         // stays out while nothing fills it
         {

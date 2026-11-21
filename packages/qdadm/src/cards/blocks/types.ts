@@ -42,9 +42,14 @@ export interface VizSeries {
 /** A small chart, Munin-like */
 export interface VizBlock {
   kind: 'viz'
-  /** line (default), area, bars (grouped), stacked (bars) */
-  chart?: 'line' | 'area' | 'bars' | 'stacked'
-  /** Its series; a list of numbers is one series */
+  /**
+   * line (default), area, bars (grouped), stacked (bars); or the name of a
+   * chart the app registered (#5441), drawn by its component
+   */
+  chart?: 'line' | 'area' | 'bars' | 'stacked' | (string & {})
+  /** Stack the series (#5441): areas, each on the one below, or bars */
+  stacked?: boolean
+  /** Its series, as many as it takes; a list of numbers is one series */
   series: VizSeries[] | number[]
   /** The time it covers, for the axis: computed from the points when left out */
   period?: '24h' | '7d' | '30d'

@@ -9,10 +9,11 @@
  * and a tooltip per column, on hover or with the arrow keys once focused.
  * A screen reader hears each series' last, lowest and highest value.
  */
-import { computed, ref } from 'vue'
+import { computed, inject, ref, watchEffect } from 'vue'
 import { useI18n } from '../../i18n/useI18n'
 import { formatNumber } from '../builtin/shared'
-import { vizGeometry, timeTicks, periodOf, normalizeSeries } from './viz'
+import { vizGeometry, timeTicks, periodOf, normalizeSeries, builtinChart } from './viz'
+import { getChart, toneColor, CHART_MODE, type ChartProps } from './charts'
 import type { VizBlock } from './types'
 import type { CardSize } from '../types'
 
@@ -23,6 +24,35 @@ const compact = computed(() => props.block.compact ?? props.size === 's')
 const H = computed(() => (compact.value ? 28 : 40))
 const geo = computed(() => vizGeometry(props.block, H.value))
 const series = computed(() => normalizeSeries(props.block.series))
+
+// The app's chart (#5441): a name it registered draws with its component;
+// a name nobody registered, the line
+const mode = inject(CHART_MODE, null)
+const kind = computed(() => builtinChart(props.block.chart))
+const barred = computed(() => kind.value === 'bars' || kind.value === 'stacked')
+const appChart = computed(() => (props.block.chart && props.block.chart !== kind.value ? getChart(props.block.chart) : null))
+const isDev = (import.meta as unknown as { env?: { DEV?: boolean } }).env?.DEV === true
+watchEffect(() => {
+  if (!isDev) return
+  const name = props.block.chart
+  if (name && name !== kind.value && !appChart.value) console.warn(`[qdadm] viz: no chart is named '${name}'; it draws a line. Register it with registerChart('${name}', Component).`)
+  if (props.block.stacked && !appChart.value && kind.value === 'line') console.warn('[qdadm] viz: lines do not stack; stacked applies to areas and bars')
+})
+const chartProps = computed<ChartProps>(() => ({
+  series: series.value,
+  stacked: !!props.block.stacked || props.block.chart === 'stacked',
+  compact: compact.value,
+  height: H.value,
+  unit: props.block.unit,
+  decimals: props.block.decimals,
+  warning: props.block.warning,
+  critical: props.block.critical,
+  normal: props.block.normal,
+  label: props.block.label,
+  dot: !!props.block.dot,
+  colors: series.value.map((s) => toneColor(String(s.tone))),
+  mode: mode?.value ?? null,
+}))
 const fmt = (v: number) => formatNumber(v, locale.value, { decimals: props.block.decimals, unit: props.block.unit })
 const pct = (y: number) => `${(y / H.value) * 100}%`
 
@@ -38,7 +68,7 @@ const ticks = computed(() => {
   if (compact.value || !span.value) return []
   const raw = timeTicks(span.value.min, span.value.max, locale.value, period.value ?? undefined)
   // Bars sit in columns: a tick goes to its column's centre
-  if (props.block.chart === 'bars' || props.block.chart === 'stacked') {
+  if (barred.value) {
     const cols = geo.value.columns
     return raw.map((tk) => {
       let best = cols[0]!
@@ -106,11 +136,15 @@ const tipText = computed(() => {
   return `${when(c.t, active.value!)}: ${vals.join(', ')}`
 })
 const tipSide = computed(() => (column.value && column.value.x > 60 ? 'left' : 'right'))
-const barred = computed(() => props.block.chart === 'bars' || props.block.chart === 'stacked')
 </script>
 
 <template>
-  <div class="qd-viz qd-card-block" :class="{ 'qd-viz--compact': compact }" data-block="viz" :data-chart="block.chart ?? 'line'">
+  <!-- The app's own chart (#5441) -->
+  <div v-if="appChart" class="qd-viz qd-card-block" :class="{ 'qd-viz--compact': compact }" data-block="viz" :data-chart="block.chart" data-app-chart>
+    <component :is="appChart" v-bind="chartProps" />
+    <span v-if="compact" class="qd-card-sr">{{ summary }}</span>
+  </div>
+  <div v-else class="qd-viz qd-card-block" :class="{ 'qd-viz--compact': compact }" data-block="viz" :data-chart="kind" :data-stacked="chartProps.stacked || undefined">
     <div
       ref="plot"
       class="qd-viz-plot"
@@ -174,5 +208,7 @@ const barred = computed(() => props.block.chart === 'bars' || props.block.chart 
       </li>
     </ul>
     <span v-if="!compact" class="qd-card-sr" aria-live="polite">{{ keyboard ? tipText : '' }}</span>
+    <!-- A sparkline of several series: their names and values for screen readers (#5441) -->
+    <span v-else-if="series.length > 1" class="qd-card-sr">{{ summary }}</span>
   </div>
 </template>

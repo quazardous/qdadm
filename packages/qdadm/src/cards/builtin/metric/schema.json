@@ -15,7 +15,39 @@
         "period": { "type": "string", "description": "The period: \"week\", \"vs yesterday\"" }
       }
     },
-    "series": { "type": "array", "items": { "type": "number" }, "description": "The recent values, oldest first" },
+    "series": {
+      "description": "The recent values, oldest first: one series (a list of numbers), or several, each { label, points, tone }",
+      "anyOf": [
+        { "type": "array", "items": { "type": "number" } },
+        {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["points"],
+            "additionalProperties": false,
+            "properties": {
+              "label": { "type": "string", "description": "Its name: \"in\", \"out\"" },
+              "points": {
+                "type": "array",
+                "items": {
+                  "anyOf": [
+                    { "type": "number" },
+                    { "type": "array", "minItems": 2, "maxItems": 2, "items": { "type": ["string", "number"] } },
+                    {
+                      "type": "object",
+                      "required": ["v"],
+                      "additionalProperties": false,
+                      "properties": { "t": { "type": ["string", "number"] }, "v": { "type": "number" }, "low": { "type": "number" }, "high": { "type": "number" } }
+                    }
+                  ]
+                }
+              },
+              "tone": { "type": ["string", "integer"], "description": "A status tone, or a palette rank (1 to 6)" }
+            }
+          }
+        }
+      ]
+    },
     "hot": {
       "type": "array",
       "description": "The items behind the number that need a look",
