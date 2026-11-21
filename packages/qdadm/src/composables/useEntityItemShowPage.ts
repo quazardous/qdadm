@@ -109,6 +109,8 @@ export interface ActionConfig<T = unknown> {
   icon?: string | ((data: T | null) => string | undefined)
   /** PrimeVue Button severity — the shared union, not bare string (#1281); or a function of the record (#5430) */
   severity?: ButtonSeverity | ((data: T | null) => ButtonSeverity | undefined)
+  /** What the gesture does, on hover and focus (#5436): a string, or a function of the record */
+  tooltip?: string | ((data: T | null) => string | undefined)
   onClick: () => void | Promise<void>
   /** Shown or not: the record (`data`, null while loading), the permissions, the loading */
   visible?: (ctx: ShowActionContext<T>) => boolean
@@ -140,10 +142,11 @@ export interface LazyActionConfig {
 /**
  * Resolved action for rendering
  */
-export interface ResolvedAction extends Omit<ActionConfig, 'label' | 'icon' | 'severity'> {
+export interface ResolvedAction extends Omit<ActionConfig, 'label' | 'icon' | 'severity' | 'tooltip'> {
   label: string
   icon?: string
   severity?: ButtonSeverity
+  tooltip?: string
   isLoading: boolean
   isDisabled: boolean
 }
@@ -467,6 +470,7 @@ export function useEntityItemShowPage<T = Record<string, unknown>>(
         label: typeof action.label === 'function' ? action.label(ctx.data) : action._label ? action._label() : action.label,
         icon: of(action.icon),
         severity: of(action.severity),
+        tooltip: of(action.tooltip) || undefined,
         isLoading: action.loading ? action.loading() : false,
         isDisabled: action.disabled ? action.disabled(ctx) : false,
       }

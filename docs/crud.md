@@ -712,8 +712,11 @@ ones; `addAction()` adds the page's own.
 - **What they see:** `visible(ctx)` and `disabled(ctx)` receive
   `{ data, canEdit, canDelete, loading }`: `data` is the record shown, `null`
   while it loads (so an action never offers itself for the record being left).
-  `label`, `icon` and `severity` take a value or a function of the record, read
-  again at each render, so they follow the record and the locale.
+  `label`, `icon`, `severity` and `tooltip` take a value or a function of the
+  record, read again at each render, so they follow the record and the locale.
+- **A tooltip** says what the gesture does when the label only names it
+  (`tooltip`, shown on hover). A disabled action keeps it, on a wrapper the
+  pointer and the keyboard reach, with the text for screen readers.
 
 ```js
 const show = useEntityItemShowPage({ entity: 'tasks' })
@@ -730,6 +733,7 @@ show.addAction({
 show.addAction({
   name: 'handled',
   label: () => t('tasks.handled'),
+  tooltip: () => t('tasks.handledHint'),   // "Closes the task until it recurs; asks for a reason"
   severity: 'success',
   visible: ({ data }) => data?.state === 'taken',
   disabled: ({ loading }) => loading,

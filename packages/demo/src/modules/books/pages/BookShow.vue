@@ -50,6 +50,8 @@ show.addAction({
   name: 'wikipedia',
   label: (book) => `${book?.title} on Wikipedia`,
   icon: 'pi pi-external-link',
+  // What it does, on hover (#5436)
+  tooltip: (book) => `Opens the article on ${book?.title} in a new tab`,
   severity: (book) => (Number(book?.year) < 1970 ? 'help' : 'secondary'),
   visible: ({ data }) => !!data?.title,
   onClick: () => window.open(`https://en.wikipedia.org/wiki/${encodeURIComponent(String(show.data.value?.title ?? ''))}`, '_blank', 'noopener'),
