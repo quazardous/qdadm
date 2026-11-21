@@ -45,10 +45,18 @@ export interface DomainNavEntry {
   badge?: string
 }
 
+/**
+ * How the bar sits (#5396): `card`, a card above the page (the default);
+ * `ribbon`, a panel glued to the top edge of the content, its pages as tabs
+ */
+export type DomainLook = 'card' | 'ribbon'
+
 /** What `ctx.domain(name, …)` declares */
 export interface DomainConfig {
   label: string
   icon?: string
+  /** Default: the app's `features.domainBar.look`, else `card` */
+  look?: DomainLook
   /** Where the domain's title leads (its board) */
   to?: RouteLocationRaw
   nav?: DomainNavEntry[]

@@ -61,6 +61,8 @@ export interface AppConfig {
 export interface Features {
   auth?: boolean
   poweredBy?: boolean
+  /** Every domain bar's look, unless its domain says otherwise (#5396) */
+  domainBar?: { look?: 'card' | 'ribbon' }
   [key: string]: unknown
 }
 

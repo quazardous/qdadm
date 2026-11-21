@@ -5,10 +5,15 @@
  * an indicator) and its indicators: mini cards, each read from its own source
  * and drawn as a pill whose count is a badge.
  *
+ * Its look (#5396): a card above the page, or a ribbon glued to the top edge
+ * of the content, its pages as tabs: the domain's `look`, else the app's
+ * `features.domainBar.look`. Both are drawn from CSS custom properties
+ * (`--qd-domain-bar-*`, `--qd-ribbon-*`), to change in the app's own CSS.
+ *
  * Compact: one line of icons and badges, on its own once the page scrolls, or
  * by the person's choice, kept per account.
  */
-import { computed, onBeforeUnmount, onMounted, ref, watch, type Ref } from 'vue'
+import { computed, inject, onBeforeUnmount, onMounted, ref, watch, type Ref } from 'vue'
 import { RouterLink, useRoute, useRouter, type RouteLocationRaw } from 'vue-router'
 import { useI18n } from '../i18n/useI18n'
 import { useAuth } from '../composables/useAuth'
@@ -16,9 +21,13 @@ import { useAsyncRead } from '../composables/useAsyncRead'
 import { getCard, checkCardInput, resolveCardOptions } from '../cards/registry'
 import type { CardStatus } from '../cards/types'
 import QdBadge from './QdBadge.vue'
-import { badgeTone, type DomainDefinition, type DomainIndicator, type DomainNavEntry } from './registry'
+import { badgeTone, type DomainDefinition, type DomainIndicator, type DomainLook, type DomainNavEntry } from './registry'
 
 const props = defineProps<{ domain: DomainDefinition }>()
+
+// The look (#5396): the domain's, else the app's, else a card
+const features = inject<{ domainBar?: { look?: DomainLook } } | null>('qdadmFeatures', null)
+const look = computed<DomainLook>(() => props.domain.look ?? features?.domainBar?.look ?? 'card')
 
 const { locale, tOr } = useI18n()
 const route = useRoute()
@@ -147,9 +156,10 @@ function pillTitle(i: IndicatorView): string {
   <div ref="sentinel" class="qd-domain-bar-sentinel" aria-hidden="true"></div>
   <section
     class="qd-domain-bar"
-    :class="{ 'qd-domain-bar--compact': compact }"
+    :class="[`qd-domain-bar--${look}`, { 'qd-domain-bar--compact': compact }]"
     :aria-label="label"
     :data-domain="domain.name"
+    :data-look="look"
     :data-compact="compact ? (chosen ? 'chosen' : 'scrolled') : undefined"
   >
     <component :is="domain.to ? RouterLink : 'span'" :to="domain.to" class="qd-domain-bar-title">

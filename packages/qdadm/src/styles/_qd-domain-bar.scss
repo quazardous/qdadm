@@ -14,7 +14,18 @@
   margin-bottom: -1px;
 }
 
+// Every look is drawn from these: an app changes them in its own CSS, on
+// `.qd-domain-bar`, on one look (`.qd-domain-bar--ribbon`) or on one domain
+// (`.qd-domain-bar[data-domain='purchases']`) (#5396)
 .qd-domain-bar {
+  --qd-domain-bar-bg: var(--qd-card-bg);
+  --qd-domain-bar-border: var(--qd-card-border);
+  --qd-domain-bar-margin: 0.75rem 1rem 0;
+  --qd-domain-bar-padding: 0.5rem 0.75rem;
+  --qd-domain-bar-radius: 8px;
+  --qd-domain-bar-shadow: none;
+  --qd-domain-bar-compact-shadow: 0 2px 6px rgb(0 0 0 / 8%);
+
   position: sticky;
   top: 0;
   z-index: 5;
@@ -22,11 +33,12 @@
   flex-wrap: wrap;
   align-items: center;
   gap: 0.5rem 1rem;
-  margin: 0.75rem 1rem 0;
-  padding: 0.5rem 0.75rem;
-  background: var(--qd-card-bg);
-  border: 1px solid var(--qd-card-border);
-  border-radius: 8px;
+  margin: var(--qd-domain-bar-margin);
+  padding: var(--qd-domain-bar-padding);
+  background: var(--qd-domain-bar-bg);
+  border: 1px solid var(--qd-domain-bar-border);
+  border-radius: var(--qd-domain-bar-radius);
+  box-shadow: var(--qd-domain-bar-shadow);
   color: var(--qd-card-ink);
   font-size: 0.875rem;
 }
@@ -144,7 +156,7 @@ a.qd-domain-pill-body:focus-visible { outline: 2px solid var(--qd-card-accent); 
   gap: 0.5rem;
   padding: 0.25rem 0.5rem;
   overflow-x: auto;
-  box-shadow: 0 2px 6px rgb(0 0 0 / 8%);
+  box-shadow: var(--qd-domain-bar-compact-shadow);
 
   .qd-domain-bar-title { font-size: 0.875rem; }
   .qd-domain-bar-nav, .qd-domain-bar-indicators { flex-wrap: nowrap; }
@@ -153,7 +165,75 @@ a.qd-domain-pill-body:focus-visible { outline: 2px solid var(--qd-card-accent); 
   .qd-domain-bar-toggle { width: 1.75rem; height: 1.75rem; }
 }
 
+// The ribbon (#5396): a panel glued to the top edge of the content, full
+// width, a rule at the bottom; its pages are tabs standing on the rule, the
+// current one in the panel's colour, merged into it, the others set back.
+.qd-domain-bar--ribbon {
+  --qd-domain-bar-margin: 0;
+  --qd-domain-bar-padding: 0.4rem 1rem 0;
+  --qd-domain-bar-radius: 0;
+  --qd-domain-bar-compact-shadow: 0 2px 4px rgb(0 0 0 / 6%);
+  --qd-ribbon-rule: var(--qd-domain-bar-border);
+  --qd-ribbon-tab-bg: var(--qd-card-track);
+  --qd-ribbon-tab-ink: var(--qd-card-muted);
+  --qd-ribbon-tab-current-bg: var(--qd-domain-bar-bg);
+  --qd-ribbon-tab-current-ink: var(--qd-card-ink-strong);
+  --qd-ribbon-tab-radius: 6px 6px 0 0;
+  --qd-ribbon-accent: var(--qd-card-accent);
+
+  align-items: flex-end;
+  border-width: 0 0 1px;
+  border-color: var(--qd-ribbon-rule);
+
+  // The title, the indicators and the toggle sit in the middle, off the rule
+  .qd-domain-bar-title,
+  .qd-domain-bar-indicators,
+  .qd-domain-bar-toggle {
+    align-self: center;
+    margin-bottom: 0.4rem;
+  }
+
+  .qd-domain-bar-nav {
+    gap: 0.2rem;
+    align-self: flex-end;
+  }
+
+  .qd-domain-bar-entry {
+    margin-bottom: -1px; // over the rule
+    padding: 0.4rem 0.8rem;
+    border: 1px solid transparent;
+    border-bottom: 0;
+    border-radius: var(--qd-ribbon-tab-radius);
+    background: var(--qd-ribbon-tab-bg);
+    color: var(--qd-ribbon-tab-ink);
+
+    &:hover { color: var(--qd-card-ink); background: var(--qd-ribbon-tab-bg); filter: brightness(0.97); }
+  }
+
+  // The current tab: the panel's colour, edged like it, the rule under it gone
+  .qd-domain-bar-entry--current {
+    padding-bottom: calc(0.4rem + 1px);
+    border-color: var(--qd-ribbon-rule);
+    border-top: 2px solid var(--qd-ribbon-accent);
+    background: var(--qd-ribbon-tab-current-bg);
+    color: var(--qd-ribbon-tab-current-ink);
+
+    &:hover { background: var(--qd-ribbon-tab-current-bg); filter: none; }
+  }
+}
+
+.qd-domain-bar--ribbon.qd-domain-bar--compact {
+  padding: 0.15rem 0.75rem 0;
+
+  .qd-domain-bar-title,
+  .qd-domain-bar-indicators,
+  .qd-domain-bar-toggle { margin-bottom: 0.15rem; }
+  .qd-domain-bar-entry { padding: 0.2rem 0.5rem; }
+  .qd-domain-bar-entry--current { padding-bottom: calc(0.2rem + 1px); }
+}
+
 @media (max-width: 700px) {
-  .qd-domain-bar { margin: 0.5rem 0.5rem 0; }
+  .qd-domain-bar { --qd-domain-bar-margin: 0.5rem 0.5rem 0; }
+  .qd-domain-bar--ribbon { --qd-domain-bar-margin: 0; --qd-domain-bar-padding: 0.4rem 0.5rem 0; }
   .qd-domain-bar-indicators { margin-left: 0; }
 }

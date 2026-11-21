@@ -164,3 +164,30 @@ describe('QdDomainBar (#5389)', () => {
     expect(again.w.find('.qd-domain-bar').attributes('data-compact')).toBe('chosen')
   })
 })
+
+describe('the look (#5396)', () => {
+  const mountLook = async (config, features) => {
+    const router = makeRouter()
+    await router.push('/board')
+    registerDomain('library', config, 'library')
+    const w = mount(QdDomainBar, {
+      props: { domain: domainOfRoute(router.currentRoute.value) },
+      global: { plugins: [router], provide: features ? { qdadmFeatures: features } : {} },
+    })
+    await flushPromises()
+    return w.find('.qd-domain-bar')
+  }
+
+  it('a card by default', async () => {
+    const bar = await mountLook({ label: 'Library' })
+    expect(bar.attributes('data-look')).toBe('card')
+    expect(bar.classes()).toContain('qd-domain-bar--card')
+  })
+
+  it("the app's default, unless the domain says otherwise", async () => {
+    expect((await mountLook({ label: 'Library' }, { domainBar: { look: 'ribbon' } })).attributes('data-look')).toBe('ribbon')
+    expect((await mountLook({ label: 'Library', look: 'card' }, { domainBar: { look: 'ribbon' } })).attributes('data-look')).toBe('card')
+    const ribbon = await mountLook({ label: 'Library', look: 'ribbon' })
+    expect(ribbon.classes()).toContain('qd-domain-bar--ribbon')
+  })
+})

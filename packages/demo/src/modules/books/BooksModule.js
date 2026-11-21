@@ -320,6 +320,8 @@ export class BooksModule extends Module {
     ctx.domain('library', {
       label: 'Library',
       icon: 'pi pi-building-columns',
+      // Glued to the top edge, its pages as tabs (#5396)
+      look: 'ribbon',
       to: { name: 'book-board' },
       entities: ['loans'],
       nav: [

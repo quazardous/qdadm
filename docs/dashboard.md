@@ -181,6 +181,18 @@ ctx.domain('library', {
 - **Compact:** one line of icons and badges, on its own once the page
   scrolls (the bar stays on top), or by the toggle at its end, the choice kept
   per account.
+- **Its look:** `card` (the default), a card above the page; or `ribbon`, a
+  panel glued to the top edge of the content, full width, a rule at the
+  bottom, its pages as tabs, the current one merged into the panel. Per
+  domain, `ctx.domain('purchases', { look: 'ribbon', … })`, or for every
+  domain, `features: { domainBar: { look: 'ribbon' } }` in the kernel's
+  options. Both are drawn from CSS custom properties, to change in the app's
+  CSS: `--qd-domain-bar-bg`, `-border`, `-margin`, `-padding`, `-radius`,
+  `-shadow`, and for the ribbon `--qd-ribbon-rule`, `--qd-ribbon-tab-bg`,
+  `--qd-ribbon-tab-ink`, `--qd-ribbon-tab-current-bg`,
+  `--qd-ribbon-tab-current-ink`, `--qd-ribbon-tab-radius`,
+  `--qd-ribbon-accent`. Set them on `.qd-domain-bar--ribbon`, or on one
+  domain's bar: `.qd-domain-bar[data-domain='purchases']`.
 - **Your own bar:** a block in the `_app:domain-bar` zone replaces it; it
   receives `domain`. `QdDomainBar` and `QdBadge` are exported.
 
