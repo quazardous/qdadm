@@ -1,5 +1,44 @@
 # Changelog
 
+## 2.59.0
+
+### Minor Changes
+
+- 389f86b: Cards are now built from blocks (#5414).
+  - **The blocks.** Six kinds:
+    - `value`: the number, its change, or now against then;
+    - `viz`: a small chart in the style of Munin;
+    - `list`: hot lines, a queue, a feed or a ranking;
+    - `text`;
+    - `progress`: a goal's pace or a bullet graph;
+    - `parts`: one split bar with its legend.
+  - **The `viz` block.** Light SVG with no library. It draws lines, areas, grouped bars or stacked bars, with one or several series over time. Warning and critical thresholds are drawn as dashed lines, and a band of normal can be shown with the points outside it marked. At size `s` it is a sparkline. At `m` and `l` it adds a time axis (24h, 7d or 30d), the y range, a legend and a tooltip for each column, opened by hovering or with the arrow keys. Screen readers hear a summary of each series.
+  - **Three ways to compose:**
+    - the new `blocks` card type, `data: { blocks: [...] }`;
+    - `envelope.blocks` (or a dashboard block's `card.blocks`), which draws blocks under any card's own body;
+    - `registerCard({ type, meta, schema, blocks: (data, options, size) => [...] })`, a type declared by its blocks, with no component.
+  - **Validation.** Each block is checked against the schema of its kind, and a block that does not fit says which field is wrong.
+  - **The built-in types.** `metric`, `trend`, `queue`, `feed`, `goal`, `bullet`, `compare`, `ranking` and `split` are now rebuilt from the same blocks. Their data, options and CSS classes are unchanged.
+
+- 47f66cb: A new `flash` block for cards (#5414): a "flash info" banner carrying an urgent message about the card, such as a source that is down or a threshold that was crossed.
+  - **Placement.** `place: 'top'` draws it under the header and `'bottom'` above the foot. That holds wherever the block is declared: `envelope.blocks`, a dashboard block's `card.blocks`, or the data of a `blocks` card.
+  - **Shown in every state.** The banner appears even when the card cannot draw its body, for example when it is unreachable.
+  - **Levels.** Each message is `info`, `warning` or `critical`, with the card's tones and icons. The most serious message comes first, and a critical one is announced as an alert.
+  - **Links.** A message can link to a route with `to`.
+  - **Dismissing.** With `dismissible`, the reader can close the banner. Add an `id` to keep it hidden for the rest of the browser session.
+
+- 41dc992: A page's domain is now part of the context stack, and the app can decide it (#5412).
+  - **In the stack.** The kernel resolves the domain at each route change, and the active stack holds it beside its entity levels. `useActiveStack().domain` gives the domain level, `{ type: 'domain', name, source }`. `context` gives the domain followed by the entity levels. The domain bar and the breadcrumb read the domain from the stack, and the breadcrumb shows it right after Home.
+  - **`?domain=<name>`.** The default rule reads it after `meta.domain` and before the entity and the module.
+  - **`features.domainResolver(route, { fallback, previous, stack, record, loading, getDomain })`.** It has the last word: it returns a domain name, `null` for no domain, or `undefined` to keep what the default rule found. `record` is the record the page shows, as loaded for the breadcrumb (no request of its own), and the resolver is called again when it arrives. While it loads, `undefined` keeps the domain shown, so the bar does not blink.
+  - **Kept from page to page.** When a page's domain comes from `?domain=`, every navigation along the same record chain (its list, its records, their edit pages, their children) carries that domain in `?domain=`, so it survives a reload or a shared link. A side-menu click leaves the domain. A domain the resolver chose is not written into the address. A change of domain is signalled on `stack:domain`.
+  - **For the app's own links.** `withDomain(to, name)` and `useDomainLink().withDomain(to)` add a domain to a link the app builds itself.
+
+### Patch Changes
+
+- 3093b1c: A card's footer no longer pushes its buttons past the card's edge (#5413). When there is not enough room beside the footer text, the CTA zone wraps onto its own line, right-aligned. A link or action label too long for the card is cut with an ellipsis and its icon stays visible. The full label is kept in the button's `title` and `aria-label`.
+- fbecb8e: The settings menu shows its section titles again even when it has only one section (#5418), so the open menu always shows which menu it is. Before this, a menu with a single section, and without the back row that is now off by default, had no title at all. `features.settingsMenu.flat: true` still hides every section title.
+
 ## 2.58.0
 
 ### Minor Changes
