@@ -399,7 +399,9 @@ warning in development says what to declare).
   / "Remove …" in its aria-label and tooltip.
 - **A search's bookmark** shows in a list's filter zone, beside the button
   that clears the filters, while a filter or a search is on. It asks for a
-  name, by default the filter in words, and keeps the list's URL with its
+  name, by default the filter in words, in a popover anchored to it that
+  stays in the window (Enter saves, Escape or a click outside closes, the
+  focus comes back to the bookmark), and keeps the list's URL with its
   query: the favourite opens the list filtered again. Filled once saved; a
   click then takes the search out of the favourites.
 - **The look is the app's** (`features.favorites` in the kernel's options):

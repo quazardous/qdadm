@@ -941,15 +941,25 @@
   color: #f0b660;
 }
 
-.qd-save-search {
+// The name, in a popover that stays in the window (#5429)
+.qd-save-search-anchor {
   display: inline-flex;
+}
+
+.qd-save-search-popover {
+  width: min(24rem, calc(100vw - 2rem));
+}
+
+.qd-save-search {
+  display: flex;
   align-items: center;
   gap: 0.4rem;
 }
 
 .qd-save-search-input {
+  flex: 1 1 auto;
+  min-width: 0;
   height: 2rem;
-  min-width: 14rem;
   padding: 0 0.6rem;
   border: 1px solid var(--p-content-border-color, #d1d5db);
   border-radius: var(--p-content-border-radius, 6px);

@@ -14,6 +14,7 @@ import { useFavorites, useRecent } from '../../src/favorites/useFavorites'
 import { resetFavoriteLists, configureFavorites, RECENT_MAX } from '../../src/favorites/store'
 import QdFavoriteStar from '../../src/components/layout/QdFavoriteStar.vue'
 import QdSaveSearch from '../../src/components/lists/QdSaveSearch.vue'
+import PrimeVue from 'primevue/config'
 import PageHeader from '../../src/components/layout/PageHeader.vue'
 import { QdFavoritesCard, QdRecentCard } from '../../src/cards/index'
 
@@ -56,7 +57,7 @@ async function mountWith(component, props = {}, path = '/') {
       return () => h(component, props)
     },
   })
-  const wrapper = mount(Host, { attachTo: document.body, global: { plugins: [router], provide: { qdadmOrchestrator: orchestrator() } } })
+  const wrapper = mount(Host, { attachTo: document.body, global: { plugins: [router, PrimeVue], directives: { tooltip: {} }, provide: { qdadmOrchestrator: orchestrator() } } })
   await flushPromises()
   return { wrapper, router, ...api }
 }
@@ -145,15 +146,28 @@ describe('favourites (#5349)', () => {
     expect(on.wrapper.find('[data-favorite-star]').attributes('aria-label')).toBe('Add Dune to favourites')
   })
 
-  it('"Save this search" asks for a name and keeps the list with its query', async () => {
+  it('"Save this search" asks for a name in a popover and keeps the list with its query', async () => {
     const { wrapper, favorites } = await mountWith(QdSaveSearch, { defaultName: 'Sci-fi', entity: 'books' }, '/books?books.genre=sci-fi&run=xyz')
-    await wrapper.find('[data-save-search]').trigger('click')
-    const input = wrapper.find('input')
-    expect(input.element.value).toBe('Sci-fi')
-    expect(document.activeElement).toBe(input.element)
-    await input.setValue('Sci-fi to read')
-    await wrapper.find('form').trigger('submit')
+    const toggle = wrapper.find('[data-save-search]')
+    expect(toggle.attributes('aria-haspopup')).toBe('dialog')
+    await toggle.trigger('click')
     await flushPromises()
+    // The popover, teleported to the body (#5429)
+    const pop = document.querySelector('.qd-save-search-popover')
+    expect(pop).not.toBe(null)
+    expect(pop.getAttribute('aria-label')).toBe('Name of the search')
+    expect(toggle.attributes('aria-expanded')).toBe('true')
+    const input = pop.querySelector('input')
+    expect(input.value).toBe('Sci-fi')
+    expect(document.activeElement).toBe(input)
+    input.value = 'Sci-fi to read'
+    input.dispatchEvent(new Event('input'))
+    pop.querySelector('form').dispatchEvent(new Event('submit', { cancelable: true }))
+    await flushPromises()
+    await new Promise((r) => setTimeout(r, 300))
+    await flushPromises()
+    expect(document.querySelector('.qd-save-search-popover')).toBe(null)
+    expect(document.activeElement).toBe(wrapper.find('[data-save-search]').element)
     expect(favorites.list.value).toEqual([expect.objectContaining({ kind: 'search', label: 'Sci-fi to read', to: '/books?books.genre=sci-fi', entity: 'books' })])
     // Icon alone, filled, saying so in words; a second click takes it out
     const button = wrapper.find('[data-save-search]')
@@ -163,6 +177,34 @@ describe('favourites (#5349)', () => {
     await button.trigger('click')
     await flushPromises()
     expect(favorites.list.value).toEqual([])
+    // Saved and removed: no popover opened on the way
+    expect(document.querySelector('.qd-save-search-popover')).toBe(null)
+    wrapper.unmount()
+  })
+
+  it('Escape and Cancel close the popover without saving, the focus back on the bookmark (#5429)', async () => {
+    const { wrapper, favorites } = await mountWith(QdSaveSearch, { defaultName: 'Sci-fi', entity: 'books' }, '/books?books.genre=sci-fi')
+    const open = async () => {
+      await wrapper.find('[data-save-search]').trigger('click')
+      await flushPromises()
+      return document.querySelector('.qd-save-search-popover')
+    }
+    const gone = async () => {
+      await flushPromises()
+      await new Promise((r) => setTimeout(r, 300))
+      await flushPromises()
+      return document.querySelector('.qd-save-search-popover') === null
+    }
+    let pop = await open()
+    pop.querySelector('input').dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
+    expect(await gone()).toBe(true)
+    expect(document.activeElement).toBe(wrapper.find('[data-save-search]').element)
+    pop = await open()
+    ;[...pop.querySelectorAll('button')].find((b) => b.textContent.includes('Cancel')).click()
+    expect(await gone()).toBe(true)
+    expect(document.activeElement).toBe(wrapper.find('[data-save-search]').element)
+    expect(favorites.list.value).toEqual([])
+    wrapper.unmount()
   })
 })
 
