@@ -284,7 +284,9 @@ ctx.domain('library', {
   `--qd-domain-cards-gap` (0.5rem, the same in both looks).
 - **Compact:** one line of icons and pills, on its own once the page scrolls
   (the bar stays on top), or by the toggle at its end, the choice kept per
-  account. An indicator shows its icon, its badge (or its value) and its
+  account. Compact on the scroll, a spacer under the bar
+  (`.qd-domain-bar-reserve`) keeps the height it lost, so the page does not
+  move and the bar does not flip back and forth; a compact chosen keeps none. An indicator shows its icon, its badge (or its value) and its
   sparkline, with no pill around it, a thin separator between two of them
   and after the navigation (`--qd-domain-pill-separator`); its title is in
   the tooltip and for screen readers. Short of room on the

@@ -82,14 +82,49 @@ function toggle(): void {
 // Scrolled past the top: compact on its own, the person's choice untouched
 const sentinel = ref<HTMLElement | null>(null)
 const scrolled = ref(false)
+// The height the bar lost going compact on the scroll, kept by a spacer under
+// it (#5442): the page keeps its height, so nothing moves (no scroll clamped
+// back to the top, no scroll anchoring) and the bar does not flip in a loop
+// The spacer comes in the same render as the compact bar, and goes with it:
+// a spacer a render late lets the browser's scroll anchoring move the page
+const reserve = ref(0)
+let fullHeight = 0
+let compactHeight = 0
 let observer: IntersectionObserver | null = null
 onMounted(() => {
   if (typeof IntersectionObserver === 'undefined' || !sentinel.value) return
-  observer = new IntersectionObserver(([e]) => (scrolled.value = !!e && !e.isIntersecting))
+  observer = new IntersectionObserver(([e]) => {
+    const past = !!e && !e.isIntersecting
+    if (past === scrolled.value) return
+    if (past && !chosen.value) {
+      // Its full height, read just before it goes compact; its compact height
+      // as last drawn (the first time, none yet: corrected once drawn)
+      fullHeight = bar.value?.offsetHeight ?? 0
+      reserve.value = Math.max(0, fullHeight - compactHeight)
+    } else if (!past) {
+      reserve.value = 0
+      fullHeight = 0
+    }
+    scrolled.value = past
+  })
   observer.observe(sentinel.value)
 })
 onBeforeUnmount(() => observer?.disconnect())
 const compact = computed(() => chosen.value || scrolled.value)
+// Once drawn compact: its compact height read, the spacer made exact; a
+// compact the person chose keeps no spacer
+watch(
+  [scrolled, chosen],
+  () => {
+    if (scrolled.value && !chosen.value && fullHeight && bar.value) {
+      compactHeight = bar.value.offsetHeight
+      reserve.value = Math.max(0, fullHeight - compactHeight)
+    } else {
+      reserve.value = 0
+    }
+  },
+  { flush: 'post' }
+)
 /** The mode each indicator is drawn in (#5422) */
 const mode = computed<CardPillMode>(() =>
   compact.value ? { mode: 'compact', reason: chosen.value ? 'chosen' : 'scrolled' } : { mode: 'full', reason: null }
@@ -363,4 +398,5 @@ function pillTitle(i: IndicatorView): string {
       <i :class="chosen ? 'pi pi-window-maximize' : 'pi pi-window-minimize'" aria-hidden="true"></i>
     </button>
   </section>
+  <div v-if="reserve" class="qd-domain-bar-reserve" aria-hidden="true" :style="{ height: `${reserve}px` }" data-domain-reserve></div>
 </template>

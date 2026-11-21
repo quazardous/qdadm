@@ -398,3 +398,49 @@ describe('dynamic indicators (#5438)', () => {
     w.unmount()
   })
 })
+
+describe('compact on the scroll keeps the page still (#5442)', () => {
+  it('a spacer keeps the height the bar lost, in the same render; none for a compact chosen; gone back at the top', async () => {
+    let io
+    const IO = globalThis.IntersectionObserver
+    globalThis.IntersectionObserver = class {
+      constructor(cb) { this.cb = cb; io = this }
+      observe() {}
+      disconnect() {}
+    }
+    // jsdom draws nothing: the bar is 120 px full, 32 compact
+    const desc = Object.getOwnPropertyDescriptor(HTMLElement.prototype, 'offsetHeight')
+    Object.defineProperty(HTMLElement.prototype, 'offsetHeight', {
+      configurable: true,
+      get() { return this.classList?.contains('qd-domain-bar') ? (this.classList.contains('qd-domain-bar--compact') ? 32 : 120) : 0 },
+    })
+    try {
+      const { w } = await mountBar('/board', { label: 'L', indicators: [{ id: 'open', card: 'metric', title: 'Open', data: { value: 3, series: [1, 2, 3] } }] })
+      const reserve = () => w.find('[data-domain-reserve]')
+      const scroll = async (past) => { io.cb([{ isIntersecting: !past }]); await flushPromises() }
+      expect(reserve().exists()).toBe(false)
+      await scroll(true)
+      expect(w.find('.qd-domain-bar').classes()).toContain('qd-domain-bar--compact')
+      expect(reserve().attributes('style')).toContain('height: 88px')
+      expect(reserve().attributes('aria-hidden')).toBe('true')
+      // Back at the top: full again, the spacer gone in the same render
+      await scroll(false)
+      expect(w.find('.qd-domain-bar').classes()).not.toContain('qd-domain-bar--compact')
+      expect(reserve().exists()).toBe(false)
+      // The second time, the compact height is known: exact at once
+      io.cb([{ isIntersecting: false }])
+      await w.vm.$nextTick()
+      expect(reserve().attributes('style')).toContain('height: 88px')
+      await scroll(false)
+      // A compact the person chose: the page shrinks once, no spacer
+      await w.find('[data-domain-toggle]').trigger('click')
+      await scroll(true)
+      expect(reserve().exists()).toBe(false)
+      w.unmount()
+    } finally {
+      globalThis.IntersectionObserver = IO
+      if (desc) Object.defineProperty(HTMLElement.prototype, 'offsetHeight', desc)
+      else delete HTMLElement.prototype.offsetHeight
+    }
+  })
+})
