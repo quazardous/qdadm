@@ -282,6 +282,12 @@ export interface UseListPageOptions<T = unknown> {
   entity: string
   /** Custom data key field (default: manager.idField) */
   dataKey?: string
+  /**
+   * The key this list's session memory is kept under (#5440): its filters,
+   * search and sort. Default: the entity, shared by every list of it. Give
+   * one per page when several lists show one entity (one per universe).
+   */
+  sessionKey?: string
   /** Which rows get a band under their cells, drawn by ListPage's #row-band slot (#5437) */
   rowBand?: (row: T) => boolean
   /** Default sort field */

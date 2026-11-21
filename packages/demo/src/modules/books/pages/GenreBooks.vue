@@ -5,10 +5,13 @@
  * Child route of genre: /genres/:id/books
  * Parent filter auto-applied via route.meta.parent (genre = id)
  */
+import { useRoute } from 'vue-router'
 import { useListPage, ListPage, PageNav } from '@quazardous/qdadm'
 import Column from 'primevue/column'
 
-const list = useListPage({ entity: 'books' })
+// A session memory per genre page (#5440): its sort is not the books list's
+const route = useRoute()
+const list = useListPage({ entity: 'books', sessionKey: `books:genre:${route.params.id}` })
 
 list.addEditAction()
 </script>

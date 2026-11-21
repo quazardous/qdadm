@@ -425,6 +425,16 @@ is mounted, by replace, with no history step: the address says what the list
 shows, a copied link keeps it, and the app's `domainResolver` sees them. A
 value the address already carries wins over the session's and is left as is.
 
+The session memory (filters, search, and the sort the default keeps there)
+is the entity's, shared by every list of it. When several pages list one
+entity (one per universe, a parent's children), give each its own with
+`sessionKey`; the address keeps the entity's prefix (`tasks.universe`), so
+links and saved searches do not change:
+
+```js
+useListPage({ entity: 'tasks', sessionKey: universe ? `tasks:universe:${universe}` : undefined })
+```
+
 An address that names at least one of the list's filters, or its search,
 describes a whole state: a card's link to `/tasks?tasks.provider=amazon`
 does not inherit the universe kept in the session. The session's other

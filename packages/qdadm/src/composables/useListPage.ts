@@ -32,6 +32,7 @@ import { useRouter, useRoute, type RouteLocationRaw } from 'vue-router'
 import {
   createDefaultRouteStatePersister,
   resolveRouteStatePersister,
+  sessionScopedPersister,
   createRouteStatePersisterFactory,
   type RouteStatePersister,
 } from '../routeState'
@@ -135,6 +136,7 @@ export function useListPage<T = unknown>(config: UseListPageOptions<T>): UseList
     pageSize: defaultPageSize = 10,
     loadOnMount = true,
     persistFilters = true,
+    sessionKey,
     persistSort = true,
     syncUrlParams = true,
     routeState = null,
@@ -233,7 +235,8 @@ export function useListPage<T = unknown>(config: UseListPageOptions<T>): UseList
   const resolvedDataKey = dataKey ?? manager.idField ?? 'id'
 
   // Session key for filter persistence (based on entity name)
-  const filterSessionKey = entity || entityName
+  // The session's memory: per page with a sessionKey (#5440), else per entity
+  const filterSessionKey = sessionKey || entity || entityName
 
   // App-wide route-state default (#2146). Null when the kernel said nothing,
   // or when there is no kernel at all — which is the case in tests.
@@ -251,12 +254,14 @@ export function useListPage<T = unknown>(config: UseListPageOptions<T>): UseList
   // and the table needs a row count from its very first render.
   const routeStateScope = entity || entityName
   const chosenRouteState = routeState ?? manager.routeState ?? kernelRouteState
-  const persister: RouteStatePersister = chosenRouteState
+  const basePersister: RouteStatePersister = chosenRouteState
     ? resolveRouteStatePersister(
         chosenRouteState,
         createRouteStatePersisterFactory({ router, route })
       )
     : createDefaultRouteStatePersister({ router, route })
+  // The default keeps the sort in the session: with a sessionKey, under it (#5440)
+  const persister: RouteStatePersister = sessionKey && !chosenRouteState ? sessionScopedPersister(basePersister, sessionKey) : basePersister
 
   // `syncUrlParams` governs WRITING, and only ever has: a list configured
   // with `false` still restored from a query string typed by hand. Kept
