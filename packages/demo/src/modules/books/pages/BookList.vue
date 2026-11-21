@@ -19,7 +19,9 @@ import Column from 'primevue/column'
 import { useFavoriteAction } from '@/composables/useFavoriteAction'
 
 // ============ LIST BUILDER ============
-const list = useListPage({ entity: 'books' })
+// Row bands (#5437): the classics get a band under their cells
+const list = useListPage({ entity: 'books', rowBand: (book) => Number(book.year) < 1970 })
+const age = (book) => new Date().getFullYear() - Number(book.year)
 
 // ============ FAVORITE ACTION ============
 useFavoriteAction(list, { labelField: 'title' })
@@ -76,6 +78,11 @@ list.addDeleteAction({ labelField: 'title' })
           <SeverityTag field="genre" :value="data.genre" />
         </template>
       </Column>
+    </template>
+
+    <!-- A band under the classics' cells, the row and it one object (#5437) -->
+    <template #row-band="{ data }">
+      <span class="book-band" style="color: var(--p-text-muted-color); font-size: 0.875rem"><i class="pi pi-star" aria-hidden="true"></i> Classic, {{ age(data) }} years old: {{ data.author }}, {{ data.year }}</span>
     </template>
   </ListPage>
 </template>

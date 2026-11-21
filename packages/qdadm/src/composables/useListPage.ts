@@ -1531,6 +1531,7 @@ export function useListPage<T = unknown>(config: UseListPageOptions<T>): UseList
     items: displayItems.value,
     loading: loading.value,
     dataKey: resolvedDataKey,
+    rowBand: (config.rowBand as ((row: unknown) => boolean) | undefined) ?? null,
     selected: selected.value,
     selectable: hasBulkActions.value,
     lazy: true,

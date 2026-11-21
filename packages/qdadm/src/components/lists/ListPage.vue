@@ -14,7 +14,7 @@
  * - 'select' (default): Standard dropdown
  * - 'autocomplete': Searchable dropdown with type-ahead
  */
-import { computed, ref, watch, onMounted, onUnmounted, type PropType } from 'vue'
+import { computed, ref, watch, nextTick, onMounted, onUnmounted, onUpdated, useId, useSlots, type PropType } from 'vue'
 import PageHeader from '../layout/PageHeader.vue'
 import CardsGrid from '../display/CardsGrid.vue'
 import FilterBar from './FilterBar.vue'
@@ -109,6 +109,11 @@ const props = defineProps({
   tableProps: { type: Object as PropType<Record<string, unknown>>, default: () => ({}) },
   loading: { type: Boolean, default: false },
   dataKey: { type: String, default: 'id' },
+  /**
+   * Which rows get a band under their cells (#5437), with a #row-band slot;
+   * without it, every row does. A row it leaves out keeps the classic row.
+   */
+  rowBand: { type: Function as unknown as PropType<((row: unknown) => boolean) | null>, default: null },
 
   // Selection
   selected: { type: Array as PropType<unknown[]>, default: () => [] },
@@ -340,6 +345,42 @@ function onRowClick(event: { data: unknown; originalEvent: Event }): void {
   emit('row-click', event.data, event.originalEvent as MouseEvent)
 }
 
+// ── Row bands (#5437): cells on top, a full-width band under, row by row ──────
+const slots = useSlots()
+const hasBand = computed(() => !!slots['row-band'])
+const keyOf = (row: unknown): string => String((row as Record<string, unknown>)?.[props.dataKey])
+const banded = (row: unknown): boolean => hasBand.value && (!props.rowBand || !!props.rowBand(row))
+/** Always open for the rows that have one: no expander, no toggle */
+const expandedRows = computed<Record<string, boolean>>(() =>
+  hasBand.value ? Object.fromEntries((props.items ?? []).filter(banded).map((r) => [keyOf(r), true])) : {}
+)
+const bandScope = useId()
+const bandId = (row: unknown): string => `qd-band-${bandScope}-${keyOf(row).replace(/[^\w-]/g, '_')}`
+/** The row's class: the page's own (tableProps.rowClass), and banded or not */
+type RowClass = string | object | undefined
+const ownRowClass = computed(() => (typeof props.tableProps?.rowClass === 'function' ? (props.tableProps.rowClass as (r: unknown) => RowClass) : undefined))
+function rowClassOf(row: unknown): RowClass {
+  const own = ownRowClass.value?.(row)
+  return banded(row) ? [own, 'qd-row-banded'] : own
+}
+/** A click in the band is a click on its row, unless it lands on a control of the band's own */
+function onBandClick(row: unknown, event: MouseEvent): void {
+  if ((event.target as HTMLElement | null)?.closest('a, button, input, select, textarea, label, [role="button"]')) return
+  emit('row-click', row, event)
+}
+/** The band describes its row, for screen readers */
+const tableEl = ref<{ $el?: HTMLElement } | null>(null)
+function linkBands(): void {
+  if (!hasBand.value) return
+  const root = tableEl.value?.$el
+  root?.querySelectorAll<HTMLElement>('tr.qd-row-banded').forEach((tr) => {
+    const id = (tr.nextElementSibling as HTMLElement | null)?.querySelector<HTMLElement>('.qd-row-band')?.id
+    if (id) tr.setAttribute('aria-describedby', id)
+  })
+}
+onMounted(() => void nextTick(linkBands))
+onUpdated(() => void nextTick(linkBands))
+
 /**
  * Get filter CSS class based on value and default state
  * - No value (null/empty): no class
@@ -490,11 +531,20 @@ function getFilterClass(filter: FilterConfig): Record<string, boolean> {
         @page="onPage"
         @sort="onSort"
         @row-click="onRowClick"
-        :class="{ 'datatable-row-clickable': hasRowTapAction }"
+        :class="{ 'datatable-row-clickable': hasRowTapAction, 'qd-table-banded': hasBand }"
         stripedRows
         removableSort
         v-bind="tableProps"
+        ref="tableEl"
+        :expandedRows="hasBand ? expandedRows : undefined"
+        :rowClass="hasBand ? rowClassOf : ownRowClass"
       >
+        <!-- The row's band, under its cells, across every column (#5437) -->
+        <template v-if="hasBand" #expansion="{ data, index }">
+          <div :id="bandId(data)" class="qd-row-band" data-row-band @click="onBandClick(data, $event)">
+            <slot name="row-band" :data="data" :index="index"></slot>
+          </div>
+        </template>
         <!-- The page's own columns, else the declared ones (addColumn / generateColumns, #4685) -->
         <slot name="columns">
           <Column v-for="col in declaredColumns" :key="col.field" :field="col.field" :header="col.header"

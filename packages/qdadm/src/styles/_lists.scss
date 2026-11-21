@@ -223,3 +223,45 @@
     }
   }
 }
+
+// =============================================================================
+// Row bands (#5437): a row's cells on top, a full-width band under them, read
+// as one object: no border between the two, one hover, one selection, the
+// separator after the band.
+// =============================================================================
+
+.qd-table-banded {
+  --qd-list-band-padding: 0 1rem 0.75rem;
+
+  .p-datatable-tbody > tr.qd-row-banded > td {
+    border-bottom: 0;
+  }
+
+  .p-datatable-tbody > tr.p-datatable-row-expansion > td {
+    padding: var(--qd-list-band-padding);
+    background: var(--qd-list-band-bg, transparent);
+  }
+
+  // The band takes its row's stripe
+  &.p-datatable-striped .p-datatable-tbody > tr.qd-row-banded.p-row-odd + tr.p-datatable-row-expansion {
+    background: var(--p-datatable-row-striped-background);
+  }
+
+  // One hover for the pair, from either half
+  .p-datatable-tbody > tr.qd-row-banded:hover,
+  .p-datatable-tbody > tr.qd-row-banded:hover + tr.p-datatable-row-expansion,
+  .p-datatable-tbody > tr.qd-row-banded:has(+ tr.p-datatable-row-expansion:hover),
+  .p-datatable-tbody > tr.qd-row-banded + tr.p-datatable-row-expansion:hover {
+    background: var(--p-datatable-row-hover-background, var(--p-surface-100, #f1f5f9));
+  }
+
+  // One selection
+  .p-datatable-tbody > tr.qd-row-banded.p-datatable-row-selected + tr.p-datatable-row-expansion {
+    background: var(--p-datatable-row-selected-background);
+    color: var(--p-datatable-row-selected-color);
+  }
+
+  &.datatable-row-clickable .qd-row-band {
+    cursor: pointer;
+  }
+}

@@ -339,6 +339,34 @@ list.addAction('favorite', {
 This row-aware signature is what makes actions packageable into reusable
 composables — see [Reusable list behaviors](#reusable-list-behaviors-augmenting-composables).
 
+### Row bands
+
+A row can carry a band under its cells: one full-width line, across every
+column (actions and selection included), for what a cell is too narrow for (a
+component per record type, a short reading, the details of a source). The app
+decides row by row: `rowBand(row)` picks the rows that get one, the
+`#row-band` slot draws it; a row left out keeps the classic row. Without
+`rowBand`, every row gets a band; without the slot, nothing changes.
+
+```js
+const list = useListPage({ entity: 'tasks', rowBand: (task) => !!bandFor(task.type) })
+```
+
+```vue
+<ListPage v-bind="list.props.value" v-on="list.events">
+  <template #row-band="{ data }">
+    <component :is="bandFor(data.type)" :task="data" />
+  </template>
+</ListPage>
+```
+
+The row and its band read as one object: no border between them (the
+separator comes after the band), one hover and one selection for the pair, and
+a click in the band is a click on the row, unless it lands on a link or a
+button of the band's own. The row is described by its band
+(`aria-describedby`). Sorting, paging and a run (`useRun`) are unchanged.
+`--qd-list-band-padding` and `--qd-list-band-bg` style the band.
+
 ### ListPage slots
 
 **Escape hatch — any DataTable prop** *(since 2.3)*: the `tableProps` prop is
@@ -352,6 +380,7 @@ override ListPage defaults). E.g. sort `null` values last:
 | Slot | Purpose |
 |------|---------|
 | `#columns` | PrimeVue `<Column>` definitions |
+| `#row-band` | A full-width band under the rows `rowBand` picks, receives `{ data, index }` (see Row bands) |
 | `#nav` | `<PageNav>` for child routes |
 | `#beforeTable` | Content above the table (zones, alerts) |
 | `#header-actions` | Custom header action buttons |
