@@ -34,6 +34,8 @@
   --qd-domain-card-width: 10rem;
   --qd-domain-card-min-height: 4.5rem;
   --qd-domain-card-viz-height: 1.75rem;
+  // Between two compact indicators, and between the nav and them (#5434)
+  --qd-domain-pill-separator: var(--qd-card-border);
   // The space above the full bar's cards row, whatever the look (#5433)
   --qd-domain-cards-gap: 0.5rem;
   // The gap between the bar's lines: 0 in the toolbox, its one line glued
@@ -375,6 +377,43 @@ a.qd-domain-pill-body:focus-visible { outline: 2px solid var(--qd-card-accent); 
 
   .qd-domain-bar-entry { padding: 0 0.5rem; }
   .qd-domain-pill-body { padding: 0.1rem 0.4rem; }
+}
+
+// Compact indicators (#5434): no pill, inline like the nav entries, a thin
+// separator between them and between the nav and the first of them. The
+// status stays in the badge's and the sparkline's tone.
+.qd-domain-bar--compact {
+  .qd-domain-bar-indicators {
+    align-self: stretch;
+    align-items: center;
+    gap: 0;
+  }
+
+  .qd-domain-pill {
+    position: relative;
+    display: flex;
+    align-items: center;
+  }
+
+  .qd-domain-pill-body,
+  .qd-domain-pill[data-status] .qd-domain-pill-body {
+    border: 0;
+    border-radius: 4px;
+    background: transparent;
+  }
+
+  a.qd-domain-pill-body:hover { background: var(--qd-card-track); }
+
+  // The separators: between two indicators, and before the first one when a nav precedes
+  .qd-domain-pill + .qd-domain-pill::before,
+  .qd-domain-bar-nav + .qd-domain-bar-indicators .qd-domain-pill:first-child::before {
+    content: '';
+    width: 1px;
+    height: 60%;
+    min-height: 0.9rem;
+    margin: 0 0.25rem;
+    background: var(--qd-domain-pill-separator);
+  }
 }
 
 .dark-mode .qd-domain-bar--toolbox {

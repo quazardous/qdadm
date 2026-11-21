@@ -300,6 +300,16 @@ describe("the indicators know the bar's mode (#5422)", () => {
     expect(scss).toMatch(/\.qd-domain-bar--toolbox \{[^}]*--qd-domain-bar-row-gap: 0px;/)
   })
 
+  it('compact indicators: no pill, a separator between them and after the nav (#5434)', async () => {
+    const fs = await import('node:fs')
+    const scss = fs.readFileSync(`${process.cwd()}/src/styles/_qd-domain-bar.scss`, 'utf8')
+    expect(scss).toContain('--qd-domain-pill-separator: var(--qd-card-border);')
+    const block = scss.slice(scss.indexOf('// Compact indicators (#5434)'))
+    expect(block).toMatch(/\.qd-domain-pill-body,[^{]*\{[^}]*border: 0;/)
+    expect(block).toContain('.qd-domain-pill + .qd-domain-pill::before')
+    expect(block).toContain('.qd-domain-bar-nav + .qd-domain-bar-indicators .qd-domain-pill:first-child::before')
+  })
+
   it("the app's own component draws the pill, told the mode; compact overrides it", async () => {
     const Full = defineComponent({
       props: ['data', 'mode', 'status', 'title', 'state', 'count'],

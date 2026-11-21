@@ -227,8 +227,10 @@ ctx.domain('library', {
   `--qd-domain-cards-gap` (0.5rem, the same in both looks).
 - **Compact:** one line of icons and pills, on its own once the page scrolls
   (the bar stays on top), or by the toggle at its end, the choice kept per
-  account. A pill shows its icon, its badge (or its value) and its sparkline;
-  its title is in the tooltip and for screen readers. Short of room on the
+  account. An indicator shows its icon, its badge (or its value) and its
+  sparkline, with no pill around it, a thin separator between two of them
+  and after the navigation (`--qd-domain-pill-separator`); its title is in
+  the tooltip and for screen readers. Short of room on the
   line, the sparklines go (`data-fit="tight"` on the bar) and come back once
   there is room again. Their size: `--qd-domain-pill-viz-width` and
   `--qd-domain-pill-viz-height`. Full or compact, the bar has no shadow;
