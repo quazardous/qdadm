@@ -12,20 +12,51 @@
 
 .filter-bar {
   display: flex;
+  flex-wrap: wrap;
   justify-content: space-between;
   align-items: center;
   gap: $space-md;
   margin-bottom: $space-md;
+  min-width: 0;
 }
 
+// The filters flow onto as many lines as they need, never wider than the bar (#5432)
 .filter-bar-left {
   display: flex;
+  flex: 1 1 auto;
+  flex-wrap: wrap;
   align-items: center;
   gap: 0.75rem;
+  min-width: 0;
+
+  // Each filter: about 12rem, its own min-width kept for its label, never wider than the bar
+  > .p-select,
+  > .p-autocomplete {
+    flex: 0 1 12rem;
+    max-width: 100%;
+  }
+
+  // The search: a little wider
+  > .p-iconfield {
+    flex: 0 1 16rem;
+    min-width: min(12rem, 100%);
+    max-width: 100%;
+
+    .p-inputtext { width: 100%; }
+  }
+}
+
+// Clear and the bookmark: together, at the end of the last line, moving down as a pair
+.filter-bar-actions {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 0.25rem;
 }
 
 .filter-bar-right {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 0.75rem;
 }

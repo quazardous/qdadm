@@ -455,18 +455,21 @@ function getFilterClass(filter: FilterConfig): Record<string, boolean> {
           />
         </template>
         <slot name="filters" ></slot>
-        <QdButton
-          v-if="hasActiveFilters"
-          icon="pi pi-filter-slash"
-          severity="secondary"
-          text
-          rounded
-          size="small"
-          @click="clearAllFilters"
-          v-tooltip.top="'Clear filters'"
-        />
-        <!-- The search's bookmark, beside what it saves (#5402) -->
-        <QdSaveSearch v-if="searchLabel && saveSearchAt === 'filters'" :default-name="searchLabel" :entity="entity" />
+        <!-- Clear and the bookmark stay together, inside the bar, at the end of its last line (#5432) -->
+        <span v-if="hasActiveFilters || (searchLabel && saveSearchAt === 'filters')" class="filter-bar-actions" data-filter-actions>
+          <QdButton
+            v-if="hasActiveFilters"
+            icon="pi pi-filter-slash"
+            severity="secondary"
+            text
+            rounded
+            size="small"
+            @click="clearAllFilters"
+            v-tooltip.top="'Clear filters'"
+          />
+          <!-- The search's bookmark, beside what it saves (#5402) -->
+          <QdSaveSearch v-if="searchLabel && saveSearchAt === 'filters'" :default-name="searchLabel" :entity="entity" />
+        </span>
       </FilterBar>
 
       <!-- Data Table -->
