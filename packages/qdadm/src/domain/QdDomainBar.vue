@@ -5,10 +5,11 @@
  * an indicator) and its indicators: mini cards, each read from its own source
  * and drawn as a pill whose count is a badge.
  *
- * Its look (#5396): a card above the page, or a ribbon glued to the top edge
- * of the content, its pages as tabs: the domain's `look`, else the app's
- * `features.domainBar.look`. Both are drawn from CSS custom properties
- * (`--qd-domain-bar-*`, `--qd-ribbon-*`), to change in the app's own CSS.
+ * Its look (#5400): a toolbox, one low line glued to the top edge of the
+ * content in the side menu's style (the default), or a card above the page:
+ * the domain's `look`, else the app's `features.domainBar.look`. Both are
+ * drawn from CSS custom properties (`--qd-domain-bar-*`, `--qd-toolbox-*`),
+ * to change in the app's own CSS.
  *
  * Compact: one line of icons and badges, on its own once the page scrolls, or
  * by the person's choice, kept per account.
@@ -25,9 +26,18 @@ import { badgeTone, type DomainDefinition, type DomainIndicator, type DomainLook
 
 const props = defineProps<{ domain: DomainDefinition }>()
 
-// The look (#5396): the domain's, else the app's, else a card
+// The look (#5400): the domain's, else the app's, else the toolbox
 const features = inject<{ domainBar?: { look?: DomainLook } } | null>('qdadmFeatures', null)
-const look = computed<DomainLook>(() => props.domain.look ?? features?.domainBar?.look ?? 'card')
+let warned = false
+const look = computed<'toolbox' | 'card'>(() => {
+  const asked = props.domain.look ?? features?.domainBar?.look ?? 'toolbox'
+  if (asked === 'card') return 'card'
+  if (asked === 'ribbon' && !warned && (import.meta as unknown as { env?: { DEV?: boolean } }).env?.DEV === true) {
+    warned = true
+    console.warn(`[qdadm] domain('${props.domain.name}'): the 'ribbon' look is withdrawn; it draws the default toolbox. Leave look out, or say 'card'.`)
+  }
+  return 'toolbox'
+})
 
 const { locale, tOr } = useI18n()
 const route = useRoute()

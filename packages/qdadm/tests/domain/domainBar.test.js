@@ -165,7 +165,7 @@ describe('QdDomainBar (#5389)', () => {
   })
 })
 
-describe('the look (#5396)', () => {
+describe('the look (#5396, #5400)', () => {
   const mountLook = async (config, features) => {
     const router = makeRouter()
     await router.push('/board')
@@ -178,16 +178,19 @@ describe('the look (#5396)', () => {
     return w.find('.qd-domain-bar')
   }
 
-  it('a card by default', async () => {
+  it('a toolbox by default', async () => {
     const bar = await mountLook({ label: 'Library' })
-    expect(bar.attributes('data-look')).toBe('card')
-    expect(bar.classes()).toContain('qd-domain-bar--card')
+    expect(bar.attributes('data-look')).toBe('toolbox')
+    expect(bar.classes()).toContain('qd-domain-bar--toolbox')
   })
 
-  it("the app's default, unless the domain says otherwise", async () => {
-    expect((await mountLook({ label: 'Library' }, { domainBar: { look: 'ribbon' } })).attributes('data-look')).toBe('ribbon')
-    expect((await mountLook({ label: 'Library', look: 'card' }, { domainBar: { look: 'ribbon' } })).attributes('data-look')).toBe('card')
-    const ribbon = await mountLook({ label: 'Library', look: 'ribbon' })
-    expect(ribbon.classes()).toContain('qd-domain-bar--ribbon')
+  it("the app's look, unless the domain says otherwise", async () => {
+    expect((await mountLook({ label: 'Library' }, { domainBar: { look: 'card' } })).attributes('data-look')).toBe('card')
+    expect((await mountLook({ label: 'Library', look: 'toolbox' }, { domainBar: { look: 'card' } })).attributes('data-look')).toBe('toolbox')
+    expect((await mountLook({ label: 'Library', look: 'card' })).classes()).toContain('qd-domain-bar--card')
+  })
+
+  it('the withdrawn ribbon draws the toolbox', async () => {
+    expect((await mountLook({ label: 'Library', look: 'ribbon' })).attributes('data-look')).toBe('toolbox')
   })
 })

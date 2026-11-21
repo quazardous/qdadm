@@ -15,8 +15,8 @@
 }
 
 // Every look is drawn from these: an app changes them in its own CSS, on
-// `.qd-domain-bar`, on one look (`.qd-domain-bar--ribbon`) or on one domain
-// (`.qd-domain-bar[data-domain='purchases']`) (#5396)
+// `.qd-domain-bar`, on one look (`.qd-domain-bar--toolbox`, `--card`) or on one domain
+// (`.qd-domain-bar[data-domain='purchases']`) (#5396, #5400)
 .qd-domain-bar {
   --qd-domain-bar-bg: var(--qd-card-bg);
   --qd-domain-bar-border: var(--qd-card-border);
@@ -165,75 +165,104 @@ a.qd-domain-pill-body:focus-visible { outline: 2px solid var(--qd-card-accent); 
   .qd-domain-bar-toggle { width: 1.75rem; height: 1.75rem; }
 }
 
-// The ribbon (#5396): a panel glued to the top edge of the content, full
-// width, a rule at the bottom; its pages are tabs standing on the rule, the
-// current one in the panel's colour, merged into it, the others set back.
-.qd-domain-bar--ribbon {
+// The toolbox (#5400), the default: glued to the top edge of the content,
+// full width, one low line with a rule at the bottom, drawn like the side
+// menu (its font size, its icon size, its item height, its square items, the
+// current one marked by an accent bar and a tint, as the side menu does).
+.qd-domain-bar--toolbox {
+  --qd-domain-bar-bg: var(--p-surface-0, #fff);
   --qd-domain-bar-margin: 0;
-  --qd-domain-bar-padding: 0.4rem 1rem 0;
+  --qd-domain-bar-padding: 0 0.75rem;
   --qd-domain-bar-radius: 0;
+  --qd-domain-bar-height: var(--fad-nav-item-height, 2.25rem);
   --qd-domain-bar-compact-shadow: 0 2px 4px rgb(0 0 0 / 6%);
-  --qd-ribbon-rule: var(--qd-domain-bar-border);
-  --qd-ribbon-tab-bg: var(--qd-card-track);
-  --qd-ribbon-tab-ink: var(--qd-card-muted);
-  --qd-ribbon-tab-current-bg: var(--qd-domain-bar-bg);
-  --qd-ribbon-tab-current-ink: var(--qd-card-ink-strong);
-  --qd-ribbon-tab-radius: 6px 6px 0 0;
-  --qd-ribbon-accent: var(--qd-card-accent);
+  --qd-toolbox-entry-ink: var(--p-surface-600, #475569);
+  --qd-toolbox-entry-hover-bg: var(--p-surface-100, #f1f5f9);
+  --qd-toolbox-current-bg: var(--p-primary-50, #eff6ff);
+  --qd-toolbox-current-ink: var(--p-primary-700, #1d4ed8);
+  --qd-toolbox-accent: var(--p-primary-500, #3b82f6);
 
-  align-items: flex-end;
+  flex-wrap: nowrap;
+  align-items: stretch;
+  gap: 0 0.75rem;
+  min-height: var(--qd-domain-bar-height);
   border-width: 0 0 1px;
-  border-color: var(--qd-ribbon-rule);
+  font-size: var(--fad-font-size-sm, 0.875rem);
 
-  // The title, the indicators and the toggle sit in the middle, off the rule
-  .qd-domain-bar-title,
-  .qd-domain-bar-indicators,
-  .qd-domain-bar-toggle {
+  .qd-domain-bar-title {
     align-self: center;
-    margin-bottom: 0.4rem;
+    font-size: var(--fad-font-size-sm, 0.875rem);
+    white-space: nowrap;
+
+    i { font-size: var(--fad-nav-icon-size, 1rem); }
   }
 
   .qd-domain-bar-nav {
-    gap: 0.2rem;
-    align-self: flex-end;
+    flex-wrap: nowrap;
+    gap: 0;
+    min-width: 0;
+    overflow-x: auto;
   }
 
   .qd-domain-bar-entry {
-    margin-bottom: -1px; // over the rule
-    padding: 0.4rem 0.8rem;
-    border: 1px solid transparent;
-    border-bottom: 0;
-    border-radius: var(--qd-ribbon-tab-radius);
-    background: var(--qd-ribbon-tab-bg);
-    color: var(--qd-ribbon-tab-ink);
+    gap: 0.4rem;
+    padding: 0 0.75rem;
+    border: 0;
+    border-bottom: 2px solid transparent;
+    border-radius: 0;
+    color: var(--qd-toolbox-entry-ink);
+    white-space: nowrap;
 
-    &:hover { color: var(--qd-card-ink); background: var(--qd-ribbon-tab-bg); filter: brightness(0.97); }
+    i { font-size: var(--fad-nav-icon-size, 1rem); opacity: 0.8; }
+    &:hover { background: var(--qd-toolbox-entry-hover-bg); color: var(--qd-card-ink-strong); }
+    &:focus-visible { outline-offset: -2px; }
   }
 
-  // The current tab: the panel's colour, edged like it, the rule under it gone
   .qd-domain-bar-entry--current {
-    padding-bottom: calc(0.4rem + 1px);
-    border-color: var(--qd-ribbon-rule);
-    border-top: 2px solid var(--qd-ribbon-accent);
-    background: var(--qd-ribbon-tab-current-bg);
-    color: var(--qd-ribbon-tab-current-ink);
+    background: var(--qd-toolbox-current-bg);
+    color: var(--qd-toolbox-current-ink);
+    border-bottom-color: var(--qd-toolbox-accent);
+    font-weight: 600;
 
-    &:hover { background: var(--qd-ribbon-tab-current-bg); filter: none; }
+    i { opacity: 1; }
+    &:hover { background: var(--qd-toolbox-current-bg); color: var(--qd-toolbox-current-ink); }
+  }
+
+  .qd-domain-bar-indicators {
+    flex-wrap: nowrap;
+    align-self: center;
+    gap: 0.3rem;
+  }
+
+  .qd-domain-pill-body { padding: 0.1rem 0.5rem; font-size: 0.8125rem; }
+  .qd-badge { min-width: 1.1rem; height: 1.1rem; font-size: 0.6875rem; }
+
+  .qd-domain-bar-toggle {
+    align-self: center;
+    width: 1.75rem;
+    height: 1.75rem;
   }
 }
 
-.qd-domain-bar--ribbon.qd-domain-bar--compact {
-  padding: 0.15rem 0.75rem 0;
+// Compact keeps the edge and the line; only the words go
+.qd-domain-bar--toolbox.qd-domain-bar--compact {
+  padding: var(--qd-domain-bar-padding);
 
-  .qd-domain-bar-title,
-  .qd-domain-bar-indicators,
-  .qd-domain-bar-toggle { margin-bottom: 0.15rem; }
-  .qd-domain-bar-entry { padding: 0.2rem 0.5rem; }
-  .qd-domain-bar-entry--current { padding-bottom: calc(0.2rem + 1px); }
+  .qd-domain-bar-entry { padding: 0 0.5rem; }
+  .qd-domain-pill-body { padding: 0.1rem 0.4rem; }
+}
+
+.dark-mode .qd-domain-bar--toolbox {
+  --qd-domain-bar-bg: var(--p-surface-900, #0f172a);
+  --qd-toolbox-entry-ink: var(--p-surface-300, #cbd5e1);
+  --qd-toolbox-entry-hover-bg: var(--p-surface-800, #1e293b);
+  --qd-toolbox-current-bg: var(--p-surface-800, #1e293b);
+  --qd-toolbox-current-ink: var(--p-primary-300, #93c5fd);
+  --qd-toolbox-accent: var(--p-primary-400, #60a5fa);
 }
 
 @media (max-width: 700px) {
   .qd-domain-bar { --qd-domain-bar-margin: 0.5rem 0.5rem 0; }
-  .qd-domain-bar--ribbon { --qd-domain-bar-margin: 0; --qd-domain-bar-padding: 0.4rem 0.5rem 0; }
+  .qd-domain-bar--toolbox { --qd-domain-bar-margin: 0; --qd-domain-bar-padding: 0 0.5rem; }
   .qd-domain-bar-indicators { margin-left: 0; }
 }

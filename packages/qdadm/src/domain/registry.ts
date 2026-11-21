@@ -46,16 +46,17 @@ export interface DomainNavEntry {
 }
 
 /**
- * How the bar sits (#5396): `card`, a card above the page (the default);
- * `ribbon`, a panel glued to the top edge of the content, its pages as tabs
+ * How the bar sits (#5400): `toolbox` (the default), one low line glued to the
+ * top edge of the content, drawn like the side menu; `card`, a card above the
+ * page. `ribbon` (#5396) is withdrawn: it draws the toolbox, with a warning.
  */
-export type DomainLook = 'card' | 'ribbon'
+export type DomainLook = 'toolbox' | 'card' | 'ribbon'
 
 /** What `ctx.domain(name, …)` declares */
 export interface DomainConfig {
   label: string
   icon?: string
-  /** Default: the app's `features.domainBar.look`, else `card` */
+  /** Default: the app's `features.domainBar.look`, else `toolbox` */
   look?: DomainLook
   /** Where the domain's title leads (its board) */
   to?: RouteLocationRaw
