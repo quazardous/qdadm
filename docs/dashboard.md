@@ -174,9 +174,38 @@ ctx.domain('library', {
 })
 ```
 
-- **Its pages:** the routes of the module that declares it, the pages of the
-  entities it lists (`entities`), and any route whose `meta.domain` names it;
-  `meta.domain: false` keeps a page out.
+- **Its pages:** in this order, a route whose `meta.domain` names it
+  (`meta.domain: false` keeps a page out of every domain), an address that
+  says `?domain=<name>`, the pages of the entities it lists (`entities`), and
+  the routes of the module that declares it. Then the app's resolver has the
+  last word (below).
+- **In the context stack:** the kernel resolves the page's domain at each
+  route change and the active stack holds it, beside its entity levels:
+  `useActiveStack().domain` (`{ type: 'domain', name, source }`, where
+  `source` is `route`, `query` or `resolver`), and `context` for the domain
+  followed by the entity levels, `[domain(it), tasks(12)]`. The bar and the
+  breadcrumb read it from there; the breadcrumb shows the domain after Home,
+  leading to its `to`.
+- **The app's resolver:** `features: { domainResolver(route, ctx) { … } }` is
+  called at each route change, after the default rule. `ctx.fallback` is what
+  the rule found, `ctx.previous` the domain of the page we come from,
+  `ctx.stack` the entity levels, `ctx.getDomain(name)` a declared domain. It
+  returns a domain's name, `null` for none, or `undefined` to keep
+  `ctx.fallback`. One that throws, or names a domain nobody declared, leaves
+  the fallback, with a warning in development.
+
+  ```js
+  domainResolver: (route, { fallback }) =>
+    typeof route.query.universe === 'string' ? route.query.universe : undefined,  // /tasks?universe=it
+  ```
+- **Kept from page to page:** a page placed by `?domain=` or by the resolver
+  hands its domain on to the pages of the same record chain (its list, its
+  records, their edit pages, their children): the navigation gets
+  `?domain=<name>`, so a reload or a shared link keeps it. One route per page
+  is enough, with no route per domain. A side-menu click leaves the domain. A
+  page whose own route places it, or that names a domain itself, is not
+  touched. For an app's own link to elsewhere, `useDomainLink().withDomain(to)`
+  adds the current domain, and `withDomain(to, name)` a given one.
 - **Indicators:** `card` is a type with a pill form. `metric`, `queue` and
   `split` give a count (the badge); `goal` and `compare` give a value. A type
   of your own gets one with `registerCard({ …, pill: (data, options, locale)

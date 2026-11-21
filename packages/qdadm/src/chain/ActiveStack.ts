@@ -10,8 +10,13 @@
  * - /bots/bot-xyz/commands → stack = [bots(id:bot-xyz)]
  * - /bots/bot-xyz/commands/cmd-123 → stack = [bots(id:bot-xyz), commands(id:cmd-123)]
  *
+ * The page's domain (#5412) is held beside the entity levels, not among
+ * them (they stay entity levels: `current`, `parent`, `root`):
+ * - /tasks/12?domain=it → domain = domain(it), stack = [tasks(id:12)]
+ * `getContext()` gives both, the domain first.
+ *
  * Signals emitted (via SignalBus):
- * - stack:change — when stack levels change
+ * - stack:change — when stack levels change, or the domain
  *
  * For Vue reactivity, use the `useActiveStack` composable.
  *
@@ -60,11 +65,23 @@ export type EntityStackLevelInput = Omit<EntityStackLevel, 'type' | 'name'> & {
   name?: string
 }
 
+/** The page's domain, as a stack level (#5412) */
+export interface DomainStackLevel extends ContentStackLevel {
+  type: 'domain'
+  /** The domain's name */
+  name: string
+  id: null
+  /** What put the page there: its route (meta, entity, module), `?domain=`, or the app's resolver */
+  source: 'route' | 'query' | 'resolver'
+}
+
 /**
  * Stack change event payload
  */
 export interface StackChangePayload {
   levels: EntityStackLevel[]
+  /** The page's domain (#5412); present when the domain changed */
+  domain?: DomainStackLevel | null
 }
 
 /**
@@ -83,12 +100,36 @@ function normalize(input: EntityStackLevelInput): EntityStackLevel {
 
 export class ActiveStack {
   private _stack: Stack<EntityStackLevel>
+  private _signalBus: SignalBus | null
+  private _domain: DomainStackLevel | null = null
 
   /**
    * @param signalBus - Optional signal bus for events
    */
   constructor(signalBus: SignalBus | null = null) {
     this._stack = new Stack<EntityStackLevel>(signalBus)
+    this._signalBus = signalBus
+  }
+
+  /**
+   * The page's domain (#5412). Emits `stack:change` when it changes; set it
+   * before the levels, so their change reads the new domain.
+   */
+  setDomain(domain: { name: string; source: DomainStackLevel['source'] } | null): void {
+    const next: DomainStackLevel | null = domain ? { type: 'domain', name: domain.name, id: null, source: domain.source } : null
+    const prev = this._domain
+    if (prev?.name === next?.name && prev?.source === next?.source) return
+    this._domain = next
+    void this._signalBus?.emit('stack:change', { levels: this.getLevels(), domain: next })
+  }
+
+  getDomain(): DomainStackLevel | null {
+    return this._domain
+  }
+
+  /** The domain, then the entity levels: `[domain(it), tasks(12)]` */
+  getContext(): Array<DomainStackLevel | EntityStackLevel> {
+    return this._domain ? [this._domain, ...this.getLevels()] : this.getLevels()
   }
 
   // ─── Mutators ─────────────────────────────────────────────────────────────
@@ -109,6 +150,7 @@ export class ActiveStack {
   clear(): void {
     this._stack.clear()
   }
+
 
   // ─── Accessors ────────────────────────────────────────────────────────────
 

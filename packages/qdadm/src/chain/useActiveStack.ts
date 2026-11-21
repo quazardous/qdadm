@@ -15,7 +15,7 @@
  */
 
 import { inject, ref, computed, onUnmounted, type ComputedRef, type Ref } from 'vue'
-import type { ActiveStack, StackLevel } from './ActiveStack'
+import type { ActiveStack, StackLevel, DomainStackLevel } from './ActiveStack'
 import type { SignalBus } from '../kernel/SignalBus'
 
 /**
@@ -32,6 +32,10 @@ export interface UseActiveStackReturn {
   root: ComputedRef<StackLevel | null>
   /** Stack depth */
   depth: ComputedRef<number>
+  /** The page's domain (#5412), held beside the entity levels */
+  domain: Ref<DomainStackLevel | null>
+  /** The domain, then the entity levels: `[domain(it), tasks(12)]` */
+  context: ComputedRef<Array<DomainStackLevel | StackLevel>>
   /** Get level by index */
   getLevel: (index: number) => StackLevel | null
   /** Get level by entity name */
@@ -55,6 +59,7 @@ export function useActiveStack(): UseActiveStackReturn {
 
   // Reactive state - updated via SignalBus
   const levels = ref<StackLevel[]>([...activeStack.getLevels()])
+  const domain = ref<DomainStackLevel | null>(activeStack.getDomain())
 
   // Subscribe to stack changes
   // QuarKernel passes (event, ctx) where event.data contains the payload
@@ -66,6 +71,7 @@ export function useActiveStack(): UseActiveStackReturn {
         // Create new array reference to trigger reactivity
         levels.value = [...newLevels]
       }
+      domain.value = activeStack.getDomain()
     })
   }
 
@@ -81,6 +87,7 @@ export function useActiveStack(): UseActiveStackReturn {
   const parent = computed(() => levels.value.at(-2) ?? null)
   const root = computed(() => levels.value[0] ?? null)
   const depth = computed(() => levels.value.length)
+  const context = computed(() => (domain.value ? [domain.value, ...levels.value] : levels.value))
 
   return {
     // Computed refs (reactive)
@@ -89,6 +96,8 @@ export function useActiveStack(): UseActiveStackReturn {
     parent,
     root,
     depth,
+    domain,
+    context,
 
     // Sync accessors (direct from vanilla JS instance)
     getLevel: (i: number) => activeStack.getLevel(i),
@@ -109,6 +118,8 @@ function createEmptyStack(): UseActiveStackReturn {
     parent: computed(() => null),
     root: computed(() => null),
     depth: computed(() => 0),
+    domain: ref(null),
+    context: computed(() => []),
     getLevel: () => null,
     getLevelByEntity: () => null,
     getCurrent: () => null,

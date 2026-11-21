@@ -13,6 +13,7 @@ import type { RoleProvider } from '../security/RolesProvider'
 import type { GrantJudge } from '../entity/auth/SecurityChecker'
 import type { I18nOptions } from '../i18n/types'
 import type { ApiClientSource } from '../api/apiClient'
+import type { DomainResolver } from '../domain/registry'
 import type { RouteStatePersister } from '../routeState'
 import type { UserAvatarResolver } from '../composables/useUserBox'
 import type { AppBannerConfig } from '../composables/useAppBanner'
@@ -85,6 +86,13 @@ export interface Features {
   favorites?: { icon?: string; iconActive?: string; saveSearch?: 'filters' | 'header' | false; labels?: boolean }
   /** Every domain bar's look, unless its domain says otherwise (#5396) */
   domainBar?: { look?: 'toolbox' | 'card' | 'ribbon' }
+  /**
+   * The app's last word on a page's domain (#5412), after the default rule
+   * (meta.domain, ?domain=, the entity, the module): a domain's name, `null`
+   * for none, `undefined` to keep `ctx.fallback`. `ctx.previous` is the
+   * domain of the page we come from.
+   */
+  domainResolver?: DomainResolver
   [key: string]: unknown
 }
 

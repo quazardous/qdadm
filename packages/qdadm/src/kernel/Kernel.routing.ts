@@ -11,6 +11,8 @@ import { nestItemTabs } from './itemTabs'
 import { installChunkReload } from './chunkReload'
 import { homeRouteRecords } from './homeRoute'
 import { routeEntity, routePermissions, missingPermission, entityDenial } from '../security/routeAccess'
+import { resolveDomain, getDomain, DOMAIN_QUERY } from '../domain/registry'
+import { keptDomain, takeLeaveDomain } from '../domain/keep'
 import type { Kernel } from './Kernel'
 // #1196 Phase B — this-typing against the real Kernel shape (was Self = any)
 type Self = Kernel
@@ -320,7 +322,16 @@ export function applyRoutingMethods(KernelClass: { prototype: Kernel }): void {
    * Setup activeStack synchronization with router
    */
   proto._setupStackSync = function (this: Self): void {
+    // A page placed by ?domain= or the resolver hands its domain on to the
+    // pages of the same record chain, unless left from the side menu (#5412)
+    this.router!.beforeEach((to: RouteLocationNormalized, from: RouteLocationNormalized) => {
+      const leaving = takeLeaveDomain()
+      const name = keptDomain(to, from, this.activeStack?.getDomain() ?? null, leaving)
+      if (!name) return undefined
+      return { path: to.path, query: { ...to.query, [DOMAIN_QUERY]: name }, hash: to.hash }
+    })
     this.router!.afterEach((to: RouteLocationNormalized) => {
+      takeLeaveDomain()
       this._rebuildActiveStack(to)
     })
   }
@@ -342,6 +353,7 @@ export function applyRoutingMethods(KernelClass: { prototype: Kernel }): void {
 
     // No entity and no parent → nothing to stack
     if (!entityConfig && !parentMeta) {
+      this._resolveActiveDomain(route, [])
       this.activeStack!.clear()
       return
     }
@@ -389,7 +401,25 @@ export function applyRoutingMethods(KernelClass: { prototype: Kernel }): void {
       }
     }
 
+    this._resolveActiveDomain(route, levels)
     this.activeStack!.set(levels)
+  }
+
+  /**
+   * The page's domain (#5412): the default rule, then the app's
+   * `features.domainResolver`, given the domain we come from. Set before the
+   * levels, so their change reads it.
+   */
+  proto._resolveActiveDomain = function (this: Self, route: RouteLocationNormalized, levels: Array<{ entity: string; id: string | null }>): void {
+    const stack = this.activeStack!
+    const previousName = stack.getDomain()?.name ?? null
+    const resolver = this.options.features?.domainResolver ?? null
+    const { domain, source } = resolveDomain(route, {
+      resolver,
+      previous: previousName ? getDomain(previousName) : null,
+      stack: levels.map((l) => ({ entity: l.entity, id: l.id })),
+    })
+    stack.setDomain(domain ? { name: domain.name, source } : null)
   }
 }
 

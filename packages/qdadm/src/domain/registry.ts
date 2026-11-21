@@ -5,8 +5,10 @@
  *
  * A page belongs to a domain:
  * 1. when its route says so (`meta.domain`);
- * 2. when its entity is one the domain lists (`entities`), from any module;
- * 3. when the module that declared the domain declared the route too.
+ * 2. when its address says so (`?domain=it`, #5412), a domain declared;
+ * 3. when its entity is one the domain lists (`entities`), from any module;
+ * 4. when the module that declared the domain declared the route too.
+ * Then the app's `features.domainResolver` has the last word (#5412).
  */
 import type { RouteLocationNormalizedLoaded, RouteLocationRaw } from 'vue-router'
 import type { CardStatus } from '../cards/types'
@@ -101,28 +103,86 @@ export function resetDomains(): void {
   domains.clear()
 }
 
-type RouteLike = Pick<RouteLocationNormalizedLoaded, 'meta' | 'matched'>
+type RouteLike = Pick<RouteLocationNormalizedLoaded, 'meta' | 'matched'> & Partial<Pick<RouteLocationNormalizedLoaded, 'query'>>
 
-/**
- * The domain a route belongs to, or null. `meta.domain: false` keeps a page
- * out of its module's domain.
- */
-export function domainOfRoute(route: RouteLike | null | undefined): DomainDefinition | null {
-  if (!route || domains.size === 0) return null
+const isDev = (): boolean => (import.meta as unknown as { env?: { DEV?: boolean } }).env?.DEV === true
+
+/** The query parameter that keeps a page in a domain (#5412) */
+export const DOMAIN_QUERY = 'domain'
+
+/** Where a page's domain comes from */
+export type DomainSource = 'route' | 'query' | 'resolver'
+
+/** The default rule, and what decided it */
+function defaultDomain(route: RouteLike): { domain: DomainDefinition | null; source: DomainSource } {
+  const none = { domain: null, source: 'route' as const }
+  if (domains.size === 0) return none
   const meta = route.meta ?? {}
-  if (meta.domain === false) return null
-  if (typeof meta.domain === 'string') return getDomain(meta.domain)
+  if (meta.domain === false) return none
+  if (typeof meta.domain === 'string') return { domain: getDomain(meta.domain), source: 'route' }
+  const asked = route.query?.[DOMAIN_QUERY]
+  if (typeof asked === 'string' && domains.has(asked)) return { domain: getDomain(asked), source: 'query' }
   const entity = typeof meta.entity === 'string' ? meta.entity : null
   if (entity) {
-    for (const d of domains.values()) if (d.entities?.includes(entity)) return d
+    for (const d of domains.values()) if (d.entities?.includes(entity)) return { domain: d, source: 'route' }
   }
   // The deepest matched route with a module wins (a frame route's children carry theirs)
   const modules = (route.matched ?? []).map((r) => r.meta?.module).filter((m): m is string => typeof m === 'string')
   const module = modules.at(-1) ?? (typeof meta.module === 'string' ? meta.module : null)
   if (module) {
-    for (const d of domains.values()) if (d.module === module) return d
+    for (const d of domains.values()) if (d.module === module) return { domain: d, source: 'route' }
   }
-  return null
+  return none
+}
+
+/**
+ * The domain a route belongs to by the default rule, or null. `meta.domain:
+ * false` keeps a page out of its module's domain.
+ */
+export function domainOfRoute(route: RouteLike | null | undefined): DomainDefinition | null {
+  return route ? defaultDomain(route).domain : null
+}
+
+/** What the app's resolver is given (#5412) */
+export interface DomainResolverContext {
+  /** What the default rule found: meta.domain, ?domain=, the entity, the module */
+  fallback: DomainDefinition | null
+  /** The domain of the page we come from */
+  previous: DomainDefinition | null
+  /** The page's entity levels (the active stack) */
+  stack: ReadonlyArray<{ entity: string; id: string | null }>
+  getDomain: (name: string) => DomainDefinition | null
+}
+
+/**
+ * The app's last word on a page's domain (`features.domainResolver`): a
+ * domain's name, `null` for none, `undefined` to keep the fallback.
+ */
+export type DomainResolver = (route: RouteLocationNormalizedLoaded, ctx: DomainResolverContext) => string | null | undefined
+
+/**
+ * A page's domain: the default rule, then the app's resolver (#5412). A
+ * resolver that throws, or names a domain nobody declared, leaves the
+ * default rule's answer.
+ */
+export function resolveDomain(
+  route: RouteLocationNormalizedLoaded,
+  options: { resolver?: DomainResolver | null; previous?: DomainDefinition | null; stack?: DomainResolverContext['stack'] } = {}
+): { domain: DomainDefinition | null; source: DomainSource } {
+  const found = defaultDomain(route)
+  const resolver = options.resolver
+  if (typeof resolver !== 'function') return found
+  try {
+    const name = resolver(route, { fallback: found.domain, previous: options.previous ?? null, stack: options.stack ?? [], getDomain })
+    if (name === undefined) return found
+    if (name === null) return { domain: null, source: 'resolver' }
+    const domain = getDomain(name)
+    if (domain) return { domain, source: 'resolver' }
+    if (isDev()) console.warn(`[qdadm] domainResolver: no domain is named '${name}'; the default rule's answer stands`)
+  } catch (e) {
+    if (isDev()) console.warn('[qdadm] domainResolver threw; the default rule\'s answer stands', e)
+  }
+  return found
 }
 
 /** The tone of a badge: only bad news is coloured */

@@ -18,6 +18,7 @@ import { useAuth } from './useAuth'
 import { useI18n } from '../i18n/useI18n'
 import type { HookRegistry } from '../hooks/HookRegistry'
 import type { OrchestratorLike } from '../entity/EntityManager.interface'
+import { leaveDomain } from '../domain/keep'
 
 // #1191 — shared minimal structural view (was: local redeclaration)
 type Orchestrator = OrchestratorLike
@@ -291,6 +292,8 @@ export function useNavigation(): UseNavigationReturn {
    */
   function handleNavClick(event: Event, item: NavItem): void {
     if (item.href) return
+    // A side menu entry leaves the domain kept from page to page (#5412)
+    leaveDomain()
     if (route.name === item.route && Object.keys(route.query).length > 0) {
       event.preventDefault()
       router.push({ name: item.route })

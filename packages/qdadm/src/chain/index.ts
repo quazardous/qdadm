@@ -20,6 +20,7 @@ export {
   ActiveStack,
   type StackLevel,
   type EntityStackLevel,
+  type DomainStackLevel,
   type EntityStackLevelInput,
   type StackChangePayload,
 } from './ActiveStack'

@@ -22,6 +22,9 @@ import { getSiblingRoutes } from '../module/moduleRegistry'
 import { useSemanticBreadcrumb, type SemanticBreadcrumbItem } from './useSemanticBreadcrumb'
 import { useStackHydrator, type HydratedLevel } from '../chain/useStackHydrator'
 import { useI18n } from '../i18n/useI18n'
+import { useActiveStack } from '../chain/useActiveStack'
+import type { ActiveStack } from '../chain/ActiveStack'
+import { getDomain } from '../domain/registry'
 import type { EntityManagerLike, OrchestratorLike } from '../entity/EntityManager.interface'
 
 // #1191 — shared minimal structural views (was: local redeclarations)
@@ -309,6 +312,19 @@ export function useNavContext(_options: UseNavContextOptions = {}): UseNavContex
     }
   })
 
+  // The page's domain (#5412), first after home: its name, leading to its
+  // board, unless that board is the next crumb anyway
+  const stackForDomain = inject<ActiveStack | null>('qdadmActiveStack', null) ? useActiveStack() : null
+  const domainItem = computed<BreadcrumbItem | null>(() => {
+    const level = stackForDomain?.domain.value
+    const domain = level ? getDomain(level.name) : null
+    if (!domain) return null
+    const to = domain.to && typeof domain.to === 'object' && 'name' in domain.to && typeof domain.to.name === 'string'
+      ? { name: domain.to.name, ...('params' in domain.to && domain.to.params ? { params: domain.to.params as RouteParamsRawGeneric } : {}) }
+      : null
+    return { label: domain.label, to: to && routeExists(to.name) && route.name !== to.name ? to : null, ...(domain.icon ? { icon: domain.icon } : {}) }
+  })
+
   const breadcrumb = computed(() => {
     const items: BreadcrumbItem[] = []
     const chain = navChain.value
@@ -317,6 +333,11 @@ export function useNavContext(_options: UseNavContextOptions = {}): UseNavContex
     if (homeItem.value) {
       items.push(homeItem.value)
     }
+
+    // The domain, unless its board is the next crumb (the same page, said twice)
+    const dom = domainItem.value
+    const next = chain[0]
+    if (dom && !(dom.to && next?.routeName === dom.to.name)) items.push(dom)
 
     // Build from chain
     for (let i = 0; i < chain.length; i++) {
