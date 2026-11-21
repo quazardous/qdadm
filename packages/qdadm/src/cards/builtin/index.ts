@@ -47,11 +47,15 @@ import favoritesMeta from './favorites/meta.json'
 import favoritesSchema from './favorites/schema.json'
 import RecentCard from './recent/RecentCard.vue'
 import { PILLS } from './pills'
+import BlocksCard from './blocks/BlocksCard.vue'
+import blocksMeta from './blocks/meta.json'
+import blocksSchema from './blocks/schema.json'
+import { checkBlocks } from '../blocks/schema'
 import recentMeta from './recent/meta.json'
 import recentSchema from './recent/schema.json'
 
 /** qdadm's card types, in the bestiary's order */
-export const BUILTIN_CARDS = ['metric', 'queue', 'goal', 'bullet', 'compare', 'trend', 'ranking', 'split', 'funnel', 'heat', 'agenda', 'feed', 'favorites', 'recent'] as const
+export const BUILTIN_CARDS = ['metric', 'queue', 'goal', 'bullet', 'compare', 'trend', 'ranking', 'split', 'funnel', 'heat', 'agenda', 'feed', 'favorites', 'recent', 'blocks'] as const
 
 export function registerBuiltinCards(): void {
   registerCard({ type: 'metric', component: MetricCard, meta: metricMeta as CardMeta, schema: metricSchema as CardSchema, pill: PILLS.metric })
@@ -68,4 +72,13 @@ export function registerBuiltinCards(): void {
   registerCard({ type: 'feed', component: FeedCard, meta: feedMeta as CardMeta, schema: feedSchema as CardSchema })
   registerCard({ type: 'favorites', component: FavoritesCard, meta: favoritesMeta as CardMeta, schema: favoritesSchema as CardSchema })
   registerCard({ type: 'recent', component: RecentCard, meta: recentMeta as CardMeta, schema: recentSchema as CardSchema })
+  // A card of the app's own making (#5414): each block checked against its kind
+  registerCard({
+    type: 'blocks',
+    component: BlocksCard,
+    meta: blocksMeta as CardMeta,
+    schema: blocksSchema as CardSchema,
+    pill: PILLS.blocks,
+    check: (data) => checkBlocks((data as { blocks: unknown }).blocks, 'data.blocks'),
+  })
 }

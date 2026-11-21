@@ -1344,3 +1344,234 @@
   font-weight: 600;
   color: var(--qd-sev);
 }
+
+// =============================================================================
+// Blocks (#5414): a card is a few blocks; the generic types are assemblies
+// =============================================================================
+
+// Blocks added under a type's own body (envelope.blocks, card.blocks)
+.qd-card-extra {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  margin-top: 0.75rem;
+}
+
+.qd-card-more {
+  margin: 0.4rem 0 0;
+  font-size: 0.8rem;
+  color: var(--qd-card-muted);
+}
+
+.qd-card-block--invalid {
+  color: var(--qd-tone-critical);
+
+  .pi {
+    margin-right: 0.3rem;
+  }
+}
+
+.qd-tone-text--critical { color: var(--qd-tone-critical); font-weight: 600; }
+.qd-tone-text--good { color: var(--qd-tone-good); font-weight: 600; }
+.qd-tone-text--info { color: var(--qd-tone-info); font-weight: 600; }
+.qd-tone-text--neutral { color: var(--qd-tone-neutral); }
+
+// ── the viz block ─────────────────────────────────────────────────────────
+
+.qd-viz {
+  position: relative;
+  // Its colours, by tone: a status, or a palette rank
+  [data-tone='lead'] { --qd-viz-ink: var(--qd-lead); }
+  [data-tone='1'] { --qd-viz-ink: var(--qd-cat-1); }
+  [data-tone='2'] { --qd-viz-ink: var(--qd-cat-2); }
+  [data-tone='3'] { --qd-viz-ink: var(--qd-cat-3); }
+  [data-tone='4'] { --qd-viz-ink: var(--qd-cat-4); }
+  [data-tone='5'] { --qd-viz-ink: var(--qd-cat-5); }
+  [data-tone='6'] { --qd-viz-ink: var(--qd-cat-6); }
+  [data-tone='critical'] { --qd-viz-ink: var(--qd-tone-critical); }
+  [data-tone='watch'] { --qd-viz-ink: var(--qd-tone-watch); }
+  [data-tone='good'] { --qd-viz-ink: var(--qd-tone-good); }
+  [data-tone='info'] { --qd-viz-ink: var(--qd-tone-info); }
+  [data-tone='neutral'] { --qd-viz-ink: var(--qd-tone-neutral); }
+}
+
+.qd-viz-plot {
+  position: relative;
+  height: 4rem;
+  margin: 0.4rem 0 0 2.2rem; // room for the y labels
+
+  svg {
+    display: block;
+    width: 100%;
+    height: 100%;
+    overflow: visible;
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--qd-card-accent);
+    outline-offset: 3px;
+    border-radius: 3px;
+  }
+}
+
+.qd-card--l .qd-viz-plot {
+  height: 6rem;
+}
+
+// A sparkline: the metric's
+.qd-viz--compact .qd-viz-plot {
+  height: 2rem;
+  margin: 0.75rem 0 0;
+}
+
+// trend draws its curve taller, even small
+.qd-trend .qd-viz--compact .qd-viz-plot {
+  height: 4rem;
+  margin-top: 0;
+}
+
+.qd-viz-line {
+  fill: none;
+  stroke: var(--qd-viz-ink);
+  stroke-width: 1.5;
+}
+
+.qd-viz-area {
+  fill: color-mix(in srgb, var(--qd-viz-ink) 18%, transparent);
+  stroke: none;
+}
+
+.qd-viz-bar {
+  fill: var(--qd-viz-ink);
+}
+
+.qd-viz-threshold {
+  stroke-width: 1;
+  stroke-dasharray: 4 3;
+
+  &[data-level='warning'] { stroke: var(--qd-tone-watch); }
+  &[data-level='critical'] { stroke: var(--qd-tone-critical); }
+}
+
+.qd-viz--compact .qd-viz-threshold {
+  opacity: 0.55;
+}
+
+.qd-viz-threshold-label,
+.qd-viz-y {
+  position: absolute;
+  transform: translateY(-50%);
+  font-family: var(--qd-card-mono);
+  font-size: 0.65rem;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  pointer-events: none;
+}
+
+.qd-viz-threshold-label {
+  right: 0;
+  padding: 0 0.2rem;
+  background: var(--qd-card-bg);
+
+  &[data-level='warning'] { color: var(--qd-tone-watch); }
+  &[data-level='critical'] { color: var(--qd-tone-critical); }
+}
+
+.qd-viz-y {
+  right: calc(100% + 0.3rem);
+  color: var(--qd-card-muted);
+  white-space: nowrap;
+
+  &--max { top: 0; transform: none; }
+  &--min { bottom: 0; transform: none; }
+}
+
+.qd-viz-ticks {
+  position: relative;
+  height: 1rem;
+  margin: 0.25rem 0 0 2.2rem;
+  font-size: 0.68rem;
+  color: var(--qd-card-muted);
+
+  span {
+    position: absolute;
+    transform: translateX(-50%);
+    white-space: nowrap;
+
+    &[data-edge='start'] { transform: none; }
+    &[data-edge='end'] { transform: translateX(-100%); }
+  }
+}
+
+.qd-viz-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.2rem 0.8rem;
+  margin: 0.3rem 0 0 2.2rem;
+  padding: 0;
+  list-style: none;
+  font-size: 0.75rem;
+  color: var(--qd-card-muted);
+
+  li {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+  }
+}
+
+.qd-viz-swatch {
+  display: inline-block;
+  width: 0.6rem;
+  height: 0.6rem;
+  border-radius: 2px;
+  background: var(--qd-viz-ink, var(--qd-lead));
+}
+
+.qd-viz-guide {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: var(--qd-card-muted);
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+.qd-viz-tip {
+  position: absolute;
+  top: 0;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 6rem;
+  padding: 0.35rem 0.5rem;
+  border: 1px solid var(--qd-card-border);
+  border-radius: 6px;
+  background: var(--qd-card-bg);
+  box-shadow: 0 4px 14px rgb(0 0 0 / 0.12);
+  font-size: 0.75rem;
+  color: var(--qd-card-ink);
+  white-space: nowrap;
+  pointer-events: none;
+
+  &[data-side='right'] { transform: translateX(0.5rem); }
+  &[data-side='left'] { transform: translateX(calc(-100% - 0.5rem)); }
+}
+
+.qd-viz-tip-when {
+  color: var(--qd-card-muted);
+}
+
+.qd-viz-tip-row {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.qd-viz-tip-value {
+  margin-left: auto;
+  font-family: var(--qd-card-mono);
+  font-weight: 600;
+}

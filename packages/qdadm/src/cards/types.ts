@@ -6,7 +6,8 @@
 import type { Component } from 'vue'
 import type { RouteLocationRaw } from 'vue-router'
 import type { RunInit } from '../run/run'
-import type { CardSchema } from './validate'
+import type { CardSchema, SchemaProblem } from './validate'
+import type { CardBlock } from './blocks/types'
 
 /** How things stand: a hue, a side bar and a word, never the hue alone */
 export type CardStatus = 'critical' | 'watch' | 'good' | 'info'
@@ -63,6 +64,8 @@ export interface CardEnvelope {
   error?: string
   /** `empty`: what to say instead of "Nothing to report" */
   emptyText?: string
+  /** Blocks drawn under the type's own body (#5414): a curve, a list, a note… */
+  blocks?: CardBlock[]
 }
 
 /** One declared option of a card type */
@@ -109,14 +112,21 @@ export interface CardPill {
 /** A card type, as registerCard takes it */
 export interface CardDefinition {
   type: string
-  /** The body: props `data`, `options`, `size` */
+  /** The body: props `data`, `options`, `size`. Or leave it out and give `blocks` */
   component: Component
   meta: CardMeta
   /** The JSON Schema of `data` */
   schema: CardSchema
   /** Its pill form, for the domain bar (#5389); without it, the type is not offered there */
   pill?: (data: unknown, options: Record<string, unknown>, locale: string) => CardPill
+  /** A type declared by blocks (#5414): its data mapped to the blocks it shows */
+  blocks?: (data: never, options: Record<string, unknown>, size: CardSize) => CardBlock[]
+  /** Checks beyond the schema, run once it fits */
+  check?: (data: unknown, options: Record<string, unknown>) => SchemaProblem[]
 }
+
+/** What registerCard takes: a component, or blocks */
+export type CardRegistration = Omit<CardDefinition, 'component'> & { component?: Component }
 
 /** What a body receives */
 export interface CardBodyProps<D = unknown, O = Record<string, unknown>> {

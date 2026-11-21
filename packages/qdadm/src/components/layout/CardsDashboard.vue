@@ -580,7 +580,7 @@ function render(block: BlockConfig, props?: Record<string, unknown>): Component 
               <i class="pi pi-trash" aria-hidden="true"></i>
             </button>
           </div>
-          <QdCardBlockScope :links="c.card.links">
+          <QdCardBlockScope :links="c.card.links" :blocks="c.card.blocks">
             <component :is="render(blockOf(c), propsOf(c))" v-bind="propsOf(c)" />
           </QdCardBlockScope>
         </div>

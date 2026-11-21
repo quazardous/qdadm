@@ -20,7 +20,9 @@ import { computed, inject, ref, useSlots } from 'vue'
 import { RouterLink, useRouter } from 'vue-router'
 import { useI18n } from '../i18n/useI18n'
 import type { CardAction, CardLink, CardSize, CardState, CardStatus } from './types'
-import { CARD_BLOCK_LINKS } from './blockLinks'
+import { CARD_BLOCK_LINKS, CARD_BLOCK_BLOCKS } from './blockLinks'
+import QdCardBlocks from './blocks/QdCardBlocks.vue'
+import type { CardBlock } from './blocks/types'
 import type { SchemaProblem } from './validate'
 import { useRun } from '../run/useRun'
 import type { RouteLocationRaw } from 'vue-router'
@@ -43,6 +45,8 @@ const props = withDefaults(
     emptyText?: string | null
     /** `invalid`: what does not fit the schema */
     problems?: SchemaProblem[]
+    /** Blocks under the body (#5414): a curve, lines, a note… */
+    blocks?: CardBlock[] | null
   }>(),
   {
     icon: null,
@@ -57,6 +61,7 @@ const props = withDefaults(
     error: null,
     emptyText: null,
     problems: () => [],
+    blocks: null,
   }
 )
 
@@ -114,6 +119,8 @@ async function onAction(): Promise<void> {
 const blockLinks = inject(CARD_BLOCK_LINKS, null)
 const slots = useSlots()
 const allLinks = computed<CardLink[]>(() => [...(props.links ?? []), ...(blockLinks?.value ?? [])])
+const blockBlocks = inject(CARD_BLOCK_BLOCKS, null)
+const extraBlocks = computed<CardBlock[]>(() => [...(props.blocks ?? []), ...(blockBlocks?.value ?? [])])
 const hasCta = computed(() => !!slots.cta || allLinks.value.length > 0 || (!!props.action && props.state === 'ready'))
 async function onLink(link: CardLink): Promise<void> {
   if (link.onClick) await link.onClick()
@@ -167,7 +174,11 @@ const actionIcon = computed(() => (props.action?.mode === 'list' ? 'pi pi-list' 
           <li v-if="problems.length > 4">{{ t('core.cards.moreProblems', { count: problems.length - 4 }) }}</li>
         </ul>
       </div>
-      <slot v-else></slot>
+      <template v-else>
+        <slot></slot>
+        <!-- The blocks added under the body (#5414): the card's, then the dashboard block's -->
+        <div v-if="extraBlocks.length" class="qd-card-extra" data-card-extra><QdCardBlocks :blocks="extraBlocks" :size="size" check /></div>
+      </template>
     </div>
 
     <footer v-if="source || freshnessText || hasCta" class="qd-card-foot">

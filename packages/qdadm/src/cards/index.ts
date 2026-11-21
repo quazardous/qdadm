@@ -13,6 +13,8 @@ export { default as QdRecentCard } from './QdRecentCard.vue'
 export { registerCard, getCard, listCards, checkCardInput, resolveCardOptions, optionsSchema } from './registry'
 export { validateCardData, type CardSchema, type SchemaProblem } from './validate'
 export { BUILTIN_CARDS } from './builtin'
+// The blocks a card is made of (#5414)
+export * from './blocks/index'
 export type {
   CardStatus,
   CardSize,
@@ -24,6 +26,7 @@ export type {
   CardDefinition,
   CardBodyProps,
   CardPill,
+  CardRegistration,
 } from './types'
 
 registerBuiltinCards()

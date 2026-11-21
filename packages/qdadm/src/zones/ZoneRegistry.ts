@@ -64,6 +64,7 @@
 
 import type { CardSchema } from '../cards/validate'
 import type { CardLink } from '../cards/types'
+import type { CardBlock } from '../cards/blocks/types'
 import { shallowRef, type ShallowRef, type Component } from 'vue'
 
 /**
@@ -113,6 +114,8 @@ export interface BlockCard {
   params?: CardSchema
   /** Gestures added to the card's foot, beside its own (#5405): "See all" */
   links?: CardLink[]
+  /** Blocks drawn under the card's body (#5414): a 7-day curve under a metric */
+  blocks?: CardBlock[]
 }
 
 /** A card's size on a dashboard: 1, 2 or 3 columns */

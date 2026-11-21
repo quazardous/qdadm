@@ -410,6 +410,12 @@ export default `core:
     overdue: en retard
     compare:
       points: pt
+    viz:
+      series: "{label} dernière valeur {last}, plus basse {min}, plus haute {max}"
+      period:
+        24h: sur les dernières 24 heures
+        7d: sur les 7 derniers jours
+        30d: sur les 30 derniers jours
     trend:
       within: Dans la normale
       outside: "{count} point hors de la normale | {count} points hors de la normale"

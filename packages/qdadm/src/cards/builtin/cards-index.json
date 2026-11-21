@@ -111,6 +111,183 @@
       }
     },
     {
+      "type": "blocks",
+      "title": "Blocks",
+      "question": "What does this card need to show, piece by piece?",
+      "icon": "pi pi-th-large",
+      "readings": [
+        "value: the number, what it counts, its change, or now against then",
+        "viz: a small chart over time, Munin-like: lines, areas or bars, several series, the warning and critical lines, the band of normal; a tooltip per column",
+        "list: lines to open, as hot lines, a queue, a feed or a ranking",
+        "text: a short reading, in a tone",
+        "progress: a value against a target, as a goal with its pace or a bullet graph",
+        "parts: a whole split in parts, with its legend"
+      ],
+      "strengths": [
+        "one card mixes what a single type cannot: the number, its curve and the lines behind it",
+        "no new card type to write for a new combination",
+        "each block is checked: a block that does not fit says which field"
+      ],
+      "avoid": [
+        "when a ready-made type says it already: metric, trend, queue… are assemblies of the same blocks",
+        "for a full dashboard in one card: split it into cards"
+      ],
+      "sizes": [
+        "s",
+        "m",
+        "l"
+      ],
+      "options": {},
+      "action": "the card's own: its foot's CTA zone",
+      "example": {
+        "envelope": {
+          "title": "Unhandled errors",
+          "status": "watch",
+          "source": "logs",
+          "size": "m"
+        },
+        "data": {
+          "blocks": [
+            {
+              "kind": "value",
+              "value": 8,
+              "label": "new today",
+              "delta": {
+                "value": 3,
+                "period": "vs yesterday"
+              },
+              "higherIs": "worse"
+            },
+            {
+              "kind": "viz",
+              "chart": "area",
+              "label": "errors a day",
+              "warning": 10,
+              "critical": 15,
+              "series": [
+                {
+                  "label": "new",
+                  "points": [
+                    [
+                      "2026-11-13",
+                      4
+                    ],
+                    [
+                      "2026-11-14",
+                      6
+                    ],
+                    [
+                      "2026-11-15",
+                      3
+                    ],
+                    [
+                      "2026-11-16",
+                      9
+                    ],
+                    [
+                      "2026-11-17",
+                      12
+                    ],
+                    [
+                      "2026-11-18",
+                      5
+                    ],
+                    [
+                      "2026-11-19",
+                      8
+                    ]
+                  ]
+                },
+                {
+                  "label": "sorted",
+                  "points": [
+                    [
+                      "2026-11-13",
+                      3
+                    ],
+                    [
+                      "2026-11-14",
+                      5
+                    ],
+                    [
+                      "2026-11-15",
+                      4
+                    ],
+                    [
+                      "2026-11-16",
+                      6
+                    ],
+                    [
+                      "2026-11-17",
+                      8
+                    ],
+                    [
+                      "2026-11-18",
+                      7
+                    ],
+                    [
+                      "2026-11-19",
+                      2
+                    ]
+                  ]
+                }
+              ]
+            },
+            {
+              "kind": "list",
+              "items": [
+                {
+                  "label": "TypeError in checkout.js",
+                  "tag": "x14",
+                  "tagStatus": "critical",
+                  "to": "/errors/1"
+                },
+                {
+                  "label": "Timeout on /api/stock",
+                  "tag": "x5",
+                  "tagStatus": "watch",
+                  "to": "/errors/2"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "schema": {
+        "type": "object",
+        "required": [
+          "blocks"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "blocks": {
+            "type": "array",
+            "minItems": 1,
+            "description": "The card's blocks, in order; each one is checked against its kind (cards.md, \"Blocks\")",
+            "items": {
+              "type": "object",
+              "required": [
+                "kind"
+              ],
+              "properties": {
+                "kind": {
+                  "type": "string",
+                  "enum": [
+                    "value",
+                    "viz",
+                    "list",
+                    "text",
+                    "progress",
+                    "parts"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
       "type": "bullet",
       "title": "Bullet",
       "question": "Is the value good, fair or poor, and how far from the target?",

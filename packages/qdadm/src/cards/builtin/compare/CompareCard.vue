@@ -4,10 +4,12 @@
  *
  * The two values side by side with their labels, and the change, signed, in
  * points or in percent, toned by `higherIs`. See meta.json for the sheet.
+ *
+ * An assembly of blocks (#5414): value (now, against then).
  */
 import { computed } from 'vue'
-import { useI18n } from '../../../i18n/useI18n'
-import { formatNumber, formatDelta, deltaTone } from '../shared'
+import QdCardBlocks from '../../blocks/QdCardBlocks.vue'
+import type { CardBlock } from '../../blocks/types'
 import type { CardSize } from '../../types'
 
 const props = defineProps<{
@@ -15,33 +17,13 @@ const props = defineProps<{
   options: { unit?: string; decimals?: number; higherIs?: 'better' | 'worse' | 'neutral'; changeAs?: 'points' | 'percent' }
   size: CardSize
 }>()
-const { t, locale } = useI18n()
 
-const fmt = (v: number) => formatNumber(v, locale.value, { decimals: props.options.decimals ?? 1, unit: props.options.unit })
-const change = computed(() => {
-  const { now, then } = props.data
-  const diff = now.value - then.value
-  const percent = props.options.changeAs === 'percent'
-  if (percent && then.value === 0) return null
-  const amount = percent ? (diff / Math.abs(then.value)) * 100 : diff
-  const unit = percent ? '%' : props.options.unit === '%' ? t('core.cards.compare.points') : props.options.unit
-  const text = formatDelta(amount, locale.value, props.options.decimals ?? 1)
-  return { text: unit ? `${text} ${unit}` : text, tone: deltaTone(diff, props.options.higherIs) }
+const blocks = computed<CardBlock[]>(() => {
+  const { data: d, options: o } = props
+  return [{ kind: 'value', value: d.now.value, label: d.now.label, then: d.then, unit: o.unit, decimals: o.decimals ?? 1, higherIs: o.higherIs, changeAs: o.changeAs }]
 })
 </script>
 
 <template>
-  <div class="qd-compare">
-    <div class="qd-compare-values">
-      <div class="qd-compare-now">
-        <span class="qd-card-value">{{ fmt(data.now.value) }}</span>
-        <span v-if="data.now.label" class="qd-card-unit">{{ data.now.label }}</span>
-      </div>
-      <div class="qd-compare-then">
-        <span class="qd-compare-then-value">{{ fmt(data.then.value) }}</span>
-        <span v-if="data.then.label" class="qd-card-unit">{{ data.then.label }}</span>
-      </div>
-    </div>
-    <span v-if="change" class="qd-card-delta" :class="`qd-tone--${change.tone}`">{{ change.text }}</span>
-  </div>
+  <div class="qd-blocks"><QdCardBlocks :blocks="blocks" :size="size" /></div>
 </template>

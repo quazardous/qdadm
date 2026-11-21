@@ -11,6 +11,12 @@ const fmt = (n: number, o: Opts, locale: string): string =>
 const count = (n: unknown): number | null => (typeof n === 'number' && Number.isFinite(n) ? n : null)
 
 export const PILLS: Record<string, (data: unknown, options: Opts, locale: string) => CardPill> = {
+  // A card of blocks (#5414): its first value
+  blocks: (d, _o, l) => {
+    const v = (d as { blocks: Array<{ kind: string; value?: number; unit?: string; decimals?: number }> }).blocks.find((b) => b.kind === 'value')
+    if (!v || typeof v.value !== 'number') return { value: '', count: null }
+    return { value: formatNumber(v.value, l, { decimals: v.decimals, unit: v.unit }), count: count(v.value) }
+  },
   metric: (d, o, l) => {
     const v = (d as { value: number }).value
     return { value: fmt(v, o, l), count: count(v) }

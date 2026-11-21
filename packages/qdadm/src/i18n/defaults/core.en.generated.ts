@@ -410,6 +410,12 @@ export default `core:
     overdue: overdue
     compare:
       points: pt
+    viz:
+      series: "{label} last {last}, lowest {min}, highest {max}"
+      period:
+        24h: over the last 24 hours
+        7d: over the last 7 days
+        30d: over the last 30 days
     trend:
       within: Within the normal
       outside: "{count} point outside the normal | {count} points outside the normal"

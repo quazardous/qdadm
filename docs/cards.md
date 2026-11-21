@@ -17,8 +17,22 @@ Each card answers one question. Pick the card by its question, then give it data
 | `links` | `[{ label, icon, to \| run \| onClick }]`: secondary gestures in the foot, beside the action ("See all"); the foot's CTA zone holds them, the action and the app's own buttons (`#cta` slot); a dashboard block adds its own with `card.links` |
 | `state` | `ready`, or `loading`, `unreachable` (with `error`), `empty` (with `emptyText`): drawn instead of the body |
 | `size` | `s`, `m` or `l`: 1, 2 or 3 columns, among the card's sizes |
+| `blocks` | Blocks drawn under the type's own body (below): a 7-day curve under a metric, a note. A dashboard block adds its own with `card.blocks` |
 
 Data that does not fit the schema draws the `invalid` state with the path and the reason; the rest of the board keeps working.
+
+## Blocks
+
+A card is a few blocks in order, its foot the CTA zone. The types below are ready-made assemblies of them (`metric` is value + viz + list). Compose your own three ways: the `blocks` type (`data: { blocks: [...] }`), `envelope.blocks` under any type's body, or a type declared by blocks: `registerCard({ type, meta, schema, blocks: (data, options, size) => [...] })`, with no component. Each block is checked against its kind; one that does not fit says which field.
+
+| Kind | Fields | Draws |
+|---|---|---|
+| `value` | `value`, `unit`, `decimals`, `label`, `badge`, `delta: { value, period }`, `higherIs`; or `then: { value, label }` with `changeAs` (`points`, `percent`) | The number, what it counts, its change toned by `higherIs`; with `then`, now and then side by side and the change |
+| `viz` | `series`: numbers, or `[{ label, points, tone }]` with points as `[time, value]`, `{ t, v, low, high }` or numbers; `chart` (`line`, `area`, `bars`, `stacked`); `period` (`24h`, `7d`, `30d`); `warning`, `critical`; `normal: { low, high }`; `unit`, `decimals`; `compact`; `dot`; `label` | A small chart, Munin-like: the thresholds as dashed lines, the band of normal and the points outside it. At size `s` (or `compact`) a sparkline; larger, the time axis, the y range, a legend for several series, and a tooltip per column on hover or with the arrow keys |
+| `list` | `items: [{ label, to, tag, tagStatus, at, status, value, age, due, action }]`, `look` (`hot`, `queue`, `feed`, `ranking`), `max`, `more`, `now`, `ageUnit`, `unit`, `bars` | Lines, each opening its item: hot lines with a tag; a queue warming with age; a feed, latest first; a ranking with bars |
+| `text` | `text`, `tone`, `strong`, `look` (`note`, `reading`) | A short text in its tone, a word in bold after it |
+| `progress` | `value`, `target`, `look` (`goal`, `bullet`); goal: `start`, `due`, `now`; bullet: `thresholds`, `min`, `max`, `higherIs`; `unit`, `decimals` | A goal's bar and pace, or a bullet graph with its ranges |
+| `parts` | `parts: [{ label, value, to }]`, `max`, `unit` | A whole in parts: one split bar and its legend, past `max` in "others" |
 
 ## `agenda`: What is coming?
 
@@ -70,6 +84,147 @@ Data that does not fit the schema draws the `invalid` state with the path and th
   "options": {
     "maxItems": 4
   }
+}
+```
+
+## `blocks`: What does this card need to show, piece by piece?
+
+**Readings**
+
+- value: the number, what it counts, its change, or now against then
+- viz: a small chart over time, Munin-like: lines, areas or bars, several series, the warning and critical lines, the band of normal; a tooltip per column
+- list: lines to open, as hot lines, a queue, a feed or a ranking
+- text: a short reading, in a tone
+- progress: a value against a target, as a goal with its pace or a bullet graph
+- parts: a whole split in parts, with its legend
+
+**Strengths**
+
+- one card mixes what a single type cannot: the number, its curve and the lines behind it
+- no new card type to write for a new combination
+- each block is checked: a block that does not fit says which field
+
+**Avoid it**
+
+- when a ready-made type says it already: metric, trend, queue… are assemblies of the same blocks
+- for a full dashboard in one card: split it into cards
+
+**Sizes**: s, m, l. **Icon**: `pi pi-th-large`. **Main action**: the card's own: its foot's CTA zone
+
+**Data**: required `blocks`; the full shape is in `blocks/schema.json`.
+
+**Example**
+
+```json
+{
+  "type": "blocks",
+  "data": {
+    "blocks": [
+      {
+        "kind": "value",
+        "value": 8,
+        "label": "new today",
+        "delta": {
+          "value": 3,
+          "period": "vs yesterday"
+        },
+        "higherIs": "worse"
+      },
+      {
+        "kind": "viz",
+        "chart": "area",
+        "label": "errors a day",
+        "warning": 10,
+        "critical": 15,
+        "series": [
+          {
+            "label": "new",
+            "points": [
+              [
+                "2026-11-13",
+                4
+              ],
+              [
+                "2026-11-14",
+                6
+              ],
+              [
+                "2026-11-15",
+                3
+              ],
+              [
+                "2026-11-16",
+                9
+              ],
+              [
+                "2026-11-17",
+                12
+              ],
+              [
+                "2026-11-18",
+                5
+              ],
+              [
+                "2026-11-19",
+                8
+              ]
+            ]
+          },
+          {
+            "label": "sorted",
+            "points": [
+              [
+                "2026-11-13",
+                3
+              ],
+              [
+                "2026-11-14",
+                5
+              ],
+              [
+                "2026-11-15",
+                4
+              ],
+              [
+                "2026-11-16",
+                6
+              ],
+              [
+                "2026-11-17",
+                8
+              ],
+              [
+                "2026-11-18",
+                7
+              ],
+              [
+                "2026-11-19",
+                2
+              ]
+            ]
+          }
+        ]
+      },
+      {
+        "kind": "list",
+        "items": [
+          {
+            "label": "TypeError in checkout.js",
+            "tag": "x14",
+            "tagStatus": "critical",
+            "to": "/errors/1"
+          },
+          {
+            "label": "Timeout on /api/stock",
+            "tag": "x5",
+            "tagStatus": "watch",
+            "to": "/errors/2"
+          }
+        ]
+      }
+    ]
+  },
+  "options": {}
 }
 ```
 
