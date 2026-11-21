@@ -2,6 +2,7 @@
   "type": "agenda",
   "title": "Agenda",
   "question": "What is coming?",
+  "icon": "pi pi-calendar",
   "readings": [
     "each line: when (a time today, \"tomorrow\", a date) and what",
     "the first ones first"

@@ -2,6 +2,7 @@
   "type": "favorites",
   "title": "Favourites",
   "question": "What do I follow?",
+  "icon": "pi pi-star",
   "readings": [
     "the pages the person starred and the searches they saved, by kind",
     "each line opens its page, filtered as it was for a search"
@@ -16,9 +17,10 @@
   "sizes": ["s", "m"],
   "options": {
     "maxItems": { "type": "integer", "minimum": 1, "maximum": 20, "default": 8, "description": "How many lines to show" },
-    "groupByKind": { "type": "boolean", "default": true, "description": "Group the lines by kind (records, lists, searches, boards)" }
+    "groupByKind": { "type": "boolean", "default": true, "description": "Group the lines by kind (records, lists, searches, boards)" },
+    "removable": { "type": "boolean", "default": false, "description": "A remove button on each line that has an id: the card emits `remove` and `restore` with it (QdFavoritesCard turns it on)" }
   },
-  "action": "none: each line is its own gesture",
+  "action": "none: each line is its own gesture; with removable, a × beside it removes it, Undo puts it back",
   "example": {
     "envelope": { "title": "Favourites", "status": "info", "size": "s" },
     "data": {

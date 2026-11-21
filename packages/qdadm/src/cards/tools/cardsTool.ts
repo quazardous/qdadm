@@ -86,6 +86,7 @@ export function renderBestiary(cards: CardFolder[], title = 'Cards'): string {
     '| Field | What it says |',
     '|---|---|',
     '| `title` | What the card counts |',
+    '| `icon` | An icon class before the title; default the type\'s own (below), `null` for none |',
     '| `status` | `critical`, `watch`, `good` or `info`: a side bar, a hue and a word |',
     '| `source`, `freshness` | Where the data comes from, and when it was read |',
     '| `to` | The surface: the whole card opens the domain\'s board |',
@@ -117,7 +118,7 @@ export function renderBestiary(cards: CardFolder[], title = 'Cards'): string {
       '',
       list(m.avoid),
       '',
-      `**Sizes**: ${(m.sizes as string[] | undefined)?.join(', ') ?? 's'}. **Main action**: ${String(m.action)}`,
+      `**Sizes**: ${(m.sizes as string[] | undefined)?.join(', ') ?? 's'}.${m.icon ? ` **Icon**: \`${String(m.icon)}\`.` : ''} **Main action**: ${String(m.action)}`,
       ''
     )
     if (Object.keys(options).length) {

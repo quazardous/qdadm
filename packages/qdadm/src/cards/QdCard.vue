@@ -27,6 +27,8 @@ import type { RouteLocationRaw } from 'vue-router'
 const props = withDefaults(
   defineProps<{
     title: string
+    /** An icon class drawn before the title */
+    icon?: string | null
     status?: CardStatus | null
     source?: string | null
     freshness?: string | number | Date | null
@@ -40,6 +42,7 @@ const props = withDefaults(
     problems?: SchemaProblem[]
   }>(),
   {
+    icon: null,
     status: null,
     source: null,
     freshness: null,
@@ -116,6 +119,7 @@ const actionIcon = computed(() => (props.action?.mode === 'list' ? 'pi pi-list' 
   >
     <header class="qd-card-head">
       <h3 class="qd-card-title">
+        <i v-if="icon" class="qd-card-icon" :class="icon" aria-hidden="true"></i>
         <RouterLink v-if="to" :to="to" class="qd-card-surface">{{ title }}</RouterLink>
         <span v-else>{{ title }}</span>
       </h3>

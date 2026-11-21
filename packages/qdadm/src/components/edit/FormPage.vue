@@ -175,7 +175,7 @@ function onGuardStay(): void {
     <!-- Nav slot for PageNav (child routes) -->
     <slot name="nav" />
 
-    <PageHeader :title="title" :title-parts="titleParts" :favorite="favorite && isEdit ? { kind: 'item', entity, itemId: entityId } : null">
+    <PageHeader :title="title" :title-parts="titleParts" :favorite="favorite && isEdit ? { kind: 'item', entity, itemId: entityId, ready: !loading } : null">
       <template #actions>
         <slot name="header-actions" />
         <!-- Header actions from builder (excludes save/delete/cancel) -->

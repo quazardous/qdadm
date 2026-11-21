@@ -2,6 +2,7 @@
   "type": "queue",
   "title": "Queue",
   "question": "What do I have to do?",
+  "icon": "pi pi-inbox",
   "readings": [
     "the big number: how many are waiting, with a short note (\"1 expires tomorrow\")",
     "each line: one item to process, with its own gesture",

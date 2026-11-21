@@ -2,6 +2,7 @@
   "type": "feed",
   "title": "Feed",
   "question": "What happened?",
+  "icon": "pi pi-bell",
   "readings": [
     "each line: when, and what happened",
     "its status, when it has one: a side mark and a word"

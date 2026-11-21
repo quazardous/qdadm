@@ -191,7 +191,7 @@ type ShowFieldValue = string | number | boolean | Date | Record<string, unknown>
     <!-- Nav slot for PageNav (child routes) -->
     <slot name="nav" />
 
-    <PageHeader :title="title" :title-parts="titleParts" :badges="badges" :favorite="favorite ? { kind: 'item', entity, itemId: entityId } : null">
+    <PageHeader :title="title" :title-parts="titleParts" :badges="badges" :favorite="favorite ? { kind: 'item', entity, itemId: entityId, ready: !!data } : null">
       <template #actions>
         <slot name="header-actions" />
         <!-- Header actions from builder (e.g., edit) -->

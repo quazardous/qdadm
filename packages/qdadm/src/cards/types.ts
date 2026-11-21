@@ -36,6 +36,8 @@ export interface CardAction {
 /** What the envelope shows around the body */
 export interface CardEnvelope {
   title: string
+  /** An icon class beside the title (`pi pi-star`); default the type's own, `null` for none */
+  icon?: string | null
   status?: CardStatus
   /** Where the data comes from ("boutique") */
   source?: string
@@ -64,6 +66,8 @@ export interface CardMeta {
   title: string
   /** The question it answers */
   question: string
+  /** The icon its cards show beside their title, unless the envelope says otherwise */
+  icon?: string
   /** What each visual channel says */
   readings: string[]
   strengths: string[]

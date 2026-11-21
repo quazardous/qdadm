@@ -10,9 +10,11 @@
         "required": ["label", "to"],
         "additionalProperties": false,
         "properties": {
+          "id": { "type": "string", "description": "The favourite's id: what a removal names" },
           "label": { "type": "string" },
           "to": { "type": ["string", "object"], "description": "The page it opens" },
-          "kind": { "type": "string", "enum": ["item", "list", "search", "board"], "description": "What it is: a record, a list, a saved search, a board" }
+          "kind": { "type": "string", "enum": ["item", "list", "search", "board"], "description": "What it is: a record, a list, a saved search, a board" },
+          "removed": { "type": "boolean", "description": "Just removed: drawn as such, with its Undo" }
         }
       }
     }

@@ -40,6 +40,8 @@ interface FavoriteConfig {
   kind: 'item' | 'list' | 'search' | 'board'
   entity?: string | null
   itemId?: string | number | null
+  /** The record is read (#5392): without a label of its own, it is named by its id */
+  ready?: boolean
 }
 
 interface Props {
@@ -80,6 +82,12 @@ const favoriteLabel = computed((): string => {
   if (simpleTitle.value) return simpleTitle.value
   const parts = effectiveTitleParts.value
   if (parts?.entityLabel) return parts.entityLabel
+  // A record's page before its record is read (#5392): "View Task" would be
+  // its favourite's name; no star until the record's own label is known
+  const itemId = props.favorite?.itemId
+  if (itemId !== null && itemId !== undefined && itemId !== '') {
+    return props.favorite?.ready ? [parts?.entityName, `#${itemId}`].filter(Boolean).join(' ') : ''
+  }
   if (parts) return [parts.action, parts.entityName].filter(Boolean).join(' ')
   return props.title ?? ''
 })

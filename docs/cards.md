@@ -9,6 +9,7 @@ Each card answers one question. Pick the card by its question, then give it data
 | Field | What it says |
 |---|---|
 | `title` | What the card counts |
+| `icon` | An icon class before the title; default the type's own (below), `null` for none |
 | `status` | `critical`, `watch`, `good` or `info`: a side bar, a hue and a word |
 | `source`, `freshness` | Where the data comes from, and when it was read |
 | `to` | The surface: the whole card opens the domain's board |
@@ -35,7 +36,7 @@ Data that does not fit the schema draws the `invalid` state with the path and th
 - for what already happened: use feed
 - for items to process now: use queue
 
-**Sizes**: s, m. **Main action**: mode list: the whole calendar
+**Sizes**: s, m. **Icon**: `pi pi-calendar`. **Main action**: mode list: the whole calendar
 
 | Option | Type | Default | What it does |
 |---|---|---|---|
@@ -190,12 +191,13 @@ Data that does not fit the schema draws the `invalid` state with the path and th
 
 - for what everyone must see: that is a board's own card, not a favourite
 
-**Sizes**: s, m. **Main action**: none: each line is its own gesture
+**Sizes**: s, m. **Icon**: `pi pi-star`. **Main action**: none: each line is its own gesture; with removable, a × beside it removes it, Undo puts it back
 
 | Option | Type | Default | What it does |
 |---|---|---|---|
 | `maxItems` | integer | `8` | How many lines to show |
 | `groupByKind` | boolean | `true` | Group the lines by kind (records, lists, searches, boards) |
+| `removable` | boolean | `false` | A remove button on each line that has an id: the card emits `remove` and `restore` with it (QdFavoritesCard turns it on) |
 
 **Data**: required `items`; the full shape is in `favorites/schema.json`.
 
@@ -247,7 +249,7 @@ Data that does not fit the schema draws the `invalid` state with the path and th
 - for a full log: link to it
 - for what is coming: use agenda
 
-**Sizes**: s, m. **Main action**: mode list: all the events
+**Sizes**: s, m. **Icon**: `pi pi-bell`. **Main action**: mode list: all the events
 
 | Option | Type | Default | What it does |
 |---|---|---|---|
@@ -577,7 +579,7 @@ Data that does not fit the schema draws the `invalid` state with the path and th
 - when nobody acts on the items: use metric with hot lines
 - for more than a handful of lines: link to the list instead
 
-**Sizes**: s, m, l. **Main action**: mode next: open the first item to process, with the run bar over the whole queue ("Process the 1st")
+**Sizes**: s, m, l. **Icon**: `pi pi-inbox`. **Main action**: mode next: open the first item to process, with the run bar over the whole queue ("Process the 1st")
 
 | Option | Type | Default | What it does |
 |---|---|---|---|
@@ -699,7 +701,7 @@ Data that does not fit the schema draws the `invalid` state with the path and th
 
 - as a history of changes: it says what was seen, not what was done
 
-**Sizes**: s, m. **Main action**: none: each line opens its record
+**Sizes**: s, m. **Icon**: `pi pi-history`. **Main action**: none: each line opens its record
 
 | Option | Type | Default | What it does |
 |---|---|---|---|

@@ -487,6 +487,9 @@ export default `core:
   favorites:
     add: "Ajouter {label} aux favoris"
     remove: "Retirer {label} des favoris"
+    removed: "{label} retiré des favoris"
+    undo: Annuler
+    undoLabel: "Remettre {label} dans les favoris"
     saveSearch: Enregistrer cette recherche
     searchSaved: Recherche enregistrée
     searchName: Nom de la recherche

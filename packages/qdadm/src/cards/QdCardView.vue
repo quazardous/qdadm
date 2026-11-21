@@ -21,8 +21,10 @@ const props = withDefaults(
     envelope: CardEnvelope
     data?: unknown
     options?: Record<string, unknown>
+    /** Listeners for the body's own events (a favourite removed…) */
+    on?: Record<string, (...args: never[]) => unknown>
   }>(),
-  { data: undefined, options: () => ({}) }
+  { data: undefined, options: () => ({}), on: () => ({}) }
 )
 
 const definition = computed(() => getCard(props.type))
@@ -37,6 +39,8 @@ const problems = computed<SchemaProblem[]>(() => {
 
 const shownState = computed(() => (problems.value.length ? 'invalid' : state.value))
 const options = computed(() => (definition.value ? resolveCardOptions(definition.value.meta, props.options) : {}))
+// The envelope's icon, else the type's; `null` or '' says none
+const icon = computed(() => (props.envelope.icon !== undefined ? props.envelope.icon || null : definition.value?.meta.icon ?? null))
 const size = computed(() => props.envelope.size ?? definition.value?.meta.sizes[0] ?? 's')
 </script>
 
@@ -44,10 +48,11 @@ const size = computed(() => props.envelope.size ?? definition.value?.meta.sizes[
   <QdCard
     v-bind="envelope"
     :size="size"
+    :icon="icon"
     :state="shownState"
     :problems="problems"
     :data-card-type="type"
   >
-    <component :is="definition!.component" v-if="definition" :data="data" :options="options" :size="size" />
+    <component :is="definition!.component" v-if="definition" :data="data" :options="options" :size="size" v-on="on" />
   </QdCard>
 </template>

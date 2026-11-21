@@ -487,6 +487,9 @@ export default `core:
   favorites:
     add: "Add {label} to favourites"
     remove: "Remove {label} from favourites"
+    removed: "{label} removed from favourites"
+    undo: Undo
+    undoLabel: "Put {label} back in favourites"
     saveSearch: Save this search
     searchSaved: Search saved
     searchName: Name of the search

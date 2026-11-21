@@ -5,6 +5,7 @@
       "type": "agenda",
       "title": "Agenda",
       "question": "What is coming?",
+      "icon": "pi pi-calendar",
       "readings": [
         "each line: when (a time today, \"tomorrow\", a date) and what",
         "the first ones first"
@@ -336,6 +337,7 @@
       "type": "favorites",
       "title": "Favourites",
       "question": "What do I follow?",
+      "icon": "pi pi-star",
       "readings": [
         "the pages the person starred and the searches they saved, by kind",
         "each line opens its page, filtered as it was for a search"
@@ -363,9 +365,14 @@
           "type": "boolean",
           "default": true,
           "description": "Group the lines by kind (records, lists, searches, boards)"
+        },
+        "removable": {
+          "type": "boolean",
+          "default": false,
+          "description": "A remove button on each line that has an id: the card emits `remove` and `restore` with it (QdFavoritesCard turns it on)"
         }
       },
-      "action": "none: each line is its own gesture",
+      "action": "none: each line is its own gesture; with removable, a × beside it removes it, Undo puts it back",
       "example": {
         "envelope": {
           "title": "Favourites",
@@ -413,6 +420,10 @@
               ],
               "additionalProperties": false,
               "properties": {
+                "id": {
+                  "type": "string",
+                  "description": "The favourite's id: what a removal names"
+                },
                 "label": {
                   "type": "string"
                 },
@@ -432,6 +443,10 @@
                     "board"
                   ],
                   "description": "What it is: a record, a list, a saved search, a board"
+                },
+                "removed": {
+                  "type": "boolean",
+                  "description": "Just removed: drawn as such, with its Undo"
                 }
               }
             }
@@ -443,6 +458,7 @@
       "type": "feed",
       "title": "Feed",
       "question": "What happened?",
+      "icon": "pi pi-bell",
       "readings": [
         "each line: when, and what happened",
         "its status, when it has one: a side mark and a word"
@@ -1069,6 +1085,7 @@
       "type": "queue",
       "title": "Queue",
       "question": "What do I have to do?",
+      "icon": "pi pi-inbox",
       "readings": [
         "the big number: how many are waiting, with a short note (\"1 expires tomorrow\")",
         "each line: one item to process, with its own gesture",
@@ -1338,6 +1355,7 @@
       "type": "recent",
       "title": "Recent",
       "question": "What was I just looking at?",
+      "icon": "pi pi-history",
       "readings": [
         "the last records the person opened, the last one first",
         "what each one is, and when it was seen"

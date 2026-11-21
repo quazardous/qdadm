@@ -202,3 +202,83 @@ describe('the favorites and recent cards (#5349)', () => {
     expect(wrapper.find('.qd-recent-when').exists()).toBe(true)
   })
 })
+
+describe('removing a favourite from its card, the card icon (#5392)', () => {
+  it('a × removes the line at once; it stays where it was, saying so, with an Undo that puts it back', async () => {
+    managers.favorites.rows.push(
+      { id: 'f1', kind: 'item', label: 'Dune', to: '/books/1', entity: 'books', itemId: '1', at: '2026-11-19T10:00:00Z' },
+      { id: 'f2', kind: 'item', label: 'Emma', to: '/books/2', at: '2026-11-19T11:00:00Z' }
+    )
+    const { wrapper, favorites } = await mountWith(QdFavoritesCard)
+    const removeDune = wrapper.find('[data-favorite="f1"] [data-favorite-remove]')
+    expect(removeDune.attributes('aria-label')).toBe('Remove Dune from favourites')
+    await removeDune.trigger('click')
+    await flushPromises()
+    expect(managers.favorites.calls).toContainEqual(['delete', 'f1'])
+    expect(favorites.list.value.map((f) => f.label)).toEqual(['Emma'])
+    const line = wrapper.find('[data-favorite="f1"]')
+    expect(line.attributes('data-removed')).toBe('true')
+    expect(line.text()).toContain('Dune removed from favourites')
+    // Where it was: after Emma, the latest first
+    expect(wrapper.findAll('[data-favorite]').map((l) => l.attributes('data-favorite'))).toEqual(['f2', 'f1'])
+    expect(document.activeElement?.hasAttribute('data-favorite-undo')).toBe(true)
+
+    await line.find('[data-favorite-undo]').trigger('click')
+    await flushPromises()
+    expect(managers.favorites.calls.at(-1)).toEqual(['create', expect.objectContaining({ label: 'Dune', to: '/books/1', entity: 'books', itemId: '1' })])
+    expect(wrapper.find('[data-removed]').exists()).toBe(false)
+    expect(wrapper.findAll('.qd-favorites-label').map((l) => l.text()).sort()).toEqual(['Dune', 'Emma'])
+    wrapper.unmount()
+  })
+
+  it('the last one removed: the card keeps its line and its Undo, not the empty state', async () => {
+    managers.favorites.rows.push({ id: 'f1', kind: 'list', label: 'Books', to: '/books', at: '2026-11-19T10:00:00Z' })
+    const { wrapper } = await mountWith(QdFavoritesCard)
+    await wrapper.find('[data-favorite-remove]').trigger('click')
+    await flushPromises()
+    expect(wrapper.find('.qd-card-empty').exists()).toBe(false)
+    expect(wrapper.find('[data-favorite-undo]').exists()).toBe(true)
+    wrapper.unmount()
+  })
+
+  it('a failed removal: the line is back, no Undo', async () => {
+    managers.favorites.rows.push({ id: 'f1', kind: 'list', label: 'Books', to: '/books', at: '2026-11-19T10:00:00Z' })
+    managers.favorites.delete = async () => {
+      throw new Error('offline')
+    }
+    const { wrapper } = await mountWith(QdFavoritesCard)
+    await wrapper.find('[data-favorite-remove]').trigger('click')
+    await flushPromises()
+    expect(wrapper.find('[data-favorite-undo]').exists()).toBe(false)
+    expect(wrapper.find('.qd-favorites-label').text()).toBe('Books')
+    wrapper.unmount()
+  })
+
+  it('no × without removable: data of a board of its own has no dead button', async () => {
+    managers.favorites.rows.push({ id: 'f1', kind: 'list', label: 'Books', to: '/books', at: '2026-11-19T10:00:00Z' })
+    const { wrapper } = await mountWith(QdFavoritesCard, { removable: false })
+    expect(wrapper.find('[data-favorite-remove]').exists()).toBe(false)
+  })
+
+  it("a card shows its type's icon; the envelope changes it, or hides it with null", async () => {
+    const { wrapper } = await mountWith(QdFavoritesCard)
+    expect(wrapper.find('.qd-card-title .qd-card-icon').classes()).toEqual(expect.arrayContaining(['pi', 'pi-star']))
+    wrapper.unmount()
+    const other = await mountWith(QdFavoritesCard, { icon: 'pi pi-heart' })
+    expect(other.wrapper.find('.qd-card-icon').classes()).toContain('pi-heart')
+    other.wrapper.unmount()
+    const none = await mountWith(QdFavoritesCard, { icon: null })
+    expect(none.wrapper.find('.qd-card-icon').exists()).toBe(false)
+  })
+
+  it("a record's page shows no star before its record is read; then its label, or its id", async () => {
+    const before = await mountWith(PageHeader, { titleParts: { action: 'View', entityName: 'Task' }, favorite: { kind: 'item', entity: 'tasks', itemId: 7 } })
+    expect(before.wrapper.find('[data-favorite-star]').exists()).toBe(false)
+    before.wrapper.unmount()
+    const named = await mountWith(PageHeader, { titleParts: { action: 'View', entityName: 'Task', entityLabel: 'Ship it' }, favorite: { kind: 'item', entity: 'tasks', itemId: 7, ready: true } })
+    expect(named.wrapper.find('[data-favorite-star]').attributes('aria-label')).toBe('Add Ship it to favourites')
+    named.wrapper.unmount()
+    const bare = await mountWith(PageHeader, { titleParts: { action: 'View', entityName: 'Task' }, favorite: { kind: 'item', entity: 'tasks', itemId: 7, ready: true } })
+    expect(bare.wrapper.find('[data-favorite-star]').attributes('aria-label')).toBe('Add Task #7 to favourites')
+  })
+})

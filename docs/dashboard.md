@@ -47,7 +47,10 @@ behind the card one after the other with the [run bar](crud.md#a-run-one-item-af
 stops there.
 The status is a side bar, a hue and a word, never the hue alone. `state`
 draws `loading`, `unreachable` (with `error`) or `empty` (with `emptyText`)
-instead of the body. `size` is `s`, `m` or `l`: 1, 2 or 3 columns.
+instead of the body. `size` is `s`, `m` or `l`: 1, 2 or 3 columns. `icon`
+draws an icon class before the title: each type may have its own in its
+sheet (a star for `favorites`, a clock for `recent`), the envelope changes it,
+`null` hides it.
 
 **The data is checked** against the type's JSON Schema before the body draws:
 what does not fit draws the `invalid` state with the path and the reason, and
@@ -318,6 +321,11 @@ warning in development says what to declare).
   boards) and `QdRecentCard` (with when) show them live, and read them again
   when they appear; put them on a dashboard as blocks. They draw the
   [card types](cards.md) `favorites` and `recent`.
+- **Removing from the card:** a × beside each favourite, on hover and focus
+  (always on a touch screen), removes it at once. The line stays a few
+  seconds where it was, saying so, with an Undo that adds it back.
+  `:removable="false"` turns it off. Renaming and ordering are the app's to
+  offer, if it wants them: `useFavorites().rename(id, label)`.
 
 ```js
 import { QdFavoritesCard, QdRecentCard } from '@quazardous/qdadm'

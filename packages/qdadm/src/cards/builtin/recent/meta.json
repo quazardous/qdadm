@@ -2,6 +2,7 @@
   "type": "recent",
   "title": "Recent",
   "question": "What was I just looking at?",
+  "icon": "pi pi-history",
   "readings": [
     "the last records the person opened, the last one first",
     "what each one is, and when it was seen"
