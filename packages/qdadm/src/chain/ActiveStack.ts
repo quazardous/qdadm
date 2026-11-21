@@ -16,7 +16,8 @@
  * `getContext()` gives both, the domain first.
  *
  * Signals emitted (via SignalBus):
- * - stack:change — when stack levels change, or the domain
+ * - stack:change — when stack levels change
+ * - stack:domain — when the domain changes
  *
  * For Vue reactivity, use the `useActiveStack` composable.
  *
@@ -80,8 +81,6 @@ export interface DomainStackLevel extends ContentStackLevel {
  */
 export interface StackChangePayload {
   levels: EntityStackLevel[]
-  /** The page's domain (#5412); present when the domain changed */
-  domain?: DomainStackLevel | null
 }
 
 /**
@@ -112,15 +111,16 @@ export class ActiveStack {
   }
 
   /**
-   * The page's domain (#5412). Emits `stack:change` when it changes; set it
-   * before the levels, so their change reads the new domain.
+   * The page's domain (#5412). Emits `stack:domain` when it changes (not
+   * `stack:change`: the hydrator would read the levels again); set it before
+   * the levels, so their change reads the new domain.
    */
   setDomain(domain: { name: string; source: DomainStackLevel['source'] } | null): void {
     const next: DomainStackLevel | null = domain ? { type: 'domain', name: domain.name, id: null, source: domain.source } : null
     const prev = this._domain
     if (prev?.name === next?.name && prev?.source === next?.source) return
     this._domain = next
-    void this._signalBus?.emit('stack:change', { levels: this.getLevels(), domain: next })
+    void this._signalBus?.emit('stack:domain', { domain: next })
   }
 
   getDomain(): DomainStackLevel | null {

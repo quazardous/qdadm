@@ -151,6 +151,13 @@ export interface DomainResolverContext {
   previous: DomainDefinition | null
   /** The page's entity levels (the active stack) */
   stack: ReadonlyArray<{ entity: string; id: string | null }>
+  /**
+   * The record the page shows (its deepest stack level), once loaded; null
+   * before. The resolver is called again when it arrives.
+   */
+  record: Record<string, unknown> | null
+  /** That record is still on its way */
+  loading: boolean
   getDomain: (name: string) => DomainDefinition | null
 }
 
@@ -160,21 +167,41 @@ export interface DomainResolverContext {
  */
 export type DomainResolver = (route: RouteLocationNormalizedLoaded, ctx: DomainResolverContext) => string | null | undefined
 
+export interface ResolveDomainOptions {
+  resolver?: DomainResolver | null
+  previous?: DomainDefinition | null
+  stack?: DomainResolverContext['stack']
+  record?: Record<string, unknown> | null
+  loading?: boolean
+  /** The domain shown now: kept while the record loads and the resolver says nothing */
+  current?: { domain: DomainDefinition | null; source: DomainSource } | null
+}
+
 /**
  * A page's domain: the default rule, then the app's resolver (#5412). A
  * resolver that throws, or names a domain nobody declared, leaves the
- * default rule's answer.
+ * default rule's answer. While the page's record loads, a resolver that says
+ * nothing keeps the domain shown (no bar that blinks), until it is called
+ * again with the record.
  */
 export function resolveDomain(
   route: RouteLocationNormalizedLoaded,
-  options: { resolver?: DomainResolver | null; previous?: DomainDefinition | null; stack?: DomainResolverContext['stack'] } = {}
+  options: ResolveDomainOptions = {}
 ): { domain: DomainDefinition | null; source: DomainSource } {
   const found = defaultDomain(route)
   const resolver = options.resolver
   if (typeof resolver !== 'function') return found
+  const loading = !!options.loading
   try {
-    const name = resolver(route, { fallback: found.domain, previous: options.previous ?? null, stack: options.stack ?? [], getDomain })
-    if (name === undefined) return found
+    const name = resolver(route, {
+      fallback: found.domain,
+      previous: options.previous ?? null,
+      stack: options.stack ?? [],
+      record: options.record ?? null,
+      loading,
+      getDomain,
+    })
+    if (name === undefined) return loading && options.current?.domain ? options.current : found
     if (name === null) return { domain: null, source: 'resolver' }
     const domain = getDomain(name)
     if (domain) return { domain, source: 'resolver' }

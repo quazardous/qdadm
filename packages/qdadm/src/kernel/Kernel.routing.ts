@@ -334,6 +334,18 @@ export function applyRoutingMethods(KernelClass: { prototype: Kernel }): void {
       takeLeaveDomain()
       this._rebuildActiveStack(to)
     })
+    // The page's record arrived: the app's resolver may read it (#5412)
+    this.signals?.on('stack:hydrated', (event) => {
+      if (!this.options.features?.domainResolver) return
+      const levels = (event.data as { levels?: Array<{ entity: string; id: string | null; hydrated?: boolean; error?: unknown; data?: unknown }> } | undefined)?.levels ?? []
+      const last = levels.at(-1)
+      const current = this.activeStack?.getCurrent()
+      // A late answer for a page we already left
+      if (!last || !current || last.entity !== current.entity || String(last.id) !== String(current.id)) return
+      if (!last.hydrated && !last.error) return
+      const record = last.hydrated && last.data && typeof last.data === 'object' ? (last.data as Record<string, unknown>) : null
+      this._resolveActiveDomain(this.router!.currentRoute.value, this.activeStack!.getLevels(), record)
+    })
   }
 
   /**
@@ -407,17 +419,36 @@ export function applyRoutingMethods(KernelClass: { prototype: Kernel }): void {
 
   /**
    * The page's domain (#5412): the default rule, then the app's
-   * `features.domainResolver`, given the domain we come from. Set before the
-   * levels, so their change reads it.
+   * `features.domainResolver`, given the domain we come from and, once
+   * loaded, the page's record (called again on stack:hydrated). Set before
+   * the levels, so their change reads it.
    */
-  proto._resolveActiveDomain = function (this: Self, route: RouteLocationNormalized, levels: Array<{ entity: string; id: string | null }>): void {
+  proto._resolveActiveDomain = function (
+    this: Self,
+    route: RouteLocationNormalized,
+    levels: Array<{ entity: string; id: string | null }>,
+    record?: Record<string, unknown> | null
+  ): void {
     const stack = this.activeStack!
-    const previousName = stack.getDomain()?.name ?? null
+    const shown = stack.getDomain()
+    const shownDomain = shown ? getDomain(shown.name) : null
     const resolver = this.options.features?.domainResolver ?? null
+    // On a route change the page's record (its deepest level) is on its way
+    // when that level has an id; a second call brings it (stack:hydrated).
+    // The same record as the page we leave (a tab, a query): already there.
+    const last = levels.at(-1)
+    if (record === undefined && last?.id) {
+      const held = this.stackHydrator?.getCurrent()
+      if (held?.hydrated && held.entity === last.entity && String(held.id) === String(last.id) && held.data) record = held.data as Record<string, unknown>
+    }
+    const loading = record === undefined && !!last?.id && !!this.signals
     const { domain, source } = resolveDomain(route, {
       resolver,
-      previous: previousName ? getDomain(previousName) : null,
+      previous: shownDomain,
       stack: levels.map((l) => ({ entity: l.entity, id: l.id })),
+      record: record ?? null,
+      loading,
+      current: shown ? { domain: shownDomain, source: shown.source } : null,
     })
     stack.setDomain(domain ? { name: domain.name, source } : null)
   }

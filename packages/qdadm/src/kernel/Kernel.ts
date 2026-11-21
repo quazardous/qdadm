@@ -480,7 +480,7 @@ export interface Kernel {
   _setupChunkReload(): void
   _setupStackSync(): void
   _rebuildActiveStack(route: RouteLocationNormalized): void
-  _resolveActiveDomain(route: RouteLocationNormalized, levels: Array<{ entity: string; id: string | null }>): void
+  _resolveActiveDomain(route: RouteLocationNormalized, levels: Array<{ entity: string; id: string | null }>, record?: Record<string, unknown> | null): void
 
   // Modules (Kernel.modules.ts)
   _initModules(): void

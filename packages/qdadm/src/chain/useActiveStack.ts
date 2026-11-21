@@ -75,11 +75,15 @@ export function useActiveStack(): UseActiveStackReturn {
     })
   }
 
+  // The domain (#5412) changes on a signal of its own
+  const unsubscribeDomain = signalBus ? signalBus.on('stack:domain', () => { domain.value = activeStack.getDomain() }) : null
+
   // Cleanup on unmount
   onUnmounted(() => {
     if (unsubscribe) {
       unsubscribe()
     }
+    unsubscribeDomain?.()
   })
 
   // Computed accessors

@@ -96,7 +96,9 @@ describe('the active stack holds the domain (#5412)', () => {
     expect(stack.getDomain()).toEqual({ type: 'domain', name: 'it', id: null, source: 'query' })
     expect(stack.getRoot().entity).toBe('tasks')
     expect(stack.getContext().map((l) => `${l.type}:${l.name}`)).toEqual(['domain:it', 'entity:tasks'])
-    expect(emitted[0]).toEqual(['stack:change', { levels: [], domain: stack.getDomain() }])
+    // On a signal of its own: stack:change would have the hydrator read the record again
+    expect(emitted[0]).toEqual(['stack:domain', { domain: stack.getDomain() }])
+    expect(emitted.filter(([n]) => n === 'stack:change').length).toBe(1)
     // The same domain again: nothing said
     const before = emitted.length
     stack.setDomain({ name: 'it', source: 'query' })
@@ -115,7 +117,9 @@ describe('keeping the domain along a record chain (#5412)', () => {
 
   it('a record chain keeps it; another entity, a page placed by its route, a side-menu click do not', () => {
     expect(keptDomain(route('task-show'), route('task', { domain: 'it' }), it_q, false)).toBe('it')
-    expect(keptDomain(route('task-notes'), route('task-show'), { name: 'it', source: 'resolver' }, false)).toBe('it')
+    expect(keptDomain(route('task-notes'), route('task-show', { domain: 'it' }), it_q, false)).toBe('it')
+    // A domain the resolver chose stays out of the address: it decides again on each page
+    expect(keptDomain(route('task-notes'), route('task-show'), { name: 'it', source: 'resolver' }, false)).toBe(null)
     expect(keptDomain(route('book'), route('task'), it_q, false)).toBe(null)
     expect(keptDomain(route('task-show'), route('task'), { name: 'library', source: 'route' }, false)).toBe(null)
     expect(keptDomain(route('task-show'), route('task'), it_q, true)).toBe(null)
@@ -132,13 +136,25 @@ describe('keeping the domain along a record chain (#5412)', () => {
 })
 
 describe('the kernel resolves and keeps it (#5412)', () => {
+  function makeBus() {
+    const handlers = new Map()
+    return {
+      on: (name, fn) => {
+        handlers.set(name, [...(handlers.get(name) ?? []), fn])
+        return () => {}
+      },
+      emit: (name, data) => (handlers.get(name) ?? []).forEach((fn) => fn({ data })),
+    }
+  }
   async function boot(features = {}) {
     const router = makeRouter()
-    const activeStack = new ActiveStack(null)
+    const signals = makeBus()
+    const activeStack = new ActiveStack(signals)
     const kernel = Object.create(Kernel.prototype)
-    Object.assign(kernel, { router, activeStack, orchestrator: null, options: { features } })
+    Object.assign(kernel, { router, activeStack, signals, stackHydrator: null, orchestrator: null, options: { features } })
     kernel._setupStackSync()
-    return { router, activeStack }
+    const hydrated = (entity, id, data) => signals.emit('stack:hydrated', { levels: [{ entity, id, hydrated: true, error: null, data }] })
+    return { router, activeStack, hydrated, kernel }
   }
 
   it('each route change sets the domain, the previous one given to the resolver', async () => {
@@ -177,5 +193,44 @@ describe('the kernel resolves and keeps it (#5412)', () => {
     await router.push('/board')
     await router.push('/books')
     expect(router.currentRoute.value.query.domain).toBeUndefined()
+  })
+
+  it("the resolver reads the page's record: called again when it arrives, the domain shown kept meanwhile", async () => {
+    const calls = []
+    const { router, activeStack, hydrated } = await boot({
+      domainResolver: (r, ctx) => {
+        calls.push({ loading: ctx.loading, record: ctx.record })
+        return ctx.record ? ctx.record.universe : undefined
+      },
+    })
+    await router.push('/board')
+    expect(activeStack.getDomain().name).toBe('library')
+    await router.push('/tasks/12')
+    // The task is on its way: no blinking bar, the domain shown stays
+    expect(calls.at(-1)).toEqual({ loading: true, record: null })
+    expect(activeStack.getDomain().name).toBe('library')
+    hydrated('tasks', '12', { id: '12', universe: 'it' })
+    expect(calls.at(-1)).toEqual({ loading: false, record: { id: '12', universe: 'it' } })
+    expect(activeStack.getDomain()).toMatchObject({ name: 'it', source: 'resolver' })
+    // A late answer for a page left is ignored
+    hydrated('tasks', '99', { id: '99', universe: 'hr' })
+    expect(activeStack.getDomain().name).toBe('it')
+    // Not written in the address: the next page decides again
+    await router.push('/tasks/12/edit')
+    expect(router.currentRoute.value.query.domain).toBeUndefined()
+  })
+
+  it('the same record again (a tab, a query) is read from the hydrator, not awaited', async () => {
+    const calls = []
+    const { router, activeStack, kernel } = await boot({
+      domainResolver: (r, ctx) => {
+        calls.push(ctx.loading)
+        return ctx.record?.universe
+      },
+    })
+    kernel.stackHydrator = { getCurrent: () => ({ entity: 'tasks', id: '12', hydrated: true, data: { universe: 'hr' } }) }
+    await router.push('/tasks/12?tab=notes')
+    expect(calls.at(-1)).toBe(false)
+    expect(activeStack.getDomain().name).toBe('hr')
   })
 })

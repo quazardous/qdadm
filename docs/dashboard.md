@@ -189,22 +189,29 @@ ctx.domain('library', {
 - **The app's resolver:** `features: { domainResolver(route, ctx) { … } }` is
   called at each route change, after the default rule. `ctx.fallback` is what
   the rule found, `ctx.previous` the domain of the page we come from,
-  `ctx.stack` the entity levels, `ctx.getDomain(name)` a declared domain. It
-  returns a domain's name, `null` for none, or `undefined` to keep
-  `ctx.fallback`. One that throws, or names a domain nobody declared, leaves
-  the fallback, with a warning in development.
+  `ctx.stack` the entity levels, `ctx.getDomain(name)` a declared domain.
+  `ctx.record` is the record the page shows (its deepest stack level), once
+  loaded, `null` before; `ctx.loading` says it is on its way, and the
+  resolver is called again when it arrives (the breadcrumb's own read, no
+  request of its own). It returns a domain's name, `null` for none, or
+  `undefined` to keep `ctx.fallback`; while the record loads, `undefined`
+  keeps the domain shown, so the bar does not blink. One that throws, or
+  names a domain nobody declared, leaves the fallback, with a warning in
+  development.
 
   ```js
-  domainResolver: (route, { fallback }) =>
-    typeof route.query.universe === 'string' ? route.query.universe : undefined,  // /tasks?universe=it
+  // A task's universe comes from its type; a list's from ?universe=
+  domainResolver: (route, { record }) =>
+    record?.type ? universeOfType(record.type)
+      : typeof route.query.universe === 'string' ? route.query.universe : undefined,
   ```
-- **Kept from page to page:** a page placed by `?domain=` or by the resolver
-  hands its domain on to the pages of the same record chain (its list, its
+- **Kept from page to page:** a page placed by `?domain=` hands its domain on to the pages of the same record chain (its list, its
   records, their edit pages, their children): the navigation gets
   `?domain=<name>`, so a reload or a shared link keeps it. One route per page
   is enough, with no route per domain. A side-menu click leaves the domain. A
   page whose own route places it, or that names a domain itself, is not
-  touched. For an app's own link to elsewhere, `useDomainLink().withDomain(to)`
+  touched; nor is a domain the resolver chose, which it decides again on each
+  page. For an app's own link to elsewhere, `useDomainLink().withDomain(to)`
   adds the current domain, and `withDomain(to, name)` a given one.
 - **Indicators:** `card` is a type with a pill form. `metric`, `queue` and
   `split` give a count (the badge); `goal` and `compare` give a value. A type
