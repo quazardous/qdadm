@@ -83,20 +83,37 @@ export type ResolvedFieldConfig = ShowResolvedFieldConfig
 // FieldGroup, GroupDefinition, GroupOptions imported from useFieldManager
 
 /**
+ * What an action's `visible` and `disabled` receive (#5430): the record shown,
+ * `null` while it loads, and what the page knows about it.
+ */
+export interface ShowActionContext<T = unknown> {
+  data: T | null
+  canEdit: boolean
+  canDelete: boolean
+  loading: boolean
+}
+
+/**
  * Action configuration
  */
-export interface ActionConfig {
+export interface ActionConfig<T = unknown> {
   name: string
-  /** A string, or a function read at each render, so it follows the locale (#4692) */
-  label: string | (() => string)
+  /**
+   * A string, or a function of the record read at each render, so it follows
+   * the locale (#4692) and the record (#5430)
+   */
+  label: string | ((data: T | null) => string)
   /** Where it shows: the header or the footer. Default: the header for `edit`, the footer for the rest (#4693) */
   placement?: 'header' | 'footer'
-  icon?: string
-  /** PrimeVue Button severity — the shared union, not bare string (#1281) */
-  severity?: ButtonSeverity
+  /** An icon class, or a function of the record (#5430) */
+  icon?: string | ((data: T | null) => string | undefined)
+  /** PrimeVue Button severity — the shared union, not bare string (#1281); or a function of the record (#5430) */
+  severity?: ButtonSeverity | ((data: T | null) => ButtonSeverity | undefined)
   onClick: () => void | Promise<void>
-  visible?: (ctx: { canEdit: boolean; canDelete: boolean }) => boolean
-  disabled?: (ctx: { loading: boolean }) => boolean
+  /** Shown or not: the record (`data`, null while loading), the permissions, the loading */
+  visible?: (ctx: ShowActionContext<T>) => boolean
+  /** Disabled or not, from the same context */
+  disabled?: (ctx: ShowActionContext<T>) => boolean
   loading?: () => boolean
   /** A default label, read again at each render so it follows the locale (#4686) */
   _label?: () => string
@@ -123,7 +140,10 @@ export interface LazyActionConfig {
 /**
  * Resolved action for rendering
  */
-export interface ResolvedAction extends ActionConfig {
+export interface ResolvedAction extends Omit<ActionConfig, 'label' | 'icon' | 'severity'> {
+  label: string
+  icon?: string
+  severity?: ButtonSeverity
   isLoading: boolean
   isDisabled: boolean
 }
@@ -227,7 +247,7 @@ export interface UseEntityItemShowPageReturn<T = unknown> {
 
   // Action management
   actions: ComputedRef<ResolvedAction[]>
-  addAction: (action: ActionConfig) => UseEntityItemShowPageReturn<T>
+  addAction: (action: ActionConfig<T>) => UseEntityItemShowPageReturn<T>
   addLazyAction: (action: LazyActionConfig) => UseEntityItemShowPageReturn<T>
   addEditAction: (options?: { label?: string; icon?: string }) => UseEntityItemShowPageReturn<T>
   addDeleteAction: (options?: { label?: string; icon?: string; confirm?: boolean }) => UseEntityItemShowPageReturn<T>
@@ -436,13 +456,17 @@ export function useEntityItemShowPage<T = Record<string, unknown>>(
 
   // #1193 — shared registry skeleton; the order list is shared with lazy
   // actions so declaration order survives the regular/lazy interleave.
-  type ShowActionCtx = { canEdit: boolean; canDelete: boolean; loading: boolean }
-  const actionRegistry = useActionRegistry<ActionConfig, ShowActionCtx, ResolvedAction>({
+  type ShowActionCtx = ShowActionContext<T>
+  const actionRegistry = useActionRegistry<ActionConfig<T>, ShowActionCtx, ResolvedAction>({
     resolve: (action, ctx) => {
       if (action.visible && !action.visible(ctx)) return null
+      // Label, icon and severity: as given, or read from the record at each render (#5430)
+      const of = <V,>(v: V | ((data: T | null) => V) | undefined): V | undefined => (typeof v === 'function' ? (v as (data: T | null) => V)(ctx.data) : v)
       return {
-        ...action,
-        label: typeof action.label === 'function' ? action.label() : action._label ? action._label() : action.label,
+        ...(action as unknown as ResolvedAction),
+        label: typeof action.label === 'function' ? action.label(ctx.data) : action._label ? action._label() : action.label,
+        icon: of(action.icon),
+        severity: of(action.severity),
         isLoading: action.loading ? action.loading() : false,
         isDisabled: action.disabled ? action.disabled(ctx) : false,
       }
@@ -451,7 +475,7 @@ export function useEntityItemShowPage<T = Record<string, unknown>>(
   const actionsMap = actionRegistry.actionsMap
   const actionOrder = actionRegistry.order
 
-  function addAction(action: ActionConfig): UseEntityItemShowPageReturn<T> {
+  function addAction(action: ActionConfig<T>): UseEntityItemShowPageReturn<T> {
     actionRegistry.add(action)
     return returnValue
   }
@@ -534,7 +558,7 @@ export function useEntityItemShowPage<T = Record<string, unknown>>(
   }
 
   const actions = computed<ResolvedAction[]>(() => {
-    const ctx = { canEdit: canEdit.value, canDelete: canDelete.value, loading: loading.value }
+    const ctx: ShowActionContext<T> = { data: loading.value ? null : (data.value as T | null) ?? null, canEdit: canEdit.value, canDelete: canDelete.value, loading: loading.value }
     const resolved = lazyResolvedStates.value // force dependency tracking
 
     return actionOrder.value

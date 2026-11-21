@@ -695,7 +695,68 @@ createApp({ layouts: { list: MyListLayout, form: MyFormLayout, show: MyShowLayou
 | `addEditAction()` | Navigate to edit form |
 | `addDeleteAction()` | Delete with confirmation |
 | `addBackAction({ route })` | Back navigation |
-| `addAction({ name, label, icon, onClick, placement, … })` | Custom action; `label` may be `() => t('…')`, read at each render so it follows the locale. `placement: 'header'` puts it next to Edit at the top; by default only `edit` goes there and the rest goes to the footer |
+| `addAction({ name, label, icon, onClick, placement, … })` | Custom action (below) |
+| `addLazyAction({ name, label, resolve })` | An action whose visibility comes from elsewhere: hidden until `resolve(data)` says otherwise |
+
+### Actions on an item page
+
+A page's gestures are actions: buttons in its header or its footer, with the
+permissions, the loading and the disabled state handled the same way for all.
+`addEditAction()`, `addDeleteAction()` and `addBackAction()` are the built-in
+ones; `addAction()` adds the page's own.
+
+- **Where:** `placement: 'header'` puts an action beside Edit, at the top;
+  `'footer'` at the bottom, beside Back. By default only `edit` goes to the
+  header, every other action to the footer.
+- **Order:** the order they are declared in, lazy actions included.
+- **What they see:** `visible(ctx)` and `disabled(ctx)` receive
+  `{ data, canEdit, canDelete, loading }`: `data` is the record shown, `null`
+  while it loads (so an action never offers itself for the record being left).
+  `label`, `icon` and `severity` take a value or a function of the record, read
+  again at each render, so they follow the record and the locale.
+
+```js
+const show = useEntityItemShowPage({ entity: 'tasks' })
+show.addBackAction()
+
+// Business gestures that depend on the record
+show.addAction({
+  name: 'take',
+  label: () => t('tasks.take'),
+  icon: 'pi pi-hand',
+  visible: ({ data, canEdit }) => canEdit && data?.state === 'open' && !data.assignee,
+  onClick: () => take(show.data.value),
+})
+show.addAction({
+  name: 'handled',
+  label: () => t('tasks.handled'),
+  severity: 'success',
+  visible: ({ data }) => data?.state === 'taken',
+  disabled: ({ loading }) => loading,
+  onClick: () => markHandled(show.data.value),
+})
+show.addAction({
+  name: 'follow',
+  label: (task) => (task?.following ? t('tasks.unfollow') : t('tasks.follow')),
+  icon: (task) => (task?.following ? 'pi pi-eye-slash' : 'pi pi-eye'),
+  visible: ({ data }) => !!data,
+  onClick: () => toggleFollow(show.data.value),
+})
+
+// An external link: opened in a new tab, offered only when there is one
+show.addAction({
+  name: 'issue',
+  label: () => t('tasks.openIssue'),
+  icon: 'pi pi-external-link',
+  visible: ({ data }) => !!data?.issue_url,
+  onClick: () => window.open(show.data.value.issue_url, '_blank', 'noopener'),
+})
+```
+
+The `#toolbar` slot is for layout around the page (a banner, a summary). Put
+gestures in `addAction()` rather than in buttons of your own there: they then
+get the page's placement, its permissions and its loading and disabled
+states, and an agent driving the app finds them where it finds the others.
 
 ### Field display types
 

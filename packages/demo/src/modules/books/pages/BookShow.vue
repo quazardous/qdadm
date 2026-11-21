@@ -43,6 +43,17 @@ show.addAction({
     books.invalidate(id)
   },
 })
+
+// An action that reads the record (#5430): its label is the book's title,
+// hidden until the book is loaded; it opens an external link
+show.addAction({
+  name: 'wikipedia',
+  label: (book) => `${book?.title} on Wikipedia`,
+  icon: 'pi pi-external-link',
+  severity: (book) => (Number(book?.year) < 1970 ? 'help' : 'secondary'),
+  visible: ({ data }) => !!data?.title,
+  onClick: () => window.open(`https://en.wikipedia.org/wiki/${encodeURIComponent(String(show.data.value?.title ?? ''))}`, '_blank', 'noopener'),
+})
 </script>
 
 <template>
