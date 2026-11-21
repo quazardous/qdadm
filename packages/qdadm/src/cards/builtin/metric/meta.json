@@ -51,6 +51,11 @@
       "maximum": 5,
       "default": 2,
       "description": "How many hot lines to show"
+    },
+    "spark": {
+      "type": "boolean",
+      "default": true,
+      "description": "In a domain bar's pill: the series as a sparkline, in the full bar only"
     }
   },
   "action": "mode next: open the most urgent of the items behind the number (\"Process the 1st\")",

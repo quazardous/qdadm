@@ -107,6 +107,17 @@ export interface CardPill {
   /** The value as written: "14", "68 / 100" */
   value: string
   count: number | null
+  /** Blocks drawn after the badge (#5422): a `metric`'s sparkline, in the full bar only */
+  blocks?: CardBlock[]
+}
+
+/**
+ * The domain bar's mode, as its indicators see it (#5422): `full`, or
+ * `compact` with why (`chosen` by the person, or `scrolled`).
+ */
+export interface CardPillMode {
+  mode: 'full' | 'compact'
+  reason: 'chosen' | 'scrolled' | null
 }
 
 /** A card type, as registerCard takes it */
@@ -118,7 +129,7 @@ export interface CardDefinition {
   /** The JSON Schema of `data` */
   schema: CardSchema
   /** Its pill form, for the domain bar (#5389); without it, the type is not offered there */
-  pill?: (data: unknown, options: Record<string, unknown>, locale: string) => CardPill
+  pill?: (data: unknown, options: Record<string, unknown>, locale: string, mode?: CardPillMode) => CardPill
   /** A type declared by blocks (#5414): its data mapped to the blocks it shows */
   blocks?: (data: never, options: Record<string, unknown>, size: CardSize) => CardBlock[]
   /** Checks beyond the schema, run once it fits */

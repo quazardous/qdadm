@@ -194,3 +194,71 @@ describe('the look (#5396, #5400)', () => {
     expect((await mountLook({ label: 'Library', look: 'ribbon' })).attributes('data-look')).toBe('toolbox')
   })
 })
+
+describe("the indicators know the bar's mode (#5422)", () => {
+  const spark = { id: 'open', card: 'metric', title: 'Open', icon: 'pi pi-inbox', data: { value: 12, series: [3, 5, 4, 8, 12] } }
+
+  it("a metric's series is a sparkline in the full bar, gone in compact", async () => {
+    const { w } = await mountBar('/board', { label: 'L', indicators: [spark] })
+    const pill = () => w.find('[data-indicator="open"]')
+    expect(pill().attributes('data-mode')).toBe('full')
+    expect(pill().find('[data-pill-blocks] [data-block="viz"]').exists()).toBe(true)
+    expect(pill().find('.qd-viz-plot').attributes('aria-hidden')).toBe('true')
+    await w.find('[data-domain-toggle]').trigger('click')
+    expect(pill().attributes('data-mode')).toBe('compact')
+    expect(pill().find('[data-pill-blocks]').exists()).toBe(false)
+    expect(pill().find('.qd-badge').exists()).toBe(true)
+    w.unmount()
+  })
+
+  it('no sparkline without a series, or with spark: false', async () => {
+    const { w } = await mountBar('/board', {
+      label: 'L',
+      indicators: [
+        { id: 'a', card: 'metric', title: 'A', data: { value: 2 } },
+        { ...spark, id: 'b', options: { spark: false } },
+      ],
+    })
+    expect(w.find('[data-pill-blocks]').exists()).toBe(false)
+    w.unmount()
+  })
+
+  it("the app's own component draws the pill, told the mode; compact overrides it", async () => {
+    const Full = defineComponent({
+      props: ['data', 'mode', 'status', 'title', 'state', 'count'],
+      setup: (p) => () => h('span', { class: 'mine', 'data-m': `${p.mode.mode}/${p.mode.reason}` }, `${p.title} ${p.data.n} ${p.status} ${p.state}`),
+    })
+    const Small = defineComponent({ props: ['mode'], setup: (p) => () => h('span', { class: 'small' }, p.mode.reason) })
+    const { w } = await mountBar('/board', {
+      label: 'L',
+      indicators: [{ id: 'x', title: 'Mine', data: { n: 4 }, status: 'watch', component: Full, compact: { component: Small }, to: '/books' }],
+    })
+    const pill = w.find('[data-indicator="x"]')
+    expect(pill.attributes('data-state')).toBe('ready')
+    expect(pill.find('a.qd-domain-pill-body .mine').text()).toBe('Mine 4 watch ready')
+    expect(pill.find('.mine').attributes('data-m')).toBe('full/null')
+    await w.find('[data-domain-toggle]').trigger('click')
+    expect(w.find('[data-indicator="x"] .small').text()).toBe('chosen')
+    w.unmount()
+  })
+
+  it('compact options merge over the options; a card still gives the badge to a component', async () => {
+    const Comp = defineComponent({ props: ['count', 'options'], setup: (p) => () => h('span', { class: 'c' }, `${p.count}:${p.options.unit}`) })
+    const { w } = await mountBar('/board', {
+      label: 'L',
+      nav: [{ label: 'Board', route: 'board', badge: 'm' }],
+      indicators: [{ ...spark, id: 'm', options: { unit: '' }, compact: { options: { spark: false } } }, { id: 'c', card: 'metric', title: 'C', data: { value: 7 }, options: { unit: 'u' }, component: Comp }],
+    })
+    expect(w.find('[data-indicator="c"] .c').text()).toBe('7:u')
+    expect(w.find('[data-domain-nav] .qd-badge').text()).toContain('12')
+    expect(w.find('[data-indicator="m"] [data-pill-blocks]').exists()).toBe(true)
+    w.unmount()
+  })
+
+  it('warns about an indicator with no card and no component', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    registerDomain('d', { label: 'D', indicators: [{ id: 'z', title: 'Z' }] })
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining("'z' names no card and no component"))
+    warn.mockRestore()
+  })
+})

@@ -26,6 +26,7 @@ export type {
   CardDefinition,
   CardBodyProps,
   CardPill,
+  CardPillMode,
   CardRegistration,
 } from './types'
 

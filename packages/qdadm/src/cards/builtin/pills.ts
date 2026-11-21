@@ -2,7 +2,7 @@
  * The pill form of the generic cards (#5389): the one figure the domain bar
  * keeps of each, and the count its badge shows.
  */
-import type { CardPill } from '../types'
+import type { CardPill, CardPillMode } from '../types'
 import { formatNumber } from './shared'
 
 type Opts = Record<string, unknown>
@@ -10,16 +10,18 @@ const fmt = (n: number, o: Opts, locale: string): string =>
   formatNumber(n, locale, { decimals: typeof o.decimals === 'number' ? o.decimals : undefined, unit: typeof o.unit === 'string' ? o.unit : undefined })
 const count = (n: unknown): number | null => (typeof n === 'number' && Number.isFinite(n) ? n : null)
 
-export const PILLS: Record<string, (data: unknown, options: Opts, locale: string) => CardPill> = {
+export const PILLS: Record<string, (data: unknown, options: Opts, locale: string, mode?: CardPillMode) => CardPill> = {
   // A card of blocks (#5414): its first value
   blocks: (d, _o, l) => {
     const v = (d as { blocks: Array<{ kind: string; value?: number; unit?: string; decimals?: number }> }).blocks.find((b) => b.kind === 'value')
     if (!v || typeof v.value !== 'number') return { value: '', count: null }
     return { value: formatNumber(v.value, l, { decimals: v.decimals, unit: v.unit }), count: count(v.value) }
   },
-  metric: (d, o, l) => {
-    const v = (d as { value: number }).value
-    return { value: fmt(v, o, l), count: count(v) }
+  // Its series as a sparkline (#5422), in the full bar only: compact keeps the badge
+  metric: (d, o, l, m) => {
+    const { value: v, series } = d as { value: number; series?: number[] }
+    const spark = m?.mode !== 'compact' && o.spark !== false && (series?.length ?? 0) > 1
+    return { value: fmt(v, o, l), count: count(v), ...(spark ? { blocks: [{ kind: 'viz', chart: 'area', series: series!, compact: true, dot: true }] } : {}) }
   },
   queue: (d, _o, l) => {
     const q = d as { total?: number; items: unknown[] }

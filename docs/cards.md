@@ -687,6 +687,7 @@ A card is a few blocks in order, its foot the CTA zone; a `flash` banner goes to
 | `decimals` | integer | `0` | Digits after the decimal point |
 | `higherIs` | `better` \| `worse` \| `neutral` | `"better"` | Whether a rise is good news (sales) or bad news (open returns) |
 | `hotCount` | integer | `2` | How many hot lines to show |
+| `spark` | boolean | `true` | In a domain bar's pill: the series as a sparkline, in the full bar only |
 
 **Data**: required `value`; the full shape is in `metric/schema.json`.
 

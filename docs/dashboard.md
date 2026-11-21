@@ -215,12 +215,35 @@ ctx.domain('library', {
   adds the current domain, and `withDomain(to, name)` a given one.
 - **Indicators:** `card` is a type with a pill form. `metric`, `queue` and
   `split` give a count (the badge); `goal` and `compare` give a value. A type
-  of your own gets one with `registerCard({ …, pill: (data, options, locale)
-  => ({ value, count }) })`. Data that does not fit the type's schema, or a
+  of your own gets one with `registerCard({ …, pill: (data, options, locale, mode)
+  => ({ value, count, blocks }) })`. Data that does not fit the type's schema, or a
   read that fails, marks the pill, with the reason in its title.
 - **Compact:** one line of icons and badges, on its own once the page
   scrolls (the bar stays on top), or by the toggle at its end, the choice kept
   per account.
+- **Indicators and the bar's mode:** each pill knows how the bar is drawn,
+  `full` or `compact` (and why: `chosen` by the person, or `scrolled`), and
+  says it in `data-mode`, for the app's CSS. A card's pill form receives it
+  (`pill(data, options, locale, mode)`) and may return `blocks` drawn after
+  the badge. `metric` draws its `series` as a sparkline in the full bar only,
+  toned by the indicator's status. Compact keeps the icon and the badge, and
+  `options: { spark: false }` takes the sparkline away. Its size:
+  `--qd-domain-pill-viz-width` and `--qd-domain-pill-viz-height` on
+  `.qd-domain-bar`. The app decides the rest, per indicator:
+
+  ```js
+  indicators: [
+    // The app's own drawing of the pill's inside, given { data, options,
+    // status, mode, title, icon, state, value, count }; `card` is optional
+    { id: 'load', title: 'Load', load: readLoad, component: LoadPill },
+    // When the bar is compact: options merged over `options`, another component
+    { id: 'open', card: 'metric', title: 'Open', load: readOpen,
+      compact: { options: { unit: '' }, component: OpenDot } },
+  ]
+  ```
+
+  With a `card` beside the `component`, the card still checks the data and
+  gives the nav entries their badge.
 - **Its look:** `toolbox` (the default), one low line glued to the top edge
   of the content, full width, a rule at the bottom, drawn like the side menu:
   its font and icon sizes, its item height, square entries, the current one

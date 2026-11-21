@@ -25,6 +25,9 @@
   --qd-domain-bar-radius: 8px;
   --qd-domain-bar-shadow: none;
   --qd-domain-bar-compact-shadow: 0 2px 6px rgb(0 0 0 / 8%);
+  // A pill's sparkline (#5422), drawn in the full bar only
+  --qd-domain-pill-viz-width: 48px;
+  --qd-domain-pill-viz-height: 18px;
 
   position: sticky;
   top: 0;
@@ -106,6 +109,26 @@ a.qd-domain-pill-body:focus-visible { outline: 2px solid var(--qd-card-accent); 
 
 .qd-domain-pill[data-status='critical'] .qd-domain-pill-body { border-color: var(--qd-tone-critical); }
 .qd-domain-pill[data-status='watch'] .qd-domain-pill-body { border-color: var(--qd-tone-watch); }
+
+// The sparkline: the pill's tone, as a card's curve takes its status
+.qd-domain-pill {
+  --qd-lead: var(--qd-card-accent);
+  --qd-lead-bg: var(--qd-tone-neutral-bg);
+}
+.qd-domain-pill[data-status='critical'] { --qd-lead: var(--qd-tone-critical); --qd-lead-bg: var(--qd-tone-critical-bg); }
+.qd-domain-pill[data-status='watch'] { --qd-lead: var(--qd-tone-watch); --qd-lead-bg: var(--qd-tone-watch-bg); }
+.qd-domain-pill-viz {
+  display: inline-flex;
+  flex: none;
+  width: var(--qd-domain-pill-viz-width);
+
+  .qd-viz { width: 100%; }
+  .qd-viz--compact .qd-viz-plot {
+    height: var(--qd-domain-pill-viz-height);
+    margin: 0;
+  }
+  .qd-spark-dot { width: 5px; height: 5px; margin: -2.5px 0 0 -2.5px; }
+}
 
 .qd-domain-pill-title { color: var(--qd-card-muted); }
 .qd-domain-pill-value { font-weight: 600; font-variant-numeric: tabular-nums; }

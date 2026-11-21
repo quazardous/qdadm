@@ -13,16 +13,22 @@
  *
  * Compact: one line of icons and badges, on its own once the page scrolls, or
  * by the person's choice, kept per account.
+ *
+ * Each indicator knows the bar's mode (#5422): `data-mode` on its pill, the
+ * mode passed to its card's pill form (a metric's sparkline, in the full bar
+ * only) and to the app's own component, with `compact` overrides.
  */
-import { computed, inject, onBeforeUnmount, onMounted, ref, watch, type Ref } from 'vue'
+import { computed, inject, markRaw, onBeforeUnmount, onMounted, ref, toRaw, watch, type Component, type Ref } from 'vue'
 import { RouterLink, useRoute, useRouter, type RouteLocationRaw } from 'vue-router'
 import { useI18n } from '../i18n/useI18n'
 import { useAuth } from '../composables/useAuth'
 import { useAsyncRead } from '../composables/useAsyncRead'
 import { getCard, checkCardInput, resolveCardOptions } from '../cards/registry'
-import type { CardStatus } from '../cards/types'
+import type { CardPillMode, CardStatus } from '../cards/types'
+import type { CardBlock } from '../cards/blocks/types'
+import QdCardBlocks from '../cards/blocks/QdCardBlocks.vue'
 import QdBadge from './QdBadge.vue'
-import { badgeTone, type DomainDefinition, type DomainIndicator, type DomainLook, type DomainNavEntry } from './registry'
+import { badgeTone, type DomainDefinition, type DomainIndicator, type DomainIndicatorProps, type DomainLook, type DomainNavEntry } from './registry'
 
 const props = defineProps<{ domain: DomainDefinition }>()
 
@@ -43,6 +49,47 @@ const { locale, tOr } = useI18n()
 const route = useRoute()
 const router = useRouter()
 
+// ── Compact ───────────────────────────────────────────────────────────────────
+const { user } = useAuth()
+const key = computed(() => {
+  const u = user.value as { id?: unknown; username?: unknown } | null
+  return `qdadm.domainBar.${props.domain.name}.${String(u?.id ?? u?.username ?? 'anonymous')}.compact`
+})
+function readChoice(): boolean {
+  try {
+    return globalThis.localStorage?.getItem(key.value) === '1'
+  } catch {
+    return false
+  }
+}
+const chosen = ref(readChoice())
+watch(key, () => (chosen.value = readChoice()))
+function toggle(): void {
+  chosen.value = !chosen.value
+  try {
+    if (chosen.value) globalThis.localStorage?.setItem(key.value, '1')
+    else globalThis.localStorage?.removeItem(key.value)
+  } catch {
+    // Blocked storage: the choice lasts the page
+  }
+}
+
+// Scrolled past the top: compact on its own, the person's choice untouched
+const sentinel = ref<HTMLElement | null>(null)
+const scrolled = ref(false)
+let observer: IntersectionObserver | null = null
+onMounted(() => {
+  if (typeof IntersectionObserver === 'undefined' || !sentinel.value) return
+  observer = new IntersectionObserver(([e]) => (scrolled.value = !!e && !e.isIntersecting))
+  observer.observe(sentinel.value)
+})
+onBeforeUnmount(() => observer?.disconnect())
+const compact = computed(() => chosen.value || scrolled.value)
+/** The mode each indicator is drawn in (#5422) */
+const mode = computed<CardPillMode>(() =>
+  compact.value ? { mode: 'compact', reason: chosen.value ? 'chosen' : 'scrolled' } : { mode: 'full', reason: null }
+)
+
 // ── The indicators: each its own read, its own state ──────────────────────────
 interface IndicatorView {
   def: DomainIndicator
@@ -53,6 +100,11 @@ interface IndicatorView {
   count: number | null
   status: CardStatus | null
   reason: string | null
+  /** The pill's blocks after the badge (a metric's sparkline) */
+  blocks: CardBlock[]
+  /** The app's own drawing, in this mode, and what it receives */
+  component: Component | null
+  props: DomainIndicatorProps
 }
 
 function watchIndicator(def: DomainIndicator): Ref<IndicatorView> {
@@ -63,19 +115,29 @@ function watchIndicator(def: DomainIndicator): Ref<IndicatorView> {
     onBeforeUnmount(() => timer && clearInterval(timer))
   }
   return computed<IndicatorView>(() => {
-    const base = { def, value: '', count: null, status: null, reason: null, showValue: false }
-    if (read && !read.ready.value) {
-      return read.error.value ? { ...base, state: 'unreachable', reason: read.error.value } : { ...base, state: 'loading' }
+    const m = mode.value
+    const small = m.mode === 'compact' ? def.compact : undefined
+    const options = small?.options ? { ...def.options, ...small.options } : def.options ?? {}
+    const found = small?.component ?? def.component
+    // A component as is, never a reactive copy of it
+    const component = found ? markRaw(toRaw(found)) : null
+    const data = read ? (read.ready.value ? read.data.value : undefined) : def.data
+    const status = (): CardStatus | null => (typeof def.status === 'function' ? def.status(data) ?? null : def.status ?? null)
+    const view = (state: IndicatorView['state'], more: Partial<IndicatorView> = {}): IndicatorView => {
+      const v: IndicatorView = { def, value: '', count: null, status: null, reason: null, showValue: false, blocks: [], component, ...more, state, props: null as never }
+      v.props = { data, options, status: v.status, mode: m, title: def.title, icon: def.icon ?? null, state, value: v.value, count: v.count }
+      return v
     }
-    const data = read ? read.data.value : def.data
+    if (read && !read.ready.value) return read.error.value ? view('unreachable', { reason: read.error.value }) : view('loading')
+    // The app's component alone: the data is its own
+    if (!def.card) return component ? view('ready', { status: status() }) : view('invalid', { reason: 'no card and no component' })
     const card = getCard(def.card)
-    if (!card?.pill) return { ...base, state: 'invalid', reason: `no card type '${def.card}' with a pill` }
-    const problems = checkCardInput(card, data, def.options ?? {})
-    if (problems.length) return { ...base, state: 'invalid', reason: problems.map((p) => `${p.path}: ${p.message}`).join('; ') }
-    const pill = card.pill(data, resolveCardOptions(card.meta, def.options ?? {}), locale.value)
-    const status = typeof def.status === 'function' ? def.status(data) ?? null : def.status ?? null
+    if (!card?.pill) return view('invalid', { reason: `no card type '${def.card}' with a pill` })
+    const problems = checkCardInput(card, data, options)
+    if (problems.length) return view('invalid', { reason: problems.map((p) => `${p.path}: ${p.message}`).join('; ') })
+    const pill = card.pill(data, resolveCardOptions(card.meta, options), locale.value, m)
     const plain = pill.count !== null && pill.count > 0 && pill.value === new Intl.NumberFormat(locale.value).format(pill.count)
-    return { ...base, state: 'ready', value: pill.value, count: pill.count, status, showValue: !plain }
+    return view('ready', { value: pill.value, count: pill.count, status: status(), showValue: !plain, blocks: pill.blocks ?? [] })
   })
 }
 
@@ -115,50 +177,13 @@ const current = computed(() => {
   return best
 })
 
-// ── Compact ───────────────────────────────────────────────────────────────────
-const { user } = useAuth()
-const key = computed(() => {
-  const u = user.value as { id?: unknown; username?: unknown } | null
-  return `qdadm.domainBar.${props.domain.name}.${String(u?.id ?? u?.username ?? 'anonymous')}.compact`
-})
-function readChoice(): boolean {
-  try {
-    return globalThis.localStorage?.getItem(key.value) === '1'
-  } catch {
-    return false
-  }
-}
-const chosen = ref(readChoice())
-watch(key, () => (chosen.value = readChoice()))
-function toggle(): void {
-  chosen.value = !chosen.value
-  try {
-    if (chosen.value) globalThis.localStorage?.setItem(key.value, '1')
-    else globalThis.localStorage?.removeItem(key.value)
-  } catch {
-    // Blocked storage: the choice lasts the page
-  }
-}
-
-// Scrolled past the top: compact on its own, the person's choice untouched
-const sentinel = ref<HTMLElement | null>(null)
-const scrolled = ref(false)
-let observer: IntersectionObserver | null = null
-onMounted(() => {
-  if (typeof IntersectionObserver === 'undefined' || !sentinel.value) return
-  observer = new IntersectionObserver(([e]) => (scrolled.value = !!e && !e.isIntersecting))
-  observer.observe(sentinel.value)
-})
-onBeforeUnmount(() => observer?.disconnect())
-const compact = computed(() => chosen.value || scrolled.value)
-
 const label = computed(() => tOr('core.domainBar.label', '{domain}: its pages and indicators', { domain: props.domain.label }))
 function pillTitle(i: IndicatorView): string {
   const title = i.def.title
   if (i.state === 'unreachable') return tOr('core.domainBar.unreachable', '{title}: unreachable ({error})', { title, error: i.reason ?? '' })
   if (i.state === 'invalid') return tOr('core.domainBar.invalid', '{title}: data that does not fit', { title }) + (i.reason ? ` (${i.reason})` : '')
   if (i.state === 'loading') return tOr('core.domainBar.loading', '{title}: loading', { title })
-  return `${title}: ${i.value}`
+  return i.value ? `${title}: ${i.value}` : title
 }
 </script>
 
@@ -202,18 +227,26 @@ function pillTitle(i: IndicatorView): string {
         :data-indicator="ind.value.def.id"
         :data-state="ind.value.state"
         :data-status="ind.value.status || undefined"
+        :data-mode="mode.mode"
         :title="pillTitle(ind.value)"
       >
         <component :is="ind.value.def.to ? RouterLink : 'span'" :to="ind.value.def.to" class="qd-domain-pill-body">
-          <i v-if="ind.value.def.icon" :class="ind.value.def.icon" aria-hidden="true"></i>
-          <span class="qd-domain-pill-title" :class="{ 'qd-card-sr': compact && ind.value.def.icon }">{{ ind.value.def.title }}</span>
-          <template v-if="ind.value.state === 'ready'">
-            <QdBadge v-if="ind.value.count !== null" :count="ind.value.count" :title="ind.value.def.title" :tone="badgeTone(ind.value.status)" />
-            <span v-if="ind.value.showValue" class="qd-domain-pill-value" :class="{ 'qd-domain-pill-value--zero': ind.value.count === 0 }">{{ ind.value.value }}</span>
+          <!-- The app's own drawing (#5422), told the bar's mode -->
+          <component :is="ind.value.component" v-if="ind.value.component" v-bind="ind.value.props" />
+          <template v-else>
+            <i v-if="ind.value.def.icon" :class="ind.value.def.icon" aria-hidden="true"></i>
+            <span class="qd-domain-pill-title" :class="{ 'qd-card-sr': compact && ind.value.def.icon }">{{ ind.value.def.title }}</span>
+            <template v-if="ind.value.state === 'ready'">
+              <QdBadge v-if="ind.value.count !== null" :count="ind.value.count" :title="ind.value.def.title" :tone="badgeTone(ind.value.status)" />
+              <span v-if="ind.value.showValue" class="qd-domain-pill-value" :class="{ 'qd-domain-pill-value--zero': ind.value.count === 0 }">{{ ind.value.value }}</span>
+              <span v-if="ind.value.blocks.length" class="qd-domain-pill-viz" data-pill-blocks>
+                <QdCardBlocks :blocks="ind.value.blocks" size="s" />
+              </span>
+            </template>
+            <i v-else-if="ind.value.state === 'loading'" class="pi pi-spin pi-spinner qd-domain-pill-mark" aria-hidden="true"></i>
+            <i v-else class="pi pi-exclamation-triangle qd-domain-pill-mark" aria-hidden="true"></i>
+            <span v-if="ind.value.state !== 'ready'" class="qd-card-sr">{{ pillTitle(ind.value) }}</span>
           </template>
-          <i v-else-if="ind.value.state === 'loading'" class="pi pi-spin pi-spinner qd-domain-pill-mark" aria-hidden="true"></i>
-          <i v-else class="pi pi-exclamation-triangle qd-domain-pill-mark" aria-hidden="true"></i>
-          <span v-if="ind.value.state !== 'ready'" class="qd-card-sr">{{ pillTitle(ind.value) }}</span>
         </component>
       </li>
     </ul>

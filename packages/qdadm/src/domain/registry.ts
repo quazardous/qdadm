@@ -10,15 +10,43 @@
  * 4. when the module that declared the domain declared the route too.
  * Then the app's `features.domainResolver` has the last word (#5412).
  */
+import type { Component } from 'vue'
 import type { RouteLocationNormalizedLoaded, RouteLocationRaw } from 'vue-router'
-import type { CardStatus } from '../cards/types'
+import type { CardPillMode, CardStatus } from '../cards/types'
+
+/**
+ * What an app's own indicator component receives (#5422): its data, how it
+ * stands, and the bar's mode, to draw itself as it likes.
+ */
+export interface DomainIndicatorProps {
+  data: unknown
+  options: Record<string, unknown>
+  status: CardStatus | null
+  /** The bar's mode: `full`, or `compact` with why */
+  mode: CardPillMode
+  title: string
+  icon: string | null
+  /** `ready`, or `loading`, `unreachable`, `invalid` */
+  state: 'loading' | 'unreachable' | 'invalid' | 'ready'
+  /** The card's pill value and count, when it names a card */
+  value: string
+  count: number | null
+}
 
 /** One permanent indicator: a card of a registered type, drawn as a pill */
 export interface DomainIndicator {
   /** Named by the nav entries that show its badge */
   id: string
-  /** The card type (metric, queue, goal, compare, split, or one of the app's) */
-  card: string
+  /** The card type (metric, queue, goal, compare, split, or one of the app's); optional with `component` */
+  card?: string
+  /**
+   * The app's own drawing of the pill's inside (#5422), in place of the
+   * icon, title and badge; it receives DomainIndicatorProps. With a `card`,
+   * the card still checks the data and gives the nav entries their badge.
+   */
+  component?: Component
+  /** When the bar is compact: options merged over `options`, another component */
+  compact?: { options?: Record<string, unknown>; component?: Component }
   /** Its name, read beside the pill and by screen readers */
   title: string
   icon?: string
@@ -83,6 +111,7 @@ export function registerDomain(name: string, config: DomainConfig, module: strin
   for (const i of config.indicators ?? []) {
     if (ids.has(i.id)) console.warn(`[qdadm] domain('${name}'): two indicators are named '${i.id}'`)
     ids.add(i.id)
+    if (!i.card && !i.component) console.warn(`[qdadm] domain('${name}'): the indicator '${i.id}' names no card and no component`)
   }
   for (const n of config.nav ?? []) {
     if (n.badge && !ids.has(n.badge)) console.warn(`[qdadm] domain('${name}'): the entry '${n.label}' shows the badge of '${n.badge}', which no indicator is`)

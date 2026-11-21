@@ -335,7 +335,17 @@ export class BooksModule extends Module {
           title: 'On loan',
           icon: 'pi pi-arrow-right-arrow-left',
           refresh: 60,
-          load: async () => ({ value: (await list('loans')).filter((l) => !l.returned_at).length, label: 'books' }),
+          load: async () => {
+            const loans = await list('loans')
+            // The series (#5422): books out after each of the last loan events,
+            // a sparkline in the full bar
+            const events = loans
+              .flatMap((l) => [[l.borrowed_at, 1], ...(l.returned_at ? [[l.returned_at, -1]] : [])])
+              .sort(([a], [b]) => String(a).localeCompare(String(b)))
+            let out = 0
+            const series = events.map(([, step]) => (out += step)).slice(-10)
+            return { value: loans.filter((l) => !l.returned_at).length, label: 'books', series }
+          },
           // More than a few books out: worth a look
           status: (data) => (data.value > 3 ? 'watch' : null),
           to: { name: 'loan' },
