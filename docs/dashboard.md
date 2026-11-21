@@ -223,7 +223,8 @@ ctx.domain('library', {
   the title on top, the value large, a `metric`'s `series` as a sparkline
   across, the status as a side bar. The whole card leads to `to`. Their size:
   `--qd-domain-card-width`, `--qd-domain-card-min-height`,
-  `--qd-domain-card-viz-height`.
+  `--qd-domain-card-viz-height`; the space above their row,
+  `--qd-domain-cards-gap` (0.5rem, the same in both looks).
 - **Compact:** one line of icons and pills, on its own once the page scrolls
   (the bar stays on top), or by the toggle at its end, the choice kept per
   account. A pill shows its icon, its badge (or its value) and its sparkline;

@@ -292,6 +292,14 @@ describe("the indicators know the bar's mode (#5422)", () => {
     expect(scss.match(/--qd-domain-bar-compact-shadow: ([^;]+);/g)).toEqual(['--qd-domain-bar-compact-shadow: none;'])
   })
 
+  it('the space above the full bar\'s cards: --qd-domain-cards-gap, counted against the line gap (#5433)', async () => {
+    const fs = await import('node:fs')
+    const scss = fs.readFileSync(`${process.cwd()}/src/styles/_qd-domain-bar.scss`, 'utf8')
+    expect(scss).toContain('--qd-domain-cards-gap: 0.5rem;')
+    expect(scss).toContain('margin: calc(var(--qd-domain-cards-gap) - var(--qd-domain-bar-row-gap)) 0 0;')
+    expect(scss).toMatch(/\.qd-domain-bar--toolbox \{[^}]*--qd-domain-bar-row-gap: 0px;/)
+  })
+
   it("the app's own component draws the pill, told the mode; compact overrides it", async () => {
     const Full = defineComponent({
       props: ['data', 'mode', 'status', 'title', 'state', 'count'],
