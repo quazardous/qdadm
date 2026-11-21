@@ -27,6 +27,10 @@ export { default as DefaultFooter } from './layout/defaults/DefaultFooter.vue'
 export { default as DefaultUserInfo } from './layout/defaults/DefaultUserInfo.vue'
 export { default as DefaultBreadcrumb } from './layout/defaults/DefaultBreadcrumb.vue'
 
+// Tabs on a page of the app's own (#5398)
+export { default as QdTabs } from './layout/QdTabs.vue'
+export type { QdTab } from './layout/QdTabs.types'
+
 // Item (shared between edit and show)
 export { default as FieldGroups } from './item/FieldGroups.vue'
 

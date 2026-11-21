@@ -940,6 +940,38 @@ tabs for this reason is named in a warning at boot.
 
 ---
 
+## Tabs on a page of your own
+
+A page that is not an entity's (a profile, settings) puts its parts in tabs
+with `QdTabs`, over PrimeVue's tabs (the same look and ARIA as `FieldGroups`):
+
+```vue
+<QdTabs :tabs="[
+  { key: 'profile', label: t('profile.tab'), icon: 'pi pi-user' },
+  { key: 'groups', label: t('groups.tab'), badge: groups.length, permission: 'entity:groups:list' },
+]">
+  <template #profile>…</template>
+  <template #groups>…</template>
+</QdTabs>
+```
+
+- **The tab is in the address**, `?tab=groups` (the first tab needs none): a
+  link opens it, a reload keeps it, back and forward follow it. It replaces
+  the address, adding no history entry, and keeps the rest of the query.
+  `query="section"` names the parameter, `:query="false"` leaves the address
+  alone; `v-model` gives the current key.
+- **A badge per tab:** `badge: 3`, or `{ count, tone: 'critical' | 'watch' }`,
+  hidden at zero.
+- **By permission:** a tab with `permission` is not drawn for a user without
+  it, and the address cannot open it. `disabled` greys one out.
+- **Lazy:** a panel mounts when first opened, then stays; `:lazy="false"`
+  mounts them all.
+
+Which tabs for what: an entity's **fields** in tabs is `FieldGroups`
+(`layout="tabs"`); a **record's pages** as tabs is
+[`ctx.itemTabs`](#a-tabbed-item), each tab a route; anything else is
+`QdTabs`.
+
 ## Storage for demos and tests
 
 `MockApiStorage` keeps an entity's records in localStorage, seeded from

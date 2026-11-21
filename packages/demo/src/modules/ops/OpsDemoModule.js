@@ -103,6 +103,12 @@ export class OpsDemoModule extends Module {
         meta: { layout: 'page' },
       },
       {
+        path: 'tabs',
+        name: 'ops-tabs',
+        component: () => import('./pages/TabsPlayground.vue'),
+        meta: { layout: 'page' },
+      },
+      {
         path: 'timeline',
         name: 'ops-timeline',
         component: () => import('./pages/TimelinePlayground.vue'),
@@ -175,6 +181,7 @@ export class OpsDemoModule extends Module {
     ctx.navItem({ section: 'Features', route: 'ops-sessions-sim', icon: 'pi pi-users', label: 'Sessions demo' })
     ctx.navItem({ section: 'Features', route: 'ops-log-stream', icon: 'pi pi-align-left', label: 'Log stream' })
     ctx.navItem({ section: 'Features', route: 'ops-timeline', icon: 'pi pi-history', label: 'Timeline' })
+    ctx.navItem({ section: 'Features', route: 'ops-tabs', icon: 'pi pi-folder', label: 'Tabs' })
     ctx.navItem({ section: 'Features', route: 'ops-payloads', icon: 'pi pi-code', label: 'Payloads' })
     ctx.navItem({ section: 'Features', route: 'ops-emails', icon: 'pi pi-envelope', label: 'Emails' })
     // Gated by its route's permission, not an entity (#4318, #4332): hidden from

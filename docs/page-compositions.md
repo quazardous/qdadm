@@ -20,6 +20,7 @@ avoids reaching for a hand-rolled `DataTable` where a compliant `ListPage` would
 | **Parent detail + its child list together** | See [Hybrid compositions](#hybrid-compositions) | **Hybrid A / B2 / B1** | depends on the case | below |
 | Custom (non-entity) tab on a detail view | A free block attached to a parent | **Child page** | `useChildPage` + `PageLayout`, via `ctx.childPage(parent, name, opts)` | [crud.md#child-page-non-entity](./crud.md#child-page-non-entity) |
 | An item driven by several pages, as tabs | The item's header, a tab per page, the page below | **Tabbed item** | `ctx.itemTabs(entity, { header })`: the item's show page, child pages and child lists become its tabs | [crud.md#a-tabbed-item](./crud.md#a-tabbed-item) |
+| Tabs on a page of your own | A page that is not an entity's (a profile, settings), in tabs | **Page tabs** | `QdTabs`: the tab in the address, a badge per tab, tabs by permission | [crud.md#tabs-on-a-page-of-your-own](./crud.md#tabs-on-a-page-of-your-own) |
 | Form with tabs / custom blocks | A rich layout inside a form | **Form + groups** | `FormPage` `#fields` slot + `FieldGroups` (`layout: 'tabs'`/`'accordion'`) | [crud.md#fieldgroups-layouts](./crud.md#fieldgroups-layouts) |
 | Dashboard / report / viewer | Not a CRUD entity | **Custom (off-credo)** | `PageLayout` + hand-rolled `DataTable`/`Card`, via `ctx.routes()` | [crud.md#ctxroutes](./crud.md#ctxroutes) |
 | Card dashboard | Cards each user arranges | — | Zone blocks + `CardsDashboard` (or `DashboardLayout customizable`) | [dashboard.md](./dashboard.md) |
