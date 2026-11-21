@@ -178,9 +178,9 @@ describe('the settings menu, lighter (#5410)', () => {
     w.unmount()
   })
 
-  it('a lone section has no title there; several keep theirs; the main menu keeps its own', async () => {
+  it('a lone section keeps its title (#5418); several keep theirs; the main menu keeps its own', async () => {
     const lone = await mountSidebar()
-    expect(titles(lone.w, 'settings')).toEqual([])
+    expect(titles(lone.w, 'settings')).toEqual(['Access'])
     expect(labels(lone.w, 'settings')).toEqual(['Groups'])
     expect(titles(lone.w, 'main')).toEqual(['Library'])
     declare(true)
@@ -188,9 +188,7 @@ describe('the settings menu, lighter (#5410)', () => {
     expect(titles(two.w, 'settings')).toEqual(['Access', 'System'])
   })
 
-  it('flat says otherwise, both ways', async () => {
-    const always = await mountSidebar({ features: { settingsMenu: { flat: false } } })
-    expect(titles(always.w, 'settings')).toEqual(['Access'])
+  it('flat: true takes every title away', async () => {
     declare(true)
     const never = await mountSidebar({ features: { settingsMenu: { flat: true } } })
     expect(titles(never.w, 'settings')).toEqual([])
@@ -199,7 +197,7 @@ describe('the settings menu, lighter (#5410)', () => {
 
   it('a section without its title is never left folded', async () => {
     localStorage.setItem('qdadm_nav_collapsed', JSON.stringify({ Access: true }))
-    const { w } = await mountSidebar()
+    const { w } = await mountSidebar({ features: { settingsMenu: { flat: true } } })
     expect(w.find('[data-menu="settings"] .nav-section-collapsed').exists()).toBe(false)
     localStorage.removeItem('qdadm_nav_collapsed')
   })

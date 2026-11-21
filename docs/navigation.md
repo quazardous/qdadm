@@ -52,7 +52,7 @@ createKernel({
       label: 'Settings', // default: core.settingsMenu.label
       icon: 'pi pi-cog',
       back: false, // true: a "← Menu" row at its head
-      flat: undefined, // section titles: true never, false always
+      flat: false, // true: no section titles
       tone: true, // false: the main menu's colours
     },
   },
@@ -65,9 +65,8 @@ createKernel({
   is not the protection: a page keeps its route's `permission`.
 - **The current page:** a settings page (a link, a reload) opens the settings
   menu by itself; a page of the main menu brings the main menu back.
-- **Sections:** it holds as many as are declared, each with its title; a
-  section alone there has no title, which would repeat the menu's name.
-  `flat: true` draws no title, `flat: false` always draws them.
+- **Sections:** it holds as many as are declared, each with its title, a
+  lone one's too: it says which menu this is. `flat: true` draws no title.
 - **Its colours:** a deeper blue, light electric blue for the current entry
   and the accents, the gear the same while it is open. Each is a CSS custom
   property, to set on `:root` or `.sidebar` (and under `.dark-mode` for the

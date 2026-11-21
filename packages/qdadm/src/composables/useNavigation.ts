@@ -75,8 +75,8 @@ export interface SettingsMenuLook {
   icon: string
   /** A "← Menu" row at its head */
   back: boolean
-  /** Section titles: `null` when there are several, `true` never, `false` always */
-  flat: boolean | null
+  /** No section titles (#5418: drawn by default, even a lone one's) */
+  flat: boolean
   /** Its own colours (`--qd-settings-menu-*`) */
   tone: boolean
 }
@@ -312,7 +312,7 @@ export function useNavigation(): UseNavigationReturn {
       label: settingsConfig.label ?? resolveNavLabel('core.settingsMenu.label', 'Settings'),
       icon: settingsConfig.icon ?? 'pi pi-cog',
       back: settingsConfig.back === true,
-      flat: typeof settingsConfig.flat === 'boolean' ? settingsConfig.flat : null,
+      flat: settingsConfig.flat === true,
       tone: settingsConfig.tone !== false,
     },
 

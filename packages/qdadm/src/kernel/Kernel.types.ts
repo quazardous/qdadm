@@ -74,7 +74,7 @@ export interface Features {
     sections?: string[]
     /** A "← Menu" row at its head (#5410); off by default: the gear goes back */
     back?: boolean
-    /** Section titles: drawn when there are several (default); `true` never, `false` always (#5410) */
+    /** `true`: no section titles (#5410); drawn by default, even a lone one's (#5418) */
     flat?: boolean
     /** Its own colours, `--qd-settings-menu-*` (#5410); `false` keeps the main menu's */
     tone?: boolean

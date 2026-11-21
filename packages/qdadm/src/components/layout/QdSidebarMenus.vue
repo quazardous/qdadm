@@ -6,9 +6,9 @@
  * closed one inert. AppLayout and DefaultMenu draw it; the gear is theirs.
  *
  * The settings menu (#5410): no head row unless `settingsMenu.back` (then
- * "← Menu"), Escape takes it back to the gear; a section alone there has no
- * title (it would repeat the menu's name), unless `settingsMenu.flat` says
- * otherwise; its own colours (`--qd-settings-menu-*`) unless `tone: false`.
+ * "← Menu"), Escape takes it back to the gear; its section titles, even a
+ * lone one's (#5418), unless `settingsMenu.flat`; its own colours
+ * (`--qd-settings-menu-*`) unless `tone: false`.
  */
 import { computed, inject, onMounted, ref, watch } from 'vue'
 import { RouterLink, useRoute } from 'vue-router'
@@ -45,8 +45,8 @@ function toggleSection(title: string): void {
 }
 const titleOf = (section: NavSection) => section.title || section.label || ''
 type PaneKey = 'main' | 'settings'
-/** The settings' sections have titles when there are several, unless flat says otherwise */
-const titled = (pane: PaneKey, count: number) => pane === 'main' || (props.settings.flat === null ? count > 1 : !props.settings.flat)
+/** Section titles, even a lone one's (#5418); `flat` takes the settings menu's away */
+const titled = (pane: PaneKey, _count: number) => pane === 'main' || !props.settings.flat
 /** Never folded while it holds the current entry; nor without a title to unfold it */
 const isSectionExpanded = (section: NavSection, pane: PaneKey = 'main', count = 2) =>
   !titled(pane, count) || sectionHasActiveItem(section) || !collapsedSections.value[titleOf(section)]

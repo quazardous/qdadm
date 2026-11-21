@@ -34,8 +34,8 @@ export interface UseSettingsMenuReturn {
   icon: string
   /** A "← Menu" row at its head (`features.settingsMenu.back`, off by default) */
   back: boolean
-  /** Section titles: `null` when there are several, `true` never, `false` always */
-  flat: boolean | null
+  /** No section titles (`features.settingsMenu.flat`; drawn by default) */
+  flat: boolean
   /** Its own colours, `--qd-settings-menu-*` (`features.settingsMenu.tone`, on by default) */
   tone: boolean
 }
@@ -55,7 +55,7 @@ export function useSettingsMenu(given: UseNavigationReturn = useNavigation()): U
     settingsSections: given.settingsSections ?? computed(() => []),
     hasSettingsMenu: given.hasSettingsMenu ?? computed(() => false),
     settingsActive: given.settingsActive ?? computed(() => false),
-    settingsMenu: { label: 'Settings', icon: 'pi pi-cog', back: false, flat: null, tone: true, ...(given.settingsMenu as Partial<UseNavigationReturn['settingsMenu']> | undefined) },
+    settingsMenu: { label: 'Settings', icon: 'pi pi-cog', back: false, flat: false, tone: true, ...(given.settingsMenu as Partial<UseNavigationReturn['settingsMenu']> | undefined) },
   }
   const route = useRoute() as ReturnType<typeof useRoute> | undefined
   const available = computed(() => nav.hasSettingsMenu.value)
