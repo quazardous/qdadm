@@ -1,5 +1,18 @@
 # Changelog
 
+## 2.62.0
+
+### Minor Changes
+
+- 7257ec9: Dynamic domain indicators (#5438): `title`, `icon` and `to` take a value or a function of the indicator's data, read again at each read (pill, mini card, tooltip, screen-reader text, the nav badge, an app component's props); `visible(data)` leaves a slot out, full or compact, once its data is read. The card reads only the fields its schema declares, so the data may carry more for these functions (a "top N" slot's label and link). The demo's library bar has a "Top: <genre>" indicator and a slot left out while empty.
+- f82b973: ListPage: row bands (#5437). A `#row-band="{ data, index }"` slot draws a full-width band under a row's cells, across every column, for the rows `rowBand(row)` picks (a `useListPage` option or a ListPage prop; every row without it). Rendered on the DataTable's row expansion, always open, with no expander. The row and its band read as one object: no border between them, one hover and one selection, a click in the band is a click on the row (not on the band's own links and buttons), and the row is described by its band (`aria-describedby`). Sorting, paging and runs are unchanged. The demo's books list bands its classics.
+- da0844b: Show-page actions take a `tooltip` (#5436), like the row actions: a string or a function of the record, read at each render, shown on hover in the header and the footer. A disabled action keeps it, on a focusable wrapper carrying the text in its aria-label. No tooltip when absent.
+
+### Patch Changes
+
+- d04f339: QdDomainBar, full: a space above the row of indicator cards (#5433), `--qd-domain-cards-gap` (0.5rem), the same in the toolbox and the card look; the bar's line gap is now `--qd-domain-bar-row-gap` (0.5rem, 0 in the toolbox). The cards no longer touch the navigation line in the toolbox look. Compact is unchanged.
+- e83f2a1: QdDomainBar, compact: the indicators lose their pill (#5434), no border and no rounded frame, inline like the nav entries; a thin vertical separator stands between two of them and after the navigation (`--qd-domain-pill-separator`). The status stays in the badge's and the sparkline's tone. The full bar's mini cards are unchanged.
+
 ## 2.61.0
 
 ### Minor Changes
