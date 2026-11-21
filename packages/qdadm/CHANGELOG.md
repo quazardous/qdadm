@@ -1,5 +1,21 @@
 # Changelog
 
+## 2.61.0
+
+### Minor Changes
+
+- 1c8a158: useListPage: cascading filters (#5427). `addFilter(name, { optionsEndpoint | optionsEntity, dependsOn })` reads the filter's choices again when one of the filters it depends on changes, with their values (`params` of the endpoint request, `filters` of the entity's list; a name list or a `{ filter: 'param' }` map). The old choices stay shown while loading (`_optionsLoading`), a late answer is ignored, and a value no longer offered is cleared the usual way (list reloaded, address and session updated, the cascade going on); `validate(value, { options, values })` decides instead whether it stands. The demo's books list has an author filter depending on the genre.
+- 550ebd5: The domain bar extends downward when full (#5424): its indicators become a row of mini cards under the title and the navigation (title on top, value large, a metric's sparkline across, status as a side bar; `--qd-domain-card-width`, `--qd-domain-card-min-height`, `--qd-domain-card-viz-height`). Compact keeps its pills, now with their sparkline while the line has room (dropped when short of room, `data-fit="tight"`), the title in the tooltip. No shadow in either mode (`--qd-domain-bar-compact-shadow` now `none`).
+- ee6794b: useListPage: an address that names at least one of the list's filters (or its search) now describes a whole state (#5428). The session's other filters go back to their default and its search goes, instead of being merged in, except the filters declared `keepFromSession: true` (preferences that stay whatever the link). A bare address still takes the session back. The list also follows its address when it changes under it (a link to the list while already on it, Back), under the same rule. Behaviour change: a link that relied on inheriting the session's other filters now shows only what it names.
+- 5cc5cdf: useEntityItemShowPage: actions see the record (#5430). `visible(ctx)` and `disabled(ctx)` receive `{ data, canEdit, canDelete, loading }` (`data` the record shown, `null` while it loads); `label`, `icon` and `severity` accept a function of the record, read at each render. Backward compatible: the old signatures keep working. `ActionConfig<T>` and `ShowActionContext<T>` are typed by the page's record. crud.md gains "Actions on an item page" (placement, order, record-dependent gestures, external links, and why gestures belong in addAction rather than the #toolbar slot).
+
+### Patch Changes
+
+- 1ccc0fb: The list's filter bar wraps (#5432): with many filters, they flow onto as many lines as needed (each about 12rem, its min-width kept, never wider than the bar) instead of pushing "clear filters" and the search's bookmark past the frame. Those two sit together at the end of the last line, inside the bar, and move down as a pair. No horizontal scroll at any width.
+- c2c27f4: Item pages reload when only the record id changes on the same route (#5431). `/books/A` to `/books/B` (a related-record link, the favourites or recents card, Back) kept the page and, with it, record A on screen. `useEntityItemPage` now empties and reads the new record; a late answer for the one left is dropped. Edit pages already did, behind the unsaved-changes guard.
+- bca8f1c: QdSaveSearch: the search's name is asked in a popover anchored to the bookmark (#5429) instead of an inline form that ran past the window's right edge. It is placed where it fits, width `min(24rem, 100vw - 2rem)`; Enter saves, Escape or a click outside closes, the focus goes into the field and comes back to the bookmark (`aria-haspopup="dialog"`, `aria-expanded`). Same in both places, `'filters'` and `'header'`.
+- bc2abef: useListPage: filters and a search restored from the session now go into the address once the list is mounted, by `router.replace` (no history step), when the address does not carry them (#5425). A list reached by a bare address (`/tasks` from the side menu) no longer shows filtered rows under an unfiltered address: a copied link keeps the filters, and the app's `domainResolver` sees them again.
+
 ## 2.60.0
 
 ### Minor Changes
