@@ -6,7 +6,7 @@
  * optionsFromCache), session persistence, URL sync and registry auto-load.
  * useListPage composes it back in; behavior is unchanged.
  */
-import { ref, computed, type Ref, type ComputedRef } from 'vue'
+import { ref, computed, watch, type Ref, type ComputedRef } from 'vue'
 import { FilterQuery, type QueryOrchestratorLike } from '../query/FilterQuery'
 import { FILTER_TYPES } from './useListPage.types'
 import type { FilterConfig, FilterOptions, SearchConfig } from './useListPage.types'
@@ -24,7 +24,7 @@ export interface UseListFiltersDeps {
   entityName: string
   /** EntityManager (needs .request for optionsEndpoint mode). */
   manager: {
-    request: (method: string, endpoint: string) => Promise<unknown>
+    request: (method: string, endpoint: string, options?: { data?: unknown; params?: Record<string, unknown> }) => Promise<unknown>
     storage?: { supportsPathRequests?: boolean } | null
   }
   /** Orchestrator, forwarded to FilterQuery for optionsEntity mode. */
@@ -407,7 +407,83 @@ export function useListFilters(deps: UseListFiltersDeps): UseListFiltersReturn {
    * query will ask for, so it belongs with the other query-settling work in
    * `onMounted`, not behind the network (#1934 lot 2).
    */
+  // ── Cascading filters (#5427) ──────────────────────────────────────────────
+  const blank = (v: unknown): boolean => v === null || v === undefined || v === ''
+  const same = (a: unknown, b: unknown): boolean => a === b || (!blank(a) && !blank(b) && String(a) === String(b))
+  /** The filter names a filter depends on */
+  const dependencies = (def: FilterOptions): string[] => (!def.dependsOn ? [] : Array.isArray(def.dependsOn) ? def.dependsOn : Object.keys(def.dependsOn))
+  /** Its dependencies' values, by filter name and as sent (renamed, blanks left out) */
+  function dependencyValues(def: FilterOptions): { values: Record<string, unknown>; params: Record<string, unknown> } {
+    const values: Record<string, unknown> = {}
+    const params: Record<string, unknown> = {}
+    for (const name of dependencies(def)) {
+      const value = filterValues.value[name]
+      values[name] = value ?? null
+      if (blank(value)) continue
+      const as = Array.isArray(def.dependsOn) ? name : (def.dependsOn as Record<string, string>)[name] || name
+      params[as] = value
+    }
+    return { values, params }
+  }
+  /** The latest read of each dependent filter's choices: an older answer is ignored */
+  const reads = new Map<string, number>()
+  let optionsStarted = false
+
+  /** Unknown names and cycles: said once, in development, and that dependsOn ignored */
+  function checkDependencies(): void {
+    for (const [name, def] of filtersMap.value) {
+      if (!def.dependsOn) continue
+      const unknown = dependencies(def).filter((d) => !filtersMap.value.has(d))
+      const cycle = (() => {
+        const seen = new Set<string>()
+        const walk = (n: string): boolean => {
+          if (n === name && seen.size) return true
+          if (seen.has(n)) return false
+          seen.add(n)
+          return dependencies(filtersMap.value.get(n) ?? {}).some(walk)
+        }
+        return dependencies(def).some((d) => walk(d))
+      })()
+      if (!unknown.length && !cycle) continue
+      if ((import.meta as unknown as { env?: { DEV?: boolean } }).env?.DEV !== false) {
+        console.warn(
+          unknown.length
+            ? `[qdadm] Filter "${name}" on "${entityName}" depends on ${unknown.map((u) => `"${u}"`).join(', ')}, which the list does not declare: its dependsOn is ignored.`
+            : `[qdadm] Filter "${name}" on "${entityName}" depends on itself through its dependsOn: ignored.`
+        )
+      }
+      filtersMap.value.set(name, { ...def, dependsOn: undefined })
+    }
+  }
+
+  /** Read a dependent filter's choices again, the old ones shown meanwhile */
+  async function reloadDependent(name: string): Promise<void> {
+    const def = filtersMap.value.get(name)
+    if (!def) return
+    filtersMap.value.set(name, { ...def, _optionsLoading: true })
+    filtersMap.value = new Map(filtersMap.value)
+    await loadOneFilterOptions(name, filtersMap.value.get(name)!)
+    filtersMap.value = new Map(filtersMap.value)
+  }
+
+  // One change or several in a tick: each dependent filter whose inputs moved reads again
+  watch(
+    () =>
+      [...filtersMap.value]
+        .filter(([, def]) => def.dependsOn)
+        .map(([name, def]) => [name, JSON.stringify(dependencies(def).map((d) => filterValues.value[d] ?? null))] as const),
+    (now, before) => {
+      if (!optionsStarted) return
+      const was = new Map(before)
+      for (const [name, signature] of now) {
+        if (was.has(name) && was.get(name) !== signature) void reloadDependent(name)
+      }
+    }
+  )
+
   async function loadFilterOptions(): Promise<void> {
+    if (!optionsStarted) checkDependencies()
+    optionsStarted = true
     const pending = Array.from(filtersMap.value).filter(([, filterDef]) => {
       if (filterDef.options && filterDef.options.length > 1) return false
       if (filterDef.optionsFromCache) return false
@@ -432,11 +508,30 @@ export function useListFilters(deps: UseListFiltersDeps): UseListFiltersReturn {
   }
 
   async function loadOneFilterOptions(filterName: string, filterDef: FilterConfig): Promise<void> {
+      // A dependent filter reads its choices with its dependencies' values (#5427)
+      const dependent = dependencies(filterDef).length > 0
+      const { values, params } = dependent ? dependencyValues(filterDef) : { values: {}, params: {} }
+      const read = dependent ? (reads.get(filterName) ?? 0) + 1 : 0
+      if (dependent) reads.set(filterName, read)
+      const stale = (): boolean => dependent && reads.get(filterName) !== read
+      // The source's label and value fields, kept for the next read
+      const sourceLabel = (filterDef.optionLabel ?? filterDef._sourceLabel) as string | undefined
+      const sourceValue = (filterDef.optionValue ?? filterDef._sourceValue) as string | undefined
       try {
         let rawOptions: Array<{ label: string; value: unknown }> | null = null
 
+        // A dependent filter on an entity: its list, filtered by the values (no FilterQuery cache)
+        if (filterDef.optionsEntity && dependent) {
+          const related = orchestrator?.get(filterDef.optionsEntity) as { list: (p: Record<string, unknown>) => Promise<{ items?: unknown[] }> } | undefined
+          if (!related) throw new Error(`no entity "${filterDef.optionsEntity}"`)
+          const result = await related.list({ page_size: 1000, filters: params })
+          rawOptions = (result.items ?? []).map((item) => {
+            const row = item as Record<string, unknown>
+            return { label: String(row[sourceLabel || 'name'] ?? ''), value: row[sourceValue || 'id'] }
+          })
+        }
         // Mode 1: optionsEntity - fetch from related EntityManager via FilterQuery
-        if (filterDef.optionsEntity) {
+        else if (filterDef.optionsEntity) {
           const filterQuery = new FilterQuery({
             source: 'entity',
             entity: filterDef.optionsEntity,
@@ -456,7 +551,9 @@ export function useListFilters(deps: UseListFiltersDeps): UseListFiltersReturn {
             filterDef.optionsEndpoint === true
               ? `distinct/${filterName}`
               : filterDef.optionsEndpoint
-          const response = await manager.request('GET', endpoint as string)
+          const response = dependent
+            ? await manager.request('GET', endpoint as string, { params })
+            : await manager.request('GET', endpoint as string)
           const data = Array.isArray(response)
             ? response
             : ((response as Record<string, unknown>)?.items as unknown[]) || []
@@ -471,6 +568,9 @@ export function useListFilters(deps: UseListFiltersDeps): UseListFiltersReturn {
             return { label: snakeToTitle(String(opt)), value: opt }
           })
         }
+
+        // An older read answering late: the latest one decides
+        if (stale()) return
 
         if (rawOptions !== null) {
           const cacheOptions = filterDef.cacheOptions ?? 'auto'
@@ -498,14 +598,37 @@ export function useListFilters(deps: UseListFiltersDeps): UseListFiltersReturn {
             type: componentType,
             _cacheOptions: shouldCache,
             _optionsLoaded: shouldCache,
+            _optionsLoading: false,
+            ...(dependent ? { _sourceLabel: sourceLabel, _sourceValue: sourceValue } : {}),
           }
           delete updatedFilter.optionLabel
           delete updatedFilter.optionValue
           filtersMap.value.set(filterName, updatedFilter)
+
+          // The value picked, against the new choices: cleared if it no longer stands
+          if (dependent) await recheckValue(filterName, updatedFilter, rawOptions, values, stale)
         }
       } catch (error) {
         console.warn(`[qdadm] Failed to load options for filter "${filterName}":`, error)
+        const current = filtersMap.value.get(filterName)
+        if (current?._optionsLoading) filtersMap.value.set(filterName, { ...current, _optionsLoading: false })
       }
+  }
+
+  /** A value the new choices no longer hold (or `validate` refuses) is cleared, the usual way (#5427) */
+  async function recheckValue(
+    name: string,
+    def: FilterConfig,
+    options: Array<{ label: string; value: unknown }>,
+    values: Record<string, unknown>,
+    stale: () => boolean
+  ): Promise<void> {
+    const value = filterValues.value[name]
+    if (blank(value) || same(value, def.default)) return
+    const stands = def.validate ? await def.validate(value, { options, values }) : options.some((o) => same(o.value, value))
+    if (stale() || stands || !same(filterValues.value[name], value)) return
+    filterValues.value = { ...filterValues.value, [name]: def.default ?? null }
+    onFiltersChanged()
   }
 
   async function updateCacheBasedFilters(): Promise<void> {

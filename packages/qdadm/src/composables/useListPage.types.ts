@@ -127,6 +127,20 @@ export interface FilterOptions {
    * so the session's others go back to their default, except these.
    */
   keepFromSession?: boolean
+  /**
+   * The filters whose values this one's choices depend on (#5427): when one
+   * changes, the choices are read again with their values, as `params` of
+   * `optionsEndpoint` or `filters` of `optionsEntity`'s list. A name list
+   * sends each under its own name; `{ universe: 'universe_id' }` renames.
+   */
+  dependsOn?: string[] | Record<string, string>
+  /**
+   * Whether the value picked still stands once the choices are read again
+   * (#5427); default: it is among them. `false` clears it.
+   */
+  validate?: (value: unknown, context: { options: Array<{ label: string; value: unknown }>; values: Record<string, unknown> }) => boolean | Promise<boolean>
+  /** The choices are being read again: the old ones stay shown meanwhile */
+  _optionsLoading?: boolean
   /** The empty choice's label; `false` for no empty choice on static options (#4692) */
   allLabel?: string | false
   optionsEntity?: string

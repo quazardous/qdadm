@@ -284,6 +284,30 @@ list.addFilter('availability', {
 })
 ```
 
+### Cascading filters
+
+A filter's choices may depend on other filters' values: `dependsOn` names
+them. When one changes (picked, cleared, restored from the address or the
+session), the choices are read again with their values: as `params` of an
+`optionsEndpoint` request, or as `filters` of `optionsEntity`'s list. A list of
+names sends each under its own name; an object renames
+(`{ universe: 'universe_id' }`); an empty value is left out.
+
+```js
+list.addFilter('provider', { optionsEndpoint: 'providers', dependsOn: ['universe'] })
+list.addFilter('type', { optionsEndpoint: 'types', dependsOn: ['universe', 'provider'] })
+// GET types?universe=it&provider=legacy
+```
+
+The old choices stay shown while the new ones load (`_optionsLoading` on the
+filter), and an answer older than the latest is ignored. A value the new
+choices no longer hold is cleared the usual way: the list reloads, the address
+and the session follow, and the filters depending on it read again in turn.
+`validate(value, { options, values })` decides instead whether the value
+stands (`true` keeps it; it may return a Promise). The first read, at mount,
+already uses the restored values. A dependency the list does not declare, or a
+cycle, is said in development and that `dependsOn` ignored.
+
 ### Custom row actions (dynamic callbacks)
 
 `addAction(name, config)` adds a per-row action. Beyond a static config, `icon`,

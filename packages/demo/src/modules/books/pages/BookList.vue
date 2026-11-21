@@ -39,6 +39,16 @@ list.addFilter('genre', {
   optionValue: 'id'             // Use 'id' field as value
 })
 
+// Cascading filter (#5427): the authors of the genre picked, read again when
+// the genre changes; an author outside it is cleared
+list.addFilter('author', {
+  placeholder: 'All Authors',
+  optionsEntity: 'books',
+  optionLabel: 'author',
+  optionValue: 'author',
+  dependsOn: ['genre'],
+})
+
 
 // ============ HEADER ACTIONS ============
 list.addCreateAction('Add Book')
