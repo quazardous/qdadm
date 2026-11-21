@@ -27,7 +27,7 @@ interface FavoritesData {
   items: FavoriteLine[]
 }
 
-const props = defineProps<{ data: FavoritesData; options: { maxItems?: number; groupByKind?: boolean; removable?: boolean }; size: CardSize }>()
+const props = defineProps<{ data: FavoritesData; options: { maxItems?: number; groupByKind?: boolean; removable?: boolean; showMore?: boolean }; size: CardSize }>()
 const emit = defineEmits<{ remove: [id: string]; restore: [id: string] }>()
 const { t, tOr } = useI18n()
 
@@ -104,6 +104,6 @@ watch(
         </li>
       </ul>
     </section>
-    <p v-if="more > 0" class="qd-favorites-more">{{ t('core.cards.moreProblems', { count: more }) }}</p>
+    <p v-if="more > 0 && options.showMore !== false" class="qd-favorites-more">{{ t('core.cards.moreProblems', { count: more }) }}</p>
   </div>
 </template>

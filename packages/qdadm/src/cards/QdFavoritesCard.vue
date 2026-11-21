@@ -16,9 +16,22 @@ import { useFavorites } from '../favorites/useFavorites'
 import type { Favorite } from '../favorites/store'
 import { useFavoritesLook } from '../favorites/look'
 import type { CardSize } from './types'
+import type { RouteLocationRaw } from 'vue-router'
+import { seeAllLink } from './seeAll'
 
 const props = withDefaults(
-  defineProps<{ title?: string | null; size?: CardSize; maxItems?: number; groupByKind?: boolean; removable?: boolean; icon?: string | null }>(),
+  defineProps<{
+    title?: string | null
+    size?: CardSize
+    maxItems?: number
+    groupByKind?: boolean
+    removable?: boolean
+    icon?: string | null
+    /** The full list (#5405): a "See all" link in the card's foot */
+    moreTo?: RouteLocationRaw | null
+    /** When it shows: past maxItems lines (default), or always */
+    more?: 'overflow' | 'always'
+  }>(),
   {
     title: null,
     size: 's',
@@ -26,6 +39,8 @@ const props = withDefaults(
     groupByKind: true,
     removable: true,
     icon: undefined,
+    moreTo: null,
+    more: 'overflow',
   }
 )
 const { tOr } = useI18n()
@@ -87,6 +102,7 @@ const envelope = computed(() => ({
           ? ('ready' as const)
           : ('empty' as const),
   error: favorites.error.value ?? undefined,
+  links: seeAllLink(props.moreTo, props.more, favorites.list.value.length, props.maxItems, tOr),
   emptyText: favorites.available
     ? tOr('core.favorites.none', 'No favourites yet: the star beside a page title adds one')
     : tOr('core.favorites.noEntity', 'No favorites entity is declared'),
@@ -106,7 +122,9 @@ const data = computed(() => {
     type="favorites"
     :envelope="envelope"
     :data="data"
-    :options="{ maxItems, groupByKind, removable }"
+    :options="{ maxItems, groupByKind, removable, showMore: !moreTo }"
     :on="{ remove: onRemove, restore: onRestore }"
-  />
+  >
+    <template v-if="$slots.cta" #cta="scope"><slot name="cta" v-bind="scope"></slot></template>
+  </QdCardView>
 </template>

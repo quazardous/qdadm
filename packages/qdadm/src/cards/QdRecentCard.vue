@@ -9,8 +9,21 @@ import QdCardView from './QdCardView.vue'
 import { useI18n } from '../i18n/useI18n'
 import { useRecent } from '../favorites/useFavorites'
 import type { CardSize } from './types'
+import type { RouteLocationRaw } from 'vue-router'
+import { seeAllLink } from './seeAll'
 
-const props = withDefaults(defineProps<{ title?: string | null; size?: CardSize; maxItems?: number }>(), { title: null, size: 's', maxItems: 5 })
+const props = withDefaults(
+  defineProps<{
+    title?: string | null
+    size?: CardSize
+    maxItems?: number
+    /** The full list (#5405): a "See all" link in the card's foot */
+    moreTo?: RouteLocationRaw | null
+    /** When it shows: past maxItems lines (default), or always */
+    more?: 'overflow' | 'always'
+  }>(),
+  { title: null, size: 's', maxItems: 5, moreTo: null, more: 'overflow' }
+)
 const { tOr } = useI18n()
 const recent = useRecent()
 onMounted(() => void recent.reload())
@@ -29,6 +42,7 @@ const envelope = computed(() => ({
           ? ('ready' as const)
           : ('empty' as const),
   error: recent.error.value ?? undefined,
+  links: seeAllLink(props.moreTo, props.more, recent.list.value.length, props.maxItems, tOr),
   emptyText: recent.available ? tOr('core.favorites.noneRecent', 'Nothing opened yet') : tOr('core.favorites.noRecentsEntity', 'No recents entity is declared'),
 }))
 const data = computed(() => ({
@@ -40,5 +54,7 @@ const data = computed(() => ({
 </script>
 
 <template>
-  <QdCardView type="recent" :envelope="envelope" :data="data" :options="{ maxItems }" />
+  <QdCardView type="recent" :envelope="envelope" :data="data" :options="{ maxItems }">
+    <template v-if="$slots.cta" #cta="scope"><slot name="cta" v-bind="scope"></slot></template>
+  </QdCardView>
 </template>

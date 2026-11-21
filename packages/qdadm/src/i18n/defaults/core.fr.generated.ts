@@ -489,6 +489,8 @@ export default `core:
     label: Paramètres
     back: Retour au menu
   favorites:
+    seeAll: Tout voir
+    seeAllCount: "Tout voir ({count})"
     add: "Ajouter {label} aux favoris"
     remove: "Retirer {label} des favoris"
     removed: "{label} retiré des favoris"

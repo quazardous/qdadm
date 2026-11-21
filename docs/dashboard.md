@@ -47,7 +47,11 @@ behind the card one after the other with the [run bar](crud.md#a-run-one-item-af
 stops there.
 The status is a side bar, a hue and a word, never the hue alone. `state`
 draws `loading`, `unreachable` (with `error`) or `empty` (with `emptyText`)
-instead of the body. `size` is `s`, `m` or `l`: 1, 2 or 3 columns. `icon`
+instead of the body. The foot's **CTA zone** holds every gesture of the card
+together: its `links` (`[{ label, icon, to | run | onClick }]`, "See all"),
+the app's own buttons from the `#cta` slot (which gets `links`, `action`
+and `state`), then the main `action`. A dashboard block adds links with
+`card: { links }`. `size` is `s`, `m` or `l`: 1, 2 or 3 columns. `icon`
 draws an icon class before the title: each type may have its own in its
 sheet (a star for `favorites`, a clock for `recent`), the envelope changes it,
 `null` hides it.
@@ -353,6 +357,10 @@ warning in development says what to declare).
   boards) and `QdRecentCard` (with when) show them live, and read them again
   when they appear; put them on a dashboard as blocks. They draw the
   [card types](cards.md) `favorites` and `recent`.
+- **"See all":** `moreTo` (a route to the app's full list) puts a "See
+  all (12)" link in the card's foot once there are more lines than
+  `maxItems`; `more="always"` shows it every time. The Favourites card then
+  drops its "+N" line.
 - **Removing from the card:** a × beside each favourite, on hover and focus
   (always on a touch screen), removes it at once. The line stays a few
   seconds where it was, saying so, with an Undo that adds it back.

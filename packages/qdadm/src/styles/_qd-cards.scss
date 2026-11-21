@@ -180,6 +180,41 @@
   white-space: nowrap;
 }
 
+// The CTA zone (#5405): quiet links before the action
+.qd-card-cta {
+  position: relative;
+  z-index: 1; // above the card's stretched surface link
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem 0.75rem;
+  margin-left: auto;
+}
+
+.qd-card-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--qd-card-accent);
+  font: inherit;
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+
+  &:hover {
+    text-decoration: underline;
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--qd-card-accent);
+    outline-offset: 2px;
+    border-radius: 3px;
+  }
+}
+
 .qd-card-action {
   display: inline-flex;
   align-items: center;

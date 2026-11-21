@@ -14,6 +14,7 @@ Each card answers one question. Pick the card by its question, then give it data
 | `source`, `freshness` | Where the data comes from, and when it was read |
 | `to` | The surface: the whole card opens the domain's board |
 | `action` | `{ verb, count, mode, to \| run \| onClick }`: the one gesture. `mode: next` opens the most urgent item, `list` the filtered list; `run` walks the items behind the card with the run bar |
+| `links` | `[{ label, icon, to \| run \| onClick }]`: secondary gestures in the foot, beside the action ("See all"); the foot's CTA zone holds them, the action and the app's own buttons (`#cta` slot); a dashboard block adds its own with `card.links` |
 | `state` | `ready`, or `loading`, `unreachable` (with `error`), `empty` (with `emptyText`): drawn instead of the body |
 | `size` | `s`, `m` or `l`: 1, 2 or 3 columns, among the card's sizes |
 
@@ -197,6 +198,7 @@ Data that does not fit the schema draws the `invalid` state with the path and th
 |---|---|---|---|
 | `maxItems` | integer | `8` | How many lines to show |
 | `groupByKind` | boolean | `true` | Group the lines by kind (records, lists, searches, boards) |
+| `showMore` | boolean | `true` | Say how many lines are left out (off when the foot links to the full list) |
 | `removable` | boolean | `false` | A remove button on each line that has an id: the card emits `remove` and `restore` with it (QdFavoritesCard turns it on) |
 
 **Data**: required `items`; the full shape is in `favorites/schema.json`.

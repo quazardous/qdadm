@@ -143,7 +143,7 @@ export class OpsDemoModule extends Module {
       ctx.block('ops-dashboard', { id, component: DemoCard, props, weight: (i + 1) * 10, ...(Object.keys(card).length ? { card } : {}) })
     })
     // The person's favourites and the records they opened lately (#5349), live
-    ctx.block('ops-dashboard', { id: 'favorites', component: QdFavoritesCard, weight: 5, card: { title: 'Favourites', pinned: true } })
+    ctx.block('ops-dashboard', { id: 'favorites', component: QdFavoritesCard, props: { maxItems: 3, moreTo: { name: 'favorite' } }, weight: 5, card: { title: 'Favourites', pinned: true } })
     ctx.block('ops-dashboard', { id: 'recent', component: QdRecentCard, weight: 6, card: { title: 'Recent' } })
     // Ready-made cards fed from the books (#5355)
     const BooksCard = defineAsyncComponent(() => import('./pages/BooksCard.vue'))

@@ -317,3 +317,31 @@ describe('the favourites look (#5402)', () => {
     expect(card.find('.qd-card-icon').classes()).toContain('pi-heart')
   })
 })
+
+describe('"See all" and the CTA zone (#5405)', () => {
+  const rows = (n) => Array.from({ length: n }, (_, i) => ({ id: `f${i}`, kind: 'list', label: `L${i}`, to: `/l${i}`, at: `2026-11-19T10:0${i % 10}:00Z` }))
+
+  it('moreTo: "See all (N)" in the foot past maxItems, the "+N" line gone', async () => {
+    managers.favorites.rows.push(...rows(5))
+    const { wrapper } = await mountWith(QdFavoritesCard, { maxItems: 3, moreTo: '/favorites' })
+    const link = wrapper.find('[data-card-cta] [data-card-link]')
+    expect(link.text()).toBe('See all (5)')
+    expect(link.attributes('href')).toBe('/favorites')
+    expect(wrapper.find('.qd-favorites-more').exists()).toBe(false)
+  })
+
+  it("'overflow' hides it when everything shows; 'always' keeps it; no moreTo, no link", async () => {
+    managers.favorites.rows.push(...rows(2))
+    expect((await mountWith(QdFavoritesCard, { moreTo: '/favorites' })).wrapper.find('[data-card-link]').exists()).toBe(false)
+    expect((await mountWith(QdFavoritesCard, { moreTo: '/favorites', more: 'always' })).wrapper.find('[data-card-link]').text()).toBe('See all')
+    expect((await mountWith(QdFavoritesCard)).wrapper.find('[data-card-cta]').exists()).toBe(false)
+  })
+
+  it('the recent card too', async () => {
+    const { wrapper, recent } = await mountWith(QdRecentCard, { maxItems: 1, moreTo: '/recents' })
+    await recent.record({ entity: 'books', itemId: '1', label: 'Dune', to: '/books/1' })
+    await recent.record({ entity: 'books', itemId: '2', label: 'Emma', to: '/books/2' })
+    await flushPromises()
+    expect(wrapper.find('[data-card-link]').text()).toBe('See all (2)')
+  })
+})

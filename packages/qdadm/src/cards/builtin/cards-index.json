@@ -366,6 +366,11 @@
           "default": true,
           "description": "Group the lines by kind (records, lists, searches, boards)"
         },
+        "showMore": {
+          "type": "boolean",
+          "default": true,
+          "description": "Say how many lines are left out (off when the foot links to the full list)"
+        },
         "removable": {
           "type": "boolean",
           "default": false,

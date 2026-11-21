@@ -54,5 +54,6 @@ const size = computed(() => props.envelope.size ?? definition.value?.meta.sizes[
     :data-card-type="type"
   >
     <component :is="definition!.component" v-if="definition" :data="data" :options="options" :size="size" v-on="on" />
+    <template v-if="$slots.cta" #cta="scope"><slot name="cta" v-bind="scope"></slot></template>
   </QdCard>
 </template>

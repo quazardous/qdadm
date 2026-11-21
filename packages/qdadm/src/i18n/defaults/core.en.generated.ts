@@ -489,6 +489,8 @@ export default `core:
     label: Settings
     back: Back to the menu
   favorites:
+    seeAll: See all
+    seeAllCount: "See all ({count})"
     add: "Add {label} to favourites"
     remove: "Remove {label} from favourites"
     removed: "{label} removed from favourites"

@@ -33,6 +33,15 @@ export interface CardAction {
   onClick?: () => void | Promise<void>
 }
 
+/** A secondary gesture in a card's foot, beside its action (#5405): "See all" */
+export interface CardLink {
+  label: string
+  icon?: string
+  to?: RouteLocationRaw
+  run?: RunInit
+  onClick?: () => void | Promise<void>
+}
+
 /** What the envelope shows around the body */
 export interface CardEnvelope {
   title: string
@@ -46,6 +55,8 @@ export interface CardEnvelope {
   /** The surface: opens the domain's board */
   to?: RouteLocationRaw
   action?: CardAction
+  /** Secondary gestures in its foot, beside the action (#5405); a `#cta` slot adds the app's own */
+  links?: CardLink[]
   state?: CardState
   size?: CardSize
   /** `unreachable`: why */

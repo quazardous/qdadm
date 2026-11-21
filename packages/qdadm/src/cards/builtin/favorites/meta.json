@@ -18,6 +18,7 @@
   "options": {
     "maxItems": { "type": "integer", "minimum": 1, "maximum": 20, "default": 8, "description": "How many lines to show" },
     "groupByKind": { "type": "boolean", "default": true, "description": "Group the lines by kind (records, lists, searches, boards)" },
+    "showMore": { "type": "boolean", "default": true, "description": "Say how many lines are left out (off when the foot links to the full list)" },
     "removable": { "type": "boolean", "default": false, "description": "A remove button on each line that has an id: the card emits `remove` and `restore` with it (QdFavoritesCard turns it on)" }
   },
   "action": "none: each line is its own gesture; with removable, a × beside it removes it, Undo puts it back",

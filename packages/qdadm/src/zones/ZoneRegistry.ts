@@ -63,6 +63,7 @@
  */
 
 import type { CardSchema } from '../cards/validate'
+import type { CardLink } from '../cards/types'
 import { shallowRef, type ShallowRef, type Component } from 'vue'
 
 /**
@@ -110,6 +111,8 @@ export interface BlockCard {
   repeatable?: boolean
   /** A repeatable card's parameters: a JSON Schema in the cards' subset, a `description` per property */
   params?: CardSchema
+  /** Gestures added to the card's foot, beside its own (#5405): "See all" */
+  links?: CardLink[]
 }
 
 /** A card's size on a dashboard: 1, 2 or 3 columns */

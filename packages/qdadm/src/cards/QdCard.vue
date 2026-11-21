@@ -16,10 +16,11 @@
  * The status is a hue, a side bar and a word: never the hue alone.
  * States `loading`, `unreachable`, `empty` and `invalid` replace the body.
  */
-import { computed, ref } from 'vue'
+import { computed, inject, ref, useSlots } from 'vue'
 import { RouterLink, useRouter } from 'vue-router'
 import { useI18n } from '../i18n/useI18n'
-import type { CardAction, CardSize, CardState, CardStatus } from './types'
+import type { CardAction, CardLink, CardSize, CardState, CardStatus } from './types'
+import { CARD_BLOCK_LINKS } from './blockLinks'
 import type { SchemaProblem } from './validate'
 import { useRun } from '../run/useRun'
 import type { RouteLocationRaw } from 'vue-router'
@@ -34,6 +35,8 @@ const props = withDefaults(
     freshness?: string | number | Date | null
     to?: RouteLocationRaw | null
     action?: CardAction | null
+    /** Secondary gestures beside the action (#5405); the `#cta` slot adds the app's own */
+    links?: CardLink[] | null
     state?: CardState
     size?: CardSize
     error?: string | null
@@ -48,6 +51,7 @@ const props = withDefaults(
     freshness: null,
     to: null,
     action: null,
+    links: null,
     state: 'ready',
     size: 's',
     error: null,
@@ -106,6 +110,16 @@ async function onAction(): Promise<void> {
   }
 }
 
+// The foot's links (#5405): the card's own, then the block's (`card.links` on a dashboard)
+const blockLinks = inject(CARD_BLOCK_LINKS, null)
+const slots = useSlots()
+const allLinks = computed<CardLink[]>(() => [...(props.links ?? []), ...(blockLinks?.value ?? [])])
+const hasCta = computed(() => !!slots.cta || allLinks.value.length > 0 || (!!props.action && props.state === 'ready'))
+async function onLink(link: CardLink): Promise<void> {
+  if (link.onClick) await link.onClick()
+  else if (link.run) await run.start(link.run)
+}
+
 const actionIcon = computed(() => (props.action?.mode === 'list' ? 'pi pi-list' : 'pi pi-arrow-right'))
 </script>
 
@@ -156,24 +170,37 @@ const actionIcon = computed(() => (props.action?.mode === 'list' ? 'pi pi-list' 
       <slot v-else></slot>
     </div>
 
-    <footer v-if="source || freshnessText || action" class="qd-card-foot">
+    <footer v-if="source || freshnessText || hasCta" class="qd-card-foot">
       <span class="qd-card-meta">
         <span v-if="source" class="qd-card-source">{{ source }}</span>
         <span v-if="source && freshnessText" aria-hidden="true"> · </span>
         <time v-if="freshnessText" :title="freshnessTitle" class="qd-card-fresh">{{ freshnessText }}</time>
       </span>
-      <button
-        v-if="action && state === 'ready'"
-        type="button"
-        class="qd-card-action"
-        :class="{ 'qd-card-action--busy': running }"
-        :disabled="running"
-        :data-mode="action.mode || 'next'"
-        @click="onAction"
-      >
-        <span>{{ action.verb }}</span>
-        <i :class="actionIcon" aria-hidden="true"></i>
-      </button>
+      <!-- The CTA zone (#5405): every gesture of the foot together, the
+           native ones (links, the action) and the app's own (#cta slot) -->
+      <span v-if="hasCta" class="qd-card-cta" data-card-cta>
+        <template v-for="(link, i) in allLinks" :key="i">
+          <RouterLink v-if="link.to" :to="link.to" class="qd-card-link" data-card-link>
+            <i v-if="link.icon" :class="link.icon" aria-hidden="true"></i>{{ link.label }}
+          </RouterLink>
+          <button v-else type="button" class="qd-card-link" data-card-link @click="onLink(link)">
+            <i v-if="link.icon" :class="link.icon" aria-hidden="true"></i>{{ link.label }}
+          </button>
+        </template>
+        <slot name="cta" :links="allLinks" :action="action" :state="state"></slot>
+        <button
+          v-if="action && state === 'ready'"
+          type="button"
+          class="qd-card-action"
+          :class="{ 'qd-card-action--busy': running }"
+          :disabled="running"
+          :data-mode="action.mode || 'next'"
+          @click="onAction"
+        >
+          <span>{{ action.verb }}</span>
+          <i :class="actionIcon" aria-hidden="true"></i>
+        </button>
+      </span>
     </footer>
   </article>
 </template>

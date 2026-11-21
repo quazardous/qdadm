@@ -26,6 +26,7 @@
  * repeatable blocks, each added with its parameters as many times as wanted),
  * each card has the size its person picks, and cards go in named sections.
  */
+import QdCardBlockScope from '../../cards/QdCardBlockScope.vue'
 import { computed, inject, nextTick, onBeforeUnmount, ref, watch, h, defineComponent, type Component, type VNode } from 'vue'
 import QdButton from '../base/QdButton.vue'
 import CardParamsForm from './CardParamsForm.vue'
@@ -579,7 +580,9 @@ function render(block: BlockConfig, props?: Record<string, unknown>): Component 
               <i class="pi pi-trash" aria-hidden="true"></i>
             </button>
           </div>
-          <component :is="render(blockOf(c), propsOf(c))" v-bind="propsOf(c)" />
+          <QdCardBlockScope :links="c.card.links">
+            <component :is="render(blockOf(c), propsOf(c))" v-bind="propsOf(c)" />
+          </QdCardBlockScope>
         </div>
         <template v-if="gi === grids.length - 1">
           <div v-for="(b, i) in plainBlocks" :key="`plain-${i}`" class="qd-cards-slot">
