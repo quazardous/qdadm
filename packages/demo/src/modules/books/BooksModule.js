@@ -372,6 +372,33 @@ export class BooksModule extends Module {
             return { value: loans.filter((l) => l.read).length, target: loans.length || 1 }
           },
         },
+        // Dynamic indicators (#5438): which genre leads, and a slot that
+        // stays out while nothing fills it
+        {
+          id: 'topGenre',
+          card: 'metric',
+          load: async () => {
+            const counts = {}
+            for (const b of await list('books')) counts[b.genre] = (counts[b.genre] ?? 0) + 1
+            const [genre, value] = Object.entries(counts).sort((a, z) => z[1] - a[1])[0] ?? []
+            return genre ? { value, genre } : null
+          },
+          title: (d) => (d ? `Top: ${d.genre}` : undefined),
+          icon: (d) => (d?.genre === 'sci-fi' ? 'pi pi-sparkles' : 'pi pi-tag'),
+          to: (d) => (d ? { name: 'book', query: { 'books.genre': d.genre } } : undefined),
+          visible: (d) => !!d,
+        },
+        {
+          id: 'future',
+          card: 'metric',
+          title: (d) => d?.label,
+          // Books from the future: none, so the slot is left out
+          load: async () => {
+            const n = (await list('books')).filter((b) => Number(b.year) > 2100).length
+            return n ? { value: n, label: 'From the future' } : null
+          },
+          visible: (d) => !!d,
+        },
       ],
     })
   }

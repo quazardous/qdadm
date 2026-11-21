@@ -349,3 +349,52 @@ describe("the indicators know the bar's mode (#5422)", () => {
     warn.mockRestore()
   })
 })
+
+describe('dynamic indicators (#5438)', () => {
+  const top = (i) => [{ label: 'PHP errors', icon: 'pi pi-code', link: '/books', value: 4 }, { label: 'Late orders', icon: 'pi pi-clock', link: '/loans', value: 2 }][i] ?? null
+  const slot = (i) => ({
+    id: `top-${i}`,
+    card: 'metric',
+    title: (d) => d?.label,
+    icon: (d) => d?.icon,
+    to: (d) => d?.link,
+    visible: (d) => !!d,
+    load: async () => (top(i) ? { value: top(i).value, ...top(i) } : null),
+  })
+
+  it('title, icon and link read from the data; an empty slot is not drawn, full or compact', async () => {
+    const { w } = await mountBar('/board', { label: 'L', nav: [{ label: 'Board', route: 'board', badge: 'top-2' }], indicators: [slot(0), slot(1), slot(2)] })
+    const ids = () => w.findAll('[data-indicator]').map((p) => p.attributes('data-indicator'))
+    expect(ids()).toEqual(['top-0', 'top-1'])
+    const first = w.find('[data-indicator="top-0"]')
+    // Its own fields (label, icon, link) stay out of the card: the metric reads value
+    expect(first.attributes('data-state')).toBe('ready')
+    expect(first.find('[data-card-value]').text()).toBe('4')
+    expect(first.find('.qd-domain-pill-title').text()).toBe('PHP errors')
+    expect(first.find('i.pi-code').exists()).toBe(true)
+    expect(first.find('a').attributes('href')).toBe('/books')
+    expect(first.attributes('title')).toContain('PHP errors')
+    // The nav entry pointing at the hidden slot: no badge
+    expect(w.find('[data-domain-nav] .qd-badge').exists()).toBe(false)
+    await w.find('[data-domain-toggle]').trigger('click')
+    expect(ids()).toEqual(['top-0', 'top-1'])
+    expect(w.find('[data-indicator="top-1"] .qd-domain-pill-title').text()).toBe('Late orders')
+    w.unmount()
+  })
+
+  it('while loading, the slot is drawn as usual, its title empty', async () => {
+    let release
+    const router = makeRouter()
+    await router.push('/board')
+    registerDomain('library', { label: 'L', indicators: [{ id: 'x', card: 'metric', title: (d) => d?.label, visible: (d) => !!d, load: () => new Promise((r) => (release = r)) }] }, 'library')
+    const w = mount(QdDomainBar, { props: { domain: domainOfRoute(router.currentRoute.value) }, global: { plugins: [router] } })
+    await flushPromises()
+    const pill = w.find('[data-indicator="x"]')
+    expect(pill.attributes('data-state')).toBe('loading')
+    expect(pill.find('.pi-spinner').exists()).toBe(true)
+    release(null)
+    await flushPromises()
+    expect(w.find('[data-indicator="x"]').exists()).toBe(false)
+    w.unmount()
+  })
+})

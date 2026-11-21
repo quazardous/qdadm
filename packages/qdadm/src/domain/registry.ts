@@ -47,9 +47,10 @@ export interface DomainIndicator {
   component?: Component
   /** When the bar is compact: options merged over `options`, another component */
   compact?: { options?: Record<string, unknown>; component?: Component }
-  /** Its name, read beside the pill and by screen readers */
-  title: string
-  icon?: string
+  /** Its name, read beside the pill and by screen readers; or a function of its data (#5438) */
+  title: string | ((data: unknown) => string | undefined)
+  /** An icon class, or a function of its data (#5438) */
+  icon?: string | ((data: unknown) => string | undefined)
   /** The data, as the card type takes it */
   data?: unknown
   /** Or read it: called at once, then every `refresh` seconds */
@@ -60,8 +61,14 @@ export interface DomainIndicator {
   options?: Record<string, unknown>
   /** How things stand: fixed, or from the data */
   status?: CardStatus | ((data: unknown) => CardStatus | undefined | null)
-  /** Where the pill leads */
-  to?: RouteLocationRaw
+  /** Where the pill leads, or a function of its data (#5438) */
+  to?: RouteLocationRaw | ((data: unknown) => RouteLocationRaw | undefined)
+  /**
+   * Drawn or not, once its data is read (#5438): false leaves the slot out,
+   * full or compact (a "top N" slot with nothing in it). While it loads, or
+   * when its source is unreachable, it is drawn as usual.
+   */
+  visible?: (data: unknown) => boolean
 }
 
 /** One entry of the domain's navigation */

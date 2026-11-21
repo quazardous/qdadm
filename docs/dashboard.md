@@ -218,6 +218,23 @@ ctx.domain('library', {
   of your own gets one with `registerCard({ …, pill: (data, options, locale, mode)
   => ({ value, count, blocks }) })`. Data that does not fit the type's schema, or a
   read that fails, marks the pill, with the reason in its title.
+- **Dynamic indicators:** `title`, `icon` and `to` take a value or a
+  function of the indicator's data, read again at each read; `visible(data)`
+  leaves a slot out, full or compact, once its data says so (while it loads,
+  it is drawn as usual). The card reads only the fields its schema declares,
+  so the data may carry more for these functions. A "top N" bar:
+
+  ```js
+  const top = shared(() => api.get('/tasks/top'))          // one read for the four slots
+  indicators: [0, 1, 2, 3].map((i) => ({
+    id: `top-${i}`, card: 'metric',
+    load: async () => (await top())[i] ?? null,              // { value, series, label, link }
+    title: (d) => d?.label, to: (d) => d?.link, visible: (d) => !!d,
+  }))
+  ```
+
+  For an indicator's own `component`, `QdBadge`, `QdCardBlocks` and the
+  blocks (`QdVizBlock`…) are exported, to draw it as qdadm does.
 - **Full:** the bar extends downward. Under the title and the navigation,
   the indicators are a row of mini cards, at least three compact lines high:
   the title on top, the value large, a `metric`'s `series` as a sparkline

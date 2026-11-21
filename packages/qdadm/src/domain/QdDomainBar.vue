@@ -108,6 +108,19 @@ interface IndicatorView {
   /** The app's own drawing, in this mode, and what it receives */
   component: Component | null
   props: DomainIndicatorProps
+  /** Title, icon and link, as given or read from the data (#5438) */
+  title: string
+  icon: string | null
+  to: RouteLocationRaw | null
+  /** Left out: its data is read and `visible` says no (#5438) */
+  hidden: boolean
+}
+
+/** The fields a card's schema declares, when it declares them (#5438) */
+function ownFields(schema: { type?: unknown; properties?: Record<string, unknown> } | undefined, data: unknown): unknown {
+  if (!schema?.properties || !data || typeof data !== 'object' || Array.isArray(data)) return data
+  const keys = Object.keys(schema.properties)
+  return Object.fromEntries(Object.entries(data as Record<string, unknown>).filter(([k]) => keys.includes(k)))
 }
 
 function watchIndicator(def: DomainIndicator): Ref<IndicatorView> {
@@ -126,9 +139,23 @@ function watchIndicator(def: DomainIndicator): Ref<IndicatorView> {
     const component = found ? markRaw(toRaw(found)) : null
     const data = read ? (read.ready.value ? read.data.value : undefined) : def.data
     const status = (): CardStatus | null => (typeof def.status === 'function' ? def.status(data) ?? null : def.status ?? null)
+    // Title, icon and link: fixed, or read from the data at each read (#5438)
+    const of = <V,>(v: V | ((d: unknown) => V | undefined) | undefined): V | undefined => {
+      if (typeof v !== 'function') return v
+      try {
+        return (v as (d: unknown) => V | undefined)(data)
+      } catch {
+        return undefined
+      }
+    }
+    const title = of(def.title) ?? ''
+    const icon = of(def.icon) ?? null
+    const to = of(def.to) ?? null
     const view = (state: IndicatorView['state'], more: Partial<IndicatorView> = {}): IndicatorView => {
-      const v: IndicatorView = { def, value: '', count: null, status: null, reason: null, showValue: false, blocks: [], component, ...more, state, props: null as never }
-      v.props = { data, options, status: v.status, mode: m, title: def.title, icon: def.icon ?? null, state, value: v.value, count: v.count }
+      const read = state !== 'loading' && state !== 'unreachable'
+      const hidden = read && !!def.visible && !def.visible(data)
+      const v: IndicatorView = { def, value: '', count: null, status: null, reason: null, showValue: false, blocks: [], component, title, icon, to, hidden, ...more, state, props: null as never }
+      v.props = { data, options, status: v.status, mode: m, title, icon, state, value: v.value, count: v.count }
       return v
     }
     if (read && !read.ready.value) return read.error.value ? view('unreachable', { reason: read.error.value }) : view('loading')
@@ -136,9 +163,11 @@ function watchIndicator(def: DomainIndicator): Ref<IndicatorView> {
     if (!def.card) return component ? view('ready', { status: status() }) : view('invalid', { reason: 'no card and no component' })
     const card = getCard(def.card)
     if (!card?.pill) return view('invalid', { reason: `no card type '${def.card}' with a pill` })
-    const problems = checkCardInput(card, data, options)
+    // The card reads its own fields; the rest of the data is for title, icon, to, visible, status (#5438)
+    const cardData = ownFields(card.schema, data)
+    const problems = checkCardInput(card, cardData, options)
     if (problems.length) return view('invalid', { reason: problems.map((p) => `${p.path}: ${p.message}`).join('; ') })
-    const pill = card.pill(data, resolveCardOptions(card.meta, options), locale.value, m)
+    const pill = card.pill(cardData, resolveCardOptions(card.meta, options), locale.value, m)
     const plain = pill.count !== null && pill.count > 0 && pill.value === new Intl.NumberFormat(locale.value).format(pill.count)
     return view('ready', { value: pill.value, count: pill.count, status: status(), showValue: !plain, blocks: pill.blocks ?? [] })
   })
@@ -146,6 +175,8 @@ function watchIndicator(def: DomainIndicator): Ref<IndicatorView> {
 
 const indicators = (props.domain.indicators ?? []).map(watchIndicator)
 const byId = computed(() => new Map(indicators.map((i) => [i.value.def.id, i.value])))
+/** The ones drawn: a slot whose data says so is left out (#5438) */
+const shown = computed(() => indicators.filter((i) => !i.value.hidden))
 
 // ── The navigation ────────────────────────────────────────────────────────────
 function targetOf(entry: DomainNavEntry): RouteLocationRaw | null {
@@ -213,7 +244,7 @@ watch(compact, () => {
 
 const label = computed(() => tOr('core.domainBar.label', '{domain}: its pages and indicators', { domain: props.domain.label }))
 function pillTitle(i: IndicatorView): string {
-  const title = i.def.title
+  const title = i.title
   if (i.state === 'unreachable') return tOr('core.domainBar.unreachable', '{title}: unreachable ({error})', { title, error: i.reason ?? '' })
   if (i.state === 'invalid') return tOr('core.domainBar.invalid', '{title}: data that does not fit', { title }) + (i.reason ? ` (${i.reason})` : '')
   if (i.state === 'loading') return tOr('core.domainBar.loading', '{title}: loading', { title })
@@ -251,13 +282,13 @@ function pillTitle(i: IndicatorView): string {
       >
         <i v-if="n.entry.icon" :class="n.entry.icon" aria-hidden="true"></i>
         <span class="qd-domain-bar-entry-label" :class="{ 'qd-card-sr': compact && n.entry.icon }">{{ n.entry.label }}</span>
-        <QdBadge v-if="n.badge && n.badge.state === 'ready'" :count="n.badge.count" :title="n.badge.def.title" :tone="badgeTone(n.badge.status)" />
+        <QdBadge v-if="n.badge && n.badge.state === 'ready' && !n.badge.hidden" :count="n.badge.count" :title="n.badge.title" :tone="badgeTone(n.badge.status)" />
       </RouterLink>
     </nav>
 
-    <ul v-if="indicators.length" class="qd-domain-bar-indicators" :aria-label="tOr('core.domainBar.indicators', '{domain} indicators', { domain: domain.label })">
+    <ul v-if="shown.length" class="qd-domain-bar-indicators" :aria-label="tOr('core.domainBar.indicators', '{domain} indicators', { domain: domain.label })">
       <li
-        v-for="ind in indicators"
+        v-for="ind in shown"
         :key="ind.value.def.id"
         class="qd-domain-pill"
         :data-indicator="ind.value.def.id"
@@ -266,14 +297,14 @@ function pillTitle(i: IndicatorView): string {
         :data-mode="mode.mode"
         :title="pillTitle(ind.value)"
       >
-        <component :is="ind.value.def.to ? RouterLink : 'span'" :to="ind.value.def.to" class="qd-domain-pill-body">
+        <component :is="ind.value.to ? RouterLink : 'span'" :to="ind.value.to ?? undefined" class="qd-domain-pill-body">
           <!-- The app's own drawing (#5422), told the bar's mode -->
           <component :is="ind.value.component" v-if="ind.value.component" v-bind="ind.value.props" />
           <!-- Full (#5424): a mini card, the title on top, the value large, the sparkline across -->
           <template v-else-if="!compact">
             <span class="qd-domain-card-head">
-              <i v-if="ind.value.def.icon" :class="ind.value.def.icon" aria-hidden="true"></i>
-              <span class="qd-domain-pill-title">{{ ind.value.def.title }}</span>
+              <i v-if="ind.value.icon" :class="ind.value.icon" aria-hidden="true"></i>
+              <span class="qd-domain-pill-title">{{ ind.value.title }}</span>
             </span>
             <template v-if="ind.value.state === 'ready'">
               <span class="qd-domain-card-value" :class="{ 'qd-domain-pill-value--zero': ind.value.count === 0 }" data-card-value>{{ ind.value.value }}</span>
@@ -289,10 +320,10 @@ function pillTitle(i: IndicatorView): string {
           </template>
           <!-- Compact: a pill, its title in the tooltip, its sparkline while there is room -->
           <template v-else>
-            <i v-if="ind.value.def.icon" :class="ind.value.def.icon" aria-hidden="true"></i>
-            <span class="qd-domain-pill-title" :class="{ 'qd-card-sr': ind.value.def.icon }">{{ ind.value.def.title }}</span>
+            <i v-if="ind.value.icon" :class="ind.value.icon" aria-hidden="true"></i>
+            <span class="qd-domain-pill-title" :class="{ 'qd-card-sr': ind.value.icon }">{{ ind.value.title }}</span>
             <template v-if="ind.value.state === 'ready'">
-              <QdBadge v-if="ind.value.count !== null" :count="ind.value.count" :title="ind.value.def.title" :tone="badgeTone(ind.value.status)" />
+              <QdBadge v-if="ind.value.count !== null" :count="ind.value.count" :title="ind.value.title" :tone="badgeTone(ind.value.status)" />
               <span v-if="ind.value.showValue" class="qd-domain-pill-value" :class="{ 'qd-domain-pill-value--zero': ind.value.count === 0 }">{{ ind.value.value }}</span>
               <span v-if="ind.value.blocks.length && !tight" class="qd-domain-pill-viz" data-pill-blocks>
                 <QdCardBlocks :blocks="ind.value.blocks" size="s" />
