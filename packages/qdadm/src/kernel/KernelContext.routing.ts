@@ -328,6 +328,7 @@ export function applyRoutingMethods(KernelContextClass: { prototype: KernelConte
         route: routePrefix,
         icon: options.nav.icon,
         label,
+        ...(options.nav.menu ? { menu: options.nav.menu } : {}),
       }
       // Only set entity on nav item if registered (avoids permission check
       // failure). Routes always get entity binding, but nav items need it

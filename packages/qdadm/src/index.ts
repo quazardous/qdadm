@@ -300,6 +300,7 @@ export {
   type NavSection,
   // NavItem already exported from kernel
 } from './composables/useNavigation'
+export { useSettingsMenu, SETTINGS_MENU_IDS, type UseSettingsMenuReturn } from './composables/useSettingsMenu'
 export {
   useUnsavedChangesGuard,
   type UseUnsavedChangesGuardOptions,

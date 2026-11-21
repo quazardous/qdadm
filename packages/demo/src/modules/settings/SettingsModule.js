@@ -125,7 +125,8 @@ export class SettingsModule extends Module {
       list: () => import('./pages/SettingsPage.vue'),
       form: () => import('./pages/SettingsEditPage.vue')
     }, {
-      nav: { section: 'Memory Storage', icon: 'pi pi-cog' }
+      // In the settings menu, behind the gear (#5401)
+      nav: { section: 'Memory Storage', icon: 'pi pi-cog', menu: 'settings' }
     })
   }
 }

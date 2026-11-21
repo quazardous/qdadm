@@ -484,6 +484,10 @@ export default `core:
       urgent: urgent
       todo: à traiter
   # Favoris et récents : l'étoile, « Enregistrer cette recherche », les deux cartes (#5349)
+  # The settings menu behind the gear (#5401)
+  settingsMenu:
+    label: Paramètres
+    back: Retour au menu
   favorites:
     add: "Ajouter {label} aux favoris"
     remove: "Retirer {label} des favoris"

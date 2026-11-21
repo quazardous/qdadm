@@ -14,6 +14,7 @@ import { computed, inject, ref, onMounted, type ComputedRef, type Ref } from 'vu
 import { useRoute, useRouter } from 'vue-router'
 import { getNavSections, alterMenuSections, isMenuAltered } from '../module/moduleRegistry'
 import { useSemanticBreadcrumb } from './useSemanticBreadcrumb'
+import { useAuth } from './useAuth'
 import { useI18n } from '../i18n/useI18n'
 import type { HookRegistry } from '../hooks/HookRegistry'
 import type { OrchestratorLike } from '../entity/EntityManager.interface'
@@ -43,6 +44,8 @@ export interface NavItem {
   icon?: string
   entity?: string
   exact?: boolean
+  /** The menu it belongs to (#5401): the main one, or the settings behind the gear */
+  menu?: 'main' | 'settings'
 }
 
 /**
@@ -66,8 +69,16 @@ export interface NavSection {
  * Return type for useNavigation
  */
 export interface UseNavigationReturn {
-  /** Navigation sections (filtered by permissions) */
+  /** The main menu's sections (filtered by permissions) */
   navSections: ComputedRef<NavSection[]>
+  /** The settings menu's sections, behind the gear (#5401); empty for whoever may not see it */
+  settingsSections: ComputedRef<NavSection[]>
+  /** There is a settings menu for this user */
+  hasSettingsMenu: ComputedRef<boolean>
+  /** The page on screen is one of the settings menu's */
+  settingsActive: ComputedRef<boolean>
+  /** The settings menu's name and icon (`features.settingsMenu`) */
+  settingsMenu: { label: string; icon: string }
   /** Whether menu:alter has completed */
   isReady: Ref<boolean>
   /** Check if nav item is active */
@@ -185,7 +196,22 @@ export function useNavigation(): UseNavigationReturn {
   // Get nav sections from registry, filtering items based on permissions
   // Depends on alterVersion + i18nLocale to trigger re-computation after
   // alteration or locale change.
-  const navSections = computed(() => {
+  // The settings menu (#5401): its entries say `menu: 'settings'`; the app
+  // may narrow who sees it beyond its entries' permissions
+  const features = inject<{ settingsMenu?: { visible?: (user: unknown) => boolean; label?: string; icon?: string; sections?: string[] } } | null>('qdadmFeatures', null)
+  const { user } = useAuth()
+  const settingsConfig = features?.settingsMenu ?? {}
+  const settingsSectionNames = new Set(settingsConfig.sections ?? [])
+  const settingsAllowed = computed(() => {
+    if (typeof settingsConfig.visible !== 'function') return true
+    try {
+      return !!settingsConfig.visible(user.value)
+    } catch {
+      return false
+    }
+  })
+
+  const sectionsOf = (menu: 'main' | 'settings') => {
     // Force dependencies for reactivity
     // eslint-disable-next-line @typescript-eslint/no-unused-expressions
     alterVersion.value
@@ -198,6 +224,8 @@ export function useNavigation(): UseNavigationReturn {
         ...section,
         title: resolveNavLabel(`nav.sections.${section.title}`, section.title),
         items: section.items
+          // An entry's own `menu`, else its section's (`settingsMenu.sections`)
+          .filter((item) => (item.menu ?? (settingsSectionNames.has(section.title) ? 'settings' : 'main')) === menu)
           .filter((item) => canAccessNavItem(item))
           .map((item) => (item.href ? linkItem(item) : {
             ...item,
@@ -205,7 +233,10 @@ export function useNavigation(): UseNavigationReturn {
           })),
       }))
       .filter((section) => section.items.length > 0) // Hide empty sections
-  })
+  }
+  const navSections = computed(() => sectionsOf('main'))
+  const settingsSections = computed(() => (settingsAllowed.value ? sectionsOf('settings') : []))
+  const hasSettingsMenu = computed(() => settingsSections.value.length > 0)
 
   /**
    * Check if a nav item is currently active
@@ -254,9 +285,18 @@ export function useNavigation(): UseNavigationReturn {
     }
   }
 
+  const settingsActive = computed(() => settingsSections.value.some((section) => sectionHasActiveItem(section)))
+
   return {
     // Data (from moduleRegistry)
     navSections,
+    settingsSections,
+    hasSettingsMenu,
+    settingsActive,
+    settingsMenu: {
+      label: settingsConfig.label ?? resolveNavLabel('core.settingsMenu.label', 'Settings'),
+      icon: settingsConfig.icon ?? 'pi pi-cog',
+    },
 
     // Ready state (menu:alter completed)
     isReady,

@@ -30,6 +30,46 @@ first crumb of the breadcrumb, with the house icon, and the target of the
 404 page's "Back to Home" (a route named `home` or `dashboard` when
 `homeRoute` names none that exists).
 
+## The settings menu, behind the gear
+
+The admin pages (settings, groups, security, sessions) can leave the side
+menu for a second one, behind a gear at its foot, between the user block and
+"powered by". A click slides the main menu up and the settings menu takes its
+place, with the same sections, entries and current-entry marking; the gear,
+or the "← Settings" row at the top, brings the main menu back.
+
+```js
+// One entry
+ctx.navItem({ menu: 'settings', section: 'Access', route: 'groups', label: 'Groups', icon: 'pi pi-users' })
+ctx.crud('groups', pages, { nav: { section: 'Access', menu: 'settings' } })
+
+// Whole sections, a module's own among them; and who sees the menu
+createKernel({
+  features: {
+    settingsMenu: {
+      sections: ['Security'],
+      visible: (user) => user?.role === 'ROLE_ADMIN',
+      label: 'Settings', // default: core.settingsMenu.label
+      icon: 'pi pi-cog',
+    },
+  },
+})
+```
+
+- **Who sees it:** whoever sees one of its entries (each entry's permission
+  filters it, as in the main menu), and passes `visible(user)` when given.
+  Without any settings entry, nothing changes and no gear is drawn. Hiding
+  is not the protection: a page keeps its route's `permission`.
+- **The current page:** a settings page (a link, a reload) opens the settings
+  menu by itself; a page of the main menu brings the main menu back.
+- **Accessibility:** the gear is a button with `aria-expanded` and
+  `aria-controls`; the closed menu is `inert`; the focus goes to the first
+  entry of the menu opened, and back to the gear when it closes. Under
+  `prefers-reduced-motion`, the menus swap without sliding.
+- `useSettingsMenu()` gives the state (`available`, `open`, `toggle`,
+  `close`) to a layout of the app's own; `useNavigation()` gives
+  `settingsSections`, `hasSettingsMenu` and `settingsActive`.
+
 ## The semantic breadcrumb
 
 `useSemanticBreadcrumb()` derives a semantic trail from the current **URL

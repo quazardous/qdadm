@@ -162,6 +162,8 @@ export interface CrudOptions {
     section: string
     icon?: string
     label?: string
+    /** The settings menu, behind the gear (#5401); default the main one */
+    menu?: 'main' | 'settings'
   }
   routePrefix?: string
   /** Override the URL path segment (defaults to entity name). Useful for camelCase entities like 'jobTasks' → 'tasks'. */

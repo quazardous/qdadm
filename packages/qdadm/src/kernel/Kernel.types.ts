@@ -61,6 +61,17 @@ export interface AppConfig {
 export interface Features {
   auth?: boolean
   poweredBy?: boolean
+  /**
+   * The settings menu behind the gear (#5401): who sees it, beyond the
+   * permissions of its entries; its name and icon
+   */
+  settingsMenu?: {
+    visible?: (user: unknown) => boolean
+    label?: string
+    icon?: string
+    /** Whole sections that belong to it (a module's own, say 'Security'), as declared, before i18n */
+    sections?: string[]
+  }
   /** Every domain bar's look, unless its domain says otherwise (#5396) */
   domainBar?: { look?: 'toolbox' | 'card' | 'ribbon' }
   [key: string]: unknown

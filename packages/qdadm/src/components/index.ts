@@ -27,6 +27,9 @@ export { default as DefaultFooter } from './layout/defaults/DefaultFooter.vue'
 export { default as DefaultUserInfo } from './layout/defaults/DefaultUserInfo.vue'
 export { default as DefaultBreadcrumb } from './layout/defaults/DefaultBreadcrumb.vue'
 
+// The side menu's sections and the settings menu (#5401)
+export { default as QdSidebarMenus } from './layout/QdSidebarMenus.vue'
+
 // Tabs on a page of the app's own (#5398)
 export { default as QdTabs } from './layout/QdTabs.vue'
 export type { QdTab } from './layout/QdTabs.types'

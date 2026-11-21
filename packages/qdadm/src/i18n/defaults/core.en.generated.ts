@@ -484,6 +484,10 @@ export default `core:
       urgent: urgent
       todo: to do
   # Favourites and recents: the star, "Save this search", the two cards (#5349)
+  # The settings menu behind the gear (#5401)
+  settingsMenu:
+    label: Settings
+    back: Back to the menu
   favorites:
     add: "Add {label} to favourites"
     remove: "Remove {label} from favourites"

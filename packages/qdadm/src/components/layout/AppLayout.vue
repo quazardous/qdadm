@@ -15,7 +15,7 @@
 import { ref, watch, onMounted, onUnmounted, computed, inject, provide, useSlots } from 'vue'
 import { SIDEBAR_COLLAPSED_KEY } from '../../composables/useSidebarState'
 import { RouterLink, RouterView, useRouter, useRoute } from 'vue-router'
-import { useNavigation, type NavSection } from '../../composables/useNavigation'
+import { useNavigation } from '../../composables/useNavigation'
 import { useApp } from '../../composables/useApp'
 import { useAuth } from '../../composables/useAuth'
 import { useUserBox } from '../../composables/useUserBox'
@@ -32,6 +32,8 @@ import Zone from './Zone.vue'
 import AppBanner from './AppBanner.vue'
 import NavlinksGroup from './NavlinksGroup.vue'
 import QdDomainBarZone from '../../domain/QdDomainBarZone.vue'
+import QdSidebarMenus from './QdSidebarMenus.vue'
+import { useSettingsMenu, SETTINGS_MENU_IDS } from '../../composables/useSettingsMenu'
 import qdadmLogo from '../../assets/logo.svg'
 import { version as qdadmVersion } from '../../../package.json'
 
@@ -62,17 +64,12 @@ const app = useApp()
 // Top-level binding so the template unwraps the ComputedRef — `app.version`
 // nested in a plain object stays a ref object (always truthy) in v-if (#1382)
 const appVersion = app.version
-const { navSections, isNavActive, sectionHasActiveItem, handleNavClick } = useNavigation()
+// The side menu, and the settings menu behind the gear (#5401)
+const settingsMenu = useSettingsMenu(useNavigation())
 const { logout, authEnabled } = useAuth()
 const { displayName: userDisplayName, subtitle: userSubtitle, initials: userInitials, avatarUrl, avatarFailed, userRoute, userLink } = useUserBox()
 const { tOr } = useI18n()
 const signals = inject<SignalBus | null>('qdadmSignals', null)
-
-// LocalStorage key for collapsed sections state (namespaced by app)
-const STORAGE_KEY = computed<string>(() => `${app.shortName.toLowerCase()}_nav_collapsed`)
-
-// Collapsed sections state (section title -> boolean)
-const collapsedSections = ref<Record<string, boolean>>({})
 
 // Mobile sidebar state
 const sidebarOpen = ref<boolean>(false)
@@ -127,55 +124,8 @@ function handleResize(): void {
   }
 }
 
-/**
- * Load collapsed state from localStorage
- */
-function loadCollapsedState(): void {
-  try {
-    const stored = localStorage.getItem(STORAGE_KEY.value)
-    if (stored) {
-      collapsedSections.value = JSON.parse(stored) as Record<string, boolean>
-    }
-  } catch (e) {
-    console.warn('Failed to load nav state:', e)
-  }
-}
-
-/**
- * Save collapsed state to localStorage
- */
-function saveCollapsedState(): void {
-  try {
-    localStorage.setItem(STORAGE_KEY.value, JSON.stringify(collapsedSections.value))
-  } catch (e) {
-    console.warn('Failed to save nav state:', e)
-  }
-}
-
-/**
- * Toggle section collapsed state
- */
-function toggleSection(sectionTitle: string): void {
-  collapsedSections.value[sectionTitle] = !collapsedSections.value[sectionTitle]
-  saveCollapsedState()
-}
-
-/**
- * Check if section should be shown expanded
- * - Never collapsed if it contains active item
- * - Otherwise respect user preference
- */
-function isSectionExpanded(section: NavSection): boolean {
-  if (sectionHasActiveItem(section)) {
-    return true
-  }
-  const title = section.title || section.label || ''
-  return !collapsedSections.value[title]
-}
-
 // Load state on mount + setup resize listener
 onMounted(() => {
-  loadCollapsedState()
   loadSidebarCollapsed()
   window.addEventListener('resize', handleResize)
 })
@@ -184,18 +134,9 @@ onUnmounted(() => {
   window.removeEventListener('resize', handleResize)
 })
 
-// Auto-expand section when navigating to an item in it + close mobile sidebar
+// Close the mobile sidebar on navigation (QdSidebarMenus unfolds the current section)
 watch(() => route.path, () => {
-  // Close mobile sidebar on navigation
   closeSidebar()
-
-  for (const section of navSections.value) {
-    const title = section.title || section.label || ''
-    if (sectionHasActiveItem(section) && collapsedSections.value[title]) {
-      // Auto-expand but don't save (user can collapse again if they want)
-      collapsedSections.value[title] = false
-    }
-  }
 })
 
 async function handleLogout(): Promise<void> {
@@ -284,46 +225,7 @@ const showBreadcrumb = computed<boolean>(() => {
         <span v-if="appVersion" class="version">v{{ appVersion }}</span>
       </div>
 
-      <nav class="sidebar-nav">
-        <div v-for="section in navSections" :key="section.title || section.label" class="nav-section">
-          <div
-            class="nav-section-title"
-            :class="{ 'nav-section-active': sectionHasActiveItem(section) }"
-            @click="toggleSection(section.title || section.label || '')"
-          >
-            <span>{{ section.title }}</span>
-            <i
-              class="nav-section-chevron pi"
-              :class="isSectionExpanded(section) ? 'pi-chevron-down' : 'pi-chevron-right'"
-            ></i>
-          </div>
-          <div class="nav-section-items" :class="{ 'nav-section-collapsed': !isSectionExpanded(section) }">
-            <template v-for="item in section.items" :key="item.route ?? item.href">
-              <a
-                v-if="item.href"
-                :href="item.href"
-                :target="item.target"
-                :rel="item.rel"
-                class="nav-item nav-item-link"
-              >
-                <i :class="item.icon"></i>
-                <span>{{ item.label }}</span>
-                <span v-if="item.external" class="pi pi-external-link nav-item-external" aria-label="opens in a new tab"></span>
-              </a>
-              <RouterLink
-                v-else
-                :to="{ name: item.route }"
-                class="nav-item"
-                :class="{ 'nav-item-active': isNavActive(item) }"
-                @click="handleNavClick($event, item)"
-              >
-                <i :class="item.icon"></i>
-                <span>{{ item.label }}</span>
-              </RouterLink>
-            </template>
-          </div>
-        </div>
-      </nav>
+      <QdSidebarMenus :settings="settingsMenu" />
 
       <!-- Slot for custom content after navigation (e.g., impersonation controls) -->
       <div class="sidebar-slot">
@@ -375,6 +277,25 @@ const showBreadcrumb = computed<boolean>(() => {
         <img v-if="avatarUrl" class="user-avatar user-avatar--image" :src="avatarUrl" alt="" referrerpolicy="no-referrer" @error="avatarFailed" />
         <div v-else class="user-avatar">{{ userInitials }}</div>
       </SidebarBox>
+
+      <!-- The gear (#5401): the settings menu in place of the main one, and back -->
+      <div v-if="settingsMenu.available.value" class="sidebar-settings">
+        <button
+          :id="SETTINGS_MENU_IDS.toggle"
+          type="button"
+          class="sidebar-settings-toggle"
+          :class="{ 'sidebar-settings-toggle--open': settingsMenu.open.value }"
+          :aria-expanded="settingsMenu.open.value ? 'true' : 'false'"
+          :aria-controls="SETTINGS_MENU_IDS.settings"
+          :aria-label="settingsMenu.open.value ? tOr('core.settingsMenu.back', 'Back to the menu') : settingsMenu.label"
+          :title="settingsMenu.open.value ? tOr('core.settingsMenu.back', 'Back to the menu') : settingsMenu.label"
+          data-settings-toggle
+          @click="settingsMenu.toggle()"
+        >
+          <i :class="settingsMenu.open.value ? 'pi pi-arrow-left' : settingsMenu.icon" aria-hidden="true"></i>
+          <span>{{ settingsMenu.open.value ? tOr('core.settingsMenu.back', 'Back to the menu') : settingsMenu.label }}</span>
+        </button>
+      </div>
 
       <SidebarBox v-if="features.poweredBy" id="powered-by">
         <template #icon>
@@ -568,17 +489,17 @@ const showBreadcrumb = computed<boolean>(() => {
 }
 
 /* Navigation - compact, subtle */
-.sidebar-nav {
+:deep(.sidebar-nav) {
   flex: 1;
   overflow-y: auto;
   padding: 0.5rem 0;
 }
 
-.nav-section {
+:deep(.nav-section) {
   margin-bottom: var(--fad-nav-section-gap);
 }
 
-.nav-section-title {
+:deep(.nav-section-title) {
   padding: var(--fad-nav-item-padding-y) var(--fad-nav-item-padding-x);
   padding-left: 1rem;
   font-size: var(--fad-font-size-xs);
@@ -598,27 +519,27 @@ const showBreadcrumb = computed<boolean>(() => {
   transition: color var(--fad-transition-fast);
 }
 
-.nav-section-title:hover {
+:deep(.nav-section-title:hover) {
   color: var(--p-surface-300, #cbd5e1);
 }
 
-.nav-section-active {
+:deep(.nav-section-active) {
   color: var(--p-primary-300, #93c5fd);
 }
 
-.nav-section-chevron {
+:deep(.nav-section-chevron) {
   font-size: 0.5rem;
   transition: transform var(--fad-transition-fast);
   opacity: 0.6;
 }
 
-.nav-section-items {
+:deep(.nav-section-items) {
   max-height: 500px;
   overflow: hidden;
   transition: max-height var(--fad-transition-normal), opacity var(--fad-transition-fast);
 }
 
-.nav-section-collapsed {
+:deep(.nav-section-collapsed) {
   max-height: 0;
   opacity: 0;
 }
@@ -902,12 +823,12 @@ const showBreadcrumb = computed<boolean>(() => {
   opacity: 1;
 }
 
-.sidebar--collapsed .sidebar-nav {
+.sidebar--collapsed :deep(.sidebar-nav) {
   padding: 0.25rem 0;
   overflow-y: hidden;
 }
 
-.sidebar--collapsed .nav-section-title {
+.sidebar--collapsed :deep(.nav-section-title) {
   height: 0;
   padding-top: 0;
   padding-bottom: 0;
@@ -917,7 +838,7 @@ const showBreadcrumb = computed<boolean>(() => {
 
 /* In collapsed mode, slot stays visible but content is hidden via child styles */
 
-.sidebar--collapsed .nav-section-items {
+.sidebar--collapsed :deep(.nav-section-items) {
   max-height: none !important;
   opacity: 1 !important;
 }
@@ -1026,7 +947,7 @@ const showBreadcrumb = computed<boolean>(() => {
     width: auto;
   }
 
-  .sidebar.sidebar--collapsed .nav-section-title {
+  .sidebar.sidebar--collapsed :deep(.nav-section-title) {
     opacity: 1;
     height: auto;
     padding: var(--fad-nav-item-padding-y) var(--fad-nav-item-padding-x);

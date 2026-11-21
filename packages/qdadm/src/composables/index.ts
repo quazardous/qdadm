@@ -82,6 +82,7 @@ export {
   type BreadcrumbModeToggle,
 } from './useNavContext'
 export { useNavigation, type UseNavigationReturn, type NavItem, type NavSection } from './useNavigation'
+export { useSettingsMenu, SETTINGS_MENU_IDS, type UseSettingsMenuReturn } from './useSettingsMenu'
 export {
   useUnsavedChangesGuard,
   type UseUnsavedChangesGuardOptions,

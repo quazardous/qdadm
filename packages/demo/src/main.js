@@ -109,7 +109,12 @@ const kernel = new Kernel({
 
   // Features: View↔Edit toggle on the breadcrumb terminal (#1332) —
   // see it on Books (show ↔ edit pair); permission-gated by canUpdate
-  features: { breadcrumbModeToggle: true },
+  features: {
+    breadcrumbModeToggle: true,
+    // The settings menu behind the gear (#5401): the Security section and the
+    // settings, for administrators only
+    settingsMenu: { sections: ['Security'], visible: (user) => user?.role === 'ROLE_ADMIN' },
+  },
 
   // PrimeVue
   primevue: { plugin: PrimeVue, theme: Aura },

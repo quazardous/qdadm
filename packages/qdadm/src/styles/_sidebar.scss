@@ -396,3 +396,112 @@ $nav-item-content-left: calc((var(--fad-sidebar-width-collapsed) + #{$nav-item-i
     width: $nav-item-icon-width;
   }
 }
+
+/* =============================================================================
+   Two menus: the main one and the settings, behind the gear (#5401)
+   ============================================================================= */
+
+.sidebar-menus {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
+// Both in one clipped viewport, one above the other: the main menu slides up
+// and the settings take its place
+.sidebar-menus--two {
+  display: grid;
+  grid-template: 1fr / 1fr;
+  overflow: hidden;
+
+  > .sidebar-menu {
+    grid-area: 1 / 1;
+    min-height: 0;
+    transition: transform var(--fad-transition-normal, 0.25s) ease, opacity var(--fad-transition-normal, 0.25s) ease;
+  }
+
+  > .sidebar-menu--settings {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+}
+
+.sidebar-menus--settings {
+  > .sidebar-menu--main {
+    transform: translateY(-100%);
+    opacity: 0;
+  }
+
+  > .sidebar-menu--settings {
+    transform: none;
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sidebar-menus--two > .sidebar-menu {
+    transition: none;
+  }
+}
+
+// The settings' head row: back to the main menu
+.sidebar-nav .sidebar-menu-back {
+  width: 100%;
+  margin-bottom: var(--fad-nav-section-gap);
+  border: 0;
+  background: none;
+  font: inherit;
+  font-weight: var(--fad-font-weight-medium);
+  text-align: left;
+  cursor: pointer;
+  color: var(--p-surface-0, white);
+}
+
+// The gear, between the user block and "powered by"
+.sidebar-settings-toggle {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  width: 100%;
+  padding: var(--fad-nav-item-padding-y) var(--fad-nav-item-padding-x);
+  padding-left: calc((var(--fad-sidebar-width-collapsed) - #{$nav-item-icon-width}) / 2);
+  border: 0;
+  border-top: 1px solid var(--p-surface-700, #334155);
+  background: none;
+  color: var(--p-surface-300, #cbd5e1);
+  font: inherit;
+  font-size: var(--fad-font-size-sm);
+  text-align: left;
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+
+  i {
+    width: $nav-item-icon-width;
+    flex-shrink: 0;
+    text-align: center;
+    font-size: var(--fad-nav-icon-size);
+    transition: transform var(--fad-transition-normal, 0.25s) ease;
+  }
+
+  &:hover {
+    background: var(--p-surface-700, #334155);
+    color: var(--p-surface-0, white);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--p-primary-400, #60a5fa);
+    outline-offset: -2px;
+  }
+}
+
+.sidebar-settings-toggle--open {
+  color: var(--p-primary-300, #93c5fd);
+}
+
+// Collapsed side menu: the gear alone
+.sidebar--collapsed .sidebar-settings-toggle span {
+  opacity: 0;
+}

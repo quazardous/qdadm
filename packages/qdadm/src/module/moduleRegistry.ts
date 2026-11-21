@@ -94,6 +94,8 @@ export interface NavItem {
   icon?: string
   entity?: string
   exact?: boolean
+  /** The menu it belongs to (#5401): the main one, or the settings behind the gear */
+  menu?: 'main' | 'settings'
 }
 
 /**
