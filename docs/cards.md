@@ -23,7 +23,7 @@ Data that does not fit the schema draws the `invalid` state with the path and th
 
 ## Blocks
 
-A card is a few blocks in order, its foot the CTA zone. The types below are ready-made assemblies of them (`metric` is value + viz + list). Compose your own three ways: the `blocks` type (`data: { blocks: [...] }`), `envelope.blocks` under any type's body, or a type declared by blocks: `registerCard({ type, meta, schema, blocks: (data, options, size) => [...] })`, with no component. Each block is checked against its kind; one that does not fit says which field.
+A card is a few blocks in order, its foot the CTA zone; a `flash` banner goes to its place in the card. The types below are ready-made assemblies of them (`metric` is value + viz + list). Compose your own three ways: the `blocks` type (`data: { blocks: [...] }`), `envelope.blocks` under any type's body, or a type declared by blocks: `registerCard({ type, meta, schema, blocks: (data, options, size) => [...] })`, with no component. Each block is checked against its kind; one that does not fit says which field.
 
 | Kind | Fields | Draws |
 |---|---|---|
@@ -33,6 +33,7 @@ A card is a few blocks in order, its foot the CTA zone. The types below are read
 | `text` | `text`, `tone`, `strong`, `look` (`note`, `reading`) | A short text in its tone, a word in bold after it |
 | `progress` | `value`, `target`, `look` (`goal`, `bullet`); goal: `start`, `due`, `now`; bullet: `thresholds`, `min`, `max`, `higherIs`; `unit`, `decimals` | A goal's bar and pace, or a bullet graph with its ranges |
 | `parts` | `parts: [{ label, value, to }]`, `max`, `unit` | A whole in parts: one split bar and its legend, past `max` in "others" |
+| `flash` | `messages: [{ level, text, to }]` (or one `level`, `text`, `to`), `level` (`info`, `warning`, `critical`), `place` (`top`, `bottom`), `dismissible`, `id` | A "flash info" banner, an urgent word about the card: under the header (`top`) or above the foot (`bottom`), wherever it is declared, and shown whatever the card's state. The most serious first; a critical one is an alert. Dismissible: gone until the card is drawn again, for the session with an `id` |
 
 ## `agenda`: What is coming?
 
@@ -97,6 +98,7 @@ A card is a few blocks in order, its foot the CTA zone. The types below are read
 - text: a short reading, in a tone
 - progress: a value against a target, as a goal with its pace or a bullet graph
 - parts: a whole split in parts, with its legend
+- flash: an urgent word about the card, a banner under the header or above the foot, the most serious first
 
 **Strengths**
 
@@ -120,6 +122,22 @@ A card is a few blocks in order, its foot the CTA zone. The types below are read
   "type": "blocks",
   "data": {
     "blocks": [
+      {
+        "kind": "flash",
+        "place": "top",
+        "dismissible": true,
+        "messages": [
+          {
+            "level": "critical",
+            "text": "Log source down since 09:12",
+            "to": "/connectors/logs"
+          },
+          {
+            "level": "info",
+            "text": "Counts refreshed every 5 minutes"
+          }
+        ]
+      },
       {
         "kind": "value",
         "value": 8,

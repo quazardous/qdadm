@@ -1575,3 +1575,82 @@
   font-family: var(--qd-card-mono);
   font-weight: 600;
 }
+
+// ── the flash block: a "flash info" banner (#5414) ────────────────────────
+
+.qd-card-flash {
+  position: relative;
+  z-index: 1; // above the card's stretched surface link
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  margin: 0 0 0.65rem;
+  padding: 0.4rem 0.6rem;
+  border-left: 3px solid var(--qd-flash-ink);
+  border-radius: 4px;
+  background: var(--qd-flash-bg);
+  font-size: 0.82rem;
+
+  &[data-level='critical'] { --qd-flash-ink: var(--qd-tone-critical); --qd-flash-bg: var(--qd-tone-critical-bg); }
+  &[data-level='warning'] { --qd-flash-ink: var(--qd-tone-watch); --qd-flash-bg: var(--qd-tone-watch-bg); }
+  &[data-level='info'] { --qd-flash-ink: var(--qd-tone-info); --qd-flash-bg: var(--qd-tone-info-bg); }
+
+  &[data-place='bottom'] {
+    margin: 0.65rem 0 0.4rem;
+  }
+}
+
+.qd-card-flash-list {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 0.2rem;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.qd-card-flash-item {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-width: 0;
+  font-weight: 600;
+
+  .pi {
+    flex-shrink: 0;
+    font-size: 0.8rem;
+  }
+}
+
+.qd-card-flash-text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: inherit;
+
+  &:is(a) {
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+}
+
+.qd-card-flash-close {
+  flex-shrink: 0;
+  padding: 0.1rem 0.25rem;
+  border: 0;
+  border-radius: 3px;
+  background: none;
+  color: var(--qd-card-muted);
+  cursor: pointer;
+
+  &:hover {
+    color: var(--qd-card-ink);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--qd-card-accent);
+  }
+}

@@ -198,3 +198,72 @@ describe('the generic types are assemblies (#5414)', () => {
     expect(card('feed', { items: [{ at: '2026-11-19T10:00', label: 'e' }] }).find('.qd-feed-label').text()).toBe('e')
   })
 })
+
+describe('the flash block (#5414)', () => {
+  const crit = { level: 'critical', text: 'Source down', to: '/connectors/logs' }
+  const info = { level: 'info', text: 'Refreshed every 5 min' }
+  const order = (w) => w.findAll('.qd-card-body, .qd-card-flash, .qd-card-foot, .qd-card-head').map((e) => (e.classes('qd-card-flash') ? `flash:${e.attributes('data-place')}` : e.classes()[0]))
+
+  it('its schema: messages, or one text and its level', () => {
+    expect(checkBlock({ kind: 'flash', messages: [crit, info] })).toEqual([])
+    expect(checkBlock({ kind: 'flash', level: 'warning', text: 'x' })).toEqual([])
+    expect(checkBlock({ kind: 'flash' })[0].message).toMatch(/messages, or a text and its level/)
+    expect(checkBlock({ kind: 'flash', level: 'loud', text: 'x' })[0].path).toBe('block.level')
+  })
+
+  it('the most serious first, a critical one an alert, its level written, a link', () => {
+    const w = card('metric', { value: 1 }, { blocks: [{ kind: 'flash', messages: [info, crit] }] })
+    const flash = w.find('.qd-card-flash')
+    expect(flash.attributes('role')).toBe('alert')
+    expect(flash.findAll('.qd-card-flash-item').map((i) => i.attributes('data-level'))).toEqual(['critical', 'info'])
+    expect(flash.find('.qd-card-sr').text()).toBe('core.cards.flash.critical:')
+    expect(flash.find('a.qd-card-flash-text').attributes('href')).toBe('/connectors/logs')
+    const calm = card('metric', { value: 1 }, { blocks: [{ kind: 'flash', ...info }] })
+    expect(calm.find('.qd-card-flash').attributes('role')).toBe('status')
+  })
+
+  it('at its place in the card: top under the header, bottom above the foot', () => {
+    const w = card('metric', { value: 1 }, { source: 'logs', blocks: [{ kind: 'flash', place: 'bottom', ...info }, { kind: 'flash', ...crit }] })
+    expect(order(w)).toEqual(['qd-card-head', 'flash:top', 'qd-card-body', 'flash:bottom', 'qd-card-foot'])
+  })
+
+  it("from a blocks card's data too, whatever its rank in the list", async () => {
+    const w = card('blocks', { blocks: [{ kind: 'value', value: 3 }, { kind: 'flash', ...crit }] })
+    await nextTick()
+    expect(order(w)).toEqual(['qd-card-head', 'flash:top', 'qd-card-body'])
+    expect(w.find('.qd-card-body .qd-card-flash').exists()).toBe(false)
+  })
+
+  it("from a dashboard block's card.blocks", () => {
+    const w = mount(QdCardBlockScope, {
+      props: { blocks: [{ kind: 'flash', place: 'bottom', ...info }] },
+      slots: { default: () => h(QdCardView, { type: 'metric', data: { value: 1 }, envelope: { title: 'T' } }) },
+      global: { plugins: [router] },
+    })
+    expect(w.find('.qd-card-flash[data-place="bottom"]').exists()).toBe(true)
+  })
+
+  it('shown whatever the state: a source down is said when the card cannot draw', () => {
+    const w = card('metric', undefined, { state: 'unreachable', blocks: [{ kind: 'flash', ...crit }] })
+    expect(w.find('.qd-card-unreachable').exists()).toBe(true)
+    expect(w.find('.qd-card-flash').exists()).toBe(true)
+  })
+
+  it('dismissible: gone at once; with an id, for the session', async () => {
+    sessionStorage.clear()
+    const w = card('metric', { value: 1 }, { blocks: [{ kind: 'flash', dismissible: true, id: 'logs-down', ...crit }] })
+    await w.find('[data-flash-dismiss]').trigger('click')
+    expect(w.find('.qd-card-flash').exists()).toBe(false)
+    const again = card('metric', { value: 1 }, { blocks: [{ kind: 'flash', dismissible: true, id: 'logs-down', ...crit }] })
+    expect(again.find('.qd-card-flash').exists()).toBe(false)
+    const other = card('metric', { value: 1 }, { blocks: [{ kind: 'flash', dismissible: true, ...crit }] })
+    expect(other.find('.qd-card-flash').exists()).toBe(true)
+    expect(card('metric', { value: 1 }, { blocks: [{ kind: 'flash', ...crit }] }).find('[data-flash-dismiss]').exists()).toBe(false)
+  })
+
+  it('alone (no card), drawn where it is; the card keeps its type and status', () => {
+    const w = card('metric', { value: 7 }, { status: 'good', blocks: [{ kind: 'flash', ...crit }] })
+    expect(w.attributes('data-card-type')).toBe('metric')
+    expect(w.classes()).toContain('qd-card--good')
+  })
+})

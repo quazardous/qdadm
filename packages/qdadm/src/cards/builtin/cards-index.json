@@ -121,7 +121,8 @@
         "list: lines to open, as hot lines, a queue, a feed or a ranking",
         "text: a short reading, in a tone",
         "progress: a value against a target, as a goal with its pace or a bullet graph",
-        "parts: a whole split in parts, with its legend"
+        "parts: a whole split in parts, with its legend",
+        "flash: an urgent word about the card, a banner under the header or above the foot, the most serious first"
       ],
       "strengths": [
         "one card mixes what a single type cannot: the number, its curve and the lines behind it",
@@ -148,6 +149,22 @@
         },
         "data": {
           "blocks": [
+            {
+              "kind": "flash",
+              "place": "top",
+              "dismissible": true,
+              "messages": [
+                {
+                  "level": "critical",
+                  "text": "Log source down since 09:12",
+                  "to": "/connectors/logs"
+                },
+                {
+                  "level": "info",
+                  "text": "Counts refreshed every 5 minutes"
+                }
+              ]
+            },
             {
               "kind": "value",
               "value": 8,
@@ -278,7 +295,8 @@
                     "list",
                     "text",
                     "progress",
-                    "parts"
+                    "parts",
+                    "flash"
                   ]
                 }
               }

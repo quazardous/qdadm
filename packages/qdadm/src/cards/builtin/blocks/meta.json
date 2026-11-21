@@ -9,7 +9,8 @@
     "list: lines to open, as hot lines, a queue, a feed or a ranking",
     "text: a short reading, in a tone",
     "progress: a value against a target, as a goal with its pace or a bullet graph",
-    "parts: a whole split in parts, with its legend"
+    "parts: a whole split in parts, with its legend",
+    "flash: an urgent word about the card, a banner under the header or above the foot, the most serious first"
   ],
   "strengths": [
     "one card mixes what a single type cannot: the number, its curve and the lines behind it",
@@ -20,7 +21,11 @@
     "when a ready-made type says it already: metric, trend, queue… are assemblies of the same blocks",
     "for a full dashboard in one card: split it into cards"
   ],
-  "sizes": ["s", "m", "l"],
+  "sizes": [
+    "s",
+    "m",
+    "l"
+  ],
   "options": {},
   "action": "the card's own: its foot's CTA zone",
   "example": {
@@ -32,7 +37,32 @@
     },
     "data": {
       "blocks": [
-        { "kind": "value", "value": 8, "label": "new today", "delta": { "value": 3, "period": "vs yesterday" }, "higherIs": "worse" },
+        {
+          "kind": "flash",
+          "place": "top",
+          "dismissible": true,
+          "messages": [
+            {
+              "level": "critical",
+              "text": "Log source down since 09:12",
+              "to": "/connectors/logs"
+            },
+            {
+              "level": "info",
+              "text": "Counts refreshed every 5 minutes"
+            }
+          ]
+        },
+        {
+          "kind": "value",
+          "value": 8,
+          "label": "new today",
+          "delta": {
+            "value": 3,
+            "period": "vs yesterday"
+          },
+          "higherIs": "worse"
+        },
         {
           "kind": "viz",
           "chart": "area",
@@ -40,15 +70,89 @@
           "warning": 10,
           "critical": 15,
           "series": [
-            { "label": "new", "points": [["2026-11-13", 4], ["2026-11-14", 6], ["2026-11-15", 3], ["2026-11-16", 9], ["2026-11-17", 12], ["2026-11-18", 5], ["2026-11-19", 8]] },
-            { "label": "sorted", "points": [["2026-11-13", 3], ["2026-11-14", 5], ["2026-11-15", 4], ["2026-11-16", 6], ["2026-11-17", 8], ["2026-11-18", 7], ["2026-11-19", 2]] }
+            {
+              "label": "new",
+              "points": [
+                [
+                  "2026-11-13",
+                  4
+                ],
+                [
+                  "2026-11-14",
+                  6
+                ],
+                [
+                  "2026-11-15",
+                  3
+                ],
+                [
+                  "2026-11-16",
+                  9
+                ],
+                [
+                  "2026-11-17",
+                  12
+                ],
+                [
+                  "2026-11-18",
+                  5
+                ],
+                [
+                  "2026-11-19",
+                  8
+                ]
+              ]
+            },
+            {
+              "label": "sorted",
+              "points": [
+                [
+                  "2026-11-13",
+                  3
+                ],
+                [
+                  "2026-11-14",
+                  5
+                ],
+                [
+                  "2026-11-15",
+                  4
+                ],
+                [
+                  "2026-11-16",
+                  6
+                ],
+                [
+                  "2026-11-17",
+                  8
+                ],
+                [
+                  "2026-11-18",
+                  7
+                ],
+                [
+                  "2026-11-19",
+                  2
+                ]
+              ]
+            }
           ]
         },
         {
           "kind": "list",
           "items": [
-            { "label": "TypeError in checkout.js", "tag": "x14", "tagStatus": "critical", "to": "/errors/1" },
-            { "label": "Timeout on /api/stock", "tag": "x5", "tagStatus": "watch", "to": "/errors/2" }
+            {
+              "label": "TypeError in checkout.js",
+              "tag": "x14",
+              "tagStatus": "critical",
+              "to": "/errors/1"
+            },
+            {
+              "label": "Timeout on /api/stock",
+              "tag": "x5",
+              "tagStatus": "watch",
+              "to": "/errors/2"
+            }
           ]
         }
       ]

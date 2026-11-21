@@ -137,5 +137,33 @@ export interface PartsBlock {
   unit?: string
 }
 
-export type CardBlock = ValueBlock | VizBlock | ListBlock | TextBlock | ProgressBlock | PartsBlock
+export type FlashLevel = 'info' | 'warning' | 'critical'
+
+export interface FlashMessage {
+  level: FlashLevel
+  text: string
+  /** Where the line leads */
+  to?: RouteLocationRaw
+}
+
+/**
+ * A "flash info" banner: an urgent word about the card (a source down, a
+ * threshold crossed). Its place in the card, whatever its place in the list
+ */
+export interface FlashBlock {
+  kind: 'flash'
+  /** top (default): under the header; bottom: above the foot */
+  place?: 'top' | 'bottom'
+  messages?: FlashMessage[]
+  /** One message, short */
+  level?: FlashLevel
+  text?: string
+  to?: RouteLocationRaw
+  /** A × that hides it until the card is drawn again */
+  dismissible?: boolean
+  /** With dismissible: hidden for the browser session */
+  id?: string
+}
+
+export type CardBlock = ValueBlock | VizBlock | ListBlock | TextBlock | ProgressBlock | PartsBlock | FlashBlock
 export type CardBlockKind = CardBlock['kind']

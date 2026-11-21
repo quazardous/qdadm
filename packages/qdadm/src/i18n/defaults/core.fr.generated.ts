@@ -410,6 +410,11 @@ export default `core:
     overdue: en retard
     compare:
       points: pt
+    flash:
+      info: Information
+      warning: Attention
+      critical: Critique
+      dismiss: Fermer
     viz:
       series: "{label} dernière valeur {last}, plus basse {min}, plus haute {max}"
       period:

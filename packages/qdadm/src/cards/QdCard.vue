@@ -16,13 +16,16 @@
  * The status is a hue, a side bar and a word: never the hue alone.
  * States `loading`, `unreachable`, `empty` and `invalid` replace the body.
  */
-import { computed, inject, ref, useSlots } from 'vue'
+import { computed, inject, provide, ref, shallowReactive, useSlots } from 'vue'
 import { RouterLink, useRouter } from 'vue-router'
 import { useI18n } from '../i18n/useI18n'
 import type { CardAction, CardLink, CardSize, CardState, CardStatus } from './types'
 import { CARD_BLOCK_LINKS, CARD_BLOCK_BLOCKS } from './blockLinks'
 import QdCardBlocks from './blocks/QdCardBlocks.vue'
-import type { CardBlock } from './blocks/types'
+import type { CardBlock, FlashBlock } from './blocks/types'
+import QdFlashBlock from './blocks/FlashBlock.vue'
+import { CARD_FLASHES } from './blocks/flash'
+import { checkBlock } from './blocks/schema'
 import type { SchemaProblem } from './validate'
 import { useRun } from '../run/useRun'
 import type { RouteLocationRaw } from 'vue-router'
@@ -120,7 +123,20 @@ const blockLinks = inject(CARD_BLOCK_LINKS, null)
 const slots = useSlots()
 const allLinks = computed<CardLink[]>(() => [...(props.links ?? []), ...(blockLinks?.value ?? [])])
 const blockBlocks = inject(CARD_BLOCK_BLOCKS, null)
-const extraBlocks = computed<CardBlock[]>(() => [...(props.blocks ?? []), ...(blockBlocks?.value ?? [])])
+const addedBlocks = computed<CardBlock[]>(() => [...(props.blocks ?? []), ...(blockBlocks?.value ?? [])])
+// Under the body: the added blocks but the flashes
+const extraBlocks = computed<CardBlock[]>(() => addedBlocks.value.filter((b) => b.kind !== 'flash'))
+
+// The flash banners (#5414): the card's own (shown whatever its state: a
+// source down is said even when the card cannot draw), and those its body's
+// blocks hand over; each at its place, under the header or above the foot
+const bodyFlashes = shallowReactive(new Map<symbol, FlashBlock[]>())
+provide(CARD_FLASHES, { set: (owner, blocks) => bodyFlashes.set(owner, blocks), drop: (owner) => bodyFlashes.delete(owner) })
+const ownFlashes = computed(() => addedBlocks.value.filter((b): b is FlashBlock => b.kind === 'flash' && checkBlock(b).length === 0))
+const flashesAt = (place: 'top' | 'bottom') =>
+  [...ownFlashes.value, ...[...bodyFlashes.values()].flat()].filter((f) => (f.place ?? 'top') === place)
+const topFlashes = computed(() => flashesAt('top'))
+const bottomFlashes = computed(() => flashesAt('bottom'))
 const hasCta = computed(() => !!slots.cta || allLinks.value.length > 0 || (!!props.action && props.state === 'ready'))
 async function onLink(link: CardLink): Promise<void> {
   if (link.onClick) await link.onClick()
@@ -149,6 +165,8 @@ const actionIcon = computed(() => (props.action?.mode === 'list' ? 'pi pi-list' 
         {{ t(`core.cards.status.${status}`) }}
       </span>
     </header>
+
+    <QdFlashBlock v-for="(f, i) in topFlashes" :key="`ft${i}`" :block="f" :size="size" />
 
     <div class="qd-card-body">
       <div v-if="state === 'loading'" class="qd-card-placeholder qd-card-loading" role="status">
@@ -180,6 +198,8 @@ const actionIcon = computed(() => (props.action?.mode === 'list' ? 'pi pi-list' 
         <div v-if="extraBlocks.length" class="qd-card-extra" data-card-extra><QdCardBlocks :blocks="extraBlocks" :size="size" check /></div>
       </template>
     </div>
+
+    <QdFlashBlock v-for="(f, i) in bottomFlashes" :key="`fb${i}`" :block="f" :size="size" />
 
     <footer v-if="source || freshnessText || hasCta" class="qd-card-foot">
       <span class="qd-card-meta">

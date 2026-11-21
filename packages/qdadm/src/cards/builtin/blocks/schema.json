@@ -11,7 +11,7 @@
         "type": "object",
         "required": ["kind"],
         "properties": {
-          "kind": { "type": "string", "enum": ["value", "viz", "list", "text", "progress", "parts"] }
+          "kind": { "type": "string", "enum": ["value", "viz", "list", "text", "progress", "parts", "flash"] }
         }
       }
     }

@@ -178,6 +178,32 @@ export const BLOCK_SCHEMAS: Record<string, CardSchema> = {
   },
 }
 
+const level: CardSchema = { type: 'string', enum: ['info', 'warning', 'critical'] }
+BLOCK_SCHEMAS.flash = {
+  type: 'object',
+  required: ['kind'],
+  additionalProperties: false,
+  properties: {
+    kind: { const: 'flash' },
+    place: { type: 'string', enum: ['top', 'bottom'] },
+    messages: {
+      type: 'array',
+      minItems: 1,
+      items: {
+        type: 'object',
+        required: ['level', 'text'],
+        additionalProperties: false,
+        properties: { level, text: { type: 'string', minLength: 1 }, to: route },
+      },
+    },
+    level,
+    text: { type: 'string', minLength: 1 },
+    to: route,
+    dismissible: { type: 'boolean' },
+    id: { type: 'string' },
+  },
+}
+
 export const BLOCK_KINDS = Object.keys(BLOCK_SCHEMAS)
 
 /** A list of blocks, as a card's data takes it */
@@ -192,7 +218,13 @@ export function checkBlock(block: unknown, path = 'block'): SchemaProblem[] {
   const kind = (block as { kind?: unknown }).kind
   const schema = typeof kind === 'string' ? BLOCK_SCHEMAS[kind] : undefined
   if (!schema) return [{ path: `${path}.kind`, message: `no block kind '${String(kind)}' (one of ${BLOCK_KINDS.join(', ')})` }]
-  return validateCardData(block, schema, path)
+  const problems = validateCardData(block, schema, path)
+  // A flash says something: its messages, or one text with its level
+  if (!problems.length && kind === 'flash') {
+    const f = block as { messages?: unknown[]; text?: unknown; level?: unknown }
+    if (!f.messages && (typeof f.text !== 'string' || typeof f.level !== 'string')) problems.push({ path, message: 'a flash needs messages, or a text and its level' })
+  }
+  return problems
 }
 
 /** The problems of a list of blocks */
