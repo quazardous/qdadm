@@ -750,6 +750,7 @@ export function useListPage<T = unknown>(config: UseListPageOptions<T>): UseList
     updateCacheBasedFilters,
     restoreFilters,
     writeStateToUrl,
+    persistSessionFilters,
   } = listFilters
 
   // ============ ACTIONS ============
@@ -1233,7 +1234,13 @@ export function useListPage<T = unknown>(config: UseListPageOptions<T>): UseList
 
   // ============ WATCHERS ============
   let searchTimeout: ReturnType<typeof setTimeout> | null = null
+  /** A search set by the list itself, already applied: no reload of its own (#5428) */
+  let skipSearchWatch = false
   watch(searchQuery, () => {
+    if (skipSearchWatch) {
+      skipSearchWatch = false
+      return
+    }
     if (searchTimeout) clearTimeout(searchTimeout)
     searchTimeout = setTimeout(() => {
       onFiltersChanged()
@@ -1264,13 +1271,82 @@ export function useListPage<T = unknown>(config: UseListPageOptions<T>): UseList
   // ============ LIFECYCLE ============
   initFromRegistry()
 
-  /** A filter or a search restored from the session that the address lacks (#5425) */
-  function sessionNotInAddress(): boolean {
+  /** Set once mounted; a watcher made after an await is not stopped with the component */
+  let stopFollowing: (() => void) | null = null
+  const blank = (v: unknown): boolean => v === null || v === undefined || v === ''
+  const same = (a: unknown, b: unknown): boolean => (blank(a) && blank(b)) || JSON.stringify(a) === JSON.stringify(b) || String(a) === String(b)
+  const addressState = (): Record<string, unknown> => persister?.read(routeStateScope) ?? {}
+
+  /** Shown, and not in the address: what the session brought back (#5425) */
+  function shownNotInAddress(stored = addressState()): boolean {
+    if (searchQuery.value && blank(stored.search)) return true
+    return [...filtersMap.value.keys()].some((name) => !blank(filterValues.value[name]) && blank(stored[name]))
+  }
+
+  /** The address names one of the list's filters, or its search (#5428) */
+  function addressNames(stored: Record<string, unknown>): boolean {
+    return !blank(stored.search) || [...filtersMap.value.keys()].some((name) => !blank(stored[name]))
+  }
+
+  /**
+   * A link that names some filters describes a whole state (#5428): the
+   * session's other filters go back to their default, and its search goes,
+   * except the filters declared `keepFromSession`. A bare address takes the
+   * session back. Returns whether anything was dropped.
+   */
+  function dropSessionUnderLink(): boolean {
     if (!savedSession) return false
-    const stored = persister?.read(routeStateScope) ?? {}
-    const blank = (v: unknown) => v === null || v === undefined || v === ''
-    if (savedSearch && blank(stored.search)) return true
-    return Object.entries(savedFilters ?? {}).some(([name, value]) => !blank(value) && filtersMap.value.has(name) && blank(stored[name]))
+    const stored = addressState()
+    if (!addressNames(stored)) return false
+    let dropped = false
+    for (const [name, def] of filtersMap.value) {
+      if (def.keepFromSession || !blank(stored[name]) || blank(savedFilters?.[name])) continue
+      filterValues.value[name] = def.default ?? null
+      dropped = true
+    }
+    if (savedSearch && blank(stored.search) && searchQuery.value) {
+      searchQuery.value = ''
+      skipSearchWatch = true
+      dropped = true
+    }
+    return dropped
+  }
+
+  /**
+   * The address changed under a mounted list (#5428): a card's link while
+   * already on it, the side menu. The list follows it under the same rule,
+   * and ignores its own writes, which say what it already shows.
+   */
+  function followAddress(): void {
+    const stored = addressState()
+    const names = addressNames(stored)
+    const next: Record<string, unknown> = { ...filterValues.value }
+    let changed = false
+    for (const [name, def] of filtersMap.value) {
+      const want = !blank(stored[name]) ? stored[name] : names && !def.keepFromSession ? def.default ?? null : next[name]
+      if (!same(want, next[name])) {
+        next[name] = want
+        changed = true
+      }
+    }
+    const wantSearch = !blank(stored.search) ? String(stored.search) : names ? '' : searchQuery.value
+    const searchChanged = wantSearch !== searchQuery.value
+    if (!changed && !searchChanged) {
+      // A bare address on a filtered list: say the filters again
+      if (shownNotInAddress(stored)) writeStateToUrl()
+      return
+    }
+    filterValues.value = next
+    if (searchChanged) {
+      searchQuery.value = wantSearch
+      // Its own watcher would reload later: this change is already applied
+      skipSearchWatch = true
+    }
+    const wantPage = Number(stored.page)
+    page.value = Number.isInteger(wantPage) && wantPage > 0 ? wantPage : 1
+    loadItems()
+    persistSessionFilters()
+    if (shownNotInAddress()) writeStateToUrl()
   }
 
   function handleResize(): void {
@@ -1298,11 +1374,24 @@ export function useListPage<T = unknown>(config: UseListPageOptions<T>): UseList
     await invokeFilterAlterHook()
     await invokeListAlterHook()
 
+    // A link naming some filters: the session's others go (#5428)
+    if (dropSessionUnderLink()) persistSessionFilters()
+
     // Filters the session brought back that the address does not carry go
     // into it, once, by replace (#5425): the address says what the list
     // shows, a copied link keeps it, and the domain resolver sees them. A
     // value the address carries won over the session's in restoreFilters().
-    if (sessionNotInAddress()) writeStateToUrl()
+    if (savedSession && shownNotInAddress()) writeStateToUrl()
+
+    // From now on, the list follows its address (#5428)
+    const own = { name: route?.name, path: route?.path }
+    stopFollowing = watch(
+      () => route?.query,
+      () => {
+        if (!route || route.name !== own.name || route.path !== own.path) return
+        followAddress()
+      }
+    )
 
     if (loadOnMount && manager) {
       loadItems()
@@ -1319,6 +1408,7 @@ export function useListPage<T = unknown>(config: UseListPageOptions<T>): UseList
 
   onUnmounted(() => {
     window.removeEventListener('resize', handleResize)
+    stopFollowing?.()
   })
 
   // What this list is doing, for the debug tools and the MCP (#2363): counts and names, never row contents

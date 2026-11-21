@@ -372,6 +372,16 @@ is mounted, by replace, with no history step: the address says what the list
 shows, a copied link keeps it, and the app's `domainResolver` sees them. A
 value the address already carries wins over the session's and is left as is.
 
+An address that names at least one of the list's filters, or its search,
+describes a whole state: a card's link to `/tasks?tasks.provider=amazon`
+does not inherit the universe kept in the session. The session's other
+filters go back to their default and its search goes, except the filters
+declared `keepFromSession: true`, preferences that stay whatever the link
+(`addFilter('criticality', { …, keepFromSession: true })`). The session is
+then rewritten from what is shown. A bare address takes the session back.
+The same rule applies when the address changes under a mounted list (a link
+to the list while already on it, Back): the list follows its address.
+
 The page is written only once it leaves 1, and removed again when it returns,
 so a pristine list leaves a clean link. Changing a filter resets it, since the
 results are renumbered. A list URL is therefore shareable as what the sender

@@ -92,6 +92,8 @@ export interface UseListFiltersReturn {
   restoreFilters: () => void
   /** Push filters, search and the page number into the URL (#2113). */
   writeStateToUrl: () => void
+  /** The filters and the search, as shown, into the session (#5428) */
+  persistSessionFilters: () => void
 }
 
 export function useListFilters(deps: UseListFiltersDeps): UseListFiltersReturn {
@@ -298,9 +300,8 @@ export function useListFilters(deps: UseListFiltersDeps): UseListFiltersReturn {
     })
   }
 
-  function onFiltersChanged(): void {
-    page.value = 1
-    loadItems()
+  /** The filters and the search, as shown, into the session */
+  function persistSessionFilters(): void {
     if (persistFilters) {
       const toPersist: Record<string, unknown> = {}
       for (const [name, value] of Object.entries(filterValues.value)) {
@@ -319,6 +320,12 @@ export function useListFilters(deps: UseListFiltersDeps): UseListFiltersReturn {
       }
       setSessionFilters(filterSessionKey, toPersist)
     }
+  }
+
+  function onFiltersChanged(): void {
+    page.value = 1
+    loadItems()
+    persistSessionFilters()
     writeStateToUrl()
   }
 
@@ -626,5 +633,6 @@ export function useListFilters(deps: UseListFiltersDeps): UseListFiltersReturn {
     updateCacheBasedFilters,
     restoreFilters,
     writeStateToUrl,
+    persistSessionFilters,
   }
 }

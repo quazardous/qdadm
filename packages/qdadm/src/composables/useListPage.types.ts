@@ -121,6 +121,12 @@ export interface FilterOptions {
   options?: Array<{ label: string; value: unknown }>
   default?: unknown
   persist?: boolean
+  /**
+   * A preference, kept from the session even when the address names other
+   * filters (#5428): a link that names some filters describes a whole state,
+   * so the session's others go back to their default, except these.
+   */
+  keepFromSession?: boolean
   /** The empty choice's label; `false` for no empty choice on static options (#4692) */
   allLabel?: string | false
   optionsEntity?: string
