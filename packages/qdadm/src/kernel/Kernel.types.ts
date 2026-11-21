@@ -72,6 +72,11 @@ export interface Features {
     /** Whole sections that belong to it (a module's own, say 'Security'), as declared, before i18n */
     sections?: string[]
   }
+  /**
+   * The favourites' look (#5402): the symbol, filled once a favourite; where a
+   * list's search bookmark goes; the text beside the icons or not
+   */
+  favorites?: { icon?: string; iconActive?: string; saveSearch?: 'filters' | 'header' | false; labels?: boolean }
   /** Every domain bar's look, unless its domain says otherwise (#5396) */
   domainBar?: { look?: 'toolbox' | 'card' | 'ribbon' }
   [key: string]: unknown

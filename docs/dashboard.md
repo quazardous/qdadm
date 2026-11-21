@@ -319,14 +319,33 @@ entities; `false` turns one off. Without its entity, the star and "Save this
 search" do not show, nothing is recorded, and the cards say so (a console
 warning in development says what to declare).
 
-- **The star** beside a page title adds the page to the favourites, or
+- **The bookmark** beside a page title adds the page to the favourites, or
   removes it. `ListPage`, `ShowPage` and `FormPage` (in edit mode) draw it;
   `:favorite="false"` turns it off. A page of the app's own puts
-  `<QdFavoriteStar :label="title" kind="board" />` where it wants. The star is
-  `aria-pressed` and says "Add Dune to favourites" / "Remove …".
-- **"Save this search"** shows on a list while a filter or a search is on. It
-  asks for a name, by default the filter in words, and keeps the list's URL
-  with its query: the favourite opens the list filtered again.
+  `<QdFavoriteStar :label="title" kind="board" />` where it wants. It is
+  `aria-pressed`, filled once a favourite, and says "Add Dune to favourites"
+  / "Remove …" in its aria-label and tooltip.
+- **A search's bookmark** shows in a list's filter zone, beside the button
+  that clears the filters, while a filter or a search is on. It asks for a
+  name, by default the filter in words, and keeps the list's URL with its
+  query: the favourite opens the list filtered again. Filled once saved; a
+  click then takes the search out of the favourites.
+- **The look is the app's** (`features.favorites` in the kernel's options):
+
+  ```js
+  features: {
+    favorites: {
+      icon: 'pi pi-bookmark',            // the symbol: page, search, the card's header
+      iconActive: 'pi pi-bookmark-fill', // once a favourite
+      saveSearch: 'filters',             // the search's bookmark: 'filters' | 'header' | false
+      labels: false,                     // the text beside the icons
+    },
+  }
+  ```
+
+  Each use may say otherwise: `QdFavoriteStar` and `QdSaveSearch` take
+  `icon`, `iconOn` and `labelled`; `ListPage` takes `save-search`;
+  `QdFavoritesCard` takes `icon`.
 - **Recents:** the show and edit pages record the record they open, the last
   one first, at most 20 (the older ones are deleted). Deleting a record takes
   it out of the recents and the favourites.

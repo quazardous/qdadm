@@ -4,14 +4,30 @@
  * name (by default the filter in words) and keeps the list's route with its
  * query as a favourite of kind `search`: the list writes its filters in the
  * URL, so the favourite opens it filtered again.
+ *
+ * Its look (#5402): the app's favourite symbol (`features.favorites`), the
+ * bookmark by default, alone, its text in aria-label and tooltip; filled once
+ * saved, and then a click takes the search out of the favourites again.
  */
 import { computed, nextTick, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import QdButton from '../base/QdButton.vue'
 import { useI18n } from '../../i18n/useI18n'
 import { useFavorites } from '../../favorites/useFavorites'
+import { useFavoritesLook } from '../../favorites/look'
 
-const props = withDefaults(defineProps<{ defaultName: string; entity?: string | null }>(), { entity: null })
+const props = withDefaults(
+  defineProps<{
+    defaultName: string
+    entity?: string | null
+    /** Its symbol, and once saved; default the app's (`features.favorites`) */
+    icon?: string | null
+    iconOn?: string | null
+    /** Its text beside it; default the app's `features.favorites.labels` */
+    labelled?: boolean | null
+  }>(),
+  { entity: null, icon: null, iconOn: null, labelled: null }
+)
 
 const route = useRoute() as ReturnType<typeof useRoute> | undefined
 const { tOr } = useI18n()
@@ -29,13 +45,24 @@ const target = computed(() => {
   return q ? `${route.path}?${q}` : route.path
 })
 const saved = computed(() => favorites.has(target.value))
+const look = useFavoritesLook()
+const symbol = computed(() => (saved.value ? props.iconOn ?? look.iconActive : props.icon ?? look.icon))
+const withText = computed(() => props.labelled ?? look.labels)
+const text = computed(() =>
+  saved.value ? tOr('core.favorites.removeSearch', 'Search saved: remove it from favourites') : tOr('core.favorites.saveSearch', 'Save this search')
+)
 
 const asking = ref(false)
 const name = ref('')
 const input = ref<HTMLInputElement | null>(null)
 
 async function ask(): Promise<void> {
-  if (saved.value) return
+  // Saved already: the same symbol takes it out again, as the page's does
+  if (saved.value) {
+    const fav = favorites.find(target.value)
+    if (fav) await favorites.remove(fav.id)
+    return
+  }
   name.value = props.defaultName
   asking.value = true
   await nextTick()
@@ -69,9 +96,15 @@ function save(): void {
     type="button"
     size="small"
     text
-    :icon="saved ? 'pi pi-bookmark-fill' : 'pi pi-bookmark'"
-    :label="saved ? tOr('core.favorites.searchSaved', 'Search saved') : tOr('core.favorites.saveSearch', 'Save this search')"
-    :aria-disabled="saved || undefined"
+    :rounded="!withText"
+    severity="secondary"
+    :icon="symbol"
+    :label="withText ? text : undefined"
+    :aria-label="text"
+    :aria-pressed="saved ? 'true' : 'false'"
+    v-tooltip.top="withText ? undefined : text"
+    class="qd-save-search-toggle"
+    :class="{ 'qd-save-search-toggle--on': saved }"
     data-save-search
     @click="ask"
   />

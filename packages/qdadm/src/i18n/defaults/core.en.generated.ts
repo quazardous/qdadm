@@ -496,6 +496,7 @@ export default `core:
     undoLabel: "Put {label} back in favourites"
     saveSearch: Save this search
     searchSaved: Search saved
+    removeSearch: "Search saved: remove it from favourites"
     searchName: Name of the search
     save: Save
     title: Favourites

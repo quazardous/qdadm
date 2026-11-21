@@ -2,7 +2,7 @@
   "type": "favorites",
   "title": "Favourites",
   "question": "What do I follow?",
-  "icon": "pi pi-star",
+  "icon": "pi pi-bookmark",
   "readings": [
     "the pages the person starred and the searches they saved, by kind",
     "each line opens its page, filtered as it was for a search"

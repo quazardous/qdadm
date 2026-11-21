@@ -191,7 +191,7 @@ Data that does not fit the schema draws the `invalid` state with the path and th
 
 - for what everyone must see: that is a board's own card, not a favourite
 
-**Sizes**: s, m. **Icon**: `pi pi-star`. **Main action**: none: each line is its own gesture; with removable, a × beside it removes it, Undo puts it back
+**Sizes**: s, m. **Icon**: `pi pi-bookmark`. **Main action**: none: each line is its own gesture; with removable, a × beside it removes it, Undo puts it back
 
 | Option | Type | Default | What it does |
 |---|---|---|---|

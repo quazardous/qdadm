@@ -14,6 +14,7 @@ import QdCardView from './QdCardView.vue'
 import { useI18n } from '../i18n/useI18n'
 import { useFavorites } from '../favorites/useFavorites'
 import type { Favorite } from '../favorites/store'
+import { useFavoritesLook } from '../favorites/look'
 import type { CardSize } from './types'
 
 const props = withDefaults(
@@ -29,6 +30,8 @@ const props = withDefaults(
 )
 const { tOr } = useI18n()
 const favorites = useFavorites()
+// Its header shows the app's favourite symbol (#5402), unless told otherwise
+const look = useFavoritesLook()
 // Read again when it shows: another tab or a page may have changed them
 onMounted(() => void favorites.reload())
 
@@ -72,7 +75,7 @@ onBeforeUnmount(() => removed.value.forEach((r) => clearTimeout(r.timer)))
 
 const envelope = computed(() => ({
   title: props.title ?? tOr('core.favorites.title', 'Favourites'),
-  ...(props.icon !== undefined ? { icon: props.icon } : {}),
+  icon: props.icon !== undefined ? props.icon : look.icon,
   size: props.size,
   state: !favorites.available
     ? ('empty' as const)

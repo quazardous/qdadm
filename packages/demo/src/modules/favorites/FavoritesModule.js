@@ -129,7 +129,7 @@ export class FavoritesModule extends Module {
       list: () => import('./pages/FavoritesPage.vue'),
       form: () => import('./pages/FavoriteForm.vue')
     }, {
-      nav: { section: 'Local Storage', icon: 'pi pi-star' }
+      nav: { section: 'Local Storage', icon: 'pi pi-bookmark' }
     })
   }
 }

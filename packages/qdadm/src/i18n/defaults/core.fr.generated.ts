@@ -496,6 +496,7 @@ export default `core:
     undoLabel: "Remettre {label} dans les favoris"
     saveSearch: Enregistrer cette recherche
     searchSaved: Recherche enregistrée
+    removeSearch: "Recherche enregistrée : la retirer des favoris"
     searchName: Nom de la recherche
     save: Enregistrer
     title: Favoris

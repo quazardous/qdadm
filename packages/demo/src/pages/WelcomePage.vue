@@ -90,7 +90,7 @@ const entityGroups = [
     severity: 'secondary',
     description: 'Persistent + volatile storage options',
     entities: [
-      { name: 'Favorites', route: 'favorite', icon: 'pi pi-star' },
+      { name: 'Favorites', route: 'favorite', icon: 'pi pi-bookmark' },
       { name: 'Settings', route: 'setting', icon: 'pi pi-cog' }
     ]
   },

@@ -125,7 +125,7 @@ async function addSampleFavorites() {
 
     <template #empty>
       <div class="text-center p-6">
-        <i class="pi pi-star text-4xl text-surface-400 mb-4" />
+        <i class="pi pi-bookmark text-4xl text-surface-400 mb-4" />
         <p class="text-surface-500 mb-4">No favorites yet.</p>
         <p class="text-surface-400 text-sm mb-4">
           Data is stored in browser localStorage and survives page refresh.

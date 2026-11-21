@@ -155,7 +155,14 @@ describe('favourites (#5349)', () => {
     await wrapper.find('form').trigger('submit')
     await flushPromises()
     expect(favorites.list.value).toEqual([expect.objectContaining({ kind: 'search', label: 'Sci-fi to read', to: '/books?books.genre=sci-fi', entity: 'books' })])
-    expect(wrapper.find('[data-save-search]').text()).toBe('Search saved')
+    // Icon alone, filled, saying so in words; a second click takes it out
+    const button = wrapper.find('[data-save-search]')
+    expect(button.attributes('aria-label')).toBe('Search saved: remove it from favourites')
+    expect(button.attributes('aria-pressed')).toBe('true')
+    expect(button.find('.pi-bookmark-fill').exists()).toBe(true)
+    await button.trigger('click')
+    await flushPromises()
+    expect(favorites.list.value).toEqual([])
   })
 })
 
@@ -262,7 +269,7 @@ describe('removing a favourite from its card, the card icon (#5392)', () => {
 
   it("a card shows its type's icon; the envelope changes it, or hides it with null", async () => {
     const { wrapper } = await mountWith(QdFavoritesCard)
-    expect(wrapper.find('.qd-card-title .qd-card-icon').classes()).toEqual(expect.arrayContaining(['pi', 'pi-star']))
+    expect(wrapper.find('.qd-card-title .qd-card-icon').classes()).toEqual(expect.arrayContaining(['pi', 'pi-bookmark']))
     wrapper.unmount()
     const other = await mountWith(QdFavoritesCard, { icon: 'pi pi-heart' })
     expect(other.wrapper.find('.qd-card-icon').classes()).toContain('pi-heart')
@@ -280,5 +287,33 @@ describe('removing a favourite from its card, the card icon (#5392)', () => {
     named.wrapper.unmount()
     const bare = await mountWith(PageHeader, { titleParts: { action: 'View', entityName: 'Task' }, favorite: { kind: 'item', entity: 'tasks', itemId: 7, ready: true } })
     expect(bare.wrapper.find('[data-favorite-star]').attributes('aria-label')).toBe('Add Task #7 to favourites')
+  })
+})
+
+describe('the favourites look (#5402)', () => {
+  it('the bookmark by default, alone, filled once a favourite', async () => {
+    const { wrapper } = await mountWith(QdFavoriteStar, { label: 'Books', kind: 'list' }, '/books')
+    const star = wrapper.find('[data-favorite-star]')
+    expect(star.find('i').classes()).toContain('pi-bookmark')
+    expect(star.text()).toBe('')
+    await star.trigger('click')
+    await flushPromises()
+    expect(star.find('i').classes()).toContain('pi-bookmark-fill')
+  })
+
+  it("the app's symbol and labels (features.favorites), a use's own props over them", async () => {
+    const features = { favorites: { icon: 'pi pi-heart', iconActive: 'pi pi-heart-fill', labels: true } }
+    const router = createRouter({ history: createMemoryHistory(), routes: [{ path: '/:p(.*)*', component: { template: '<div />' } }] })
+    await router.push('/books')
+    const mountIt = (props) =>
+      mount(QdFavoriteStar, { props: { label: 'Books', kind: 'list', ...props }, global: { plugins: [router], provide: { qdadmOrchestrator: orchestrator(), qdadmFeatures: features } } })
+    const w = mountIt({})
+    await flushPromises()
+    expect(w.find('i').classes()).toContain('pi-heart')
+    expect(w.text()).toBe('Add Books to favourites')
+    expect(mountIt({ icon: 'pi pi-star' }).find('i').classes()).toContain('pi-star')
+    const card = mount(QdFavoritesCard, { global: { plugins: [router], provide: { qdadmOrchestrator: orchestrator(), qdadmFeatures: features } } })
+    await flushPromises()
+    expect(card.find('.qd-card-icon').classes()).toContain('pi-heart')
   })
 })

@@ -36,7 +36,7 @@ export function useFavoriteAction(listBuilder, options = {}) {
   const on = (row) => !!favorites.findItem(manager.name, idOf(row))
 
   listBuilder.addAction('favorite', {
-    icon: (row) => (on(row) ? 'pi pi-star-fill' : 'pi pi-star'),
+    icon: (row) => (on(row) ? 'pi pi-bookmark-fill' : 'pi pi-bookmark'),
     tooltip: (row) => (on(row) ? `Remove ${labelOf(row)} from favourites` : `Add ${labelOf(row)} to favourites`),
     severity: (row) => (on(row) ? 'warn' : 'secondary'),
     onClick: (row) => favorites.toggle({ kind: 'item', label: labelOf(row), to: pathOf(row), entity: manager.name, itemId: idOf(row) }),

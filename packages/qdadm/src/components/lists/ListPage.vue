@@ -23,6 +23,7 @@ import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
 import QdButton from '../base/QdButton.vue'
 import QdSaveSearch from './QdSaveSearch.vue'
+import { useFavoritesLook } from '../../favorites/look'
 import SeverityTag from '../SeverityTag.vue'
 import { useI18n } from '../../i18n/useI18n'
 import ShowDisplay from '../show/ShowDisplay.vue'
@@ -89,6 +90,8 @@ const props = defineProps({
   favorite: { type: Boolean, default: true },
   /** The filter in words while one is on: offers "Save this search" (#5349) */
   searchLabel: { type: String as PropType<string | null>, default: null },
+  /** Where the search's bookmark goes (#5402): 'filters', 'header', or false; default the app's `features.favorites.saveSearch` */
+  saveSearch: { type: [String, Boolean] as PropType<'filters' | 'header' | false | null>, default: null },
 
   // Cards
   cards: { type: Array as PropType<CardConfig[]>, default: () => [] },
@@ -144,6 +147,10 @@ const props = defineProps({
   // Mobile row tap
   hasRowTapAction: { type: Boolean, default: false }
 })
+
+// Where the search's bookmark goes (#5402): this list's say, else the app's
+const favoritesLook = useFavoritesLook()
+const saveSearchAt = computed(() => (props.saveSearch === null ? favoritesLook.saveSearch : props.saveSearch))
 
 const { tOr } = useI18n()
 
@@ -360,7 +367,7 @@ function getFilterClass(filter: FilterConfig): Record<string, boolean> {
     <PageHeader :title="title" :subtitle="subtitle" :favorite="favorite ? { kind: 'list', entity } : null">
       <template #actions>
         <slot name="header-actions" ></slot>
-        <QdSaveSearch v-if="searchLabel" :default-name="searchLabel" :entity="entity" />
+        <QdSaveSearch v-if="searchLabel && saveSearchAt === 'header'" :default-name="searchLabel" :entity="entity" />
         <!-- Mobile: split button (primary action + dropdown) -->
         <template v-if="isMobile && headerActions.length > 0 && primaryHeaderAction">
           <!-- Single action: just a button -->
@@ -458,6 +465,8 @@ function getFilterClass(filter: FilterConfig): Record<string, boolean> {
           @click="clearAllFilters"
           v-tooltip.top="'Clear filters'"
         />
+        <!-- The search's bookmark, beside what it saves (#5402) -->
+        <QdSaveSearch v-if="searchLabel && saveSearchAt === 'filters'" :default-name="searchLabel" :entity="entity" />
       </FilterBar>
 
       <!-- Data Table -->
