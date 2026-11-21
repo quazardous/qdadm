@@ -12,7 +12,7 @@
  * - Show pages (read-only detail pages)
  * - useEntityItemFormPage (create/edit forms)
  */
-import { ref, computed, onMounted, provide, type Ref, type ComputedRef } from 'vue'
+import { ref, computed, watch, onMounted, provide, type Ref, type ComputedRef } from 'vue'
 import { useRoute } from 'vue-router'
 import { useStackHydrator, type StackHydratorReturn } from '../chain/useStackHydrator'
 import { useNotifications } from '../notifications/NotificationStore'
@@ -408,6 +408,16 @@ export function useEntityItemPage<T = unknown>(config: UseEntityItemPageOptions<
     if (loadOnMount && entityId.value) {
       load()
     }
+  })
+
+  // Another record on the same route (#5431): the page is kept, its record is
+  // not. Emptied first, so nothing of the one being left shows meanwhile;
+  // load() already drops a late answer for it (#2666).
+  watch(entityId, async (id, previous) => {
+    if (!loadOnMount || !id || String(id) === String(previous)) return
+    data.value = null
+    if (autoLoadParent && parentConfig.value && parentId.value) await loadParent()
+    load(id)
   })
 
   // ============ RETURN ============
