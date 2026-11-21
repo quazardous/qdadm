@@ -1,7 +1,8 @@
 /**
- * The domain bar (#5389): a domain's title, its navigation and its indicators
- * as pills with badges, on top of its pages. Sticky; compact in one line of
- * icons and badges. Tones from the card tokens (_qd-cards.scss).
+ * The domain bar (#5389): a domain's title, its navigation and its indicators,
+ * on top of its pages. Sticky. Full (#5424): the indicators a row of mini
+ * cards under the navigation; compact: one line of icons and pills. Tones
+ * from the card tokens (_qd-cards.scss).
  */
 
 // The zone's wrapper steps aside, so the bar sticks within the whole content column
@@ -24,10 +25,15 @@
   --qd-domain-bar-padding: 0.5rem 0.75rem;
   --qd-domain-bar-radius: 8px;
   --qd-domain-bar-shadow: none;
-  --qd-domain-bar-compact-shadow: 0 2px 6px rgb(0 0 0 / 8%);
-  // A pill's sparkline (#5422), drawn in the full bar only
+  // No shadow, full or compact (#5424): the same bar either way
+  --qd-domain-bar-compact-shadow: none;
+  // A compact pill's sparkline (#5422), while the line has room (#5424)
   --qd-domain-pill-viz-width: 48px;
   --qd-domain-pill-viz-height: 18px;
+  // The full bar's mini cards (#5424): at least three compact lines high
+  --qd-domain-card-width: 10rem;
+  --qd-domain-card-min-height: 4.5rem;
+  --qd-domain-card-viz-height: 1.75rem;
 
   position: sticky;
   top: 0;
@@ -131,6 +137,90 @@ a.qd-domain-pill-body:focus-visible { outline: 2px solid var(--qd-card-accent); 
 }
 
 .qd-domain-pill-title { color: var(--qd-card-muted); }
+
+// ── Full (#5424): the indicators, a row of mini cards under the navigation ──
+.qd-domain-bar:not(.qd-domain-bar--compact) {
+  flex-wrap: wrap;
+
+  .qd-domain-bar-nav { flex: 1 1 auto; }
+  .qd-domain-bar-toggle { margin-left: auto; }
+
+  .qd-domain-bar-indicators {
+    order: 10;
+    flex: 1 0 100%;
+    flex-wrap: wrap;
+    align-self: stretch;
+    gap: 0.5rem;
+    margin: 0;
+    padding: 0;
+  }
+
+  .qd-domain-pill {
+    display: flex;
+    width: var(--qd-domain-card-width);
+    max-width: 100%;
+  }
+
+  .qd-domain-pill-body {
+    position: relative;
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.15rem;
+    min-width: 0;
+    min-height: var(--qd-domain-card-min-height);
+    padding: 0.45rem 0.6rem 0.4rem 0.8rem;
+    border-radius: 8px;
+    font-size: 0.8125rem;
+    overflow: hidden;
+
+    // The status, a side bar, as on a dashboard card
+    &::before {
+      content: '';
+      position: absolute;
+      inset: 0 auto 0 0;
+      width: 3px;
+      background: var(--qd-sev, transparent);
+    }
+  }
+}
+
+.qd-domain-pill[data-status='critical'] { --qd-sev: var(--qd-tone-critical); }
+.qd-domain-pill[data-status='watch'] { --qd-sev: var(--qd-tone-watch); }
+.qd-domain-pill[data-status='good'] { --qd-sev: var(--qd-tone-good); }
+.qd-domain-pill[data-status='info'] { --qd-sev: var(--qd-tone-info); }
+
+.qd-domain-card-head {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-width: 0;
+
+  i { flex: none; color: var(--qd-card-muted); }
+  .qd-domain-pill-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+}
+
+.qd-domain-card-value {
+  color: var(--qd-card-ink-strong);
+  font-size: 1.25rem;
+  font-weight: 700;
+  line-height: 1.2;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+
+  &.qd-domain-pill-value--zero { color: var(--qd-card-muted); font-weight: 600; }
+}
+
+.qd-domain-pill-viz.qd-domain-card-viz {
+  display: block;
+  width: 100%;
+  margin-top: auto;
+
+  .qd-viz--compact .qd-viz-plot { height: var(--qd-domain-card-viz-height); }
+}
 .qd-domain-pill-value { font-weight: 600; font-variant-numeric: tabular-nums; }
 .qd-domain-pill-value--zero { color: var(--qd-card-muted); font-weight: 400; }
 .qd-domain-pill[data-state='unreachable'] .qd-domain-pill-mark,
@@ -198,7 +288,6 @@ a.qd-domain-pill-body:focus-visible { outline: 2px solid var(--qd-card-accent); 
   --qd-domain-bar-padding: 0 0.75rem;
   --qd-domain-bar-radius: 0;
   --qd-domain-bar-height: var(--fad-nav-item-height, 2.25rem);
-  --qd-domain-bar-compact-shadow: 0 2px 4px rgb(0 0 0 / 6%);
   --qd-toolbox-entry-ink: var(--p-surface-600, #475569);
   --qd-toolbox-entry-hover-bg: var(--p-surface-100, #f1f5f9);
   --qd-toolbox-current-bg: var(--p-primary-50, #eff6ff);
@@ -265,6 +354,12 @@ a.qd-domain-pill-body:focus-visible { outline: 2px solid var(--qd-card-accent); 
     width: 1.75rem;
     height: 1.75rem;
   }
+}
+
+// Full toolbox: the first line keeps the side menu's item height, the cards go under it
+.qd-domain-bar--toolbox:not(.qd-domain-bar--compact) {
+  .qd-domain-bar-nav { min-height: var(--qd-domain-bar-height); }
+  .qd-domain-bar-indicators { padding-bottom: 0.6rem; }
 }
 
 // Compact keeps the edge and the line; only the words go

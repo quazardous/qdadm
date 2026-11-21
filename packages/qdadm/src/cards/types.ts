@@ -107,7 +107,7 @@ export interface CardPill {
   /** The value as written: "14", "68 / 100" */
   value: string
   count: number | null
-  /** Blocks drawn after the badge (#5422): a `metric`'s sparkline, in the full bar only */
+  /** Blocks drawn after the value (#5422): a `metric`'s sparkline, across the mini card or in the compact pill while there is room */
   blocks?: CardBlock[]
 }
 

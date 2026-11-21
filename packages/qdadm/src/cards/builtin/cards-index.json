@@ -1148,7 +1148,7 @@
         "spark": {
           "type": "boolean",
           "default": true,
-          "description": "In a domain bar's pill: the series as a sparkline, in the full bar only"
+          "description": "In a domain bar: the series as a sparkline, in the mini card, or in the compact pill while there is room"
         }
       },
       "action": "mode next: open the most urgent of the items behind the number (\"Process the 1st\")",

@@ -17,10 +17,11 @@ export const PILLS: Record<string, (data: unknown, options: Opts, locale: string
     if (!v || typeof v.value !== 'number') return { value: '', count: null }
     return { value: formatNumber(v.value, l, { decimals: v.decimals, unit: v.unit }), count: count(v.value) }
   },
-  // Its series as a sparkline (#5422), in the full bar only: compact keeps the badge
-  metric: (d, o, l, m) => {
+  // Its series as a sparkline (#5422): the bar draws it in its mini card, or
+  // in its compact pill while the line has room (#5424)
+  metric: (d, o, l) => {
     const { value: v, series } = d as { value: number; series?: number[] }
-    const spark = m?.mode !== 'compact' && o.spark !== false && (series?.length ?? 0) > 1
+    const spark = o.spark !== false && (series?.length ?? 0) > 1
     return { value: fmt(v, o, l), count: count(v), ...(spark ? { blocks: [{ kind: 'viz', chart: 'area', series: series!, compact: true, dot: true }] } : {}) }
   },
   queue: (d, _o, l) => {

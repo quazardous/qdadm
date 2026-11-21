@@ -218,22 +218,31 @@ ctx.domain('library', {
   of your own gets one with `registerCard({ …, pill: (data, options, locale, mode)
   => ({ value, count, blocks }) })`. Data that does not fit the type's schema, or a
   read that fails, marks the pill, with the reason in its title.
-- **Compact:** one line of icons and badges, on its own once the page
-  scrolls (the bar stays on top), or by the toggle at its end, the choice kept
-  per account.
-- **Indicators and the bar's mode:** each pill knows how the bar is drawn,
-  `full` or `compact` (and why: `chosen` by the person, or `scrolled`), and
-  says it in `data-mode`, for the app's CSS. A card's pill form receives it
-  (`pill(data, options, locale, mode)`) and may return `blocks` drawn after
-  the badge. `metric` draws its `series` as a sparkline in the full bar only,
-  toned by the indicator's status. Compact keeps the icon and the badge, and
-  `options: { spark: false }` takes the sparkline away. Its size:
-  `--qd-domain-pill-viz-width` and `--qd-domain-pill-viz-height` on
-  `.qd-domain-bar`. The app decides the rest, per indicator:
+- **Full:** the bar extends downward. Under the title and the navigation,
+  the indicators are a row of mini cards, at least three compact lines high:
+  the title on top, the value large, a `metric`'s `series` as a sparkline
+  across, the status as a side bar. The whole card leads to `to`. Their size:
+  `--qd-domain-card-width`, `--qd-domain-card-min-height`,
+  `--qd-domain-card-viz-height`.
+- **Compact:** one line of icons and pills, on its own once the page scrolls
+  (the bar stays on top), or by the toggle at its end, the choice kept per
+  account. A pill shows its icon, its badge (or its value) and its sparkline;
+  its title is in the tooltip and for screen readers. Short of room on the
+  line, the sparklines go (`data-fit="tight"` on the bar) and come back once
+  there is room again. Their size: `--qd-domain-pill-viz-width` and
+  `--qd-domain-pill-viz-height`. Full or compact, the bar has no shadow;
+  `--qd-domain-bar-shadow` and `--qd-domain-bar-compact-shadow` give it one.
+- **Indicators and the bar's mode:** each indicator knows how the bar is
+  drawn, `full` or `compact` (and why: `chosen` by the person, or
+  `scrolled`), and says it in `data-mode`, for the app's CSS. A card's pill
+  form receives it (`pill(data, options, locale, mode)`) and may return
+  `blocks`, drawn across the mini card or in the pill. `options: { spark:
+  false }` takes a `metric`'s sparkline away, `compact: { options: { spark:
+  false } }` only in compact. The app decides the rest, per indicator:
 
   ```js
   indicators: [
-    // The app's own drawing of the pill's inside, given { data, options,
+    // The app's own drawing of the card's or the pill's inside, given { data, options,
     // status, mode, title, icon, state, value, count }; `card` is optional
     { id: 'load', title: 'Load', load: readLoad, component: LoadPill },
     // When the bar is compact: options merged over `options`, another component

@@ -124,7 +124,8 @@ describe('QdDomainBar (#5389)', () => {
     expect(entries[1].find('.qd-badge').classes()).toContain('qd-badge--critical')
   })
 
-  it('the indicators: a badge for a count, the value when it says more, a zero hidden, each state in words', async () => {
+  it('compact, the pills: a badge for a count, the value when it says more, a zero hidden, each state in words', async () => {
+    localStorage.setItem('qdadm.domainBar.library.anonymous.compact', '1')
     const { w } = await mountBar('/board', config())
     const pill = (id) => w.find(`[data-indicator="${id}"]`)
     expect(pill('toCheck').attributes('data-state')).toBe('ready')
@@ -139,14 +140,29 @@ describe('QdDomainBar (#5389)', () => {
     expect(pill('bad').attributes('data-state')).toBe('invalid')
   })
 
+  it('full, the mini cards (#5424): the title on top, the value large, each state in words', async () => {
+    const { w } = await mountBar('/board', config())
+    const card = (id) => w.find(`[data-indicator="${id}"]`)
+    expect(card('toCheck').attributes('data-mode')).toBe('full')
+    expect(card('toCheck').find('.qd-domain-card-head .qd-domain-pill-title').text()).toBe('To check')
+    expect(card('toCheck').find('[data-card-value]').text()).toBe('4')
+    expect(card('toCheck').attributes('data-status')).toBe('critical')
+    expect(card('toCheck').find('a').attributes('href')).toBe('/books')
+    expect(card('onLoan').find('[data-card-value]').classes()).toContain('qd-domain-pill-value--zero')
+    expect(card('read').find('[data-card-value]').text()).toBe('2 / 5')
+    expect(card('down').find('.qd-card-sr').text()).toContain('timeout')
+    // The nav keeps its badge
+    expect(w.find('[data-domain-nav] .qd-badge').text()).toContain('4')
+  })
+
   it('an indicator with a refresh reads again', async () => {
     vi.useFakeTimers()
     let n = 0
     const { w } = await mountBar('/board', { label: 'L', indicators: [{ id: 'n', card: 'metric', title: 'N', refresh: 30, load: async () => ({ value: ++n }) }] })
-    expect(w.find('.qd-badge').text()).toContain('1')
+    expect(w.find('[data-card-value]').text()).toBe('1')
     await vi.advanceTimersByTimeAsync(30000)
     await flushPromises()
-    expect(w.find('.qd-badge').text()).toContain('2')
+    expect(w.find('[data-card-value]').text()).toBe('2')
     vi.useRealTimers()
     w.unmount()
   })
@@ -198,16 +214,62 @@ describe('the look (#5396, #5400)', () => {
 describe("the indicators know the bar's mode (#5422)", () => {
   const spark = { id: 'open', card: 'metric', title: 'Open', icon: 'pi pi-inbox', data: { value: 12, series: [3, 5, 4, 8, 12] } }
 
-  it("a metric's series is a sparkline in the full bar, gone in compact", async () => {
+  it("a metric's series is a sparkline across the mini card, and in the compact pill (#5424)", async () => {
     const { w } = await mountBar('/board', { label: 'L', indicators: [spark] })
     const pill = () => w.find('[data-indicator="open"]')
     expect(pill().attributes('data-mode')).toBe('full')
-    expect(pill().find('[data-pill-blocks] [data-block="viz"]').exists()).toBe(true)
+    expect(pill().find('.qd-domain-card-viz [data-block="viz"]').exists()).toBe(true)
     expect(pill().find('.qd-viz-plot').attributes('aria-hidden')).toBe('true')
     await w.find('[data-domain-toggle]').trigger('click')
     expect(pill().attributes('data-mode')).toBe('compact')
-    expect(pill().find('[data-pill-blocks]').exists()).toBe(false)
+    expect(pill().find('[data-pill-blocks] [data-block="viz"]').exists()).toBe(true)
+    expect(pill().find('.qd-domain-card-viz').exists()).toBe(false)
     expect(pill().find('.qd-badge').exists()).toBe(true)
+    // The title: in the tooltip and for screen readers only
+    expect(pill().find('.qd-domain-pill-title').classes()).toContain('qd-card-sr')
+    expect(pill().attributes('title')).toBe('Open: 12')
+    w.unmount()
+  })
+
+  it('compact, short of room: the sparklines go, and come back once there is room again', async () => {
+    const observers = []
+    const RO = globalThis.ResizeObserver
+    globalThis.ResizeObserver = class {
+      constructor(cb) { this.cb = cb; observers.push(this) }
+      observe() {}
+      disconnect() {}
+    }
+    localStorage.setItem('qdadm.domainBar.library.anonymous.compact', '1')
+    const { w } = await mountBar('/board', { label: 'L', indicators: [spark] })
+    const el = w.find('.qd-domain-bar').element
+    let client = 300
+    let scroll = 300
+    Object.defineProperty(el, 'clientWidth', { get: () => client, configurable: true })
+    Object.defineProperty(el, 'scrollWidth', { get: () => scroll, configurable: true })
+    const resize = async () => {
+      observers.forEach((o) => o.cb([]))
+      await flushPromises()
+    }
+    await resize()
+    expect(w.find('[data-pill-blocks]').exists()).toBe(true)
+    // Narrower: the line overflows by 40px, the sparklines go
+    client = 260
+    await resize()
+    expect(w.find('.qd-domain-bar').attributes('data-fit')).toBe('tight')
+    expect(w.find('[data-pill-blocks]').exists()).toBe(false)
+    expect(w.find('.qd-badge').exists()).toBe(true)
+    // Without them it fits; a little wider is not yet enough
+    scroll = 240
+    client = 280
+    await resize()
+    expect(w.find('[data-pill-blocks]').exists()).toBe(false)
+    // As wide as it was: back
+    client = 300
+    scroll = 300
+    await resize()
+    expect(w.find('[data-pill-blocks]').exists()).toBe(true)
+    expect(w.find('.qd-domain-bar').attributes('data-fit')).toBeUndefined()
+    globalThis.ResizeObserver = RO
     w.unmount()
   })
 
@@ -221,6 +283,13 @@ describe("the indicators know the bar's mode (#5422)", () => {
     })
     expect(w.find('[data-pill-blocks]').exists()).toBe(false)
     w.unmount()
+  })
+
+  it('no shadow, full or compact (#5424)', async () => {
+    const fs = await import('node:fs')
+    const scss = fs.readFileSync(`${process.cwd()}/src/styles/_qd-domain-bar.scss`, 'utf8')
+    expect(scss).toMatch(/--qd-domain-bar-shadow: none;/)
+    expect(scss.match(/--qd-domain-bar-compact-shadow: ([^;]+);/g)).toEqual(['--qd-domain-bar-compact-shadow: none;'])
   })
 
   it("the app's own component draws the pill, told the mode; compact overrides it", async () => {
