@@ -1264,6 +1264,15 @@ export function useListPage<T = unknown>(config: UseListPageOptions<T>): UseList
   // ============ LIFECYCLE ============
   initFromRegistry()
 
+  /** A filter or a search restored from the session that the address lacks (#5425) */
+  function sessionNotInAddress(): boolean {
+    if (!savedSession) return false
+    const stored = persister?.read(routeStateScope) ?? {}
+    const blank = (v: unknown) => v === null || v === undefined || v === ''
+    if (savedSearch && blank(stored.search)) return true
+    return Object.entries(savedFilters ?? {}).some(([name, value]) => !blank(value) && filtersMap.value.has(name) && blank(stored[name]))
+  }
+
   function handleResize(): void {
     isMobile.value = window.innerWidth < 768
   }
@@ -1288,6 +1297,12 @@ export function useListPage<T = unknown>(config: UseListPageOptions<T>): UseList
 
     await invokeFilterAlterHook()
     await invokeListAlterHook()
+
+    // Filters the session brought back that the address does not carry go
+    // into it, once, by replace (#5425): the address says what the list
+    // shows, a copied link keeps it, and the domain resolver sees them. A
+    // value the address carries won over the session's in restoreFilters().
+    if (sessionNotInAddress()) writeStateToUrl()
 
     if (loadOnMount && manager) {
       loadItems()

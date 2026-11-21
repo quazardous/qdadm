@@ -188,6 +188,21 @@ describe('the kernel resolves and keeps it (#5412)', () => {
     expect(activeStack.getDomain()).toBe(null)
   })
 
+  it('back from the side menu, the list puts its session filter in the address and the resolver finds the domain again (#5425)', async () => {
+    const { router, activeStack } = await boot({
+      domainResolver: (r) => (typeof r.query['tasks.universe'] === 'string' ? r.query['tasks.universe'] : undefined),
+    })
+    await router.push('/tasks?tasks.universe=it')
+    expect(activeStack.getDomain()).toMatchObject({ name: 'it', source: 'resolver' })
+    leaveDomain()
+    await router.push('/tasks')
+    expect(activeStack.getDomain()?.name).not.toBe('it')
+    // What useListPage now does once mounted with the filter from the session
+    await router.replace({ query: { 'tasks.universe': 'it' } })
+    expect(activeStack.getDomain()).toMatchObject({ name: 'it', source: 'resolver' })
+    expect(router.currentRoute.value.query.domain).toBeUndefined()
+  })
+
   it('a page placed by its own route hands nothing on', async () => {
     const { router } = await boot()
     await router.push('/board')

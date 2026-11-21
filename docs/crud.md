@@ -366,6 +366,12 @@ remembered per entity in the session and never appears in the URL; rows per
 page is one app-wide setting in a cookie. All three go through the same seam
 — see [route-state.md](./route-state.md).
 
+Filters and a search brought back from the session, on a list reached by a
+bare address (`/tasks` from the side menu), go into the address once the list
+is mounted, by replace, with no history step: the address says what the list
+shows, a copied link keeps it, and the app's `domainResolver` sees them. A
+value the address already carries wins over the session's and is left as is.
+
 The page is written only once it leaves 1, and removed again when it returns,
 so a pristine list leaves a clean link. Changing a filter resets it, since the
 results are renumbered. A list URL is therefore shareable as what the sender
