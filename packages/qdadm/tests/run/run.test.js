@@ -12,6 +12,7 @@ import { createRun, saveRun, loadRun, nextPending, runIndexOf, runToneColor } fr
 import { useRun } from '../../src/run/useRun'
 import QdRunBar from '../../src/components/run/QdRunBar.vue'
 import { RUN_BAR_HOST } from '../../src/components/run/host'
+import { resolveRunKeys } from '../../src/run/keys'
 
 const ROUTE = { name: 'order-edit', param: 'id' }
 
@@ -28,7 +29,7 @@ function makeRouter() {
 }
 
 /** A page that walks the run, and the bar, under one router */
-async function mountPage(path = '/orders') {
+async function mountPage(path = '/orders', features = null) {
   const router = makeRouter()
   await router.push(path)
   let api
@@ -43,7 +44,7 @@ async function mountPage(path = '/orders') {
       return () => h(QdRunBar, { entityLabel: 'Order' })
     },
   })
-  const wrapper = mount(Page, { global: { plugins: [router], provide: { qdadmOrchestrator: orchestrator } }, attachTo: document.body })
+  const wrapper = mount(Page, { global: { plugins: [router], provide: { qdadmOrchestrator: orchestrator, qdadmFeatures: features } }, attachTo: document.body })
   await flushPromises()
   return { wrapper, router, api, toast }
 }
@@ -93,26 +94,77 @@ describe('useRun and the bar (#5343)', () => {
     expect(wrapper.find('.qd-run-prev').attributes('disabled')).toBeDefined()
   })
 
-  it('Next and J walk forward, K back, not while typing in a field', async () => {
-    const { router, api } = await mountPage()
+  it('Next and K walk forward, J back (#5454: left and right on the keyboard), not while typing in a field', async () => {
+    const { wrapper, router, api } = await mountPage()
     await api.start({ entity: 'orders', items: [1, 2, 3] })
     await flushPromises()
+    expect(wrapper.find('.qd-run-prev kbd').text()).toBe('J')
+    expect(wrapper.find('.qd-run-next kbd').text()).toBe('K')
+    expect(wrapper.find('.qd-run-prev').attributes('aria-keyshortcuts')).toBe('J')
+    expect(wrapper.find('.qd-run-next').attributes('aria-keyshortcuts')).toBe('K')
+    expect(wrapper.find('[data-run-back]').attributes('aria-keyshortcuts')).toBe('L')
 
-    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'j' }))
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'k' }))
     await flushPromises()
     expect(router.currentRoute.value.params.id).toBe('2')
 
     const input = document.createElement('input')
     document.body.appendChild(input)
-    input.dispatchEvent(new KeyboardEvent('keydown', { key: 'j', bubbles: true }))
+    input.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', bubbles: true }))
     await flushPromises()
     expect(router.currentRoute.value.params.id).toBe('2')
     input.remove()
 
-    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'k' }))
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'J' }))
     await flushPromises()
     expect(router.currentRoute.value.params.id).toBe('1')
     expect(api.position.value).toBe(1)
+  })
+
+  it("the keys are the app's, and a run's own over them (#5454); one turned off has no hint and does nothing", async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const { wrapper, router, api } = await mountPage('/orders', { run: { keys: { prev: 'ArrowLeft', next: 'ArrowRight', back: null } } })
+    await api.start({ entity: 'orders', items: [1, 2, 3] })
+    await flushPromises()
+    expect(wrapper.find('.qd-run-prev kbd').text()).toBe('←')
+    expect(wrapper.find('.qd-run-next kbd').text()).toBe('→')
+    expect(wrapper.find('.qd-run-next').attributes('aria-keyshortcuts')).toBe('ArrowRight')
+    // back: off, no hint, no shortcut, the key does nothing
+    expect(wrapper.find('[data-run-back] kbd').exists()).toBe(false)
+    expect(wrapper.find('[data-run-back]').attributes('aria-keyshortcuts')).toBeUndefined()
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight' }))
+    await flushPromises()
+    expect(router.currentRoute.value.params.id).toBe('2')
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'k' }))
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'l' }))
+    await flushPromises()
+    expect(router.currentRoute.value.params.id).toBe('2')
+    wrapper.unmount()
+
+    // A run's own keys win over the app's, and stay with it in the tab
+    const other = await mountPage('/orders', { run: { keys: { prev: 'ArrowLeft', next: 'ArrowRight' } } })
+    await other.api.start({ entity: 'orders', items: [1, 2, 3], keys: { next: 'n', back: 'Escape' } })
+    await flushPromises()
+    expect(other.wrapper.find('.qd-run-next kbd').text()).toBe('N')
+    expect(other.wrapper.find('.qd-run-prev kbd').text()).toBe('←')
+    expect(other.wrapper.find('[data-run-back] kbd').text()).toBe('Escape')
+    expect(loadRun(other.api.run.value.key).keys).toEqual({ next: 'n', back: 'Escape' })
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'N' }))
+    await flushPromises()
+    expect(other.router.currentRoute.value.params.id).toBe('2')
+    other.wrapper.unmount()
+
+    // One key for two actions: a warning, the first one keeps it
+    expect(resolveRunKeys({ next: 'j' })).toEqual({ prev: 'j', next: 'j', back: 'l' })
+    const dup = await mountPage('/orders', { run: { keys: { next: 'j' } } })
+    const env = import.meta.env.DEV
+    import.meta.env.DEV = true
+    await dup.api.start({ entity: 'orders', items: [1, 2, 3], keys: { prev: 'x', next: 'x' } })
+    await flushPromises()
+    expect(warn.mock.calls.flat().join(' ')).toMatch(/'x' go to two actions/)
+    import.meta.env.DEV = env
+    warn.mockRestore()
+    dup.wrapper.unmount()
   })
 
   it('done and next skips what is done; at the end it says so and goes back where it started', async () => {
@@ -185,8 +237,8 @@ describe('useRun and the bar (#5343)', () => {
     expect(w.find('.page [data-run-bar]').exists()).toBe(false)
     // Its label from the run's entity
     expect(w.find('.qd-run-heading').text()).toBe('Order core.run.position')
-    // One step per J, not two
-    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'j' }))
+    // One step per K, not two
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'k' }))
     await flushPromises()
     expect(router.currentRoute.value.params.id).toBe('2')
     w.unmount()

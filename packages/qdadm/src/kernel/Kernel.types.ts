@@ -13,6 +13,7 @@ import type { RoleProvider } from '../security/RolesProvider'
 import type { GrantJudge } from '../entity/auth/SecurityChecker'
 import type { I18nOptions } from '../i18n/types'
 import type { ApiClientSource } from '../api/apiClient'
+import type { RunKeys } from '../run/run'
 import type { DomainResolver } from '../domain/registry'
 import type { RouteStatePersister } from '../routeState'
 import type { UserAvatarResolver } from '../composables/useUserBox'
@@ -99,6 +100,8 @@ export interface Features {
    * domain of the page we come from.
    */
   domainResolver?: DomainResolver
+  /** The run bar (#5454): its keys, `{ prev, next, back }`, `null` for none; a run's own `keys` win */
+  run?: { keys?: RunKeys }
   [key: string]: unknown
 }
 

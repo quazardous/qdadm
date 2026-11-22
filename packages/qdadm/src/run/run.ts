@@ -48,6 +48,18 @@ export interface RunRoute {
   params?: Record<string, string>
 }
 
+/**
+ * The run bar's keys (#5454): a `KeyboardEvent.key` each (`'j'`, `'ArrowLeft'`,
+ * `'['`; letters match either case), `null` or `false` for none. App-wide in
+ * `features.run.keys`, per run in `RunInit.keys`; by default J previous, K
+ * next (left and right on the keyboard, as the bar reads), L back.
+ */
+export interface RunKeys {
+  prev?: string | null | false
+  next?: string | null | false
+  back?: string | null | false
+}
+
 /** What a run is started with */
 export interface RunInit {
   /** The entity the items belong to */
@@ -66,6 +78,8 @@ export interface RunInit {
   route?: RunRoute
   /** The item to start with; by default the first one */
   start?: string | number
+  /** This run's keys, over the app's (`features.run.keys`) */
+  keys?: RunKeys
 }
 
 /** A run as it is kept */
@@ -78,6 +92,7 @@ export interface Run {
   filter?: string
   order?: string
   returnTo?: RouteLocationRaw
+  keys?: RunKeys
   startedAt: number
 }
 
@@ -111,6 +126,7 @@ export function createRun(init: RunInit, route: RunRoute, returnTo?: RouteLocati
     ...(init.filter ? { filter: init.filter } : {}),
     ...(init.order ? { order: init.order } : {}),
     ...(init.returnTo ?? returnTo ? { returnTo: init.returnTo ?? returnTo } : {}),
+    ...(init.keys ? { keys: { ...init.keys } } : {}),
     startedAt: Date.now(),
   }
 }

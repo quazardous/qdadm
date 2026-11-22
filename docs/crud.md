@@ -895,7 +895,7 @@ Next. The bar (`QdRunBar`) shows when the URL carries `?run=<key>`; the page
 needs nothing else.
 
 ```
-← Back to the list L │ ‹ Previous K   Book 3 of 14 to process  sorted by Year ↑ · filter: Fiction   Next J ›
+← Back to the list L │ ‹ Previous J   Book 3 of 14 to process  sorted by Year ↑ · filter: Fiction   Next K ›
                                      ▰▰▣▰▱▱▱▱▱▱▱▱▱▱
 ```
 
@@ -916,7 +916,18 @@ needs nothing else.
   `doneTone` once done: `critical` (`danger`), `watch` (`warn`), `good`
   (`success`), `info`, `neutral` (`secondary`), or the name of the app's own
   `--qd-tone-<name>`. Without them, the defaults above.
-- **J and K** go to the next and the previous item, **L** back to the list, except while typing in a field.
+- **J and K** go to the previous and the next item (left and right on the
+  keyboard, as the bar reads), **L** back to the list, except while typing in
+  a field. The keys are the app's choice, and a run's own:
+
+  ```js
+  features: { run: { keys: { prev: 'ArrowLeft', next: 'ArrowRight', back: null } } }   // the Kernel's options
+  await run.start({ entity: 'orders', items, keys: { back: 'Escape' } })   // this run only
+  ```
+
+  A `KeyboardEvent.key` each (letters in either case); `null` or `false`
+  turns one off. The hints on the buttons and their `aria-keyshortcuts`
+  follow.
 - **In a form, Save & Close becomes "Save and go to the next":** it saves,
   marks the item done and opens the next one still to do. With nothing
   changed, it goes on without saving. Leaving a changed form for another item

@@ -3,10 +3,11 @@
  * QdRunBar (#5343): where this item is in the run it was opened from.
  *
  * One slim line, drawn like the domain bar's toolbox (#5453): Back to the
- * list (L), Previous (K), "Book 3 of 14 to process" with how the items were
+ * list (L), Previous (J), "Book 3 of 14 to process" with how the items were
  * chosen and ordered and how many are done, a thin strip under it (one
  * segment per item: done filled, urgent warm, current outlined, each saying
- * so in its title too), Next (J). It renders when the URL carries `?run=`.
+ * so in its title too), Next (K). The keys are the app's or the run's
+ * (#5454, `features.run.keys`, `RunInit.keys`). It renders when the URL carries `?run=`.
  *
  * AppLayout hosts it at the foot of the content (`placement="foot"`), sticky
  * at the bottom, flush to the edges; it provides RUN_BAR_HOST, and the
@@ -17,7 +18,8 @@ import { computed, inject, onBeforeUnmount, onMounted, watch } from 'vue'
 import { useI18n } from '../../i18n/useI18n'
 import { useRun } from '../../run/useRun'
 import { RUN_BAR_HOST } from './host'
-import { runToneColor } from '../../run/run'
+import { runToneColor, type RunKeys } from '../../run/run'
+import { resolveRunKeys, runKeyAction, duplicateRunKeys, runKeyHint, runKeyShortcut } from '../../run/keys'
 
 const props = withDefaults(defineProps<{ entityLabel?: string | null; placement?: 'inline' | 'foot' }>(), { entityLabel: null, placement: 'inline' })
 
@@ -29,6 +31,28 @@ const orchestrator = inject<{ get?: (name: string) => { label?: string } | undef
 /** The foot draws it; a page's own bar only where no layout hosts one */
 const drawn = computed(() => run.active.value && (props.placement === 'foot' || !hosted))
 const canBack = computed(() => !!run.run.value?.returnTo)
+
+// Its keys (#5454): the run's, else the app's (features.run.keys), else J / K / L
+const features = inject<{ run?: { keys?: RunKeys } } | null>('qdadmFeatures', null)
+const keys = computed(() => resolveRunKeys(run.run.value?.keys, features?.run?.keys))
+const hints = computed(() => ({
+  prev: keys.value.prev ? runKeyHint(keys.value.prev) : null,
+  next: keys.value.next ? runKeyHint(keys.value.next) : null,
+  back: keys.value.back ? runKeyHint(keys.value.back) : null,
+}))
+const shortcuts = computed(() => ({
+  prev: keys.value.prev ? runKeyShortcut(keys.value.prev) : undefined,
+  next: keys.value.next ? runKeyShortcut(keys.value.next) : undefined,
+  back: keys.value.back ? runKeyShortcut(keys.value.back) : undefined,
+}))
+watch(
+  keys,
+  (k) => {
+    const twice = duplicateRunKeys(k)
+    if (import.meta.env.DEV && twice.length) console.warn(`[qdadm] QdRunBar: the key${twice.length > 1 ? 's' : ''} ${twice.map((x) => `'${x}'`).join(', ')} go to two actions; the first one (prev, next, back) keeps it`)
+  },
+  { immediate: true }
+)
 
 const label = computed(() => {
   if (props.entityLabel) return props.entityLabel
@@ -80,14 +104,14 @@ function typing(target: EventTarget | null): boolean {
 
 function onKey(e: KeyboardEvent): void {
   if (!drawn.value || e.ctrlKey || e.metaKey || e.altKey || e.defaultPrevented || typing(e.target)) return
-  const key = e.key.toLowerCase()
-  if (key === 'j' && run.next.value) {
-    e.preventDefault()
-    void run.goNext()
-  } else if (key === 'k' && run.prev.value) {
+  const action = runKeyAction(keys.value, e.key)
+  if (action === 'prev' && run.prev.value) {
     e.preventDefault()
     void run.goPrev()
-  } else if (key === 'l' && canBack.value) {
+  } else if (action === 'next' && run.next.value) {
+    e.preventDefault()
+    void run.goNext()
+  } else if (action === 'back' && canBack.value) {
     e.preventDefault()
     void run.end()
   }
@@ -108,16 +132,16 @@ onBeforeUnmount(() => listen(false))
 
 <template>
   <nav v-if="drawn" class="qd-run-bar" :class="`qd-run-bar--${placement}`" :aria-label="t('core.run.bar')" data-run-bar>
-    <button v-if="canBack" type="button" class="qd-run-step qd-run-back" :aria-label="t('core.run.back')" data-run-back @click="run.end()">
+    <button v-if="canBack" type="button" class="qd-run-step qd-run-back" :aria-label="t('core.run.back')" :aria-keyshortcuts="shortcuts.back" data-run-back @click="run.end()">
       <i class="pi pi-arrow-left" aria-hidden="true"></i>
       <span class="qd-run-step-label">{{ t('core.run.back') }}</span>
-      <kbd aria-hidden="true">L</kbd>
+      <kbd v-if="hints.back" aria-hidden="true">{{ hints.back }}</kbd>
     </button>
 
-    <button type="button" class="qd-run-step qd-run-prev" :aria-label="t('core.run.prev')" :disabled="!run.prev.value" @click="run.goPrev()">
+    <button type="button" class="qd-run-step qd-run-prev" :aria-label="t('core.run.prev')" :aria-keyshortcuts="shortcuts.prev" :disabled="!run.prev.value" @click="run.goPrev()">
       <i class="pi pi-chevron-left" aria-hidden="true"></i>
       <span class="qd-run-step-label">{{ t('core.run.prev') }}</span>
-      <kbd aria-hidden="true">K</kbd>
+      <kbd v-if="hints.prev" aria-hidden="true">{{ hints.prev }}</kbd>
     </button>
 
     <div class="qd-run-where">
@@ -142,9 +166,9 @@ onBeforeUnmount(() => listen(false))
       </ol>
     </div>
 
-    <button type="button" class="qd-run-step qd-run-next" :aria-label="t('core.run.next')" :disabled="!run.next.value" @click="run.goNext()">
+    <button type="button" class="qd-run-step qd-run-next" :aria-label="t('core.run.next')" :aria-keyshortcuts="shortcuts.next" :disabled="!run.next.value" @click="run.goNext()">
       <span class="qd-run-step-label">{{ t('core.run.next') }}</span>
-      <kbd aria-hidden="true">J</kbd>
+      <kbd v-if="hints.next" aria-hidden="true">{{ hints.next }}</kbd>
       <i class="pi pi-chevron-right" aria-hidden="true"></i>
     </button>
   </nav>
