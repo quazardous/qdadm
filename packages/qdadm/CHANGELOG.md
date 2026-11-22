@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.68.0
+
+### Minor Changes
+
+- f6fc9b2: The run bar's keys are configurable: `features.run.keys` for the app, `RunInit.keys` per run (kept with it), `{ prev, next, back }`, a `KeyboardEvent.key` each, `null`/`false` for none; the buttons' hints and `aria-keyshortcuts` follow (`RunKeys`, `resolveRunKeys`, `DEFAULT_RUN_KEYS` exported). **J and K swap by default: J previous, K next** (left and right on the keyboard, as the bar reads); L back (#5454)
+- c8eb5e0: The run bar's strip takes the app's colours per item: `RunItem.tone` while it is to do, `doneTone` once done (`critical`/`danger`, `watch`/`warn`, `good`/`success`, `info`, `neutral`/`secondary`, or the app's own `--qd-tone-<name>`; `runToneColor` exported), today's colours without them; the current segment keeps its colour, with a neutral ring and a taller shape instead of the accent outline (#5455)
+
 ## 2.67.0
 
 ### Minor Changes
