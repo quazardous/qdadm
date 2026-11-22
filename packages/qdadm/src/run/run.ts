@@ -18,6 +18,24 @@ export interface RunItem {
   label?: string
   /** Done since the run started: it leaves what remains */
   done?: boolean
+  /**
+   * Its segment's colour while it is to do, and once done (#5455): a tone,
+   * `critical` (`danger`), `watch` (`warn`), `good` (`success`), `info`,
+   * `neutral` (`secondary`), or the name of the app's own `--qd-tone-<name>`.
+   * Without them: warm when urgent, filled once done, grey otherwise.
+   */
+  tone?: string
+  doneTone?: string
+}
+
+const TONE_ALIASES: Record<string, string> = { danger: 'critical', warn: 'watch', warning: 'watch', success: 'good', secondary: 'neutral' }
+
+/** A tone's colour, on the cards' tokens (light and dark): `var(--qd-tone-…)` */
+export function runToneColor(tone: string | null | undefined): string | null {
+  if (!tone || typeof tone !== 'string') return null
+  const name = TONE_ALIASES[tone] ?? tone
+  if (!/^[a-z][a-z0-9-]*$/i.test(name)) return null
+  return `var(--qd-tone-${name})`
 }
 
 /** The page every item of a run opens on */

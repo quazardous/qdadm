@@ -909,8 +909,13 @@ needs nothing else.
   list, with its filters and search), or to the run's `returnTo`. A run with
   nowhere to go back shows no such button.
 
-- **The strip:** one segment per item: done (filled), urgent (warm), current
-  (outlined). Each says its state in its title too, and opens its item.
+- **The strip:** one segment per item: done (filled), urgent (warm), the rest
+  grey. The current one keeps its colour, with a neutral ring and a taller
+  shape. Each says its state in its title too, and opens its item.
+- **Colours per item, from the app:** `tone` while the item is to do,
+  `doneTone` once done: `critical` (`danger`), `watch` (`warn`), `good`
+  (`success`), `info`, `neutral` (`secondary`), or the name of the app's own
+  `--qd-tone-<name>`. Without them, the defaults above.
 - **J and K** go to the next and the previous item, **L** back to the list, except while typing in a field.
 - **In a form, Save & Close becomes "Save and go to the next":** it saves,
   marks the item done and opens the next one still to do. With nothing
@@ -934,7 +939,7 @@ import { useRun } from '@quazardous/qdadm'
 const run = useRun()
 await run.start({
   entity: 'orders',
-  items: orders.map((o) => ({ id: o.id, urgent: o.late, label: o.number })),
+  items: orders.map((o) => ({ id: o.id, urgent: o.late, label: o.number, tone: 'danger', doneTone: 'success' })),
   label: 'to process',     // after "3 of 14"
   order: 'urgency',        // "sorted by urgency"
   filter: 'to process, all markets',

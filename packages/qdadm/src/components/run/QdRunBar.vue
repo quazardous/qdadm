@@ -17,6 +17,7 @@ import { computed, inject, onBeforeUnmount, onMounted, watch } from 'vue'
 import { useI18n } from '../../i18n/useI18n'
 import { useRun } from '../../run/useRun'
 import { RUN_BAR_HOST } from './host'
+import { runToneColor } from '../../run/run'
 
 const props = withDefaults(defineProps<{ entityLabel?: string | null; placement?: 'inline' | 'foot' }>(), { entityLabel: null, placement: 'inline' })
 
@@ -54,9 +55,20 @@ const details = computed(() => {
 
 const segments = computed(() =>
   (run.run.value?.items ?? []).map((item, i) => {
-    const state = i === run.index.value ? 'current' : item.done ? 'done' : item.urgent ? 'urgent' : 'todo'
+    // What it is, current or not: its fill (#5455)
+    const base = item.done ? 'done' : item.urgent ? 'urgent' : 'todo'
+    const state = i === run.index.value ? 'current' : base
     const name = item.label ?? item.id
-    return { i, state, done: !!item.done, title: `${i + 1}. ${name} · ${t(`core.run.state.${state}`)}` }
+    // The app's colour for it, to do or done; else the state's default
+    const fill = runToneColor(item.done ? item.doneTone : item.tone)
+    return {
+      i,
+      state,
+      base,
+      done: !!item.done,
+      style: fill ? { '--qd-run-seg-fill': fill } : undefined,
+      title: `${i + 1}. ${name} · ${t(`core.run.state.${state}`)}`,
+    }
   })
 )
 
@@ -119,6 +131,8 @@ onBeforeUnmount(() => listen(false))
             type="button"
             class="qd-run-seg"
             :data-state="seg.state"
+            :data-base="seg.base"
+            :style="seg.style"
             :title="seg.title"
             :aria-label="seg.title"
             :aria-current="seg.state === 'current' ? 'step' : undefined"

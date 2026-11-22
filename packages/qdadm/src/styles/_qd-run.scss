@@ -101,21 +101,26 @@
   padding: 0;
   border: 0;
   border-radius: 2px;
-  background: var(--qd-card-track);
+  // The app's colour for the item (`tone`, `doneTone`, #5455), else its state's
+  background: var(--qd-run-seg-fill, var(--qd-run-seg-default));
   cursor: pointer;
 
-  &[data-state='done'] {
-    background: var(--qd-tone-good);
+  --qd-run-seg-default: var(--qd-card-track);
+
+  &[data-base='done'] {
+    --qd-run-seg-default: var(--qd-tone-good);
   }
 
-  &[data-state='urgent'] {
-    background: var(--qd-tone-critical);
+  &[data-base='urgent'] {
+    --qd-run-seg-default: var(--qd-tone-critical);
   }
 
-  // Current: outlined, so it reads apart from done and urgent without its colour
+  // Current: its own colour, a neutral ring and a taller shape (#5455); the
+  // ring carries no status, so it reads apart without a colour that means one
   &[data-state='current'] {
-    background: var(--qd-run-bar-accent);
-    outline: 1px solid var(--qd-run-bar-accent);
+    height: 5px;
+    margin-block: -1px;
+    outline: 1px solid var(--qd-run-seg-ring, var(--qd-card-ink));
     outline-offset: 1px;
   }
 

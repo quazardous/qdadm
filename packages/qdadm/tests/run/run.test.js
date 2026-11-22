@@ -8,7 +8,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { defineComponent, h, provide } from 'vue'
 import { mount, flushPromises } from '@vue/test-utils'
 import { createRouter, createMemoryHistory } from 'vue-router'
-import { createRun, saveRun, loadRun, nextPending, runIndexOf } from '../../src/run/run'
+import { createRun, saveRun, loadRun, nextPending, runIndexOf, runToneColor } from '../../src/run/run'
 import { useRun } from '../../src/run/useRun'
 import QdRunBar from '../../src/components/run/QdRunBar.vue'
 import { RUN_BAR_HOST } from '../../src/components/run/host'
@@ -190,6 +190,40 @@ describe('useRun and the bar (#5343)', () => {
     await flushPromises()
     expect(router.currentRoute.value.params.id).toBe('2')
     w.unmount()
+  })
+
+  it("tones (#5455): each item's colour from the app, to do then done; aliases and the app's own tokens; defaults otherwise; the current one keeps its colour", async () => {
+    expect(runToneColor('danger')).toBe('var(--qd-tone-critical)')
+    expect(runToneColor('warn')).toBe('var(--qd-tone-watch)')
+    expect(runToneColor('success')).toBe('var(--qd-tone-good)')
+    expect(runToneColor('secondary')).toBe('var(--qd-tone-neutral)')
+    expect(runToneColor('info')).toBe('var(--qd-tone-info)')
+    expect(runToneColor('brand-x')).toBe('var(--qd-tone-brand-x)')
+    expect(runToneColor('red; x')).toBeNull()
+    expect(runToneColor(undefined)).toBeNull()
+
+    const { wrapper, api } = await mountPage()
+    await api.start({ entity: 'orders', items: [
+      { id: 1, tone: 'danger', doneTone: 'success' },
+      { id: 2, tone: 'brand-x' },
+      { id: 3, urgent: true },
+      4,
+    ] })
+    await flushPromises()
+    const fill = () => wrapper.findAll('.qd-run-seg').map((s) => s.element.style.getPropertyValue('--qd-run-seg-fill') || null)
+    const base = () => wrapper.findAll('.qd-run-seg').map((s) => s.attributes('data-base'))
+    // The current one (1st) keeps its own colour; the others theirs or their state's
+    expect(fill()).toEqual(['var(--qd-tone-critical)', 'var(--qd-tone-brand-x)', null, null])
+    expect(base()).toEqual(['todo', 'todo', 'urgent', 'todo'])
+    expect(wrapper.findAll('.qd-run-seg')[0].attributes('data-state')).toBe('current')
+    // Done: its done colour, and it says so in words
+    await api.doneAndNext()
+    await flushPromises()
+    expect(fill()[0]).toBe('var(--qd-tone-good)')
+    expect(base()[0]).toBe('done')
+    expect(wrapper.findAll('.qd-run-seg')[0].attributes('title')).toContain('core.run.state.done')
+    // Kept in the tab, tones and all
+    expect(loadRun(api.run.value.key).items[0]).toEqual({ id: '1', tone: 'danger', doneTone: 'success', done: true })
   })
 
   it('a reload keeps the run: the URL key reads it back from the tab', async () => {
