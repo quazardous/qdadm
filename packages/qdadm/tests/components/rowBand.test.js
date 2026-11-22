@@ -64,6 +64,45 @@ describe('row bands (#5437)', () => {
     w.unmount()
   })
 
+  it('above (#5451): the band before its row, across every column; rows without one keep no line of their own', async () => {
+    const w = mountList({ rowBand: (r) => r.type !== 'plain', rowBandPosition: 'above' })
+    await flushPromises()
+    await flushPromises()
+    expect(w.find('.qd-table-banded-above').exists()).toBe(true)
+    expect(w.findAll('tr.p-datatable-row-expansion').length).toBe(0)
+    const trs = w.findAll('tbody > tr')
+    // band, row, band, row, (the plain row's empty header, hidden by the stylesheet,) row
+    const shape = trs.map((tr) => (tr.classes().includes('p-datatable-row-group-header') ? (tr.find('[data-row-band]').exists() ? 'band' : 'empty') : tr.classes().includes('qd-row-banded') ? 'banded' : 'row'))
+    expect(shape.filter((s) => s !== 'empty')).toEqual(['band', 'banded', 'band', 'banded', 'row'])
+    const bands = w.findAll('[data-row-band]')
+    expect(bands.map((b) => b.find('.band-text').text())).toEqual(['php details Open file', 'order details Open file'])
+    // title, type and the selection column
+    expect(bands[0].element.closest('td').getAttribute('colspan')).toBe('3')
+    // The band describes the row after it; a click in it is a click on that row
+    const row = w.find('tr.qd-row-banded')
+    expect(row.attributes('aria-describedby')).toBe(bands[0].attributes('id'))
+    expect(row.element.previousElementSibling.contains(bands[0].element)).toBe(true)
+    await bands[1].trigger('click')
+    expect(w.emitted('row-click')[0][0]).toEqual(ITEMS[1])
+    await bands[1].find('button.inner').trigger('click')
+    expect(w.emitted('row-click').length).toBe(1)
+    w.unmount()
+  })
+
+  it("above, on a list that groups its own rows: the band stays below, with a warning", async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const env = import.meta.env.DEV
+    import.meta.env.DEV = true
+    const w = mountList({ rowBandPosition: 'above', tableProps: { rowGroupMode: 'rowspan', groupRowsBy: 'type' } })
+    await flushPromises()
+    expect(w.find('.qd-table-banded-above').exists()).toBe(false)
+    expect(w.findAll('tr.p-datatable-row-expansion').length).toBe(3)
+    expect(warn.mock.calls.flat().join(' ')).toMatch(/groups its own rows/)
+    import.meta.env.DEV = env
+    warn.mockRestore()
+    w.unmount()
+  })
+
   it('the slot alone: a band for every row; no slot: the classic table', async () => {
     const all = mountList()
     await flushPromises()

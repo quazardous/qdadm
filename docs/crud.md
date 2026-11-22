@@ -367,6 +367,16 @@ button of the band's own. The row is described by its band
 (`aria-describedby`). Sorting, paging and a run (`useRun`) are unchanged.
 `--qd-list-band-padding` and `--qd-list-band-bg` style the band.
 
+`rowBandPosition: 'above'` draws the band above the row's cells instead, as a
+header line (a long text over short cells), for the whole list. The pair stays
+one object, with the separator after the row. It is drawn with PrimeVue's row
+groups: a list that groups its own rows (`tableProps.rowGroupMode`) keeps its
+band below, with a warning in development.
+
+```js
+const list = useListPage({ entity: 'tasks', rowBand: (task) => !!task.message, rowBandPosition: 'above' })
+```
+
 ### ListPage slots
 
 **Escape hatch — any DataTable prop** *(since 2.3)*: the `tableProps` prop is
@@ -380,7 +390,7 @@ override ListPage defaults). E.g. sort `null` values last:
 | Slot | Purpose |
 |------|---------|
 | `#columns` | PrimeVue `<Column>` definitions |
-| `#row-band` | A full-width band under the rows `rowBand` picks, receives `{ data, index }` (see Row bands) |
+| `#row-band` | A full-width band under (or, with `rowBandPosition: 'above'`, above) the rows `rowBand` picks, receives `{ data, index }` (see Row bands) |
 | `#nav` | `<PageNav>` for child routes |
 | `#beforeTable` | Content above the table (zones, alerts) |
 | `#header-actions` | Custom header action buttons |

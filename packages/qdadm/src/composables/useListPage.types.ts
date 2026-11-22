@@ -290,6 +290,8 @@ export interface UseListPageOptions<T = unknown> {
   sessionKey?: string
   /** Which rows get a band under their cells, drawn by ListPage's #row-band slot (#5437) */
   rowBand?: (row: T) => boolean
+  /** Where the band sits (#5451): under the row's cells (default) or above them */
+  rowBandPosition?: 'below' | 'above'
   /** Default sort field */
   defaultSort?: string | null
   /** Default sort order (-1 = desc, 1 = asc) */
@@ -365,6 +367,8 @@ export interface ListPageProps {
   dataKey: string
   /** Which rows get a band (#5437) */
   rowBand?: ((row: unknown) => boolean) | null
+  /** Where the band sits (#5451) */
+  rowBandPosition: 'below' | 'above'
   selected: unknown[]
   selectable: boolean
   lazy: boolean

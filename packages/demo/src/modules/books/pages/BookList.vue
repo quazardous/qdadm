@@ -19,8 +19,9 @@ import Column from 'primevue/column'
 import { useFavoriteAction } from '@/composables/useFavoriteAction'
 
 // ============ LIST BUILDER ============
-// Row bands (#5437): the classics get a band under their cells
-const list = useListPage({ entity: 'books', rowBand: (book) => Number(book.year) < 1970 })
+// Row bands (#5437): the classics get a band, above their cells here (#5451;
+// the default is below)
+const list = useListPage({ entity: 'books', rowBand: (book) => Number(book.year) < 1970, rowBandPosition: 'above' })
 const age = (book) => new Date().getFullYear() - Number(book.year)
 
 // ============ FAVORITE ACTION ============
@@ -80,7 +81,7 @@ list.addDeleteAction({ labelField: 'title' })
       </Column>
     </template>
 
-    <!-- A band under the classics' cells, the row and it one object (#5437) -->
+    <!-- A band above the classics' cells, the row and it one object (#5437, #5451) -->
     <template #row-band="{ data }">
       <span class="book-band" style="color: var(--p-text-muted-color); font-size: 0.875rem"><i class="pi pi-star" aria-hidden="true"></i> Classic, {{ age(data) }} years old: {{ data.author }}, {{ data.year }}</span>
     </template>

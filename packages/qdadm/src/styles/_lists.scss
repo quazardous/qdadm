@@ -241,7 +241,8 @@
 .qd-table-banded {
   --qd-list-band-padding: 0 1rem 0.75rem;
 
-  .p-datatable-tbody > tr.qd-row-banded > td {
+  // Below: the separator after the band, not between the two
+  &:not(.qd-table-banded-above) .p-datatable-tbody > tr.qd-row-banded > td {
     border-bottom: 0;
   }
 
@@ -271,5 +272,48 @@
 
   &.datatable-row-clickable .qd-row-band {
     cursor: pointer;
+  }
+}
+
+// Above the cells (#5451): the band is a row group header before its row; the
+// pair is still one object, the separator after the row.
+.qd-table-banded-above {
+  --qd-list-band-padding: 0.75rem 1rem 0;
+
+  // Back to a plain table line: no group header look, no sticky
+  .p-datatable-tbody > tr.p-datatable-row-group-header {
+    background: var(--p-datatable-row-background);
+    color: var(--p-datatable-row-color);
+    font-weight: inherit;
+    position: static;
+  }
+
+  .p-datatable-tbody > tr.p-datatable-row-group-header > td {
+    padding: var(--qd-list-band-padding);
+    background: var(--qd-list-band-bg, transparent);
+    border-bottom: 0;
+  }
+
+  // A row without a band: its (empty) group header is not drawn
+  .p-datatable-tbody > tr.p-datatable-row-group-header:not(:has([data-row-band])) {
+    display: none;
+  }
+
+  // The band takes its row's stripe
+  &.p-datatable-striped .p-datatable-tbody > tr.p-datatable-row-group-header:has(+ tr.qd-row-banded.p-row-odd) {
+    background: var(--p-datatable-row-striped-background);
+  }
+
+  // One hover for the pair, from either half
+  .p-datatable-tbody > tr.p-datatable-row-group-header:has([data-row-band]):hover,
+  .p-datatable-tbody > tr.p-datatable-row-group-header:has([data-row-band]):hover + tr.qd-row-banded,
+  .p-datatable-tbody > tr.p-datatable-row-group-header:has(+ tr.qd-row-banded:hover) {
+    background: var(--p-datatable-row-hover-background, var(--p-surface-100, #f1f5f9));
+  }
+
+  // One selection
+  .p-datatable-tbody > tr.p-datatable-row-group-header:has(+ tr.qd-row-banded.p-datatable-row-selected) {
+    background: var(--p-datatable-row-selected-background);
+    color: var(--p-datatable-row-selected-color);
   }
 }

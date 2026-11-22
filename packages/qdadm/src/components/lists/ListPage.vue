@@ -114,6 +114,8 @@ const props = defineProps({
    * without it, every row does. A row it leaves out keeps the classic row.
    */
   rowBand: { type: Function as unknown as PropType<((row: unknown) => boolean) | null>, default: null },
+  /** Where the band sits (#5451): under the row's cells (default) or above them, a header line */
+  rowBandPosition: { type: String as PropType<'below' | 'above'>, default: 'below' },
 
   // Selection
   selected: { type: Array as PropType<unknown[]>, default: () => [] },
@@ -354,6 +356,31 @@ const banded = (row: unknown): boolean => hasBand.value && (!props.rowBand || !!
 const expandedRows = computed<Record<string, boolean>>(() =>
   hasBand.value ? Object.fromEntries((props.items ?? []).filter(banded).map((r) => [keyOf(r), true])) : {}
 )
+/**
+ * Above the cells (#5451): PrimeVue draws a row expansion after its row only,
+ * so the band above is a subheader row group, one group per banded row; the
+ * rows without a band share one key, and their empty header is hidden. A page
+ * that groups its rows itself keeps the band below.
+ */
+const bandAbove = computed(() => {
+  if (!hasBand.value || props.rowBandPosition !== 'above') return false
+  if (props.tableProps?.rowGroupMode) {
+    if (import.meta.env.DEV) console.warn("[qdadm] ListPage: rowBandPosition 'above' draws on PrimeVue's row groups; this list groups its own rows (tableProps.rowGroupMode), so its band stays below")
+    return false
+  }
+  return true
+})
+const NO_BAND = Symbol('no band')
+const groupOf = (row: unknown): unknown => (banded(row) ? keyOf(row) : NO_BAND)
+/** The band's cell spans every column (PrimeVue leaves one out for the group's own column) */
+const tablePt = computed(() => {
+  const own = props.tableProps?.pt as Record<string, unknown> | undefined
+  if (!bandAbove.value) return own
+  return { ...own, rowGroupHeaderCell: ({ instance }: { instance: { columnsLength?: number } }) => ({ colspan: instance?.columnsLength }) }
+})
+/** The page's own row groups, else one per banded row when the band is above */
+const tableRowGroupMode = computed(() => (bandAbove.value ? 'subheader' : (props.tableProps?.rowGroupMode as 'subheader' | 'rowspan' | undefined)))
+const tableGroupRowsBy = computed(() => (bandAbove.value ? (groupOf as (row: unknown) => object) : (props.tableProps?.groupRowsBy as string | string[] | undefined)))
 const bandScope = useId()
 const bandId = (row: unknown): string => `qd-band-${bandScope}-${keyOf(row).replace(/[^\w-]/g, '_')}`
 /** The row's class: the page's own (tableProps.rowClass), and banded or not */
@@ -374,7 +401,8 @@ function linkBands(): void {
   if (!hasBand.value) return
   const root = tableEl.value?.$el
   root?.querySelectorAll<HTMLElement>('tr.qd-row-banded').forEach((tr) => {
-    const id = (tr.nextElementSibling as HTMLElement | null)?.querySelector<HTMLElement>('.qd-row-band')?.id
+    const beside = (bandAbove.value ? tr.previousElementSibling : tr.nextElementSibling) as HTMLElement | null
+    const id = beside?.querySelector<HTMLElement>('.qd-row-band')?.id
     if (id) tr.setAttribute('aria-describedby', id)
   })
 }
@@ -531,16 +559,25 @@ function getFilterClass(filter: FilterConfig): Record<string, boolean> {
         @page="onPage"
         @sort="onSort"
         @row-click="onRowClick"
-        :class="{ 'datatable-row-clickable': hasRowTapAction, 'qd-table-banded': hasBand }"
+        :class="{ 'datatable-row-clickable': hasRowTapAction, 'qd-table-banded': hasBand, 'qd-table-banded-above': bandAbove }"
         stripedRows
         removableSort
         v-bind="tableProps"
         ref="tableEl"
-        :expandedRows="hasBand ? expandedRows : undefined"
+        :expandedRows="hasBand && !bandAbove ? expandedRows : undefined"
         :rowClass="hasBand ? rowClassOf : ownRowClass"
+        :rowGroupMode="tableRowGroupMode"
+        :groupRowsBy="tableGroupRowsBy"
+        :pt="tablePt"
       >
+        <!-- The row's band, above its cells, across every column (#5451) -->
+        <template v-if="bandAbove" #groupheader="{ data, index }">
+          <div v-if="banded(data)" :id="bandId(data)" class="qd-row-band" data-row-band @click="onBandClick(data, $event)">
+            <slot name="row-band" :data="data" :index="index"></slot>
+          </div>
+        </template>
         <!-- The row's band, under its cells, across every column (#5437) -->
-        <template v-if="hasBand" #expansion="{ data, index }">
+        <template v-else-if="hasBand" #expansion="{ data, index }">
           <div :id="bandId(data)" class="qd-row-band" data-row-band @click="onBandClick(data, $event)">
             <slot name="row-band" :data="data" :index="index"></slot>
           </div>
