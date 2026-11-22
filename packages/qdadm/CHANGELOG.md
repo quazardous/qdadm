@@ -1,5 +1,17 @@
 # Changelog
 
+## 2.65.0
+
+### Minor Changes
+
+- 7beaf20: Rich dialog (#5445): a generic modal with no business meaning (what's new, a licence, a charter are uses of it). `useRichDialog().open(options)` returns a Promise of `{ action, values }`, and opens are queued one at a time; the kernel and `<QdadmRoot />` mount the host. `QdRichDialog` is the same as a component.
+  - Blocks stack in a scrolling area. Each is drawn by a content handler: native `text`, `markdown` (marked) and `html`, both sanitised with DOMPurify and loaded on first use, or the app's own (`registerDialogContent`). An unknown kind is warned and skipped.
+  - The action area holds declared buttons and controls. Controls use native `toggle` (default) and `checkbox` handlers, or the app's own (`registerDialogControl`), and their values come back in the result. Alternatively, the app's own footer (`footer` / `#footer`) receives `read`, `ready`, `values`, `resolve` and `close`.
+  - `readToEnd` and `required` controls gate the `requiresRead` buttons, with a hint linked for screen readers. `dismissable: false` turns off Escape and ×.
+  - New dependencies: `marked` and `dompurify`.
+  - The sidebar version can open something: `app.versionAction` makes it a button and `app.versionTo` a link (e.g. to the app's what's new), named and with a tooltip "What's new (v…)" (`core.app.whatsNew`, or `app.versionLabel`). Without them it stays a plain text.
+- 83072f5: Item page actions (#5444): `items` makes an action a split button, its own button with a chevron zone joined on its right that opens a menu of related gestures. The menu lines up with the button (its right edge when the button sits on the right of the window), opens upwards when there is no room below, and is appended to the body. Entries take `label`, `icon` and `tooltip` as functions of the record, plus `visible`/`disabled` from the action's context and `severity`. Hidden entries are left out, and with none left the action is a plain button. Without `onClick`, the button only opens the menu. The chevron has `aria-haspopup`/`aria-expanded` and a label ("More actions: Copy"), and Escape gives the focus back to it. `QdActionButton` is exported.
+
 ## 2.64.2
 
 ### Patch Changes
