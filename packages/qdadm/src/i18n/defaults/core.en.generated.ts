@@ -495,6 +495,7 @@ export default `core:
     order: "sorted by {order}"
     filter: "filter: {filter}"
     doneSince: "{count} done since it started | {count} done since it started"
+    back: Back to the list
     prev: Previous
     next: Next
     saveAndNext: Save and go to the next

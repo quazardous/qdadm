@@ -495,6 +495,7 @@ export default `core:
     order: "triés par {order}"
     filter: "filtre : {filter}"
     doneSince: "{count} traité depuis l'ouverture | {count} traités depuis l'ouverture"
+    back: Retour à la liste
     prev: Précédent
     next: Suivant
     saveAndNext: Enregistrer et passer au suivant

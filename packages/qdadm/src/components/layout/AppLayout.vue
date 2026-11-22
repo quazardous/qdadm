@@ -32,6 +32,8 @@ import Zone from './Zone.vue'
 import AppBanner from './AppBanner.vue'
 import NavlinksGroup from './NavlinksGroup.vue'
 import QdDomainBarZone from '../../domain/QdDomainBarZone.vue'
+import QdRunBar from '../run/QdRunBar.vue'
+import { RUN_BAR_HOST } from '../run/host'
 import QdSidebarMenus from './QdSidebarMenus.vue'
 import { useSettingsMenu, SETTINGS_MENU_IDS } from '../../composables/useSettingsMenu'
 import qdadmLogo from '../../assets/logo.svg'
@@ -57,6 +59,8 @@ const homeRoute = inject<string>('qdadmHomeRoute', 'home')
 const guardDialog = useGuardDialog()
 // This layout renders it: pages below do not render their own (#2267)
 provide(GUARD_DIALOG_HOST, true)
+// The run bar sits at the content's foot (#5453): the pages draw none of their own
+provide(RUN_BAR_HOST, true)
 
 const router = useRouter()
 const route = useRoute()
@@ -369,6 +373,9 @@ const showBreadcrumb = computed<boolean>(() => {
         <slot v-if="hasSlotContent" />
         <RouterView v-else />
       </div>
+
+      <!-- The run being walked, a slim line stuck at the foot (#5453) -->
+      <QdRunBar placement="foot" />
     </main>
 
     <!-- Notification panel (rendered outside sidebar, follows sidebar position) -->

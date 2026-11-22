@@ -891,18 +891,27 @@ const formatBytes = useFormatBytes()
 
 A run walks a set of items of one entity from their edit page (or show page),
 without going back to the list: "Book 3 of 14 to process", with Previous /
-Next. `FormPage` and `ShowPage` draw the bar (`QdRunBar`) when the URL carries
-`?run=<key>`; the page needs nothing else.
+Next. The bar (`QdRunBar`) shows when the URL carries `?run=<key>`; the page
+needs nothing else.
 
 ```
-← Previous K    Book 3 of 14 to process                              Next J →
-                sorted by Year ↑ · filter: Fiction · 2 done since it started
-                ▰▰▣▰▱▱▱▱▱▱▱▱▱▱
+← Back to the list L │ ‹ Previous K   Book 3 of 14 to process  sorted by Year ↑ · filter: Fiction   Next J ›
+                                     ▰▰▣▰▱▱▱▱▱▱▱▱▱▱
 ```
+
+- **Where:** one slim line at the foot of the content, stuck at the bottom of
+  the window and flush to its edges, drawn like the domain bar's toolbox (the
+  side menu's height, font and icons, no card). `AppLayout` hosts it; in an
+  app without it, `FormPage` and `ShowPage` draw it at their top instead. A
+  custom layout hosts it the same way: `provide(RUN_BAR_HOST, true)` and
+  `<QdRunBar placement="foot" />`. `--qd-run-bar-*` restyle it.
+- **Back to the list (L)** ends the run and goes back where it started (the
+  list, with its filters and search), or to the run's `returnTo`. A run with
+  nowhere to go back shows no such button.
 
 - **The strip:** one segment per item: done (filled), urgent (warm), current
   (outlined). Each says its state in its title too, and opens its item.
-- **J and K** go to the next and the previous item, except while typing in a field.
+- **J and K** go to the next and the previous item, **L** back to the list, except while typing in a field.
 - **In a form, Save & Close becomes "Save and go to the next":** it saves,
   marks the item done and opens the next one still to do. With nothing
   changed, it goes on without saving. Leaving a changed form for another item
