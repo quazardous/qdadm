@@ -17,6 +17,7 @@
 import { computed, inject, type Component } from 'vue'
 import Toast from 'primevue/toast'
 import ToastListener from '../toast/ToastListener.vue'
+import QdRichDialogHost from './dialogs/rich/QdRichDialogHost.vue'
 import { getQdadmDebugBarRef } from '../kernel/Kernel.vue'
 
 const props = withDefaults(
@@ -48,5 +49,6 @@ const hasToast = inject<boolean>('qdadmHasPrimeVue', false)
 <template>
   <Toast v-if="hasToast" />
   <ToastListener v-if="hasToast" />
+  <QdRichDialogHost v-if="hasToast" />
   <component v-if="debugBarComp" :is="debugBarComp" />
 </template>

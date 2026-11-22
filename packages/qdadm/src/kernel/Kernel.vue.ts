@@ -16,6 +16,7 @@ import ConfirmationService from 'primevue/confirmationservice'
 import Tooltip from 'primevue/tooltip'
 import Toast from 'primevue/toast'
 import ToastListener from '../toast/ToastListener.vue'
+import QdRichDialogHost from '../components/dialogs/rich/QdRichDialogHost.vue'
 import { createQdadm } from '../plugin.js'
 import { createNotificationStore, NOTIFICATION_KEY } from '../notifications/NotificationStore'
 import { I18N_INJECTION_KEY } from '../i18n/useI18n'
@@ -178,6 +179,8 @@ export function applyVueMethods(KernelClass: { prototype: Kernel }): void {
           if (hasPrimeVue) {
             children.push(h(Toast))
             children.push(h(ToastListener))
+            // The rich dialogs opened by useRichDialog() (#5445)
+            children.push(h(QdRichDialogHost))
           }
 
           if (DebugBarBoundary) {

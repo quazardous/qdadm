@@ -76,6 +76,7 @@ npm test             # Run tests (from packages/qdadm)
 | useBareForm | `qdadm/src/composables/useBareForm.ts` | Non-entity form (dirty + guard + title) |
 | useOptionsLookup | `qdadm/src/composables/useOptionsLookup.ts` | Backs `LookupField` |
 | useNotifications | `qdadm/src/notifications/NotificationStore.ts` | Notification history (toasts recorded with keep levels), badge activity (`track(promise)`), module status indicators (`registerStatus`) — see [notifications.md](notifications.md) |
+| useRichDialog | `qdadm/src/components/dialogs/rich/useRichDialog.ts` | A rich modal (stacked blocks, buttons, controls, read to the end), answered as a Promise — see [rich-dialog.md](rich-dialog.md) |
 | useOrchestrator | `qdadm/src/orchestrator/useOrchestrator.ts` | Access managers |
 
 ## Module Pattern (Current)

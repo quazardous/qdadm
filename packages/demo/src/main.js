@@ -13,7 +13,7 @@
 import { installQdadmRelayConnector } from '@quazardous/qdadm-mcp/connector'
 installQdadmRelayConnector()
 
-import { Kernel, registerChart } from '@quazardous/qdadm'
+import { Kernel, registerChart, registerDialogContent } from '@quazardous/qdadm'
 import { debugBar } from '@quazardous/qdadm/modules/debug'
 import { createLocalStorageRolesProvider } from '@quazardous/qdadm/security'
 import PrimeVue from 'primevue/config'
@@ -25,6 +25,7 @@ import 'primeicons/primeicons.css'
 
 import App from './App.vue'
 import DotsChart from './charts/DotsChart.vue'
+import ChangesContent from './dialogs/ChangesContent.vue'
 import { version } from '../package.json'
 import { authAdapter } from './adapters/authAdapter'
 import { moduleDefs, modulesOptions, sectionOrder, registerHooks } from './config'
@@ -35,6 +36,8 @@ import { moduleDefs, modulesOptions, sectionOrder, registerHooks } from './confi
 
 // The app's own chart (#5441): any `chart: 'dots'` draws with it
 registerChart('dots', DotsChart)
+// The app's own rich dialog content (#5445): a block { kind: 'demo.changes', items }
+registerDialogContent('demo.changes', ChangesContent)
 
 const kernel = new Kernel({
   root: App,

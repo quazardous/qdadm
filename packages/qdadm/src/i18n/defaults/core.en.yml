@@ -9,6 +9,10 @@ core:
   values:
     "yes": "Yes"
     "no": "No"
+  # The rich dialog (#5445)
+  richDialog:
+    readToEnd: Scroll to the end to continue
+    required: Fill in what is required to continue
   actions:
     # The chevron of a split action (#5444)
     moreActions: "More actions: {action}"

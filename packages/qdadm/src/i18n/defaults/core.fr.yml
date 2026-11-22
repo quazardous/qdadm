@@ -9,6 +9,10 @@ core:
   values:
     "yes": Oui
     "no": Non
+  # Le dialogue riche (#5445)
+  richDialog:
+    readToEnd: "Faites défiler jusqu'en bas pour continuer"
+    required: "Remplissez ce qui est requis pour continuer"
   actions:
     # Le chevron d'une action combo (#5444)
     moreActions: "Plus d'actions : {action}"

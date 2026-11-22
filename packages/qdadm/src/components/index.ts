@@ -82,6 +82,8 @@ export { default as MultiStepDialog } from './dialogs/MultiStepDialog.vue'
 export { default as BulkStatusDialog } from './dialogs/BulkStatusDialog.vue'
 export { default as UnsavedChangesDialog } from './dialogs/UnsavedChangesDialog.vue'
 export { default as QdRevealOnce } from './dialogs/QdRevealOnce.vue'
+// The rich dialog (#5445)
+export * from './dialogs/rich'
 
 // Display
 export { default as CardsGrid } from './display/CardsGrid.vue'
