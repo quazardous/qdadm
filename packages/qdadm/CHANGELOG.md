@@ -1,5 +1,15 @@
 # Changelog
 
+## 2.66.0
+
+### Minor Changes
+
+- 66c1977: A list's row band can sit above the row's cells: `rowBandPosition: 'above'` (ListPage prop, useListPage option; default `below`) draws it as a header line, still one object with its row (one hover, one selection, its stripe, the separator after the row), a click in it a click on the row, the row described by it; a list that groups its own rows keeps the band below, with a dev warning (#5451)
+
+### Patch Changes
+
+- 4bf5727: A list row's icon actions sit closer: 2rem round buttons, 2px apart, instead of PrimeVue's 2.5rem icon-only buttons 4px apart; scoped to `.table-actions`, the icons keep their size (#5450)
+
 ## 2.65.0
 
 ### Minor Changes
