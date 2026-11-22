@@ -54,6 +54,12 @@ export interface AppConfig {
   userAvatar?: UserAvatarResolver
   /** The strip above the layout and the login page: one message, a list, or a function returning either (#4200). */
   banner?: AppBannerConfig
+  /** A click on the sidebar version runs it, e.g. to open the app's what's new (#5445); the version becomes a button */
+  versionAction?: () => void
+  /** Or the sidebar version leads there (#5445); the version becomes a link */
+  versionTo?: RouteLocationRaw
+  /** The clickable version's accessible name and tooltip; default "What's new (v…)" from the catalogue */
+  versionLabel?: string
 }
 
 /**

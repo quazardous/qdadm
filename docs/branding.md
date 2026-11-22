@@ -1,4 +1,4 @@
-# Branding: name, logo, page icon, top banner
+# Branding: name, logo, version, page icon, top banner
 
 The `app` options of `createQdadm` (or the Kernel's `app`) carry the app's identity.
 
@@ -11,6 +11,23 @@ app: {
 ```
 
 The login page can also show the organisation's logo and a subtitle (`brandLogo`, `subtitle`), see [the login page](auth-oidc.md#the-login-page-identity-provider-first).
+
+## Version: `app.version`
+
+`app.version` (a string, or a function returning one) shows under the name
+in the sidebar, as `v2.65.0`. With `app.versionAction` (a function) it
+becomes a button, and with `app.versionTo` (a route) a link: for instance to
+open the app's what's new in a [rich dialog](rich-dialog.md). It keeps its
+look, underlined on hover and focus. Its accessible name and tooltip are
+"What's new (v2.65.0)", from the catalogue (`core.app.whatsNew`), or
+`app.versionLabel`.
+
+```js
+app: {
+  version,
+  versionAction: () => openWhatsNew(),   // e.g. useRichDialog().open({ title: "What's new", blocks })
+}
+```
 
 ## Page icon: `app.favicon`
 

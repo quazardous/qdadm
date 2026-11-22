@@ -5,6 +5,7 @@
  * Showcases qdadm's modular architecture and key features.
  */
 import { usePageTitle, qdadmLogo, useAppBanner, useRichDialog } from '@quazardous/qdadm'
+import { openNews } from '../dialogs/news'
 import Card from 'primevue/card'
 import Button from 'primevue/button'
 import Tag from 'primevue/tag'
@@ -27,23 +28,6 @@ function pushBanner() {
 // and answers; what the answer means stays here
 const richDialog = useRichDialog()
 const toastLog = (r) => console.info('[demo] rich dialog answered', r)
-async function openNews() {
-  const r = await richDialog.open({
-    title: "What's new",
-    icon: 'pi pi-sparkles',
-    blocks: [
-      { kind: 'demo.changes', title: 'Version 2.65', meta: 'November 2026', items: [
-        { tag: 'new', text: 'Rich dialogs: stacked blocks, your own content and controls' },
-        { tag: 'new', text: 'Split buttons on item pages' },
-        { tag: 'fix', text: 'The domain bar no longer flickers on scroll' },
-      ] },
-      { kind: 'markdown', title: 'Charts', meta: 'October 2026', source: 'Charts take **N series**, stacked or not:\n\n- `chart: \'area\'` with `stacked: true`\n- or a chart of your own, `registerChart(name, Component)`\n\nSee [the docs](https://github.com/quazardous/qdadm).' },
-    ],
-    controls: [{ key: 'dontShowAgain', label: 'Do not show again' }],
-    actions: [{ key: 'later', label: 'Later', severity: 'secondary' }, { key: 'ok', label: 'Got it', icon: 'pi pi-check' }],
-  })
-  toastLog(r)
-}
 const terms = Array.from({ length: 12 }, (_, i) => `## ${i + 1}. Article ${i + 1}\n\nThe library lends books to its members for three weeks. A book returned late may be charged; a lost book is replaced at its price. These terms are an example for the demo, with nothing binding in them.`).join('\n\n')
 async function openTerms() {
   const r = await richDialog.open({

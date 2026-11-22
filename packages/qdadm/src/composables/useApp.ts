@@ -8,6 +8,7 @@
  */
 
 import { inject, computed, type ComputedRef } from 'vue'
+import type { RouteLocationRaw } from 'vue-router'
 
 /**
  * App configuration interface
@@ -19,6 +20,12 @@ export interface AppConfig {
   logoSmall?: string | null
   version?: string | (() => string) | null
   theme?: Record<string, unknown>
+  /** A click on the version runs it (#5445) */
+  versionAction?: () => void
+  /** Or the version leads there (#5445) */
+  versionTo?: RouteLocationRaw
+  /** The clickable version's accessible name and tooltip */
+  versionLabel?: string
 }
 
 /**
@@ -31,6 +38,9 @@ export interface UseAppReturn {
   logoSmall: string | null | undefined
   version: ComputedRef<string | null | undefined>
   theme: Record<string, unknown>
+  versionAction?: () => void
+  versionTo?: RouteLocationRaw
+  versionLabel?: string
 }
 
 export function useApp(): UseAppReturn {
@@ -63,5 +73,8 @@ export function useApp(): UseAppReturn {
     logoSmall: appConfig.logoSmall,
     version,
     theme: appConfig.theme || {},
+    versionAction: typeof appConfig.versionAction === 'function' ? appConfig.versionAction : undefined,
+    versionTo: appConfig.versionTo,
+    versionLabel: appConfig.versionLabel,
   }
 }

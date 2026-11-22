@@ -46,6 +46,9 @@ The component is `QdRichDialog` (`v-model:visible`, the same props, the
 events `action` and `close` with `{ action, values }`), for a dialog that
 lives in a page's template.
 
+A what's new can open from the version in the sidebar: `app.versionAction`
+makes it a button (see [Branding](branding.md#version-appversion)).
+
 ## Blocks: content handlers
 
 Each block names its handler with `kind`, and may take a `title` and a

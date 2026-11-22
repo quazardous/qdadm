@@ -64,6 +64,11 @@ const app = useApp()
 // Top-level binding so the template unwraps the ComputedRef — `app.version`
 // nested in a plain object stays a ref object (always truthy) in v-if (#1382)
 const appVersion = app.version
+// The version, clickable when the app says what it opens (#5445)
+const versionLabel = computed(() => app.versionLabel || tOr('core.app.whatsNew', "What's new (v{version})", { version: appVersion.value ?? '' }))
+function onVersion(): void {
+  app.versionAction?.()
+}
 // The side menu, and the settings menu behind the gear (#5401)
 const settingsMenu = useSettingsMenu(useNavigation())
 const { logout, authEnabled } = useAuth()
@@ -222,7 +227,12 @@ const showBreadcrumb = computed<boolean>(() => {
           <img v-if="app.logo" :src="app.logo" :alt="app.name" class="sidebar-logo" />
           <h1 v-else>{{ app.name }}</h1>
         </div>
-        <span v-if="appVersion" class="version">v{{ appVersion }}</span>
+        <template v-if="appVersion">
+          <!-- Clickable when the app says what it opens (#5445); the header's own click stays out -->
+          <button v-if="app.versionAction" type="button" class="version version--action" :aria-label="versionLabel" :title="versionLabel" data-app-version @click.stop="onVersion">v{{ appVersion }}</button>
+          <RouterLink v-else-if="app.versionTo" :to="app.versionTo" class="version version--action" :aria-label="versionLabel" :title="versionLabel" data-app-version @click.stop>v{{ appVersion }}</RouterLink>
+          <span v-else class="version">v{{ appVersion }}</span>
+        </template>
       </div>
 
       <QdSidebarMenus :settings="settingsMenu" />
@@ -475,6 +485,23 @@ const showBreadcrumb = computed<boolean>(() => {
 .sidebar-logo {
   max-height: 24px;
   max-width: 120px;
+}
+
+.version--action {
+  border: 0;
+  font-family: inherit;
+  line-height: inherit;
+  text-decoration: none;
+  cursor: pointer;
+}
+.version--action:hover,
+.version--action:focus-visible {
+  color: var(--p-surface-0, #fff);
+  text-decoration: underline;
+}
+.version--action:focus-visible {
+  outline: 2px solid var(--p-primary-400, #60a5fa);
+  outline-offset: 2px;
 }
 
 .version {

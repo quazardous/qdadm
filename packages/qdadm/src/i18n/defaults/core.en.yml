@@ -13,6 +13,10 @@ core:
   richDialog:
     readToEnd: Scroll to the end to continue
     required: Fill in what is required to continue
+  # The app itself
+  app:
+    # The clickable sidebar version (#5445)
+    whatsNew: "What's new (v{version})"
   actions:
     # The chevron of a split action (#5444)
     moreActions: "More actions: {action}"

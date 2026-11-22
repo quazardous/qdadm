@@ -26,6 +26,7 @@ import 'primeicons/primeicons.css'
 import App from './App.vue'
 import DotsChart from './charts/DotsChart.vue'
 import ChangesContent from './dialogs/ChangesContent.vue'
+import { openNews } from './dialogs/news'
 import { version } from '../package.json'
 import { authAdapter } from './adapters/authAdapter'
 import { moduleDefs, modulesOptions, sectionOrder, registerHooks } from './config'
@@ -103,6 +104,8 @@ const kernel = new Kernel({
     name: 'Book Manager',
     shortName: 'BM',
     version,
+    // A click on the version opens what's new (#5445)
+    versionAction: () => void openNews(),
     // Sidebar user box (#4157): the name and avatar open the profile page,
     // the glyph logs out. The fixtures keep avatar paths relative to the base.
     userRoute: 'profile',

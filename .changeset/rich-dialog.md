@@ -7,3 +7,4 @@ Rich dialog (#5445): a generic modal with no business meaning (what's new, a lic
 - The action area holds declared buttons and controls. Controls use native `toggle` (default) and `checkbox` handlers, or the app's own (`registerDialogControl`), and their values come back in the result. Alternatively, the app's own footer (`footer` / `#footer`) receives `read`, `ready`, `values`, `resolve` and `close`.
 - `readToEnd` and `required` controls gate the `requiresRead` buttons, with a hint linked for screen readers. `dismissable: false` turns off Escape and ×.
 - New dependencies: `marked` and `dompurify`.
+- The sidebar version can open something: `app.versionAction` makes it a button and `app.versionTo` a link (e.g. to the app's what's new), named and with a tooltip "What's new (v…)" (`core.app.whatsNew`, or `app.versionLabel`). Without them it stays a plain text.

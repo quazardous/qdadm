@@ -44,8 +44,10 @@ vi.mock('../../src/composables/useNavContext', () => ({
   }),
 }))
 
+// Mutable per test: the clickable version (#5445)
+const appMock = { name: 'Test', shortName: 'T', version: ref('0.0.0'), logo: null }
 vi.mock('../../src/composables/useApp', () => ({
-  useApp: () => ({ name: 'Test', shortName: 'T', version: '0.0.0', logo: null }),
+  useApp: () => appMock,
 }))
 
 vi.mock('../../src/composables/useAuth', () => ({
@@ -165,5 +167,43 @@ describe('AppLayout owns the unsaved-changes dialog (#2267)', () => {
     const wrapper = mountLayout()
 
     expect(wrapper.vm.$.provides[GUARD_DIALOG_HOST]).toBe(true)
+  })
+})
+
+describe('the sidebar version (#5445)', () => {
+  it('a plain text by default', () => {
+    const w = mountLayout()
+    expect(w.find('span.version').text()).toBe('v0.0.0')
+    expect(w.find('[data-app-version]').exists()).toBe(false)
+  })
+
+  it('a button with versionAction: named, a tooltip, the header click left out', async () => {
+    const action = vi.fn()
+    appMock.versionAction = action
+    try {
+      const w = mountLayout()
+      const b = w.find('button[data-app-version]')
+      expect(b.text()).toBe('v0.0.0')
+      expect(b.attributes('aria-label')).toBe("What's new (v0.0.0)")
+      expect(b.attributes('title')).toBe("What's new (v0.0.0)")
+      await b.trigger('click')
+      expect(action).toHaveBeenCalledTimes(1)
+    } finally {
+      delete appMock.versionAction
+    }
+  })
+
+  it('a link with versionTo; versionLabel names it', () => {
+    appMock.versionTo = { name: 'changelog' }
+    appMock.versionLabel = 'Release notes'
+    try {
+      const w = mountLayout()
+      const a = w.find('a[data-app-version]')
+      expect(a.exists()).toBe(true)
+      expect(a.attributes('aria-label')).toBe('Release notes')
+    } finally {
+      delete appMock.versionTo
+      delete appMock.versionLabel
+    }
   })
 })

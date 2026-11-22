@@ -15,6 +15,10 @@ export default `core:
   richDialog:
     readToEnd: "Faites défiler jusqu'en bas pour continuer"
     required: "Remplissez ce qui est requis pour continuer"
+  # L'appli elle-même
+  app:
+    # La version cliquable du menu (#5445)
+    whatsNew: "Nouveautés (v{version})"
   actions:
     # Le chevron d'une action combo (#5444)
     moreActions: "Plus d'actions : {action}"
