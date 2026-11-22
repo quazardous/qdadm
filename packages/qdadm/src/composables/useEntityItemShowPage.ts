@@ -111,14 +111,47 @@ export interface ActionConfig<T = unknown> {
   severity?: ButtonSeverity | ((data: T | null) => ButtonSeverity | undefined)
   /** What the gesture does, on hover and focus (#5436): a string, or a function of the record */
   tooltip?: string | ((data: T | null) => string | undefined)
-  onClick: () => void | Promise<void>
+  /**
+   * The gesture. Left out with `items`: the button only opens the menu (#5444)
+   */
+  onClick?: () => void | Promise<void>
   /** Shown or not: the record (`data`, null while loading), the permissions, the loading */
   visible?: (ctx: ShowActionContext<T>) => boolean
   /** Disabled or not, from the same context */
   disabled?: (ctx: ShowActionContext<T>) => boolean
   loading?: () => boolean
+  /**
+   * Related gestures in a menu (#5444): the action becomes a split button, a
+   * chevron joined on its right opening them. None visible: a plain button
+   */
+  items?: ActionItemConfig<T>[]
   /** A default label, read again at each render so it follows the locale (#4686) */
   _label?: () => string
+}
+
+/** One entry of an action's menu (#5444) */
+export interface ActionItemConfig<T = unknown> {
+  name: string
+  /** A string, or a function of the record */
+  label: string | ((data: T | null) => string)
+  icon?: string | ((data: T | null) => string | undefined)
+  tooltip?: string | ((data: T | null) => string | undefined)
+  /** `danger` draws the entry in the danger tone */
+  severity?: ButtonSeverity
+  onClick: () => void | Promise<void>
+  visible?: (ctx: ShowActionContext<T>) => boolean
+  disabled?: (ctx: ShowActionContext<T>) => boolean
+}
+
+/** A menu entry, resolved for rendering */
+export interface ResolvedActionItem {
+  name: string
+  label: string
+  icon?: string
+  tooltip?: string
+  severity?: ButtonSeverity
+  onClick: () => void | Promise<void>
+  isDisabled: boolean
 }
 
 /**
@@ -142,11 +175,13 @@ export interface LazyActionConfig {
 /**
  * Resolved action for rendering
  */
-export interface ResolvedAction extends Omit<ActionConfig, 'label' | 'icon' | 'severity' | 'tooltip'> {
+export interface ResolvedAction extends Omit<ActionConfig, 'label' | 'icon' | 'severity' | 'tooltip' | 'items'> {
   label: string
   icon?: string
   severity?: ButtonSeverity
   tooltip?: string
+  /** Its menu's visible entries (#5444); empty or absent: a plain button */
+  items?: ResolvedActionItem[]
   isLoading: boolean
   isDisabled: boolean
 }
@@ -465,8 +500,23 @@ export function useEntityItemShowPage<T = Record<string, unknown>>(
       if (action.visible && !action.visible(ctx)) return null
       // Label, icon and severity: as given, or read from the record at each render (#5430)
       const of = <V,>(v: V | ((data: T | null) => V) | undefined): V | undefined => (typeof v === 'function' ? (v as (data: T | null) => V)(ctx.data) : v)
+      // Its menu (#5444): the entries shown, read from the record
+      const items: ResolvedActionItem[] = (action.items ?? [])
+        .filter((i) => !i.visible || i.visible(ctx))
+        .map((i) => ({
+          name: i.name,
+          label: typeof i.label === 'function' ? i.label(ctx.data) : i.label,
+          icon: of(i.icon),
+          tooltip: of(i.tooltip) || undefined,
+          severity: i.severity,
+          onClick: i.onClick,
+          isDisabled: i.disabled ? i.disabled(ctx) : false,
+        }))
+      // A menu-only action with nothing in its menu: nothing to offer
+      if (!action.onClick && !items.length) return null
       return {
         ...(action as unknown as ResolvedAction),
+        items,
         label: typeof action.label === 'function' ? action.label(ctx.data) : action._label ? action._label() : action.label,
         icon: of(action.icon),
         severity: of(action.severity),
@@ -581,7 +631,7 @@ export function useEntityItemShowPage<T = Record<string, unknown>>(
         const state = resolved.get(entry.action.name)
         if (state?.visible !== true) return null
         const a = entry.action
-        return { ...a, isLoading: a.loading ? a.loading() : false, isDisabled: state?.disabled ?? false }
+        return { ...a, items: [], isLoading: a.loading ? a.loading() : false, isDisabled: state?.disabled ?? false }
       })
       .filter((a): a is ResolvedAction => a !== null)
   })

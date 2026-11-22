@@ -44,7 +44,7 @@ import PageHeader from '../layout/PageHeader.vue'
 import CardShell from '../layout/CardShell.vue'
 import QdRunBar from '../run/QdRunBar.vue'
 import { formatFetchError } from '../../utils/errors'
-import QdButton from '../base/QdButton.vue'
+import QdActionButton from './QdActionButton.vue'
 import QdMessage from '../base/QdMessage.vue'
 import FieldGroups from '../item/FieldGroups.vue'
 import ShowField from './ShowField.vue'
@@ -195,23 +195,8 @@ type ShowFieldValue = string | number | boolean | Date | Record<string, unknown>
       <template #actions>
         <slot name="header-actions" />
         <!-- Header actions from builder (e.g., edit) -->
-        <template v-for="action in headerActions" :key="action.name">
-          <!-- A disabled button gets no mouse events: its tooltip goes on a focusable wrapper (#5436) -->
-          <span v-if="action.isDisabled && action.tooltip" v-tooltip.top="action.tooltip" class="qd-action-tip" tabindex="0" :aria-label="action.tooltip" data-action-tip>
-            <QdButton :label="action.label" :icon="action.icon" :severity="action.severity" :loading="action.isLoading" disabled :data-action="action.name" />
-          </span>
-          <QdButton
-            v-else
-            v-tooltip.top="action.tooltip"
-            :label="action.label"
-            :icon="action.icon"
-            :severity="action.severity"
-            :loading="action.isLoading"
-            :disabled="action.isDisabled"
-            :data-action="action.name"
-            @click="action.onClick"
-          />
-        </template>
+        <!-- One button each; with items, a split button (#5444) -->
+        <QdActionButton v-for="action in headerActions" :key="action.name" :action="action" />
       </template>
     </PageHeader>
 
@@ -291,23 +276,7 @@ type ShowFieldValue = string | number | boolean | Date | Record<string, unknown>
         <template v-if="showActions && footerActions.length > 0">
           <slot name="footer">
             <div class="show-actions">
-              <template v-for="action in footerActions" :key="action.name">
-                <!-- A disabled button gets no mouse events: its tooltip goes on a focusable wrapper (#5436) -->
-                <span v-if="action.isDisabled && action.tooltip" v-tooltip.top="action.tooltip" class="qd-action-tip" tabindex="0" :aria-label="action.tooltip" data-action-tip>
-                  <QdButton :label="action.label" :icon="action.icon" :severity="action.severity" :loading="action.isLoading" disabled :data-action="action.name" />
-                </span>
-                <QdButton
-                  v-else
-                  v-tooltip.top="action.tooltip"
-                  :label="action.label"
-                  :icon="action.icon"
-                  :severity="action.severity"
-                  :loading="action.isLoading"
-                  :disabled="action.isDisabled"
-                  :data-action="action.name"
-                  @click="action.onClick"
-                />
-              </template>
+              <QdActionButton v-for="action in footerActions" :key="action.name" :action="action" />
             </div>
           </slot>
         </template>
@@ -392,13 +361,4 @@ type ShowFieldValue = string | number | boolean | Date | Record<string, unknown>
   border-top: 1px solid var(--p-surface-200, #e2e8f0);
 }
 
-/* A disabled action's tooltip, on a wrapper the pointer and the keyboard reach (#5436) */
-.qd-action-tip {
-  display: inline-flex;
-  border-radius: 6px;
-}
-.qd-action-tip:focus-visible {
-  outline: 2px solid var(--p-primary-color, #3b82f6);
-  outline-offset: 2px;
-}
 </style>

@@ -47,6 +47,7 @@ export { default as LookupPickerDialog } from './edit/LookupPickerDialog.vue'
 
 // Show (read-only detail pages)
 export { default as ShowPage } from './show/ShowPage.vue'
+export { default as QdActionButton } from './show/QdActionButton.vue'
 export { default as ShowField } from './show/ShowField.vue'
 export { default as ShowDisplay } from './show/ShowDisplay.vue'
 export { default as ParentCard } from './show/ParentCard.vue'

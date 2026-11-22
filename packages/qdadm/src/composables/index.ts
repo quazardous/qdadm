@@ -68,6 +68,8 @@ export {
   type ResolvedFieldConfig as ShowResolvedFieldConfig,
   type ActionConfig as ShowActionConfig,
   type ShowActionContext,
+  type ActionItemConfig as ShowActionItemConfig,
+  type ResolvedActionItem as ShowResolvedActionItem,
   type LazyActionConfig as ShowLazyActionConfig,
   type ShowPageProps,
   type ShowPageEvents,

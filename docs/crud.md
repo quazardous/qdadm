@@ -756,6 +756,27 @@ ones; `addAction()` adds the page's own.
 - **A tooltip** says what the gesture does when the label only names it
   (`tooltip`, shown on hover). A disabled action keeps it, on a wrapper the
   pointer and the keyboard reach, with the text for screen readers.
+- **A menu of related gestures:** `items` makes the action a split button,
+  its own button with a chevron joined on its right. The chevron opens a menu
+  lined up with the button (its right edge when the button sits on the right
+  of the window), upwards when there is no room below. Each entry is
+  `{ name, label, icon?, tooltip?, severity?, onClick, visible?, disabled? }`:
+  `label`, `icon` and `tooltip` take a function of the record, and `visible`
+  and `disabled` take the same context as the action. Hidden entries are left
+  out; with none left, the action is a plain button. Without `onClick`, the
+  button only opens the menu (a group of gestures). From the keyboard, the
+  arrows move in the menu and Escape closes it, back on the chevron.
+
+```js
+show.addAction({
+  name: 'copy', label: 'Copy', icon: 'pi pi-copy', onClick: copyMarkdown,
+  items: [{ name: 'copy-json', label: 'Copy as JSON', onClick: copyJson }],
+})
+show.addAction({
+  name: 'take', label: 'Take', onClick: take,
+  items: [{ name: 'follow', label: (task) => (task?.following ? 'Unfollow' : 'Follow'), onClick: toggleFollow }],
+})
+```
 
 ```js
 const show = useEntityItemShowPage({ entity: 'tasks' })

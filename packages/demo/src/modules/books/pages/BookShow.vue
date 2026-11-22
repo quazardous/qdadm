@@ -56,6 +56,40 @@ show.addAction({
   visible: ({ data }) => !!data?.title,
   onClick: () => window.open(`https://en.wikipedia.org/wiki/${encodeURIComponent(String(show.data.value?.title ?? ''))}`, '_blank', 'noopener'),
 })
+
+// A split button (#5444): the click copies the book as Markdown, the chevron
+// opens the other format
+const copy = (text) => navigator.clipboard?.writeText(text)
+show.addAction({
+  name: 'copy',
+  label: 'Copy',
+  icon: 'pi pi-copy',
+  severity: 'secondary',
+  tooltip: 'Copies the book as Markdown',
+  visible: ({ data }) => !!data,
+  onClick: () => {
+    const b = show.data.value
+    return copy(`## ${b.title}\n\n- Author: ${b.author}\n- Year: ${b.year}\n- Genre: ${b.genre}\n`)
+  },
+  items: [
+    { name: 'copy-json', label: 'Copy as JSON', icon: 'pi pi-code', onClick: () => copy(JSON.stringify(show.data.value, null, 2)) },
+  ],
+})
+
+// A menu only (#5444): no gesture of its own, it opens its entries
+const openTab = (url) => window.open(url, '_blank', 'noopener')
+const q = () => encodeURIComponent(String(show.data.value?.title ?? ''))
+show.addAction({
+  name: 'links',
+  label: 'Links',
+  icon: 'pi pi-link',
+  severity: 'secondary',
+  visible: ({ data }) => !!data,
+  items: [
+    { name: 'open-library', label: 'Open Library', icon: 'pi pi-book', onClick: () => openTab(`https://openlibrary.org/search?q=${q()}`) },
+    { name: 'author', label: (book) => `More by ${book?.author}`, icon: 'pi pi-user', onClick: () => openTab(`https://openlibrary.org/search?author=${encodeURIComponent(String(show.data.value?.author ?? ''))}`) },
+  ],
+})
 </script>
 
 <template>

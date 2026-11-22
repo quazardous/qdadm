@@ -12,6 +12,8 @@ export default `core:
     "yes": "Yes"
     "no": "No"
   actions:
+    # The chevron of a split action (#5444)
+    moreActions: "More actions: {action}"
     save: Save
     cancel: Cancel
     delete: Delete

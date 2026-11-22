@@ -12,6 +12,8 @@ export default `core:
     "yes": Oui
     "no": Non
   actions:
+    # Le chevron d'une action combo (#5444)
+    moreActions: "Plus d'actions : {action}"
     save: Enregistrer
     cancel: Annuler
     delete: Supprimer
