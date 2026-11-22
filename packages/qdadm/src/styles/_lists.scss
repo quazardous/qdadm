@@ -32,8 +32,16 @@
 
 .table-actions {
   display: flex;
-  gap: $space-xs;
+  gap: $space-2xs;
   justify-content: flex-start;
+
+  // A row's icon actions sit close: a 2rem round (still a fair click target),
+  // not PrimeVue's 2.5rem icon-only button; the icon keeps its size (#5450)
+  > .p-button.p-button-icon-only {
+    width: 2rem;
+    height: 2rem;
+    padding: 0;
+  }
 }
 
 // =============================================================================
