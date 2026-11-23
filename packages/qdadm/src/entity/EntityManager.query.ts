@@ -22,6 +22,13 @@ export function applyQueryMethods(EntityManagerClass: { prototype: any }): void 
   ): Promise<ListResult<any>> {
     const { context = {}, routingContext = null } = options
 
+    // An expired cache goes before anything reads it (#5464): list() checks,
+    // but a valid cache is filtered here without going through list(), so a
+    // list kept serving its first read past cacheTtlMs
+    if (this._isCacheExpired()) {
+      this.invalidateCache()
+    }
+
     // Check if this context uses a dynamic endpoint (no caching possible)
     const resolved = this._normalizeResolveResult(
       this.resolveStorage('list', routingContext ?? undefined),
