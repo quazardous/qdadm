@@ -69,3 +69,20 @@ export function badgeColor(tone: string | null | undefined): string | null {
   // A name the app has no --qd-tone-<name> for falls back to the word, a CSS colour name
   return named ? named.replace(/\)$/, `, ${tone})`) : tone
 }
+
+/**
+ * The height of QdMultiFilter's list when it opens (#5470): the room between
+ * the filter and the edge of the window, towards the side with more of it
+ * (PrimeVue opens the panel upward when it does not fit below), less the
+ * panel's own header and a margin. Never under `floor` px.
+ */
+export function panelListHeight(
+  anchor: { top: number; bottom: number },
+  viewport: number,
+  { rem = 16, search = false, floor = 14 * rem }: { rem?: number; search?: boolean; floor?: number } = {}
+): number {
+  const room = Math.max(viewport - anchor.bottom, anchor.top)
+  // The panel's border and padding, the gap to the filter, a margin to the edge; the search box when shown
+  const chrome = 1.5 * rem + (search ? 3.25 * rem : 0)
+  return Math.max(floor, Math.floor(room - chrome))
+}

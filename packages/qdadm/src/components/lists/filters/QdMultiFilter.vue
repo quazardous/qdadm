@@ -11,16 +11,18 @@
  * - Closed: what is chosen, as badges (or labels), up to 3, then « +N »; all
  *   of it in the tooltip.
  * - A search past 8 choices, on the label, the badge and the group.
+ * - Its list as tall as the window allows when it opens (#5470), or
+ *   `filter.scrollHeight`.
  *
  * Runtime props, not `defineProps<QdFilterProps>()` (#5469): qdadm ships its
  * .vue sources, and a type imported from another file makes the app's build
  * load TypeScript to resolve it, which a JavaScript app does not have.
  */
-import { computed, type PropType } from 'vue'
+import { computed, ref, type PropType } from 'vue'
 import MultiSelect from 'primevue/multiselect'
 import { useI18n } from '../../../i18n/useI18n'
 import type { FilterChoice, FilterConfig } from '../../../composables/useListPage.types'
-import { badgeColor, useFilterModel } from './contract'
+import { badgeColor, panelListHeight, useFilterModel } from './contract'
 
 // The filter contract's props (QdFilterProps), declared at runtime
 const props = defineProps({
@@ -91,6 +93,17 @@ const allChosen = computed(() =>
   }).join(', ')
 )
 
+/** The list's height: the filter's own, else fitted to the window as the panel opens (#5470) */
+const select = ref<{ $el?: HTMLElement } | null>(null)
+const fitted = ref('14rem')
+const listHeight = computed(() => (props.filter.scrollHeight as string | undefined) || fitted.value)
+function fit(): void {
+  const el = select.value?.$el
+  if (props.filter.scrollHeight || !el || typeof window === 'undefined') return
+  const rem = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16
+  fitted.value = `${panelListHeight(el.getBoundingClientRect(), window.innerHeight, { rem, search: flat.value.length > SEARCH_PAST })}px`
+}
+
 const style = (tone?: string) => {
   const color = badgeColor(tone)
   return color ? { '--qd-filter-badge-color': color } : undefined
@@ -99,6 +112,7 @@ const style = (tone?: string) => {
 
 <template>
   <MultiSelect
+    ref="select"
     v-model="model"
     :options="grouped ? groups : flat"
     :option-group-label="grouped ? 'label' : undefined"
@@ -110,12 +124,15 @@ const style = (tone?: string) => {
     :placeholder="filter.placeholder"
     :loading="loading"
     :show-toggle-all="false"
+    :scroll-height="listHeight"
+    overlay-class="qd-multi-filter-panel"
     class="qd-multi-filter"
     :class="{ 'filter-default': atDefault && chosen.length > 0, 'filter-modified': !atDefault }"
     :style="{ minWidth: (filter.width as string) || '180px' }"
     :aria-label="filter.placeholder"
     :title="allChosen || undefined"
     :data-filter="filter.name"
+    @before-show="fit"
   >
     <template #value>
       <span v-if="!chosen.length" class="qd-multi-filter-placeholder">{{ filter.placeholder }}</span>

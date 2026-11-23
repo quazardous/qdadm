@@ -155,6 +155,11 @@
   color: var(--p-multiselect-placeholder-color, var(--p-text-muted-color, #64748b));
 }
 
+// The open panel: compact group headings, so more choices fit (#5470)
+.qd-multi-filter-panel .p-multiselect-option-group {
+  padding-block: 0.3rem 0.15rem;
+}
+
 // A group heading: a button that toggles all its choices
 .qd-multi-filter-group {
   all: unset;

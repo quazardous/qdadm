@@ -144,6 +144,12 @@ export interface FilterOptions {
    */
   multiple?: boolean
   /**
+   * The height of a `multiple` filter's list (#5470), any CSS length
+   * (`'20rem'`, `'50vh'`). Default: as tall as the room between the filter
+   * and the edge of the window it opens towards, 14rem at least.
+   */
+  scrollHeight?: string
+  /**
    * The value in words (#5467), for "Save this search" and a run's filter;
    * default: the chosen choices' labels. A custom component may carry it as
    * a static `describe` too.

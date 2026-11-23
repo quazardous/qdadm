@@ -329,6 +329,9 @@ qdadm draws it with `QdMultiFilter`:
   then « +N »; the tooltip lists them all.
 - **Search:** past 8 choices, a search box matches the label, the badge and
   the group.
+- **Height:** the open list is as tall as the room between the filter and
+  the edge of the window it opens towards, 14rem at least. `scrollHeight`
+  (any CSS length, `'20rem'`) sets it instead.
 
 **In the address** the values are comma-joined in one parameter,
 `?tasks.types=a,b`, and read back as an array. A value that holds a comma
@@ -383,6 +386,10 @@ const value = useFilterModel(props, emit)   // read it, set it
 export default { describe: (v) => `${v[0] ?? '…'}–${v[1] ?? '…'}` }
 </script>
 ```
+
+A filter that draws badges of its own colours them as qdadm does with
+`badgeColor(tone)`: a tone name or alias gives its `--qd-tone-<name>`
+colour, anything else is taken as a CSS colour.
 
 `QdFilterProps` and `QdFilterEmits` type it. `QdMultiFilter` is the
 reference implementation, and the demo's books list has both kinds.
