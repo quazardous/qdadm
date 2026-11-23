@@ -14,7 +14,7 @@
  * - 'select' (default): Standard dropdown
  * - 'autocomplete': Searchable dropdown with type-ahead
  */
-import { computed, ref, watch, nextTick, onMounted, onUnmounted, onUpdated, useId, useSlots, type PropType } from 'vue'
+import { computed, ref, watch, nextTick, onMounted, onUnmounted, onUpdated, useId, useSlots, markRaw, toRaw, type PropType, type Component } from 'vue'
 import PageHeader from '../layout/PageHeader.vue'
 import CardsGrid from '../display/CardsGrid.vue'
 import FilterBar from './FilterBar.vue'
@@ -30,6 +30,9 @@ import ShowDisplay from '../show/ShowDisplay.vue'
 import Select from 'primevue/select'
 import AutoComplete from 'primevue/autocomplete'
 import SplitButton from 'primevue/splitbutton'
+import QdMultiFilter from './filters/QdMultiFilter.vue'
+import { shapeFilterValue } from './filters/contract'
+import { isMultiple } from '../../composables/useListPage.filters'
 import type { FilterConfig, CardConfig, ResolvedAction, ResolvedHeaderAction, ColumnConfig } from '../../composables/useListPage'
 
 /**
@@ -215,9 +218,16 @@ watch(() => props.filterValues, (newVal: Record<string, unknown>) => {
   }
 }, { immediate: true, deep: true })
 
-// Check if any filter or search has a non-null value
+// Check if any filter or search has a non-null value (an empty array is none, #5467)
 const hasActiveFilters = computed(() => {
-  const hasFilters = Object.values(props.filterValues).some((v: unknown) => v !== null && v !== undefined && v !== '')
+  const set = (v: unknown): boolean => v !== null && v !== undefined && v !== '' && !(Array.isArray(v) && v.length === 0)
+  // Off its default (a filter emptied against one, #5460), or set when it has none
+  const hasFilters =
+    props.filters.some((f) => !props.isFilterAtDefault(f.name)) ||
+    Object.entries(props.filterValues).some(([name, v]) => {
+      const def = props.filters.find((f) => f.name === name)?.default
+      return set(v) && !set(def)
+    })
   const hasSearch = props.searchQuery && props.searchQuery.trim() !== ''
   return hasFilters || hasSearch
 })
@@ -258,9 +268,12 @@ const dropdownHeaderActions = computed(() => {
 
 function clearAllFilters(): void {
   // Build empty filter values object
-  const cleared: Record<string, null> = {}
+  // Each filter back to its default (#5460: with one, null would now stay as a choice of none)
+  const cleared: Record<string, unknown> = {}
   for (const key of Object.keys(localFilterValues.value)) {
-    cleared[key] = null
+    const def = props.filters.find((f) => f.name === key)?.default
+    const none = def === null || def === undefined || def === '' || (Array.isArray(def) && def.length === 0)
+    cleared[key] = none ? null : def
   }
   // Update local ref first (for immediate UI feedback)
   localFilterValues.value = cleared
@@ -281,6 +294,27 @@ function onSearchChange(value: string): void {
 }
 
 function onFilterChange(_name: string): void {
+  emit('update:filterValues', { ...localFilterValues.value })
+}
+
+// ── Filters drawn under the filter contract (#5467) ──────────────────────────
+/** The app's own component, or QdMultiFilter for several values; null for the built-in select / autocomplete */
+function contractComponent(filter: FilterConfig): Component | null {
+  const own = filter.component
+  if (own && typeof own !== 'string') return markRaw(toRaw(own as Component))
+  return isMultiple(filter) ? (QdMultiFilter as Component) : null
+}
+/** Its value, as the contract gives it: never undefined, `[]` for none when several */
+function contractValue(filter: FilterConfig): unknown {
+  const v = localFilterValues.value[filter.name]
+  if (isMultiple(filter)) return Array.isArray(v) ? v : v === null || v === undefined || v === '' ? [] : [v]
+  return v ?? null
+}
+/** A value given back: to the declared shape (said once in development), then the list's */
+function onContractChange(filter: FilterConfig, value: unknown): void {
+  const shaped = shapeFilterValue(isMultiple(filter), value)
+  if (shaped.problem && import.meta.env.DEV) console.warn(`[qdadm] Filter "${filter.name}": its component ${shaped.problem}`)
+  localFilterValues.value[filter.name] = shaped.value
   emit('update:filterValues', { ...localFilterValues.value })
 }
 
@@ -498,9 +532,21 @@ function getFilterClass(filter: FilterConfig): Record<string, boolean> {
         :placeholder="searchPlaceholder"
       >
         <template v-for="filter in filters" :key="filter.name">
+          <!-- The app's own, or several values: under the filter contract (#5467) -->
+          <component
+            :is="contractComponent(filter)"
+            v-if="contractComponent(filter)"
+            :model-value="contractValue(filter)"
+            :filter="filter"
+            :options="filter.options ?? []"
+            :loading="!!filter._optionsLoading"
+            :at-default="isFilterAtDefault(filter.name)"
+            :data-filter="filter.name"
+            @update:model-value="onContractChange(filter, $event)"
+          />
           <!-- Autocomplete filter -->
           <AutoComplete
-            v-if="filter.type === 'autocomplete'"
+            v-else-if="filter.type === 'autocomplete'"
             v-model="autocompleteSelected[filter.name]"
             :suggestions="autocompleteSuggestions[filter.name] || []"
             @complete="onAutocompleteSearch($event, filter)"

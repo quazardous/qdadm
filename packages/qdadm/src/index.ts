@@ -245,6 +245,8 @@ export {
   type FilterConfig,
   type FilterOptions,
   type FilterType,
+  type FilterChoice,
+  type FilterChoiceBadge,
   type ActionConfig as ListActionConfig,
   type ResolvedAction,
   type HeaderActionConfig,

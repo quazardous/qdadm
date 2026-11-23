@@ -4,6 +4,9 @@ export default `core:
   # A filter's "all" choice (#4692)
   filters:
     all: "All {field}"
+    # A filter of several values (#5467): past the first few chosen; a group heading
+    more: "+{count}"
+    toggleGroup: "All of {group}"
   # The list's refresh button (#5462)
   list:
     refresh: Refresh

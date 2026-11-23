@@ -67,6 +67,7 @@
 
 // Filter at default value: blue/info (subtle indicator)
 .p-select.filter-default,
+.p-multiselect.filter-default,
 .p-autocomplete.filter-default .p-inputtext {
   border-color: var(--p-primary-400, #60a5fa) !important;
   box-shadow: 0 0 0 1px var(--p-primary-400, #60a5fa) !important;
@@ -74,6 +75,7 @@
 
 // Filter modified from default: orange/warning (attention needed)
 .p-select.filter-modified,
+.p-multiselect.filter-modified,
 .p-autocomplete.filter-modified .p-inputtext {
   border-color: #f97316 !important;
   box-shadow: 0 0 0 1px #f97316 !important;
@@ -98,4 +100,76 @@
   height: 2.5rem;
   align-self: flex-end;
   margin-bottom: 0;
+}
+
+// =============================================================================
+// A filter of several values (#5467): badges, chosen values, group headings
+// =============================================================================
+
+// A choice's badge: a short tag in its tone (--qd-filter-badge-color), else neutral
+.qd-filter-badge {
+  display: inline-flex;
+  align-items: center;
+  flex: none;
+  padding: 0 0.35rem;
+  border-radius: 3px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  line-height: 1.35rem;
+  letter-spacing: 0.02em;
+  color: #fff;
+  background: var(--qd-filter-badge-color, var(--qd-tone-neutral, #64748b));
+}
+
+.qd-multi-filter-option {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  min-width: 0;
+}
+
+// Closed: the chosen ones in a row, then « +N »
+.qd-multi-filter-chosen {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.qd-multi-filter-chip {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 9rem;
+}
+
+.qd-multi-filter-more {
+  flex: none;
+  font-size: 0.8rem;
+  font-weight: 600;
+  opacity: 0.75;
+}
+
+.qd-multi-filter-placeholder {
+  color: var(--p-multiselect-placeholder-color, var(--p-text-muted-color, #64748b));
+}
+
+// A group heading: a button that toggles all its choices
+.qd-multi-filter-group {
+  all: unset;
+  display: block;
+  width: 100%;
+  font-weight: 600;
+  cursor: pointer;
+
+  &:hover,
+  &:focus-visible {
+    text-decoration: underline;
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--p-primary-500, #3b82f6);
+    outline-offset: 2px;
+  }
 }

@@ -17,6 +17,7 @@
 import { useListPage, ListPage, Zone, SeverityTag } from '@quazardous/qdadm'
 import Column from 'primevue/column'
 import { useFavoriteAction } from '@/composables/useFavoriteAction'
+import YearRangeFilter from '../components/YearRangeFilter.vue'
 
 // ============ LIST BUILDER ============
 // Row bands (#5437): the classics get a band, above their cells here (#5451;
@@ -50,6 +51,28 @@ list.addFilter('author', {
   optionLabel: 'author',
   optionValue: 'author',
   dependsOn: ['genre'],
+})
+
+// Several values, grouped and badged (#5467): the decades, under their
+// century, each with a short tag; none chosen is off
+const decades = [1900, 1920, 1950, 1960, 1980, 1990, 2010]
+list.addFilter('decade', {
+  multiple: true,
+  placeholder: 'Decades',
+  options: decades.map((d) => ({
+    label: `The ${d}s`,
+    value: d,
+    group: d < 2000 ? '20th century' : '21st century',
+    badge: { label: `'${String(d).slice(2, 4)}`, tone: d < 1970 ? 'watch' : 'info' },
+  })),
+  local_filter: (book, chosen) => chosen.includes(Math.floor(Number(book.year) / 10) * 10),
+})
+
+// A filter of the app's own (#5467): a component under the filter contract
+list.addFilter('years', {
+  component: YearRangeFilter,
+  placeholder: 'Years',
+  local_filter: (book, [from, to]) => (from == null || Number(book.year) >= from) && (to == null || Number(book.year) <= to),
 })
 
 

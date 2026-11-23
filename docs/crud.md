@@ -300,6 +300,93 @@ list.setFilterOptions('taken_by', [{ label: 'Me', value: '@me' }, ...people])
   (`?genre=poetry`) is added as its raw value, so the select shows what it
   filters on and can change it or clear it.
 
+### Several values, grouped and badged
+
+`multiple: true` (or `type: 'multiselect'`) makes the value an array.
+Choosing none turns the filter off: nothing is sent and nothing is counted.
+
+```js
+list.addFilter('types', {
+  multiple: true,
+  optionsEndpoint: 'options/types',   // or options: [...]
+  dependsOn: ['universe'],
+})
+// A choice: { label, value, group?, badge? }
+// { label: 'Unhandled error', value: 'legacy.php_errors/error.unhandled',
+//   group: 'Legacy PHP errors', badge: { label: 'PHP', tone: 'critical' } }
+```
+
+qdadm draws it with `QdMultiFilter`:
+
+- **Groups:** a choice's `group` puts it under a heading, in the order the
+  groups first appear (choices without a group come first, under no
+  heading). A heading toggles all of its choices.
+- **Badges:** `badge: { label, tone }` puts a short tag before the label, in
+  the list and in the closed filter. `tone` is `critical` / `danger`,
+  `watch` / `warn`, `good` / `success`, `info`, `neutral` / `secondary`, the
+  app's own `--qd-tone-<name>`, or any CSS colour.
+- **Closed:** the chosen values as their badges (or their labels), up to 3,
+  then « +N »; the tooltip lists them all.
+- **Search:** past 8 choices, a search box matches the label, the badge and
+  the group.
+
+**In the address** the values are comma-joined in one parameter,
+`?tasks.types=a,b`, and read back as an array. A value that holds a comma
+keeps the whole array as JSON. The session keeps the array, and a link that
+names the filter sets it. With a `default`, an emptied filter is written as
+its empty token (see above), and Clear returns it to its default.
+
+**To the storage** the array goes in `filters`, and the local cache filters
+on it as "any of" (`$in`). `ApiStorage` sends it comma-joined by default; see
+[storage.md](./storage.md#what-listparams-receives) for `arrayFormat`.
+
+When its choices are read again (`dependsOn`), the values still among them
+stay and the others go.
+
+### Your own filter
+
+A filter can be drawn by the app's own component: `component` takes a Vue
+component, under a contract on what it receives and what it gives back.
+The strings `'dropdown'` and `'autocomplete'` still pick qdadm's own.
+
+```js
+list.addFilter('years', { component: YearRangeFilter, placeholder: 'Years', local_filter: inRange })
+```
+
+| It receives (props) | |
+|---|---|
+| `modelValue` | The value: for `multiple`, an array (`[]` for none); otherwise one value of any shape (a scalar, a range `[from, to]`) or `null` |
+| `filter` | The filter as declared, resolved: `name`, `placeholder`, `multiple`, its own keys |
+| `options` | The choices as shown: translated, the value filtered on kept, with `group` and `badge` |
+| `loading` | Its choices are being read |
+| `atDefault` | The value is the filter's default (the bar's blue / orange cue) |
+
+**It gives back** `update:modelValue` with the new value. For a `multiple`
+filter that is an array: a single value is wrapped, with a warning naming the
+filter in development. The rest is the list's: the load, the address, the
+session, links, the active count and Clear. The component never touches the
+list, the route or the storage.
+
+**In words.** "Save this search" and a run's filter name the value with the
+chosen choices' labels. A value of the app's own says itself with
+`describe(value)`, given on the filter or as a static `describe` of the
+component.
+
+```vue
+<script setup>
+import { useFilterModel } from '@quazardous/qdadm'
+const props = defineProps(['modelValue', 'filter', 'options', 'loading', 'atDefault'])
+const emit = defineEmits(['update:modelValue'])
+const value = useFilterModel(props, emit)   // read it, set it
+</script>
+<script>
+export default { describe: (v) => `${v[0] ?? '…'}–${v[1] ?? '…'}` }
+</script>
+```
+
+`QdFilterProps` and `QdFilterEmits` type it. `QdMultiFilter` is the
+reference implementation, and the demo's books list has both kinds.
+
 ### Cascading filters
 
 A filter's choices may depend on other filters' values: `dependsOn` names

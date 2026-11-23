@@ -118,7 +118,8 @@ describe('the value filtered on is among the shown choices (#5457)', () => {
     const status = f.filters.value.find((x) => x.name === 'status')
     expect(status.options.map((o) => [o.label, o.value])).toEqual([['All Status', null], ['Open', 'open'], ['archived', 'archived']])
     expect(shown(f, 'owner')).toEqual([null, 'a', 'b', 'zoe'])
-    expect(shown(f, 'tags')).toEqual([null, 'x', 'y'])
+    // Several values: no "All" choice, none chosen is off (#5467)
+    expect(shown(f, 'tags')).toEqual(['x', 'y'])
     // Only what the bar is given
     expect(f.filtersMap.value.get('status').options.map((o) => o.value)).toEqual([null, 'open'])
 

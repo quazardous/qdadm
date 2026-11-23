@@ -81,6 +81,8 @@ export type {
   FilterConfig,
   FilterOptions,
   FilterType,
+  FilterChoice,
+  FilterChoiceBadge,
   ActionConfig,
   ResolvedAction,
   HeaderActionConfig,
@@ -811,7 +813,7 @@ export function useListPage<T = unknown>(config: UseListPageOptions<T>): UseList
 
     // local_filter: post-filter hack for edge cases
     for (const [name, value] of Object.entries(filterValues.value)) {
-      if (value === null || value === undefined || value === '') continue
+      if (value === null || value === undefined || value === '' || (Array.isArray(value) && value.length === 0)) continue
       const filterDef = filtersMap.value.get(name)
       if (typeof filterDef?.local_filter !== 'function') continue
       result = result.filter((item) => filterDef.local_filter!(item, value))
@@ -869,7 +871,8 @@ export function useListPage<T = unknown>(config: UseListPageOptions<T>): UseList
 
       const filtersObj: Record<string, unknown> = {}
       for (const [name, value] of Object.entries(filterValues.value)) {
-        if (value === null || value === undefined || value === '') continue
+        // None chosen: off, an empty array too (#5467)
+        if (value === null || value === undefined || value === '' || (Array.isArray(value) && value.length === 0)) continue
         const filterDef = filtersMap.value.get(name)
         if (typeof filterDef?.local_filter === 'function') continue
 
@@ -1064,9 +1067,16 @@ export function useListPage<T = unknown>(config: UseListPageOptions<T>): UseList
     const parts: string[] = []
     for (const [name, def] of filtersMap.value.entries()) {
       const value = filterValues.value[name]
-      if (value === null || value === undefined || value === '' || value === (def.default ?? null)) continue
+      if (value === null || value === undefined || value === '' || (Array.isArray(value) && value.length === 0) || isFilterAtDefault(name)) continue
+      // Its own words (#5467): the filter's describe, or its component's
+      const describe = def.describe ?? (def.component && typeof def.component === 'object' ? (def.component as { describe?: (v: unknown) => string | undefined }).describe : undefined)
+      const own = typeof describe === 'function' ? describe(value) : undefined
+      if (own) {
+        parts.push(own)
+        continue
+      }
       const values = Array.isArray(value) ? value : [value]
-      parts.push(values.map((v) => String(def.options?.find((o) => o.value === v)?.label ?? v)).join(', '))
+      parts.push(values.map((v) => String(def.options?.find((o) => o.value === v || String(o.value) === String(v))?.label ?? v)).join(', '))
     }
     if (searchQuery.value) parts.push(`"${searchQuery.value}"`)
     return parts.length ? parts.join(', ') : undefined

@@ -27,6 +27,9 @@ export interface RoutingContext {
   path?: string
 }
 
+/** How an array in the query is sent (#5467) */
+export type ArrayFormat = 'comma' | 'repeat' | 'brackets' | 'client'
+
 /**
  * ApiStorage options
  */
@@ -44,6 +47,14 @@ export interface ApiStorageOptions<T extends EntityRecord = EntityRecord> {
    */
   responseTotalHeader?: string | null
   paramMapping?: Record<string, string>
+  /**
+   * How an array in the query is sent (#5467): `comma` (the default,
+   * `types=a,b`), `repeat` (`types=a&types=b`), `brackets`
+   * (`types[]=a&types[]=b`), or `client`, left to the HTTP client (axios
+   * writes brackets). An object gives it per parameter, the rest under
+   * `'*'`: `{ '*': 'comma', tags: 'repeat' }`.
+   */
+  arrayFormat?: ArrayFormat | Record<string, ArrayFormat>
   normalize?: ((data: T, context?: RoutingContext | null) => T) | null
   denormalize?: ((data: Partial<T>) => Partial<T>) | null
 }
@@ -69,6 +80,7 @@ export class ApiStorage<T extends EntityRecord = EntityRecord> extends IStorage<
   readonly responseTotalKey: string
   readonly responseTotalHeader: string | null
   readonly paramMapping: Record<string, string>
+  readonly arrayFormat: ArrayFormat | Record<string, ArrayFormat>
 
   protected _client: HttpClient | null
   protected _getClient: (() => HttpClient) | null
@@ -85,6 +97,7 @@ export class ApiStorage<T extends EntityRecord = EntityRecord> extends IStorage<
       responseTotalKey = 'total',
       responseTotalHeader = null,
       paramMapping = {},
+      arrayFormat = 'comma',
       normalize = null,
       denormalize = null,
     } = options
@@ -96,6 +109,7 @@ export class ApiStorage<T extends EntityRecord = EntityRecord> extends IStorage<
     this.responseTotalKey = responseTotalKey
     this.responseTotalHeader = responseTotalHeader
     this.paramMapping = paramMapping
+    this.arrayFormat = arrayFormat
     this._normalize = normalize
     this._denormalize = denormalize
   }
@@ -115,6 +129,31 @@ export class ApiStorage<T extends EntityRecord = EntityRecord> extends IStorage<
       mapped[mappedKey] = value
     }
     return mapped
+  }
+
+  /**
+   * Arrays in the query, as the backend reads them (#5467). The HTTP client
+   * is the app's, and each one serializes arrays its own way (axios writes
+   * `a[]=x`), so the format is applied here, whatever the client: `comma`
+   * (the default) joins them into one parameter, `types=a,b`; `repeat` and
+   * `brackets` are written into the URL itself (`types=a&types=b`,
+   * `types[]=a&types[]=b`); `client` leaves the array to the client.
+   */
+  protected _applyArrayFormat(params: Record<string, unknown>): { params: Record<string, unknown>; query: string } {
+    const out: Record<string, unknown> = {}
+    const query = new URLSearchParams()
+    for (const [key, value] of Object.entries(params)) {
+      if (!Array.isArray(value)) {
+        out[key] = value
+        continue
+      }
+      const format: ArrayFormat =
+        typeof this.arrayFormat === 'string' ? this.arrayFormat : (this.arrayFormat[key] ?? this.arrayFormat['*'] ?? 'comma')
+      if (format === 'comma') out[key] = value.map(String).join(',')
+      else if (format === 'client') out[key] = value
+      else for (const v of value) query.append(format === 'brackets' ? `${key}[]` : key, String(v))
+    }
+    return { params: out, query: query.toString() }
   }
 
   /**
@@ -178,9 +217,9 @@ export class ApiStorage<T extends EntityRecord = EntityRecord> extends IStorage<
     // before: a filter named `page` still wins, for better or worse.
     const outgoing = { page, page_size, sort_by, sort_order, search, ...filters }
 
-    const response = await this.client.get<Record<string, unknown>>(this.endpoint, {
-      params: this._applyParamMapping(outgoing),
-    })
+    const { params: sent, query } = this._applyArrayFormat(this._applyParamMapping(outgoing))
+    const url = query ? `${this.endpoint}${this.endpoint.includes('?') ? '&' : '?'}${query}` : this.endpoint
+    const response = await this.client.get<Record<string, unknown>>(url, { params: sent })
 
     const data = response.data
     const rawItems = (data[this.responseItemsKey] || data.items || data) as T[]

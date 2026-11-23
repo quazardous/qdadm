@@ -4,7 +4,7 @@
  * Extracted from useListPage.ts for maintainability.
  */
 import type { RouteStatePersister } from '../routeState'
-import type { Ref, ComputedRef } from 'vue'
+import type { Ref, ComputedRef, Component } from 'vue'
 import type { Router } from 'vue-router'
 import type { FilterQuery } from '../query/FilterQuery'
 import type { ParentConfig, UseEntityItemPageReturn } from './useEntityItemPage.js'
@@ -115,10 +115,40 @@ export type FilterType = (typeof FILTER_TYPES)[number]
  * index signature — apps do stash their own keys — while the declared ones
  * are checked again.
  */
+/** A choice's badge (#5467): a short tag drawn before its label */
+export interface FilterChoiceBadge {
+  label: string
+  /** critical / danger, watch / warn, good / success, info, neutral / secondary, the app's own --qd-tone-<name>, or a CSS colour */
+  tone?: string
+}
+
+/** One choice of a filter */
+export interface FilterChoice {
+  label: string
+  value: unknown
+  /** The heading it is listed under (#5467), in the order the groups first appear */
+  group?: string
+  /** A short tag before its label (#5467) */
+  badge?: FilterChoiceBadge
+  [key: string]: unknown
+}
+
 export interface FilterOptions {
   type?: FilterType
   placeholder?: string
-  options?: Array<{ label: string; value: unknown }>
+  options?: Array<{ label: string; value: unknown }> | FilterChoice[]
+  /**
+   * Several values (#5467): the value is an array, none chosen is off. Drawn
+   * by QdMultiFilter (groups, badges, a search past 8 choices) unless the
+   * filter names its own `component`. `type: 'multiselect'` says the same.
+   */
+  multiple?: boolean
+  /**
+   * The value in words (#5467), for "Save this search" and a run's filter;
+   * default: the chosen choices' labels. A custom component may carry it as
+   * a static `describe` too.
+   */
+  describe?: (value: unknown) => string | undefined
   default?: unknown
   /**
    * How the empty choice is written when the filter has a `default` (#5460):
@@ -157,7 +187,12 @@ export interface FilterOptions {
   optionLabel?: string
   optionValue?: string
   cacheOptions?: boolean | 'auto'
-  component?: 'dropdown' | 'autocomplete'
+  /**
+   * How it is drawn: `'dropdown'`, `'autocomplete'`, or the app's own
+   * component (#5467), under the filter contract (QdFilterProps in,
+   * `update:modelValue` out)
+   */
+  component?: 'dropdown' | 'autocomplete' | Component
   reference?: string
   processor?: (options: Array<{ label: string; value: unknown }>) => Array<{ label: string; value: unknown }>
   toQuery?: (value: unknown) => Record<string, unknown>

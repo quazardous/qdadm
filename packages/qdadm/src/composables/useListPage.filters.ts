@@ -104,6 +104,41 @@ export interface UseListFiltersReturn {
   storedFilterValue: (name: string, value: unknown) => unknown
 }
 
+/** A filter of several values (#5467): `multiple`, or the `multiselect` type */
+export function isMultiple(def: FilterOptions | undefined | null): boolean {
+  return !!def && (def.multiple === true || def.type === 'multiselect')
+}
+
+/**
+ * The type a filter keeps once its choices are read: a multi-valued filter
+ * and one the app draws keep theirs; otherwise the component named, or a
+ * dropdown for a few choices and an autocomplete for many.
+ */
+function typeAfterLoad(def: FilterOptions, few: boolean): FilterOptions['type'] {
+  if (isMultiple(def) || (def.component && typeof def.component !== 'string')) return def.type
+  return (typeof def.component === 'string' ? def.component : few ? 'dropdown' : 'autocomplete') as FilterOptions['type']
+}
+
+/**
+ * Several values in one parameter (#5467): comma-joined, readable in a
+ * link; a value holding a comma keeps the array (written as JSON).
+ */
+export function joinValues(values: unknown[]): unknown {
+  if (values.some((v) => String(v).includes(','))) return values
+  return values.map(String).join(',')
+}
+
+/** And back: an array as is, a comma-joined text split, a lone value wrapped; numbers as the URL reads them */
+export function splitValues(raw: unknown): unknown[] {
+  const one = (v: unknown): unknown => {
+    if (typeof v !== 'string' || v === '' || Number.isNaN(Number(v))) return v
+    return String(Number(v)) === v ? Number(v) : v
+  }
+  if (Array.isArray(raw)) return raw
+  if (typeof raw === 'string') return raw.split(',').filter((v) => v !== '').map(one)
+  return [raw]
+}
+
 export function useListFilters(deps: UseListFiltersDeps): UseListFiltersReturn {
   const {
     entityName,
@@ -225,7 +260,8 @@ export function useListFilters(deps: UseListFiltersDeps): UseListFiltersReturn {
    */
   function withAll(name: string, config: FilterOptions, options: Array<{ label: string; value: unknown }>): Array<{ label: string; value: unknown }> {
     const allLabel = (config as { allLabel?: string | false }).allLabel
-    if (allLabel === false || options.some((o) => (o as { value?: unknown })?.value === null)) return [...options]
+    // Not for several values (#5467): choosing none is off
+    if (isMultiple(config) || allLabel === false || options.some((o) => (o as { value?: unknown })?.value === null)) return [...options]
     return [
       {
         label: allLabel || config.placeholder || `All ${snakeToTitle(name)}`,
@@ -259,6 +295,19 @@ export function useListFilters(deps: UseListFiltersDeps): UseListFiltersReturn {
 
   // ── A deliberately empty filter (#5460) ───────────────────────────────────
   const unset = (v: unknown): boolean => v === null || v === undefined || v === '' || (Array.isArray(v) && v.length === 0)
+  /** Its default, an empty one (null, [], '') read as none */
+  const defaultOf = (def: FilterOptions | undefined): unknown => (def && !unset(def.default) ? def.default : null)
+  /** The same value: blanks alike, arrays by their members, '1' and 1 alike (#5467) */
+  function sameValue(a: unknown, b: unknown): boolean {
+    if (unset(a) && unset(b)) return true
+    const list = (v: unknown): string[] => (Array.isArray(v) ? v : [v]).map(String).sort()
+    if (Array.isArray(a) || Array.isArray(b)) {
+      const x = list(a)
+      const y = list(b)
+      return x.length === y.length && x.every((v, i) => v === y[i])
+    }
+    return a === b || (!unset(a) && !unset(b) && String(a) === String(b))
+  }
 
   /**
    * The token a filter's empty choice is stored as, or null when it has no
@@ -267,7 +316,7 @@ export function useListFilters(deps: UseListFiltersDeps): UseListFiltersReturn {
    * choice of "none" has to be said.
    */
   function emptyToken(def: FilterOptions | undefined): string | null {
-    if (!def || def.default === null || def.default === undefined) return null
+    if (!def || unset(def.default)) return null
     const token = def.emptyValue ?? manager?.filterEmptyValue ?? 'null'
     return String(token)
   }
@@ -281,12 +330,14 @@ export function useListFilters(deps: UseListFiltersDeps): UseListFiltersReturn {
     const token = emptyToken(filtersMap.value.get(name))
     if (token !== null && raw !== undefined && (raw === null ? token === 'null' : String(raw) === token)) return { present: true, value: null }
     if (unset(raw)) return { present: false, value: undefined }
+    if (isMultiple(filtersMap.value.get(name))) return { present: true, value: splitValues(raw) }
     return { present: true, value: raw }
   }
 
   /** What a filter's value is stored as: its empty token when it has a default */
   function storedFilterValue(name: string, value: unknown): unknown {
-    if (!unset(value)) return value
+    // Several values comma-joined (#5467); any other array (a range of the app's) as JSON, as before
+    if (!unset(value)) return Array.isArray(value) && isMultiple(filtersMap.value.get(name)) ? joinValues(value) : value
     return emptyToken(filtersMap.value.get(name))
   }
 
@@ -437,9 +488,7 @@ export function useListFilters(deps: UseListFiltersDeps): UseListFiltersReturn {
   function isFilterAtDefault(name: string): boolean {
     const filterDef = filtersMap.value.get(name)
     if (!filterDef) return true
-    const currentValue = filterValues.value[name]
-    const defaultValue = filterDef.default ?? null
-    return currentValue === defaultValue
+    return sameValue(filterValues.value[name], defaultOf(filterDef))
   }
 
   /**
@@ -449,9 +498,7 @@ export function useListFilters(deps: UseListFiltersDeps): UseListFiltersReturn {
   const hasActiveFilters = computed(() => {
     if (searchQuery.value) return true
     for (const [name, filterDef] of filtersMap.value.entries()) {
-      const currentValue = filterValues.value[name]
-      const defaultValue = filterDef.default ?? null
-      if (currentValue !== defaultValue) return true
+      if (!sameValue(filterValues.value[name], defaultOf(filterDef))) return true
     }
     return false
   })
@@ -650,6 +697,9 @@ export function useListFilters(deps: UseListFiltersDeps): UseListFiltersReturn {
               return {
                 label: (o.label || o.name || String(o.value ?? o.id)) as string,
                 value: o.value ?? o.id,
+                // Grouped and badged choices (#5467)
+                ...(o.group !== undefined && o.group !== null ? { group: o.group } : {}),
+                ...(o.badge ? { badge: o.badge } : {}),
               }
             }
             return { label: snakeToTitle(String(opt)), value: opt }
@@ -667,13 +717,12 @@ export function useListFilters(deps: UseListFiltersDeps): UseListFiltersReturn {
             shouldCache = rawOptions.length <= SMART_FILTER_THRESHOLD
           }
 
-          const componentType =
-            filterDef.component || (shouldCache ? 'dropdown' : 'autocomplete')
+          const componentType = typeAfterLoad(filterDef, shouldCache)
           const allLabel =
             filterDef.allLabel || filterDef.placeholder || `All ${snakeToTitle(filterName)}`
           // Neither allLabel nor placeholder given: "All <field>" from the catalogue at render (#4692)
           const autoAll = !filterDef.allLabel && !!(filterDef as { _autoPlaceholder?: boolean })._autoPlaceholder
-          let finalOptions = [{ label: allLabel, value: null as unknown, ...(autoAll ? { _autoAll: true } : {}) }, ...rawOptions]
+          let finalOptions = isMultiple(filterDef) ? [...rawOptions] : [{ label: allLabel, value: null as unknown, ...(autoAll ? { _autoAll: true } : {}) }, ...rawOptions]
 
           if (typeof filterDef.processor === 'function') {
             finalOptions = filterDef.processor(finalOptions)
@@ -711,9 +760,17 @@ export function useListFilters(deps: UseListFiltersDeps): UseListFiltersReturn {
     stale: () => boolean
   ): Promise<void> {
     const value = filterValues.value[name]
-    if (blank(value) || same(value, def.default)) return
+    if (unset(value) || sameValue(value, def.default)) return
+    // Several values (#5467): those still among the choices stay
+    if (Array.isArray(value) && !def.validate) {
+      const kept = value.filter((v) => options.some((o) => same(o.value, v)))
+      if (stale() || kept.length === value.length || !sameValue(filterValues.value[name], value)) return
+      filterValues.value = { ...filterValues.value, [name]: kept.length ? kept : defaultOf(def) }
+      onFiltersChanged()
+      return
+    }
     const stands = def.validate ? await def.validate(value, { options, values }) : options.some((o) => same(o.value, value))
-    if (stale() || stands || !same(filterValues.value[name], value)) return
+    if (stale() || stands || !sameValue(filterValues.value[name], value)) return
     filterValues.value = { ...filterValues.value, [name]: def.default ?? null }
     onFiltersChanged()
   }
@@ -757,19 +814,15 @@ export function useListFilters(deps: UseListFiltersDeps): UseListFiltersReturn {
         shouldCache = false
       }
 
-      const componentType =
-        filterDef.component ||
-        (rawOptions.length <= SMART_FILTER_THRESHOLD ? 'dropdown' : 'autocomplete')
+      const componentType = typeAfterLoad(filterDef, rawOptions.length <= SMART_FILTER_THRESHOLD)
 
       const allLabel =
         filterDef.allLabel || filterDef.placeholder || `All ${snakeToTitle(filterName)}`
-      let finalOptions = [
-        { label: allLabel, value: null as unknown },
-        ...rawOptions.map((opt) => ({
-          label: snakeToTitle(String(opt.label)),
-          value: opt.value,
-        })),
-      ]
+      const fromRows = rawOptions.map((opt) => ({
+        label: snakeToTitle(String(opt.label)),
+        value: opt.value,
+      }))
+      let finalOptions = isMultiple(filterDef) ? fromRows : [{ label: allLabel, value: null as unknown }, ...fromRows]
 
       if (typeof filterDef.processor === 'function') {
         finalOptions = filterDef.processor(finalOptions)

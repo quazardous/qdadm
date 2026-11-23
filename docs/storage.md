@@ -33,6 +33,20 @@ There is no `offset`. A backend paged by offset and limit computes it:
 the others (`?page=2&page_size=20&status=open`). Their names are qdadm's;
 `paramMapping` gives them your backend's ([below](#speaking-your-apis-dialect)).
 
+A filter of several values ([crud.md](./crud.md#several-values-grouped-and-badged))
+gives an array. `ApiStorage` writes it the way `arrayFormat` says, whatever
+the HTTP client:
+
+| `arrayFormat` | On the wire |
+|---|---|
+| `'comma'` (default) | `types=a,b` |
+| `'repeat'` | `types=a&types=b` |
+| `'brackets'` | `types[]=a&types[]=b` |
+| `'client'` | the array as is, left to the client (axios writes brackets) |
+
+Per parameter: `arrayFormat: { '*': 'comma', tags: 'repeat' }`. A storage of
+your own receives the array and sends it as its backend reads it.
+
 ## What it must return
 
 ```js
