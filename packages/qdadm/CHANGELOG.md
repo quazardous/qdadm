@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.70.0
+
+### Minor Changes
+
+- 92b1c30: A domain declares `sources`, reads its indicators share: an indicator names one with `source` and takes its part with `value(data)`, in place of its own `load()`. One read per `refresh` whatever the number of indicators, its error on each, the answer reused while fresh when the bar comes back; `entities` names what it is derived from, and a change to one of them (a local write, the live stream, `invalidate()`) reads it again, coalesced. An unknown source is warned and marks the indicator (#5461)
+- dcd9ffa: A list filter with a `default` emptied on purpose is written explicitly in the address (`tasks.state=null`) and kept as null in the session: read back as null, not given its default again, one change one load; Clear filters still returns it to its default. The token is the entity's `filterEmptyValue` or the filter's own `emptyValue` when set, read back as null too (#5460)
+
 ## 2.69.0
 
 ### Minor Changes
