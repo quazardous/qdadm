@@ -26,6 +26,8 @@ export interface UseListFiltersDeps {
   manager: {
     request: (method: string, endpoint: string, options?: { data?: unknown; params?: Record<string, unknown> }) => Promise<unknown>
     storage?: { supportsPathRequests?: boolean } | null
+    /** How its lists write a defaulted filter's empty choice (#5460) */
+    filterEmptyValue?: string | number | null
   }
   /** Orchestrator, forwarded to FilterQuery for optionsEntity mode. */
   orchestrator: QueryOrchestratorLike | null | undefined
@@ -96,6 +98,10 @@ export interface UseListFiltersReturn {
   writeStateToUrl: () => void
   /** The filters and the search, as shown, into the session (#5428) */
   persistSessionFilters: () => void
+  /** A stored value read back for a filter: its empty token is present and null (#5460) */
+  readStoredFilter: (name: string, raw: unknown) => { present: boolean; value: unknown }
+  /** What a filter's value is stored as: its empty token when it has a default (#5460) */
+  storedFilterValue: (name: string, value: unknown) => unknown
 }
 
 export function useListFilters(deps: UseListFiltersDeps): UseListFiltersReturn {
@@ -251,6 +257,39 @@ export function useListFilters(deps: UseListFiltersDeps): UseListFiltersReturn {
     filtersMap.value = new Map(filtersMap.value)
   }
 
+  // ── A deliberately empty filter (#5460) ───────────────────────────────────
+  const unset = (v: unknown): boolean => v === null || v === undefined || v === '' || (Array.isArray(v) && v.length === 0)
+
+  /**
+   * The token a filter's empty choice is stored as, or null when it has no
+   * default: there, empty IS the default and stays implicit (a clean link).
+   * With a default, an absent filter is read back as that default, so a
+   * choice of "none" has to be said.
+   */
+  function emptyToken(def: FilterOptions | undefined): string | null {
+    if (!def || def.default === null || def.default === undefined) return null
+    const token = def.emptyValue ?? manager?.filterEmptyValue ?? 'null'
+    return String(token)
+  }
+
+  /**
+   * A stored value read back for a filter: whether the store says anything
+   * about it, and what. Its empty token (`null` as the URL decodes it, or
+   * the text) means present and null; a blank means absent.
+   */
+  function readStoredFilter(name: string, raw: unknown): { present: boolean; value: unknown } {
+    const token = emptyToken(filtersMap.value.get(name))
+    if (token !== null && raw !== undefined && (raw === null ? token === 'null' : String(raw) === token)) return { present: true, value: null }
+    if (unset(raw)) return { present: false, value: undefined }
+    return { present: true, value: raw }
+  }
+
+  /** What a filter's value is stored as: its empty token when it has a default */
+  function storedFilterValue(name: string, value: unknown): unknown {
+    if (!unset(value)) return value
+    return emptyToken(filtersMap.value.get(name))
+  }
+
   function addFilter(name: string, filterConfig: FilterOptions): void {
     warnIfReservedName(name)
     warnIfUnknownType(name, filterConfig?.type)
@@ -306,8 +345,11 @@ export function useListFilters(deps: UseListFiltersDeps): UseListFiltersReturn {
     // the scope separates this list from OTHER lists, not from qdadm's own
     // keys — which is why addFilter() still warns about a filter called
     // `page` or `search`.
+    // A filter with a default and emptied on purpose: its empty token (#5460)
+    const stored: Record<string, unknown> = {}
+    for (const [name, value] of Object.entries(filterValues.value)) stored[name] = storedFilterValue(name, value)
     persister.write(routeStateScope, {
-      ...filterValues.value,
+      ...stored,
       search: searchQuery.value || null,
       page: page.value > 1 ? page.value : null,
       // Always written, never conditional on a default: rows-per-page is a
@@ -335,14 +377,10 @@ export function useListFilters(deps: UseListFiltersDeps): UseListFiltersReturn {
       const toPersist: Record<string, unknown> = {}
       for (const [name, value] of Object.entries(filterValues.value)) {
         const filterDef = filtersMap.value.get(name)
-        if (
-          filterDef?.persist !== false &&
-          value !== null &&
-          value !== undefined &&
-          value !== ''
-        ) {
-          toPersist[name] = value
-        }
+        if (filterDef?.persist === false) continue
+        if (!unset(value)) toPersist[name] = value
+        // Emptied on purpose, against a default: kept as null (#5460)
+        else if (emptyToken(filterDef) !== null) toPersist[name] = null
       }
       if (searchQuery.value) {
         toPersist._search = searchQuery.value
@@ -762,7 +800,10 @@ export function useListFilters(deps: UseListFiltersDeps): UseListFiltersReturn {
     // Only keys this list declares as filters: the scope keeps other lists
     // out, but a persister may still hand back something the app put there.
     for (const key of filtersMap.value.keys()) {
-      if (stored[key] !== undefined) filterValues.value[key] = stored[key]
+      if (stored[key] === undefined) continue
+      // Its empty token is a choice, not an absence (#5460)
+      const read = readStoredFilter(key, stored[key])
+      filterValues.value[key] = read.present ? read.value : stored[key]
     }
 
     // NOT `typeof === 'string'` (#2147). A term that survives a numeric round
@@ -805,5 +846,7 @@ export function useListFilters(deps: UseListFiltersDeps): UseListFiltersReturn {
     restoreFilters,
     writeStateToUrl,
     persistSessionFilters,
+    readStoredFilter,
+    storedFilterValue,
   }
 }

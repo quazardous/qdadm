@@ -120,6 +120,14 @@ export interface FilterOptions {
   placeholder?: string
   options?: Array<{ label: string; value: unknown }>
   default?: unknown
+  /**
+   * How the empty choice is written when the filter has a `default` (#5460):
+   * kept explicitly in the address, so a deliberately empty filter is not
+   * read back as unset and given its default again. `'null'` unless the
+   * entity (`filterEmptyValue`) or the filter says otherwise; read back as
+   * null either way.
+   */
+  emptyValue?: string | number
   persist?: boolean
   /**
    * A preference, kept from the session even when the address names other

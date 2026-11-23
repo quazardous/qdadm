@@ -101,6 +101,8 @@ export interface EntityManagerRead<T = unknown> extends EntityManagerBase<T>, En
    * still wins; the kernel default applies when neither says anything.
    */
   routeState?: string | RouteStatePersister
+  /** How its lists write a defaulted filter's empty choice (#5460) */
+  filterEmptyValue?: string | number | null
 }
 
 // ─── CRUD ────────────────────────────────────────────────────────────────────

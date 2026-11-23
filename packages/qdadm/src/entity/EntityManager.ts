@@ -97,6 +97,8 @@ export class EntityManager<T extends EntityRecord = EntityRecord> {
   localFilterThreshold: number | null
   /** Where lists of this entity remember their state (#2146); null = inherit. */
   routeState: string | RouteStatePersister | null
+  /** How its lists write a defaulted filter's empty choice (#5460); null = 'null' */
+  filterEmptyValue: string | number | null
   /** Default null placement for local sorts (#1222); field-level nullSort wins. */
   nullSort?: NullSortMode
   protected _cacheTtlMs: number | null
@@ -174,6 +176,7 @@ export class EntityManager<T extends EntityRecord = EntityRecord> {
       fields = {},
       localFilterThreshold = null,
       routeState = null,
+      filterEmptyValue = null,
       nullSort,
       cacheTtlMs = null,
       asymmetric = false,
@@ -209,6 +212,7 @@ export class EntityManager<T extends EntityRecord = EntityRecord> {
 
     this.localFilterThreshold = localFilterThreshold
     this.routeState = routeState
+    this.filterEmptyValue = filterEmptyValue
     this.nullSort = nullSort
     this._cacheTtlMs = cacheTtlMs
     this._asymmetric = asymmetric

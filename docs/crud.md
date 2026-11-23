@@ -467,6 +467,15 @@ then rewritten from what is shown. A bare address takes the session back.
 The same rule applies when the address changes under a mounted list (a link
 to the list while already on it, Back): the list follows its address.
 
+A filter with a `default` that the user empties on purpose (its "All"
+choice) is written explicitly, `tasks.state=null`, and kept as `null` in the
+session: an absent filter means its default, so the empty choice has to be
+said. It reads back as `null`, one change is one load, and Clear filters
+still returns it to its default. The token is the entity's
+`filterEmptyValue` or the filter's own `emptyValue` when either is set
+(`addFilter('state', { default: 'open', emptyValue: 'all', … })`), read back
+as `null` too. A filter without a default stays implicit when empty.
+
 The page is written only once it leaves 1, and removed again when it returns,
 so a pristine list leaves a clean link. Changing a filter resets it, since the
 results are renumbered. A list URL is therefore shareable as what the sender

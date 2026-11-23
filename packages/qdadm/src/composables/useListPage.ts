@@ -757,6 +757,8 @@ export function useListPage<T = unknown>(config: UseListPageOptions<T>): UseList
     restoreFilters,
     writeStateToUrl,
     persistSessionFilters,
+    readStoredFilter,
+    storedFilterValue,
   } = listFilters
 
   // ============ ACTIONS ============
@@ -1283,16 +1285,23 @@ export function useListPage<T = unknown>(config: UseListPageOptions<T>): UseList
   const same = (a: unknown, b: unknown): boolean => (blank(a) && blank(b)) || JSON.stringify(a) === JSON.stringify(b) || String(a) === String(b)
   const addressState = (): Record<string, unknown> => persister?.read(routeStateScope) ?? {}
 
+  /** Whether the address says something about this filter: a value, or its empty token (#5460) */
+  const inAddress = (stored: Record<string, unknown>, name: string): boolean => readStoredFilter(name, stored[name]).present
+
   /** Shown, and not in the address: what the session brought back (#5425) */
   function shownNotInAddress(stored = addressState()): boolean {
     if (searchQuery.value && blank(stored.search)) return true
-    return [...filtersMap.value.keys()].some((name) => !blank(filterValues.value[name]) && blank(stored[name]))
+    // A filter emptied against its default is shown too: as its empty token (#5460)
+    return [...filtersMap.value.keys()].some((name) => !blank(storedFilterValue(name, filterValues.value[name])) && !inAddress(stored, name))
   }
 
   /** The address names one of the list's filters, or its search (#5428) */
   function addressNames(stored: Record<string, unknown>): boolean {
-    return !blank(stored.search) || [...filtersMap.value.keys()].some((name) => !blank(stored[name]))
+    return !blank(stored.search) || [...filtersMap.value.keys()].some((name) => inAddress(stored, name))
   }
+
+  /** The session kept a value for this filter, its empty choice included (#5460) */
+  const inSession = (name: string): boolean => !!savedFilters && name in savedFilters && !blank(storedFilterValue(name, savedFilters[name]))
 
   /**
    * A link that names some filters describes a whole state (#5428): the
@@ -1306,7 +1315,7 @@ export function useListPage<T = unknown>(config: UseListPageOptions<T>): UseList
     if (!addressNames(stored)) return false
     let dropped = false
     for (const [name, def] of filtersMap.value) {
-      if (def.keepFromSession || !blank(stored[name]) || blank(savedFilters?.[name])) continue
+      if (def.keepFromSession || inAddress(stored, name) || !inSession(name)) continue
       filterValues.value[name] = def.default ?? null
       dropped = true
     }
@@ -1329,7 +1338,8 @@ export function useListPage<T = unknown>(config: UseListPageOptions<T>): UseList
     const next: Record<string, unknown> = { ...filterValues.value }
     let changed = false
     for (const [name, def] of filtersMap.value) {
-      const want = !blank(stored[name]) ? stored[name] : names && !def.keepFromSession ? def.default ?? null : next[name]
+      const read = readStoredFilter(name, stored[name])
+      const want = read.present ? read.value : names && !def.keepFromSession ? def.default ?? null : next[name]
       if (!same(want, next[name])) {
         next[name] = want
         changed = true

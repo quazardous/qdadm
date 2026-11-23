@@ -311,6 +311,11 @@ export interface EntityManagerOptions<T extends EntityRecord = EntityRecord> {
    * still wins; the kernel default applies when neither says anything.
    */
   routeState?: string | RouteStatePersister
+  /**
+   * How its lists write a filter's empty choice when that filter has a
+   * `default` (#5460); a filter's own `emptyValue` wins. Default `'null'`.
+   */
+  filterEmptyValue?: string | number
   /** Default null placement for local sorts: 'first' | 'last' | 'low' | 'high' (default 'last', #1222). Field-level nullSort wins. */
   nullSort?: NullSortMode
   /** Cache TTL in milliseconds (0=disabled, -1=infinite, >0=TTL). Overrides global, overridden by storage. */
