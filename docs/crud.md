@@ -194,6 +194,10 @@ The page title comes from the manager's `labelPlural`. If the manager declares a
 subtitle under the title — a one-liner telling the user what the entity is.
 Override per page with the `subtitle` option (`null` suppresses it).
 
+What the list asks of the entity's storage (`page`, `page_size`, the
+`{ items, total }` it expects back) and when it pages from the manager's
+cache instead of the server: [storage.md](./storage.md).
+
 ### Builder methods
 
 | Method | Description |

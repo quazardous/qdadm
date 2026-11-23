@@ -302,6 +302,7 @@ AuthCollector shows: user, token, permissions, role hierarchy, impersonation eve
 | Forms & field widgets | `docs/forms.md` |
 | Architecture (PAC) | `docs/architecture.md` |
 | Extension overview | `docs/extension.md` |
+| A storage's list contract (params, `{ items, total }`, the local cache) | `docs/storage.md` |
 | Hooks deep dive | `docs/hooks.md` |
 | Signals deep dive | `docs/signals.md` |
 | Zones deep dive | `docs/zones.md` |
