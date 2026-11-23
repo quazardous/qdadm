@@ -11,14 +11,25 @@
  * - Closed: what is chosen, as badges (or labels), up to 3, then « +N »; all
  *   of it in the tooltip.
  * - A search past 8 choices, on the label, the badge and the group.
+ *
+ * Runtime props, not `defineProps<QdFilterProps>()` (#5469): qdadm ships its
+ * .vue sources, and a type imported from another file makes the app's build
+ * load TypeScript to resolve it, which a JavaScript app does not have.
  */
-import { computed } from 'vue'
+import { computed, type PropType } from 'vue'
 import MultiSelect from 'primevue/multiselect'
 import { useI18n } from '../../../i18n/useI18n'
-import type { FilterChoice } from '../../../composables/useListPage.types'
-import { badgeColor, useFilterModel, type QdFilterProps } from './contract'
+import type { FilterChoice, FilterConfig } from '../../../composables/useListPage.types'
+import { badgeColor, useFilterModel } from './contract'
 
-const props = withDefaults(defineProps<QdFilterProps>(), { loading: false, atDefault: true })
+// The filter contract's props (QdFilterProps), declared at runtime
+const props = defineProps({
+  modelValue: { type: null as unknown as PropType<unknown>, default: null },
+  filter: { type: Object as PropType<FilterConfig>, required: true },
+  options: { type: Array as PropType<FilterChoice[]>, default: () => [] },
+  loading: { type: Boolean, default: false },
+  atDefault: { type: Boolean, default: true },
+})
 const emit = defineEmits<{ (e: 'update:modelValue', value: unknown): void }>()
 const { tOr } = useI18n()
 

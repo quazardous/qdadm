@@ -146,4 +146,24 @@ grep -qs 'vye-modes' build-app/dist/assets/*.js || { echo "[consumer-smoke] the 
 if grep -qs 'cm-mergeView' build-app/dist/assets/*.js; then echo "[consumer-smoke] @codemirror/merge is in the build: the YAML editors pull the lib's diff view" >&2; exit 1; fi
 echo "[consumer-smoke]   the YAML editors are in, without @codemirror/merge"
 
-echo "[consumer-smoke] OK — the packed tarball typechecks, loads AND builds as a strict consumer"
+# The same build for an app in plain JavaScript (#5469). qdadm ships its .vue
+# sources, so the app's build compiles them: an SFC whose defineProps takes a
+# type imported from another file makes @vue/compiler-sfc load TypeScript,
+# which a JS app does not have. The fixture is a TS app, so its build above
+# resolved the type and passed while every JS consumer's build died. Here
+# TypeScript is taken away for the length of one build.
+echo "[consumer-smoke] vite build of an app in plain JavaScript, without TypeScript..."
+mv node_modules/typescript node_modules/.typescript-hidden
+restore_ts() { [ -d node_modules/.typescript-hidden ] && mv node_modules/.typescript-hidden node_modules/typescript || true; }
+trap 'restore_ts; rm -rf "$WORKDIR"' EXIT
+node --input-type=module -e "
+  import { createRequire } from 'node:module'
+  let found = null
+  try { found = createRequire(process.cwd() + '/').resolve('typescript') } catch {}
+  if (found) throw new Error('typescript still resolves (' + found + '): the build would not prove a JS app can do without it')
+"
+npx vite build --config vite.build.config.js
+restore_ts
+echo "[consumer-smoke]   built without TypeScript"
+
+echo "[consumer-smoke] OK — the packed tarball typechecks, loads AND builds as a strict consumer, and builds for a JS one"
