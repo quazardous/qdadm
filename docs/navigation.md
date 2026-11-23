@@ -85,6 +85,18 @@ Escape, or the back row when there is one). Under
   `close`) to a layout of the app's own; `useNavigation()` gives
   `settingsSections`, `hasSettingsMenu` and `settingsActive`.
 
+## The sidebar collapsed to its icons
+
+"Collapse menu" folds the sidebar to a column of icons, on a desktop. Several
+sections often use the same icons (each universe's "Board" and "Tasks"), so
+each entry then says where it leads: a tooltip on its right, and the same
+text as its accessible name, `<section title> › <item label>` (« IT › Tasks »).
+An entry in an untitled section, or in a settings menu without titles
+(`settingsMenu.flat`), gives its label alone. Expanded, the visible label
+names the entry and nothing is added. On a phone the sidebar is a full panel
+with its labels, and nothing is added either. A layout of the app's own reads
+the state with `useSidebarState().collapsed`.
+
 ## The semantic breadcrumb
 
 `useSemanticBreadcrumb()` derives a semantic trail from the current **URL

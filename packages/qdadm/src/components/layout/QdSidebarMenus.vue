@@ -9,12 +9,18 @@
  * "← Menu"), Escape takes it back to the gear; its section titles, even a
  * lone one's (#5418), unless `settingsMenu.flat`; its own colours
  * (`--qd-settings-menu-*`) unless `tone: false`.
+ *
+ * Collapsed to its icons (#5465): each entry says where it leads, in a
+ * tooltip on its right and as its accessible name, « Section › Item » (its
+ * label alone without a section title).
  */
-import { computed, inject, onMounted, ref, watch } from 'vue'
+import { computed, inject, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import Tooltip from 'primevue/tooltip'
 import { RouterLink, useRoute } from 'vue-router'
 import type { NavSection } from '../../composables/useNavigation'
 import { SETTINGS_MENU_IDS, type UseSettingsMenuReturn } from '../../composables/useSettingsMenu'
 import { useI18n } from '../../i18n/useI18n'
+import { useSidebarState } from '../../composables/useSidebarState'
 
 const props = defineProps<{ settings: UseSettingsMenuReturn }>()
 
@@ -66,6 +72,31 @@ const panes = computed<{ key: PaneKey; id: string; sections: NavSection[] }[]>((
   { key: 'settings', id: SETTINGS_MENU_IDS.settings, sections: nav.settingsSections.value },
 ])
 const shownPane = computed(() => (props.settings.open.value ? 'settings' : 'main'))
+
+// ── Collapsed to its icons (#5465) ────────────────────────────────────────────
+const vTooltip = Tooltip
+const { collapsed } = useSidebarState()
+// Collapsed only on a desktop: on a phone the sidebar is a full panel, its labels shown
+const desktop = ref(true)
+let media: MediaQueryList | null = null
+const onMedia = (): void => {
+  desktop.value = !media || !media.matches
+}
+onMounted(() => {
+  if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return
+  media = window.matchMedia('(max-width: 767px)')
+  onMedia()
+  media.addEventListener?.('change', onMedia)
+})
+onBeforeUnmount(() => media?.removeEventListener?.('change', onMedia))
+const iconsOnly = computed(() => collapsed.value && desktop.value)
+/** Where an entry leads, while only its icon shows: « Section › Item » */
+function entryName(section: NavSection, item: { label?: string }, pane: PaneKey, count: number): string | undefined {
+  if (!iconsOnly.value) return undefined
+  const label = item.label ?? ''
+  const title = titled(pane, count) ? section.title : ''
+  return title ? `${title} › ${label}` : label
+}
 </script>
 
 <template>
@@ -110,15 +141,25 @@ const shownPane = computed(() => (props.settings.open.value ? 'settings' : 'main
           </div>
           <div class="nav-section-items" :class="{ 'nav-section-collapsed': !isSectionExpanded(section, pane.key, pane.sections.length) }">
             <template v-for="item in section.items" :key="item.route ?? item.href">
-              <a v-if="item.href" :href="item.href" :target="item.target" :rel="item.rel" class="nav-item nav-item-link">
+              <a
+                v-if="item.href"
+                v-tooltip.right="entryName(section, item, pane.key, pane.sections.length)"
+                :href="item.href"
+                :target="item.target"
+                :rel="item.rel"
+                class="nav-item nav-item-link"
+                :aria-label="entryName(section, item, pane.key, pane.sections.length) && (entryName(section, item, pane.key, pane.sections.length) + (item.external ? ', opens in a new tab' : ''))"
+              >
                 <i :class="item.icon"></i>
                 <span>{{ item.label }}</span>
                 <span v-if="item.external" class="pi pi-external-link nav-item-external" aria-label="opens in a new tab"></span>
               </a>
               <RouterLink
                 v-else
+                v-tooltip.right="entryName(section, item, pane.key, pane.sections.length)"
                 :to="{ name: item.route }"
                 class="nav-item"
+                :aria-label="entryName(section, item, pane.key, pane.sections.length)"
                 :class="{ 'nav-item-active': isNavActive(item) }"
                 @click="handleNavClick($event, item)"
               >
