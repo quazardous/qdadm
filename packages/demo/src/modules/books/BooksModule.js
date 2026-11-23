@@ -322,6 +322,11 @@ export class BooksModule extends Module {
       icon: 'pi pi-building-columns',
       to: { name: 'book-board' },
       entities: ['loans'],
+      // One read of the loans for "On loan" and "Read" (#5461), again when a
+      // loan changes
+      sources: {
+        loans: { load: () => list('loans'), refresh: 60, entities: ['loans'] },
+      },
       nav: [
         { label: 'Board', route: 'book-board', icon: 'pi pi-th-large' },
         { label: 'Books', route: 'book', icon: 'pi pi-book', badge: 'toCheck' },
@@ -334,9 +339,8 @@ export class BooksModule extends Module {
           card: 'metric',
           title: 'On loan',
           icon: 'pi pi-arrow-right-arrow-left',
-          refresh: 60,
-          load: async () => {
-            const loans = await list('loans')
+          source: 'loans',
+          value: (loans) => {
             // The series (#5422): books out after each of the last loan events,
             // a sparkline in the full bar
             const events = loans
@@ -367,10 +371,8 @@ export class BooksModule extends Module {
           card: 'goal',
           title: 'Read',
           icon: 'pi pi-flag',
-          load: async () => {
-            const loans = await list('loans')
-            return { value: loans.filter((l) => l.read).length, target: loans.length || 1 }
-          },
+          source: 'loans',
+          value: (loans) => ({ value: loans.filter((l) => l.read).length, target: loans.length || 1 }),
         },
         // Several series, stacked (#5441): the library's door, in and out over
         // the last 12 hours (simulated). Full, a stacked area; compact, the

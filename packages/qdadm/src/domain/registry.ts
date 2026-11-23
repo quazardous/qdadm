@@ -13,6 +13,9 @@
 import type { Component } from 'vue'
 import type { RouteLocationNormalizedLoaded, RouteLocationRaw } from 'vue-router'
 import type { CardPillMode, CardStatus } from '../cards/types'
+import type { DomainDataSource } from './sources'
+
+export type { DomainDataSource } from './sources'
 
 /**
  * What an app's own indicator component receives (#5422): its data, how it
@@ -55,6 +58,13 @@ export interface DomainIndicator {
   data?: unknown
   /** Or read it: called at once, then every `refresh` seconds */
   load?: () => unknown | Promise<unknown>
+  /**
+   * Or take it from one of the domain's `sources` (#5461), read once for
+   * every indicator that names it; its error is theirs
+   */
+  source?: string
+  /** With `source`: this indicator's part of the source's answer (default: all of it) */
+  value?: (data: unknown) => unknown
   /** Seconds between two reads (default: none) */
   refresh?: number
   /** The card type's options */
@@ -99,6 +109,12 @@ export interface DomainConfig {
   to?: RouteLocationRaw
   nav?: DomainNavEntry[]
   indicators?: DomainIndicator[]
+  /**
+   * Reads its indicators share (#5461): each read once per refresh, whatever
+   * the number of indicators naming it, and again when one of its
+   * `entities` changes
+   */
+  sources?: Record<string, DomainDataSource>
   /** Entities of other modules whose pages join the domain */
   entities?: string[]
 }
@@ -119,6 +135,8 @@ export function registerDomain(name: string, config: DomainConfig, module: strin
     if (ids.has(i.id)) console.warn(`[qdadm] domain('${name}'): two indicators are named '${i.id}'`)
     ids.add(i.id)
     if (!i.card && !i.component) console.warn(`[qdadm] domain('${name}'): the indicator '${i.id}' names no card and no component`)
+    if (i.source !== undefined && !config.sources?.[i.source]) console.warn(`[qdadm] domain('${name}'): the indicator '${i.id}' reads the source '${i.source}', which the domain does not declare`)
+    if (i.source !== undefined && i.load) console.warn(`[qdadm] domain('${name}'): the indicator '${i.id}' has both a source and a load(); the source is read`)
   }
   for (const n of config.nav ?? []) {
     if (n.badge && !ids.has(n.badge)) console.warn(`[qdadm] domain('${name}'): the entry '${n.label}' shows the badge of '${n.badge}', which no indicator is`)

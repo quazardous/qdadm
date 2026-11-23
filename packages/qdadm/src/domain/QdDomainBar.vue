@@ -33,6 +33,7 @@ import QdCardBlocks from '../cards/blocks/QdCardBlocks.vue'
 import { CHART_MODE } from '../cards/blocks/charts'
 import { normalizeSeries } from '../cards/blocks/viz'
 import QdBadge from './QdBadge.vue'
+import { acquireSource, type SourceRead, type SourceSignals } from './sources'
 import { badgeTone, type DomainDefinition, type DomainIndicator, type DomainIndicatorProps, type DomainLook, type DomainNavEntry } from './registry'
 
 const props = defineProps<{ domain: DomainDefinition }>()
@@ -162,11 +163,27 @@ function ownFields(schema: { type?: unknown; properties?: Record<string, unknown
   return Object.fromEntries(Object.entries(data as Record<string, unknown>).filter(([k]) => keys.includes(k)))
 }
 
+// The domain's sources (#5461): one read each, shared by the indicators naming it
+const signals = inject<SourceSignals | null>('qdadmSignals', null)
+const releases: Array<() => void> = []
+onBeforeUnmount(() => releases.splice(0).forEach((r) => r()))
+function sourceRead(name: string): SourceRead | null {
+  const def = props.domain.sources?.[name]
+  if (!def) return null
+  const { read, release } = acquireSource(`${props.domain.name}:${name}`, def, signals)
+  releases.push(release)
+  return read
+}
+
 function watchIndicator(def: DomainIndicator): Ref<IndicatorView> {
-  const read = def.load ? useAsyncRead(() => def.load!()) : null
+  const shared = def.source !== undefined ? sourceRead(def.source) : null
+  // Its own read, as before sources: only without one
+  const own = def.source === undefined && def.load ? useAsyncRead(() => def.load!()) : null
+  const read: Pick<SourceRead, 'data' | 'error' | 'ready'> | null = shared ?? own
+  const missing = def.source !== undefined && !shared
   let timer: ReturnType<typeof setInterval> | null = null
-  if (read && def.refresh && def.refresh > 0) {
-    onMounted(() => (timer = setInterval(() => void read.load(), def.refresh! * 1000)))
+  if (own && def.refresh && def.refresh > 0) {
+    onMounted(() => (timer = setInterval(() => void own.load(), def.refresh! * 1000)))
     onBeforeUnmount(() => timer && clearInterval(timer))
   }
   return computed<IndicatorView>(() => {
@@ -176,7 +193,16 @@ function watchIndicator(def: DomainIndicator): Ref<IndicatorView> {
     const found = small?.component ?? def.component
     // A component as is, never a reactive copy of it
     const component = found ? markRaw(toRaw(found)) : null
-    const data = read ? (read.ready.value ? read.data.value : undefined) : def.data
+    // Its part of a source's answer (#5461)
+    let failed: string | null = null
+    let data = read ? (read.ready.value ? read.data.value : undefined) : def.data
+    if (shared && def.value && read!.ready.value) {
+      try {
+        data = def.value(data)
+      } catch (err) {
+        failed = err instanceof Error ? err.message : String(err)
+      }
+    }
     const status = (): CardStatus | null => (typeof def.status === 'function' ? def.status(data) ?? null : def.status ?? null)
     // Title, icon and link: fixed, or read from the data at each read (#5438)
     const of = <V,>(v: V | ((d: unknown) => V | undefined) | undefined): V | undefined => {
@@ -197,6 +223,8 @@ function watchIndicator(def: DomainIndicator): Ref<IndicatorView> {
       v.props = { data, options, status: v.status, mode: m, title, icon, state, value: v.value, count: v.count }
       return v
     }
+    if (missing) return view('invalid', { reason: `no source '${def.source}' in the domain` })
+    if (failed !== null) return view('invalid', { reason: failed })
     if (read && !read.ready.value) return read.error.value ? view('unreachable', { reason: read.error.value }) : view('loading')
     // The app's component alone: the data is its own
     if (!def.card) return component ? view('ready', { status: status() }) : view('invalid', { reason: 'no card and no component' })

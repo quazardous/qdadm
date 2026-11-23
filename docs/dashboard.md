@@ -258,6 +258,9 @@ ctx.domain('library', {
   of your own gets one with `registerCard({ …, pill: (data, options, locale, mode)
   => ({ value, count, blocks }) })`. Data that does not fit the type's schema, or a
   read that fails, marks the pill, with the reason in its title.
+- **Shared sources:** several indicators showing parts of one answer name a
+  source the domain declares (`sources`), read once for all of them, rather
+  than each its own `load()`. See [Shared sources](#shared-sources).
 - **Dynamic indicators:** `title`, `icon` and `to` take a value or a
   function of the indicator's data, read again at each read; `visible(data)`
   leaves a slot out, full or compact, once its data says so (while it loads,
@@ -265,10 +268,10 @@ ctx.domain('library', {
   so the data may carry more for these functions. A "top N" bar:
 
   ```js
-  const top = shared(() => api.get('/tasks/top'))          // one read for the four slots
+  sources: { top: { load: () => api.get('/tasks/top'), refresh: 60 } },   // one read for the four slots
   indicators: [0, 1, 2, 3].map((i) => ({
     id: `top-${i}`, card: 'metric',
-    load: async () => (await top())[i] ?? null,              // { value, series, label, link }
+    source: 'top', value: (rows) => rows[i] ?? null,         // { value, series, label, link }
     title: (d) => d?.label, to: (d) => d?.link, visible: (d) => !!d,
   }))
   ```
@@ -333,6 +336,91 @@ ctx.domain('library', {
   `.qd-domain-bar[data-domain='purchases']`.
 - **Your own bar:** a block in the `_app:domain-bar` zone replaces it; it
   receives `domain`. `QdDomainBar` and `QdBadge` are exported.
+
+### Shared sources
+
+A **source** is a named read that a domain's indicators share: one load, one
+state (loading, error, last good answer), whatever the number of indicators
+that read it. It answers a common case: two pills, "To process" and
+"Overdue", both computed from the same `/tasks/counts` answer. Each with its
+own `load()`, every refresh sends the same request twice.
+
+```js
+ctx.domain('universe.it', {
+  label: 'IT',
+  sources: {
+    counts: {
+      load: () => api.get('/tasks/counts', { params: { universe: 'it' } }),
+      refresh: 60,           // seconds; read again while one indicator reads it
+      entities: ['tasks'],   // what it is derived from: a change reads it again
+    },
+  },
+  indicators: [
+    { id: 'todo', card: 'metric', title: 'To process', source: 'counts', value: (c) => ({ value: sum(c, 'count') }) },
+    { id: 'late', card: 'metric', title: 'Overdue', source: 'counts', value: (c) => ({ value: sum(c, 'overdue') }),
+      status: (d) => (d.value ? 'critical' : null) },
+  ],
+})
+```
+
+**Declaring it.** `sources` maps a name to `{ load, refresh?, entities? }`.
+`load()` returns the answer, or a promise of it. It is called by the bar, never
+by a page.
+
+**Reading it.** An indicator names it with `source`. It takes its part with
+`value(data)`, which gets the whole answer and returns what the card type
+takes; without `value`, it gets the whole answer. From there, the indicator is
+like any other: the card checks its part, and `status`, `title`, `icon`, `to`
+and `visible` are functions of that part. An indicator with a `source` has no
+`load()` of its own. If it names both, the source is read, with a warning in
+development.
+
+**Its life:**
+
+- **One read for all.** Whatever the number of indicators, a source has one
+  read in flight. A call made while a read is in flight waits for that read.
+- **Refresh.** With `refresh`, it is read again every `refresh` seconds while
+  at least one indicator reads it. With no reader left (the bar is gone), it
+  stops.
+- **Kept while fresh.** The answer outlives the bar. A bar that comes back
+  within `refresh` (the same domain again, after a visit to another) shows it
+  at once and reads nothing. Past `refresh`, or without one, it reads again.
+- **Its error is theirs.** A first read that fails marks every indicator
+  reading the source as unreachable, with the reason in its title. A later
+  failure keeps the last good answer shown, as an indicator's own `load()`
+  does.
+- **A broken part stays local.** A `value()` that throws marks its own
+  indicator as invalid, and the others stay as they are.
+- **An unknown name.** An indicator naming a source the domain does not
+  declare is marked invalid, and `ctx.domain()` warns about it in development.
+
+**Source or entity.** They are not the same thing, and the difference is
+what decides where the data belongs:
+
+| | Entity | Source |
+|---|---|---|
+| What it holds | records, each with an id | an answer: a count, a curve, a summary |
+| What it offers | CRUD, permissions, routes, pages, a list cache per query | one read, shared, refreshed |
+| Kept fresh by | its own writes, the live stream, `invalidate()` | its `refresh`, and the changes to the entities it names |
+| Declared by | `ctx.entity()` | the domain, under `sources` |
+
+A count of tasks is not a record of anything. It has no id, no form and no
+page. Declared as an entity, it would get a paginated `list()` it does not
+have, and it would be refreshed by its own changes, which never happen,
+rather than by those of the tasks it counts. So a source is derived from
+entities and **names them** (`entities`). A change to one of them reads it
+again: a write in the app, an event from the live stream ([live
+entities](./live-entities.md)), or an app's `invalidate()`. Several changes
+in a row cause one read, once they settle (300 ms). Closing a task updates
+both pills at once, without waiting for the next refresh.
+
+**Which one to use:**
+
+- one indicator, its own data: its own `load()`;
+- several indicators reading parts of one answer: a source;
+- records people list, open and edit: an entity. An indicator can still read
+  it, through a source or a `load()` that calls the entity's manager, and
+  name it in `entities` to follow its changes.
 
 ## Arranged cards
 
