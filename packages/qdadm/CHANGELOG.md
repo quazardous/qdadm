@@ -1,5 +1,16 @@
 # Changelog
 
+## 2.72.0
+
+### Minor Changes
+
+- e0c0f24: The sidebar collapsed to its icons: each entry of the main and settings menus gets a tooltip on its right and an accessible name, « Section › Item » (its label alone without a section title); nothing added expanded or on a phone (#5465)
+
+### Patch Changes
+
+- 29d2ea1: `query()` honours `cacheTtlMs`: an expired cache is dropped before it answers, so a list (which reads through `query()`) reads again past the TTL instead of serving its first read forever (#5464)
+- ad709a9: Docs: `docs/storage.md`, a storage's list contract: what `list(params)` receives (no offset), the `{ items, total }` it must return and what a wrong total shows, where `ApiStorage` reads the total (header, then body) and its `paramMapping`, when the manager pages from its local cache (under `localFilterThreshold`, decided on an unfiltered read; off without `supportsTotal`), a storage of one's own with the `Headers.get()` pitfall, and tests to copy (#5463)
+
 ## 2.71.0
 
 ### Minor Changes
