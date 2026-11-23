@@ -81,6 +81,8 @@ export interface UseListFiltersReturn {
   hasActiveFilters: ComputedRef<boolean>
   addFilter: (name: string, filterConfig: FilterOptions) => void
   removeFilter: (name: string) => void
+  /** A filter's choices, from the app, at any time (#5457) */
+  setFilterOptions: (name: string, options: Array<{ label: string; value: unknown }>) => void
   setFilterValue: (name: string, value: unknown) => void
   updateFilters: (newValues: Record<string, unknown>) => void
   onFiltersChanged: () => void
@@ -210,25 +212,52 @@ export function useListFilters(deps: UseListFiltersDeps): UseListFiltersReturn {
     )
   }
 
+  /**
+   * Choices with the "All" one at their head (#4692): a select has no other way
+   * back to no filter. Not when they hold their own null choice, nor with
+   * allLabel: false.
+   */
+  function withAll(name: string, config: FilterOptions, options: Array<{ label: string; value: unknown }>): Array<{ label: string; value: unknown }> {
+    const allLabel = (config as { allLabel?: string | false }).allLabel
+    if (allLabel === false || options.some((o) => (o as { value?: unknown })?.value === null)) return [...options]
+    return [
+      {
+        label: allLabel || config.placeholder || `All ${snakeToTitle(name)}`,
+        value: null as unknown,
+        ...(!allLabel && !config.placeholder ? { _autoAll: true } : {}),
+      },
+      ...options,
+    ]
+  }
+
+  /**
+   * A filter's choices, from the app, at any time (#5457): they replace what
+   * it had, get the "All" choice as static options do, and are the app's from
+   * then on: the cache and endpoint loaders leave them alone.
+   */
+  function setFilterOptions(name: string, options: Array<{ label: string; value: unknown }>): void {
+    const def = filtersMap.value.get(name)
+    if (!def) {
+      if (import.meta.env.DEV) console.warn(`[qdadm] setFilterOptions: no filter "${name}" on this list`)
+      return
+    }
+    filtersMap.value.set(name, {
+      ...def,
+      options: withAll(name, def, Array.isArray(options) ? options : []),
+      _optionsOwned: true,
+      _optionsLoaded: true,
+      _optionsLoading: false,
+    })
+    filtersMap.value = new Map(filtersMap.value)
+  }
+
   function addFilter(name: string, filterConfig: FilterOptions): void {
     warnIfReservedName(name)
     warnIfUnknownType(name, filterConfig?.type)
     warnIfEndpointUnreachable(name, filterConfig)
-    // Static options get the same "All" choice as loaded ones (#4692): a
-    // select has no other way back to no filter. Not when the page has its own
-    // null option, nor with allLabel: false.
+    // Static options get the same "All" choice as loaded ones (#4692)
     const staticOptions = Array.isArray(filterConfig.options) ? filterConfig.options : null
-    const addAll =
-      staticOptions !== null &&
-      (filterConfig as { allLabel?: string | false }).allLabel !== false &&
-      !staticOptions.some((o) => (o as { value?: unknown })?.value === null)
-    const allOption = addAll
-      ? [{
-          label: (filterConfig as { allLabel?: string }).allLabel || filterConfig.placeholder || `All ${snakeToTitle(name)}`,
-          value: null as unknown,
-          ...(!(filterConfig as { allLabel?: string }).allLabel && !filterConfig.placeholder ? { _autoAll: true } : {}),
-        }]
-      : []
+    const withAllOptions = staticOptions !== null ? withAll(name, filterConfig, staticOptions) : null
     filtersMap.value.set(name, {
       name,
       type: 'select',
@@ -236,7 +265,7 @@ export function useListFilters(deps: UseListFiltersDeps): UseListFiltersReturn {
       // No placeholder given: the field's label, resolved at render (#4692)
       ...(filterConfig.placeholder ? {} : { _autoPlaceholder: true }),
       ...filterConfig,
-      ...(addAll ? { options: [...allOption, ...staticOptions!] } : {}),
+      ...(withAllOptions ? { options: withAllOptions } : {}),
     })
     if (filterValues.value[name] === undefined) {
       filterValues.value[name] = filterConfig.default ?? null
@@ -344,7 +373,24 @@ export function useListFilters(deps: UseListFiltersDeps): UseListFiltersReturn {
     loadItems()
   }
 
-  const filters = computed(() => Array.from(filtersMap.value.values()))
+  const isSet = (v: unknown): boolean => v !== null && v !== undefined && v !== '' && !(Array.isArray(v) && v.length === 0)
+
+  /**
+   * The value a filter filters on is always among its shown choices (#5457):
+   * a value from the URL, a link or a card that the choices lack would leave
+   * the select blank while it filters. Added as its raw value, to the choices
+   * the bar is given only.
+   */
+  function withActiveValue(filter: FilterConfig): FilterConfig {
+    const value = filterValues.value[filter.name]
+    if (!Array.isArray(filter.options) || !isSet(value)) return filter
+    const known = new Set(filter.options.map((o) => String((o as { value?: unknown })?.value)))
+    const missing = (Array.isArray(value) ? value : [value]).filter((v) => isSet(v) && !known.has(String(v)))
+    if (!missing.length) return filter
+    return { ...filter, options: [...filter.options, ...missing.map((v) => ({ label: String(v), value: v, _unlisted: true }))] }
+  }
+
+  const filters = computed(() => Array.from(filtersMap.value.values()).map(withActiveValue))
 
   /**
    * Check if a filter is at its default value
@@ -485,6 +531,7 @@ export function useListFilters(deps: UseListFiltersDeps): UseListFiltersReturn {
     if (!optionsStarted) checkDependencies()
     optionsStarted = true
     const pending = Array.from(filtersMap.value).filter(([, filterDef]) => {
+      if (filterDef._optionsOwned) return false
       if (filterDef.options && filterDef.options.length > 1) return false
       if (filterDef.optionsFromCache) return false
       return true
@@ -508,6 +555,8 @@ export function useListFilters(deps: UseListFiltersDeps): UseListFiltersReturn {
   }
 
   async function loadOneFilterOptions(filterName: string, filterDef: FilterConfig): Promise<void> {
+      // The app's own choices (setFilterOptions, #5457): not read again
+      if (filtersMap.value.get(filterName)?._optionsOwned) return
       // A dependent filter reads its choices with its dependencies' values (#5427)
       const dependent = dependencies(filterDef).length > 0
       const { values, params } = dependent ? dependencyValues(filterDef) : { values: {}, params: {} }
@@ -632,20 +681,18 @@ export function useListFilters(deps: UseListFiltersDeps): UseListFiltersReturn {
   }
 
   async function updateCacheBasedFilters(): Promise<void> {
-    if (items.value.length === 0) return
-
     let hasChanges = false
 
     for (const [filterName, filterDef] of filtersMap.value) {
       if (!filterDef.optionsFromCache) continue
-      if (filterDef._optionsLoaded) continue
+      if (filterDef._optionsLoaded || filterDef._optionsOwned) continue
       // Skip if filter has an explicit query property (advanced usage)
       if (filterDef.query) continue
 
-      const currentValue = filterValues.value[filterName]
-      if (currentValue !== null && currentValue !== undefined && currentValue !== '') {
-        continue
-      }
+      // Built always (#5457), kept only when complete: rows that this filter
+      // does not narrow. An empty list, or rows already filtered by it, give
+      // choices for now (the processor's, the value's), built again next load.
+      const complete = items.value.length > 0 && !isSet(filterValues.value[filterName])
 
       const fieldName =
         typeof filterDef.optionsFromCache === 'string' ? filterDef.optionsFromCache : filterName
@@ -695,7 +742,7 @@ export function useListFilters(deps: UseListFiltersDeps): UseListFiltersReturn {
         options: finalOptions,
         type: componentType,
         _cacheOptions: shouldCache,
-        _optionsLoaded: true,
+        _optionsLoaded: complete,
         _filterQuery: filterQuery,
       }
 
@@ -746,6 +793,7 @@ export function useListFilters(deps: UseListFiltersDeps): UseListFiltersReturn {
     hasActiveFilters,
     addFilter,
     removeFilter,
+    setFilterOptions,
     setFilterValue,
     updateFilters,
     onFiltersChanged,

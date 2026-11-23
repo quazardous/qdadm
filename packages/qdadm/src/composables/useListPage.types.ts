@@ -157,6 +157,8 @@ export interface FilterOptions {
   _filterQuery?: FilterQuery | unknown
   _cacheOptions?: boolean
   _optionsLoaded?: boolean
+  /** The choices are the app's (setFilterOptions, #5457): no loader reads them again */
+  _optionsOwned?: boolean
   [key: string]: unknown
 }
 
@@ -499,6 +501,11 @@ export interface UseListPageReturn<T = unknown> {
   fromCache: Ref<boolean>
   addFilter: (name: string, config: FilterOptions) => void
   removeFilter: (name: string) => void
+  /**
+   * A filter's choices, from the app, at any time (#5457): they replace its
+   * own, get the "All" choice, and the loaders leave them alone from then on
+   */
+  setFilterOptions: (name: string, options: Array<{ label: string; value: unknown }>) => void
   setFilterValue: (name: string, value: unknown) => void
   updateFilters: (values: Record<string, unknown>) => void
   clearFilters: () => void

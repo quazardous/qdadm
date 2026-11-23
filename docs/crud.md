@@ -282,7 +282,19 @@ list.addFilter('availability', {
   options: [{ label: 'Available', value: 'available' }, { label: 'On loan', value: 'loaned' }],
   toQuery: (v) => v === 'available' ? { returned_at: null } : { returned_at: { $ne: null } }
 })
+
+// The choices, from the app, at any time: they replace the filter's own, and
+// no loader reads them again (call it again, from a watch, when they change)
+list.setFilterOptions('taken_by', [{ label: 'Me', value: '@me' }, ...people])
 ```
+
+- **Cache options** are kept once they are complete: rows that the filter
+  does not narrow. On an empty list, or with the filter's value already set
+  (from the address, a link, a card), the choices are the `processor`'s and
+  that value's for now, built again on the next load.
+- **The value filtered on is always among the choices:** one that they lack
+  (`?genre=poetry`) is added as its raw value, so the select shows what it
+  filters on and can change it or clear it.
 
 ### Cascading filters
 
