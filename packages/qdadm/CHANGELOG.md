@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.74.0
+
+### Minor Changes
+
+- 99ca3d9: QdMultiFilter's open list is as tall as the room between the filter and the edge of the window it opens towards (14rem at least), instead of PrimeVue's fixed 14rem; `scrollHeight` on the filter sets it instead. Group headings are more compact. `badgeColor(tone)` is exported, for an app's own filter that draws badges (#5470).
+
 ## 2.73.1
 
 ### Patch Changes
