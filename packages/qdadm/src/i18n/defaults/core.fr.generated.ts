@@ -4,6 +4,9 @@ export default `core:
   # A filter's "all" choice (#4692)
   filters:
     all: "Tous : {field}"
+  # The list's refresh button (#5462)
+  list:
+    refresh: Actualiser
   # The table's own column headers (#4686)
   table:
     actions: Actions

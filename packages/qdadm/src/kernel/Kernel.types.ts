@@ -91,6 +91,8 @@ export interface Features {
    * list's search bookmark goes; the text beside the icons or not
    */
   favorites?: { icon?: string; iconActive?: string; saveSearch?: 'filters' | 'header' | false; labels?: boolean }
+  /** Entity lists (#5462): `refresh: false` hides the refresh button on every list that does not say otherwise */
+  lists?: { refresh?: boolean }
   /** Every domain bar's look, unless its domain says otherwise (#5396) */
   domainBar?: { look?: 'toolbox' | 'card' | 'ribbon' }
   /**

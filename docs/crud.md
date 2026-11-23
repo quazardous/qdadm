@@ -422,8 +422,21 @@ useListPage({
   persistSort: true,           // Remember active sort across navigation (per entity)
   syncUrlParams: true,         // Put filters + search in the URL (see below)
   subtitle: 'Custom subtitle', // Override manager.description (null = no subtitle)
+  refresh: false,              // No refresh button (default: shown, unless features.lists.refresh is false)
 })
 ```
+
+#### Refresh
+
+A list can show a refresh button, a small icon at the end of the filter bar,
+beside Clear filters. It reads the rows again past the entity's cache
+(`manager.invalidateCache()`, then a load), with the page, the filters, the
+search and the sort as they are. While it reads, the icon spins and the
+button is disabled. It is shown by default: `refresh: false` hides it on a
+list, and `features: { lists: { refresh: false } }` on every list of the app,
+which a list brings back with `refresh: true`. `list.refresh()` does the same from the
+app's own button or key; a call while one runs waits for it, and
+`list.refreshing` says one is running.
 
 #### Where each piece of list state lives
 

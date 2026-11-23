@@ -293,6 +293,8 @@ export function useListPage<T = unknown>(config: UseListPageOptions<T>): UseList
   // ============ STATE ============
   const items = ref<T[]>([]) as Ref<T[]>
   const loading = ref(false)
+  /** The refresh button's read in flight (#5462) */
+  const refreshing = ref(false)
   const selected = ref<T[]>([]) as Ref<T[]>
   const deleting = ref(false)
 
@@ -1534,6 +1536,27 @@ export function useListPage<T = unknown>(config: UseListPageOptions<T>): UseList
     return declared || humanizeFieldName(name)
   }
 
+  // ============ REFRESH (#5462) ============
+  // Shown by default; the list's `refresh`, else the app's `features.lists.refresh`, say otherwise
+  const listFeatures = inject<{ lists?: { refresh?: boolean } } | null>('qdadmFeatures', null)
+  const refreshable = config.refresh ?? listFeatures?.lists?.refresh ?? true
+
+  /**
+   * The rows read again, past the entity's cache: the page, the filters, the
+   * search and the sort as they are. One at a time: a call while one runs
+   * waits for it.
+   */
+  let refreshRun: Promise<void> | null = null
+  function refresh(): Promise<void> {
+    if (refreshRun) return refreshRun
+    refreshing.value = true
+    refreshRun = loadItems({}, { force: true }).finally(() => {
+      refreshing.value = false
+      refreshRun = null
+    })
+    return refreshRun
+  }
+
   // ============ LIST PAGE PROPS ============
 
   const listProps = computed<ListPageProps>(() => ({
@@ -1549,6 +1572,8 @@ export function useListPage<T = unknown>(config: UseListPageOptions<T>): UseList
     dataKey: resolvedDataKey,
     rowBand: (config.rowBand as ((row: unknown) => boolean) | undefined) ?? null,
     rowBandPosition: config.rowBandPosition ?? 'below',
+    refreshable,
+    refreshing: refreshing.value,
     selected: selected.value,
     selectable: hasBulkActions.value,
     lazy: true,
@@ -1592,6 +1617,7 @@ export function useListPage<T = unknown>(config: UseListPageOptions<T>): UseList
     page: onPage,
     sort: onSort,
     'row-click': onRowClick,
+    refresh: () => void refresh(),
   }
 
   return {
@@ -1686,6 +1712,8 @@ export function useListPage<T = unknown>(config: UseListPageOptions<T>): UseList
 
     // Data
     loadItems,
+    refresh,
+    refreshing,
 
     // Navigation
     goToCreate,

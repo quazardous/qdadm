@@ -116,6 +116,9 @@ const props = defineProps({
   rowBand: { type: Function as unknown as PropType<((row: unknown) => boolean) | null>, default: null },
   /** Where the band sits (#5451): under the row's cells (default) or above them, a header line */
   rowBandPosition: { type: String as PropType<'below' | 'above'>, default: 'below' },
+  /** A refresh button at the end of the filter bar (#5462), emitting `refresh`; spinning while `refreshing` */
+  refreshable: { type: Boolean, default: false },
+  refreshing: { type: Boolean, default: false },
 
   // Selection
   selected: { type: Array as PropType<unknown[]>, default: () => [] },
@@ -226,6 +229,7 @@ const emit = defineEmits<{
   (e: 'page', event: { page: number; rows: number }): void
   (e: 'sort', event: { sortField: string | null; sortOrder: number | null }): void
   (e: 'row-click', data: unknown, originalEvent: MouseEvent): void
+  (e: 'refresh'): void
 }>()
 
 // Mobile detection for header actions dropdown
@@ -525,7 +529,7 @@ function getFilterClass(filter: FilterConfig): Record<string, boolean> {
         </template>
         <slot name="filters" ></slot>
         <!-- Clear and the bookmark stay together, inside the bar, at the end of its last line (#5432) -->
-        <span v-if="hasActiveFilters || (searchLabel && saveSearchAt === 'filters')" class="filter-bar-actions" data-filter-actions>
+        <span v-if="hasActiveFilters || (searchLabel && saveSearchAt === 'filters') || refreshable" class="filter-bar-actions" data-filter-actions>
           <QdButton
             v-if="hasActiveFilters"
             icon="pi pi-filter-slash"
@@ -538,6 +542,21 @@ function getFilterClass(filter: FilterConfig): Record<string, boolean> {
           />
           <!-- The search's bookmark, beside what it saves (#5402) -->
           <QdSaveSearch v-if="searchLabel && saveSearchAt === 'filters'" :default-name="searchLabel" :entity="entity" />
+          <!-- The rows read again past the cache, last (#5462) -->
+          <QdButton
+            v-if="refreshable"
+            :icon="refreshing ? 'pi pi-refresh pi-spin' : 'pi pi-refresh'"
+            severity="secondary"
+            text
+            rounded
+            size="small"
+            :disabled="refreshing"
+            :aria-label="tOr('core.list.refresh', 'Refresh')"
+            :aria-busy="refreshing ? 'true' : undefined"
+            data-list-refresh
+            @click="emit('refresh')"
+            v-tooltip.top="tOr('core.list.refresh', 'Refresh')"
+          />
         </span>
       </FilterBar>
 

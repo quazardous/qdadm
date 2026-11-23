@@ -302,6 +302,12 @@ export interface UseListPageOptions<T = unknown> {
   rowBand?: (row: T) => boolean
   /** Where the band sits (#5451): under the row's cells (default) or above them */
   rowBandPosition?: 'below' | 'above'
+  /**
+   * A refresh button at the end of the filter bar (#5462): the rows read
+   * again past the entity's cache. Shown by default: `false` hides it, as
+   * the app's `features.lists.refresh: false` does for every list.
+   */
+  refresh?: boolean
   /** Default sort field */
   defaultSort?: string | null
   /** Default sort order (-1 = desc, 1 = asc) */
@@ -379,6 +385,9 @@ export interface ListPageProps {
   rowBand?: ((row: unknown) => boolean) | null
   /** Where the band sits (#5451) */
   rowBandPosition: 'below' | 'above'
+  /** The refresh button shown (#5462), and its read in flight */
+  refreshable: boolean
+  refreshing: boolean
   selected: unknown[]
   selectable: boolean
   lazy: boolean
@@ -415,6 +424,8 @@ export interface ListPageEvents {
   page: (event: { page: number; rows: number }) => void
   sort: (event: { sortField: string; sortOrder: number }) => void
   'row-click': (item: unknown, event: Event) => void
+  /** The refresh button (#5462) */
+  refresh: () => void
 }
 
 /**
@@ -540,6 +551,10 @@ export interface UseListPageReturn<T = unknown> {
 
   // Data
   loadItems: (extraParams?: Record<string, unknown>, options?: { force?: boolean }) => Promise<void>
+  /** The rows read again past the entity's cache, the list's state kept (#5462) */
+  refresh: () => Promise<void>
+  /** A refresh in flight */
+  refreshing: Ref<boolean>
 
   // Navigation
   goToCreate: () => void
