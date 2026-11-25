@@ -516,6 +516,8 @@ export default `core:
   edgeBar:
     open: Open the panel
     close: Close the panel
+    pin: Pin the panel
+    unpin: Unpin the panel
     panels: Side panels
     unread: "{label}, {count} unread"
   settingsMenu:

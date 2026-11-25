@@ -10,7 +10,7 @@ import { useRoute } from 'vue-router'
 import QdEdgePanel from './QdEdgePanel.vue'
 import { useActiveStack } from '../../chain/useActiveStack'
 import { useAuth } from '../../composables/useAuth'
-import { setEdgePanels, useEdgeBar, type EdgeBarConfig, type EdgeContext, type EdgePanelDef } from '../../edge/edgeBar'
+import { setEdgePanels, setEdgeNarrow, useEdgeBar, type EdgeBarConfig, type EdgeContext, type EdgePanelDef } from '../../edge/edgeBar'
 
 const features = inject<{ edgeBar?: EdgeBarConfig } | null>('qdadmFeatures', null)
 const config = features?.edgeBar ?? null
@@ -51,6 +51,7 @@ const given = computed<EdgePanelDef[]>(() => {
 watch(given, (list) => setEdgePanels(list), { immediate: true })
 
 const open = computed({ get: () => edge.isOpen.value, set: (v: boolean) => (v ? edge.open(edge.tab.value ?? undefined) : edge.close()) })
+const pinned = computed({ get: () => edge.pinned.value, set: (v: boolean) => edge.pin(v) })
 const tab = computed({ get: () => edge.tab.value, set: (k: string | null) => k && edge.open(k) })
 </script>
 
@@ -59,10 +60,13 @@ const tab = computed({ get: () => edge.tab.value, set: (k: string | null) => k &
     v-if="edge.present.value"
     v-model:open="open"
     v-model:tab="tab"
+    v-model:pinned="pinned"
+    :pinnable="config?.pinnable !== false"
     :panels="edge.panels.value"
     :side="config?.side ?? 'right'"
     :tabs-at="config?.tabsAt ?? 'top'"
     :width="config?.width ?? '26rem'"
     :narrow-at="config?.narrowAt ?? 900"
+    @narrow="setEdgeNarrow"
   />
 </template>

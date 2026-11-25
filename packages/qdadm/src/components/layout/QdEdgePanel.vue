@@ -14,6 +14,9 @@
  * - One drawer (#5509): the tabs and the panel side by side, sliding as one
  *   block; closed, only the tabs show past the edge. The tabs, one joined
  *   strip, at the top or the bottom (`tabsAt`).
+ * - Pinned (#5511): beside the page rather than over it (the layout makes
+ *   room), and closed only on purpose (the chevron, the open tab): a click
+ *   outside and Escape leave it. No pin on a narrow screen.
  *
  * Runtime props (#5469): an app's JavaScript build compiles qdadm's .vue.
  */
@@ -30,12 +33,17 @@ const props = defineProps({
   tabsAt: { type: String as PropType<'top' | 'bottom'>, default: 'top' },
   width: { type: String, default: '26rem' },
   narrowAt: { type: Number, default: 900 },
+  pinned: { type: Boolean, default: false },
+  pinnable: { type: Boolean, default: true },
 })
 const emit = defineEmits<{
   (e: 'update:open', open: boolean): void
   (e: 'update:tab', tab: string): void
   (e: 'open', tab: string): void
   (e: 'close'): void
+  (e: 'update:pinned', pinned: boolean): void
+  /** The screen became narrow, or wide again: no pin while narrow */
+  (e: 'narrow', narrow: boolean): void
 }>()
 const { tOr } = useI18n()
 
@@ -115,15 +123,18 @@ watch(
   }
 )
 
-// A click outside, Escape: closed
+/** Pinned, with room to share: it stays beside the page */
+const docked = computed(() => props.pinned && props.pinnable && !narrow.value)
+
+// A click outside, Escape: closed, unless pinned
 function onDocDown(e: PointerEvent): void {
-  if (!props.open) return
+  if (!props.open || docked.value) return
   const t = e.target as Node | null
   if (t && root.value?.contains(t)) return
   hide(false)
 }
 function onDocKey(e: KeyboardEvent): void {
-  if (e.key === 'Escape' && props.open) {
+  if (e.key === 'Escape' && props.open && !docked.value) {
     e.preventDefault()
     hide()
   }
@@ -134,6 +145,7 @@ const narrow = ref(false)
 let media: MediaQueryList | null = null
 const onMedia = (): void => {
   narrow.value = !!media?.matches
+  emit('narrow', narrow.value)
 }
 onMounted(() => {
   document.addEventListener('pointerdown', onDocDown, true)
@@ -156,7 +168,7 @@ onBeforeUnmount(() => {
   <div
     ref="root"
     class="qd-edge"
-    :class="[`qd-edge--${side}`, `qd-edge--tabs-${tabsAt}`, { 'qd-edge--open': open, 'qd-edge--narrow': narrow }]"
+    :class="[`qd-edge--${side}`, `qd-edge--tabs-${tabsAt}`, { 'qd-edge--open': open, 'qd-edge--narrow': narrow, 'qd-edge--pinned': docked }]"
     :style="{ '--qd-edge-panel-width': width }"
     data-edge-bar
   >
@@ -230,6 +242,18 @@ onBeforeUnmount(() => {
         <header v-if="current" class="qd-edge-panel-head" :style="toneStyle(current)">
           <i v-if="current.icon" :class="current.icon" aria-hidden="true"></i>
           <h2 class="qd-edge-panel-title">{{ label(current) }}</h2>
+          <button
+            v-if="pinnable && !narrow"
+            type="button"
+            class="qd-edge-pin"
+            :aria-pressed="pinned ? 'true' : 'false'"
+            :aria-label="pinned ? tOr('core.edgeBar.unpin', 'Unpin the panel') : tOr('core.edgeBar.pin', 'Pin the panel')"
+            :title="pinned ? tOr('core.edgeBar.unpin', 'Unpin the panel') : tOr('core.edgeBar.pin', 'Pin the panel')"
+            data-edge-pin
+            @click="emit('update:pinned', !pinned)"
+          >
+            <i class="pi pi-thumbtack" aria-hidden="true"></i>
+          </button>
         </header>
         <div v-if="drawn && current" class="qd-edge-panel-body">
           <slot :name="`tab-${current.key}`" :panel="current">

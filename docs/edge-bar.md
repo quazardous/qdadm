@@ -20,6 +20,7 @@ createKernel({
     edgeBar: {
       side: 'right',     // or 'left'
       tabsAt: 'top',     // or 'bottom': where the tabs sit along the bar
+      pinnable: true,    // a pin on the panel (false: none)
       width: '26rem',    // the panel's, at most 92vw
       narrowAt: 900,     // under it, the panel takes the screen's width
       panels: (context) => {
@@ -87,6 +88,23 @@ is hidden and inert.
 - The content keeps the bar's room (a margin on its side) only while there
   is a bar.
 
+## Pinned
+
+A pin in the panel's head keeps it beside the page:
+
+- the page makes room for it, in the drawer's motion, and the panel shows a
+  line rather than a shadow;
+- a click in the page, the focus leaving it and Escape no longer close it;
+  the chevron and the open tab still do;
+- it stays open from page to page, falling back as above when its tab is no
+  longer returned; with no panel returned, the bar goes and the page takes
+  its room back;
+- the browser keeps the pin, with whether the panel was open and on which
+  tab (`localStorage`): a reload opens it pinned again.
+
+On a narrow screen there is no pin: the panel opens over the page, at full
+width. `pinnable: false` takes the pin away.
+
 A page opens a panel itself with `useEdgeBar()`:
 
 ```js
@@ -94,7 +112,8 @@ import { useEdgeBar } from '@quazardous/qdadm'
 const edge = useEdgeBar()
 edge.open('client')   // false when that panel is not returned for this page
 edge.close()
-// edge.isOpen, edge.tab, edge.panels, edge.present
+edge.pin(true)        // pinned, beside the page
+// edge.isOpen, edge.tab, edge.panels, edge.present, edge.pinned, edge.docked
 ```
 
 ## Accessibility
@@ -123,7 +142,8 @@ The tokens, set on `:root` (and under `.dark-mode`):
 
 A layout of the app's own draws the bar with `<QdEdgeBar />`, which reads
 `features.edgeBar`. It can also draw `QdEdgePanel` directly, with `panels`,
-`v-model:open`, `v-model:tab`, `side`, `tabsAt`, `width`, `narrowAt`, and a slot per
+`v-model:open`, `v-model:tab`, `v-model:pinned`, `pinnable`, `side`,
+`tabsAt`, `width`, `narrowAt`, and a slot per
 panel (`#tab-<key>`) or `#default` (`{ panel }`).
 
 The demo returns Activity on every page and Comments on a book's page

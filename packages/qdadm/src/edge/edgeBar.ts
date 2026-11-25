@@ -48,6 +48,8 @@ export interface EdgeBarConfig {
   side?: 'right' | 'left'
   /** Where its tabs sit along the bar (#5509): top (default) or bottom */
   tabsAt?: 'top' | 'bottom'
+  /** A pin on the panel (#5511): pinned, beside the page and closed only on purpose (default true) */
+  pinnable?: boolean
   /** The panel's width (default 26rem, at most 92vw) */
   width?: string
   /** Under this window width, the panel opens the screen's full width (default 900) */
@@ -63,6 +65,8 @@ export function badgeCount(badge: EdgePanelDef['badge']): number | null {
 
 // ── The shared state ─────────────────────────────────────────────────────────
 const SESSION_KEY = 'qdadm_edge_tab'
+/** Pinned (#5511): kept by the browser, with whether it was open */
+const PIN_KEY = 'qdadm_edge_pinned'
 const readLast = (): string | null => {
   try {
     return typeof sessionStorage !== 'undefined' ? sessionStorage.getItem(SESSION_KEY) : null
@@ -70,15 +74,37 @@ const readLast = (): string | null => {
     return null
   }
 }
-const isOpen = ref(false)
-const tab = ref<string | null>(readLast())
+const readPin = (): { pinned: boolean; open: boolean; tab: string | null } => {
+  try {
+    const raw = typeof localStorage !== 'undefined' ? localStorage.getItem(PIN_KEY) : null
+    const v = raw ? (JSON.parse(raw) as { pinned?: unknown; open?: unknown; tab?: unknown }) : null
+    return { pinned: v?.pinned === true, open: v?.open === true, tab: typeof v?.tab === 'string' ? v.tab : null }
+  } catch {
+    return { pinned: false, open: false, tab: null }
+  }
+}
+const saved = readPin()
+const pinned = ref(saved.pinned)
+// Pinned and open when the page was left: open again, on its tab
+const isOpen = ref(saved.pinned && saved.open)
+const tab = ref<string | null>(saved.pinned && saved.open && saved.tab ? saved.tab : readLast())
 const panels = ref<EdgePanelDef[]>([])
+/** The screen is too narrow to share: no pin, the panel over the page */
+const narrow = ref(false)
 
 function remember(key: string | null): void {
   try {
     if (key) sessionStorage.setItem(SESSION_KEY, key)
   } catch {
     // a private window: not remembered, nothing else changes
+  }
+}
+function rememberPin(): void {
+  try {
+    if (pinned.value) localStorage.setItem(PIN_KEY, JSON.stringify({ pinned: true, open: isOpen.value, tab: tab.value }))
+    else localStorage.removeItem(PIN_KEY)
+  } catch {
+    // not remembered: it is pinned for this page only
   }
 }
 
@@ -98,11 +124,23 @@ export function setEdgePanels(next: EdgePanelDef[]): void {
   }
 }
 
-/** Back to nothing open and no panel (tests) */
+/** The screen's width, as the panel reads it (#5511): narrow, no pin */
+export function setEdgeNarrow(value: boolean): void {
+  narrow.value = value
+}
+
+/** Back to nothing open, nothing pinned and no panel (tests) */
 export function resetEdgeBar(): void {
   isOpen.value = false
   tab.value = null
   panels.value = []
+  pinned.value = false
+  narrow.value = false
+  try {
+    localStorage.removeItem(PIN_KEY)
+  } catch {
+    // nothing kept
+  }
 }
 
 export interface UseEdgeBarReturn {
@@ -113,15 +151,22 @@ export interface UseEdgeBarReturn {
   isOpen: typeof isOpen
   /** The tab open, or the last one used */
   tab: typeof tab
+  /** Pinned (#5511): when open, beside the page rather than over it, and closed only on purpose */
+  pinned: typeof pinned
+  /** Open, pinned and room to share: the page makes room for it */
+  docked: ComputedRef<boolean>
   /** Open a panel (its key), or the last one used; false when it is not given here */
   open: (key?: string) => boolean
   close: () => void
   /** A tab's gesture: open it, or close it when it is the one open */
   toggle: (key: string) => void
+  /** Pin it, or unpin it */
+  pin: (on: boolean) => void
 }
 
 export function useEdgeBar(): UseEdgeBarReturn {
   const present = computed(() => panels.value.length > 0)
+  const docked = computed(() => present.value && isOpen.value && pinned.value && !narrow.value)
   function open(key?: string): boolean {
     const keys = panels.value.map((p) => p.key)
     const target = key ?? (tab.value && keys.includes(tab.value) ? tab.value : keys[0])
@@ -129,14 +174,20 @@ export function useEdgeBar(): UseEdgeBarReturn {
     tab.value = target
     isOpen.value = true
     remember(target)
+    rememberPin()
     return true
   }
   function close(): void {
     isOpen.value = false
+    rememberPin()
   }
   function toggle(key: string): void {
     if (isOpen.value && tab.value === key) close()
     else open(key)
   }
-  return { panels, present, isOpen, tab, open, close, toggle }
+  function pin(on: boolean): void {
+    pinned.value = on
+    rememberPin()
+  }
+  return { panels, present, isOpen, tab, pinned, docked, open, close, toggle, pin }
 }

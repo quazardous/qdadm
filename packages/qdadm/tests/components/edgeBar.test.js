@@ -166,4 +166,48 @@ describe('the edge bar (#5506)', () => {
     expect(bottom.w.find('[data-edge-bar]').classes()).toContain('qd-edge--tabs-bottom')
     expect(bottom.w.find('.qd-edge-hooks > :last-child').attributes('data-edge-chevron')).toBe('')
   })
+
+  it('pinned: a click outside and Escape leave it open; the chevron still closes it (#5511)', async () => {
+    const { w } = await mountBar()
+    await w.find('[data-edge-tab="inbox"]').trigger('click')
+    await w.find('[data-edge-pin]').trigger('click')
+    expect(useEdgeBar().pinned.value).toBe(true)
+    expect(useEdgeBar().docked.value).toBe(true)
+    expect(w.find('[data-edge-pin]').attributes('aria-pressed')).toBe('true')
+    expect(w.find('[data-edge-bar]').classes()).toContain('qd-edge--pinned')
+    document.body.dispatchEvent(new Event('pointerdown', { bubbles: true }))
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }))
+    await nextTick()
+    expect(panelShown(w)).toBe(true)
+    await w.find('[data-edge-chevron]').trigger('click')
+    expect(panelShown(w)).toBe(false)
+    expect(useEdgeBar().docked.value).toBe(false)
+  })
+
+  it('the pin is kept by the browser, with whether it was open and on which tab (#5511)', async () => {
+    const { w } = await mountBar()
+    await w.find('[data-edge-tab="inbox"]').trigger('click')
+    await w.find('[data-edge-pin]').trigger('click')
+    expect(JSON.parse(localStorage.getItem('qdadm_edge_pinned'))).toEqual({ pinned: true, open: true, tab: 'inbox' })
+    await w.find('[data-edge-pin]').trigger('click')
+    expect(localStorage.getItem('qdadm_edge_pinned')).toBe(null)
+  })
+
+  it('pinnable: false, or a narrow screen: no pin (#5511)', async () => {
+    const off = await mountBar({ panels: handler, pinnable: false })
+    useEdgeBar().open('inbox')
+    await nextTick()
+    expect(off.w.find('[data-edge-pin]').exists()).toBe(false)
+    off.w.unmount()
+    resetEdgeBar()
+    const mm = window.matchMedia
+    window.matchMedia = () => ({ matches: true, addEventListener() {}, removeEventListener() {} })
+    const narrow = await mountBar()
+    useEdgeBar().open('inbox')
+    await nextTick()
+    expect(narrow.w.find('[data-edge-pin]').exists()).toBe(false)
+    useEdgeBar().pin(true)
+    expect(useEdgeBar().docked.value).toBe(false)
+    window.matchMedia = mm
+  })
 })

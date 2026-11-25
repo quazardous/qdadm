@@ -30,6 +30,15 @@
   margin-left: calc(var(--fad-sidebar-width, 0px) + var(--qd-edge-bar-width));
 }
 
+// Pinned and open (#5511): the page makes room for the panel beside it
+.main-content.main-content--edge-docked-right {
+  margin-right: calc(var(--qd-edge-bar-width) + min(var(--qd-edge-panel-width), 92vw));
+}
+
+.main-content.main-content--edge-docked-left {
+  margin-left: calc(var(--fad-sidebar-width, 0px) + var(--qd-edge-bar-width) + min(var(--qd-edge-panel-width), 92vw));
+}
+
 .qd-edge {
   position: fixed;
   top: var(--qd-banner-height, 0px);
@@ -209,6 +218,51 @@
   }
 }
 
+// Pinned (#5511): beside the page, a line rather than a shadow
+.qd-edge--pinned .qd-edge-panel {
+  box-shadow: none;
+}
+
+.qd-edge--pinned.qd-edge--right .qd-edge-panel {
+  border-left: 1px solid var(--p-content-border-color, #e2e8f0);
+}
+
+.qd-edge--pinned.qd-edge--left .qd-edge-panel {
+  border-right: 1px solid var(--p-content-border-color, #e2e8f0);
+}
+
+.qd-edge-pin {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: none;
+  color: var(--p-text-muted-color, #64748b);
+  cursor: pointer;
+
+  &:hover {
+    border-color: var(--p-content-border-color, #e2e8f0);
+  }
+
+  &[aria-pressed='true'] {
+    color: var(--qd-edge-tab-color, var(--qd-edge-bar-bg));
+
+    i {
+      transform: rotate(-45deg);
+    }
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--p-primary-color, #3b82f6);
+    outline-offset: 1px;
+  }
+}
+
 // The panel: hidden once the drawer has slid shut, at once when it opens
 .qd-edge-panel {
   flex: none;
@@ -236,7 +290,7 @@
   padding: 0.85rem 1rem;
   border-bottom: 3px solid var(--qd-edge-tab-color, var(--qd-edge-bar-bg));
 
-  i {
+  > i {
     color: var(--qd-edge-tab-color, var(--qd-edge-bar-bg));
   }
 }

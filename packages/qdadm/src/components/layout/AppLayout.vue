@@ -59,6 +59,8 @@ const homeRoute = inject<string>('qdadmHomeRoute', 'home')
 // The edge bar (#5506): the content keeps its room while there is one
 const edgeBar = useEdgeBar()
 const edgeSide = (features.edgeBar as { side?: string } | undefined)?.side === 'left' ? 'left' : 'right'
+// Pinned (#5511): the page makes room for the panel, as wide as it is
+const edgeWidth = (features.edgeBar as { width?: string } | undefined)?.width
 
 // Guard dialog from shared store (registered by useBareForm/useEntityItemFormPage when a form is active)
 const guardDialog = useGuardDialog()
@@ -336,7 +338,11 @@ const showBreadcrumb = computed<boolean>(() => {
     </aside>
 
     <!-- Main content -->
-    <main class="main-content" :class="{ 'main-content--sidebar-collapsed': sidebarCollapsed, [`main-content--edge-${edgeSide}`]: edgeBar.present.value }">
+    <main
+      class="main-content"
+      :class="{ 'main-content--sidebar-collapsed': sidebarCollapsed, [`main-content--edge-${edgeSide}`]: edgeBar.present.value, [`main-content--edge-docked-${edgeSide}`]: edgeBar.docked.value }"
+      :style="edgeWidth ? { '--qd-edge-panel-width': edgeWidth } : undefined"
+    >
       <!-- Mobile header bar -->
       <div class="mobile-header">
         <QdButton
@@ -606,7 +612,7 @@ const showBreadcrumb = computed<boolean>(() => {
   min-height: calc(100vh - var(--qd-banner-height, 0px));
   display: flex;
   flex-direction: column;
-  transition: margin-left var(--fad-transition-slow);
+  transition: margin-left var(--fad-transition-slow), margin-right var(--qd-edge-duration, 0.32s) cubic-bezier(0.22, 0.8, 0.3, 1);
   /* Not a scroll container (#2534): the window scrolls, so an overflow here
      made this box the anchor of every position: sticky below, and nothing
      stuck. min-width: 0 keeps a wide child from stretching the column; wide

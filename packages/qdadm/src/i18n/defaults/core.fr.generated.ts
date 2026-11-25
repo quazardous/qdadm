@@ -516,6 +516,8 @@ export default `core:
   edgeBar:
     open: Ouvrir le panneau
     close: Fermer le panneau
+    pin: Épingler le panneau
+    unpin: Désépingler le panneau
     panels: Panneaux latéraux
     unread: "{label}, {count} non lus"
   settingsMenu:
