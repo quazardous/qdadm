@@ -51,7 +51,11 @@ async function mountBar(edgeBar = { panels: handler }) {
   return { w, s }
 }
 const tabs = (w) => w.findAll('[data-edge-tab]').map((t) => t.attributes('data-edge-tab') + (t.find('.qd-edge-badge').exists() ? `(${t.find('.qd-edge-badge').text()})` : ''))
-const panelShown = (w) => w.find('[data-edge-panel]').exists() && w.find('[data-edge-panel]').element.style.display !== 'none'
+// Open: the drawer open, the panel neither inert nor hidden (#5509)
+const panelShown = (w) => {
+  const p = w.find('[data-edge-panel]')
+  return p.exists() && w.find('[data-edge-bar]').classes('qd-edge--open') && p.attributes('inert') === undefined && p.attributes('aria-hidden') === undefined
+}
 
 describe('the edge bar (#5506)', () => {
   beforeEach(() => {
@@ -146,5 +150,20 @@ describe('the edge bar (#5506)', () => {
     expect(w.find('[data-edge-bar]').exists()).toBe(false)
     expect(warn).toHaveBeenCalled()
     warn.mockRestore()
+  })
+
+  it('closed, the panel is inert and hidden; the tabs at the top by default, at the bottom when asked (#5509)', async () => {
+    const top = await mountBar()
+    const p = top.w.find('[data-edge-panel]')
+    expect(p.attributes('inert')).toBeDefined()
+    expect(p.attributes('aria-hidden')).toBe('true')
+    expect(top.w.find('[data-edge-bar]').classes()).toContain('qd-edge--tabs-top')
+    // The chevron at the strip's outer end: first at the top
+    expect(top.w.find('.qd-edge-hooks > :first-child').attributes('data-edge-chevron')).toBe('')
+    top.w.unmount()
+    resetEdgeBar()
+    const bottom = await mountBar({ panels: handler, tabsAt: 'bottom' })
+    expect(bottom.w.find('[data-edge-bar]').classes()).toContain('qd-edge--tabs-bottom')
+    expect(bottom.w.find('.qd-edge-hooks > :last-child').attributes('data-edge-chevron')).toBe('')
   })
 })

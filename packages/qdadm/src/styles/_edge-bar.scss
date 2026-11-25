@@ -10,6 +10,7 @@
   --qd-edge-panel-shadow: 0 0 28px rgba(15, 23, 42, 0.22);
   --qd-edge-panel-width: 26rem;
   --qd-edge-z: 1050;
+  --qd-edge-duration: 0.32s;
 }
 
 :root.dark-mode,
@@ -52,51 +53,59 @@
   }
 }
 
+// The bar, above the drawer: the panel slides shut under it, past the edge
 .qd-edge-bar {
   position: absolute;
   inset: 0;
+  z-index: 2;
   background: var(--qd-edge-bar-bg);
   pointer-events: auto;
 }
 
-// The chevron and the tabs, hooked onto the bar's inner side
-.qd-edge-hooks {
+// One drawer (#5509): the tabs and the panel side by side, one block sliding
+// with one motion; closed, pushed past the edge so only the tabs show
+.qd-edge-drawer {
   position: absolute;
-  top: 0.75rem;
+  top: 0;
+  bottom: 0;
+  z-index: 1;
   display: flex;
-  flex-direction: column;
-  gap: 0.3rem;
-  pointer-events: auto;
+  pointer-events: none;
+  transition: transform var(--qd-edge-duration) cubic-bezier(0.22, 0.8, 0.3, 1);
 
   .qd-edge--right & {
     right: 100%;
+    flex-direction: row;
+    transform: translateX(var(--qd-edge-open-width));
   }
 
   .qd-edge--left & {
     left: 100%;
+    flex-direction: row-reverse;
+    transform: translateX(calc(-1 * var(--qd-edge-open-width)));
+  }
+
+  .qd-edge--open & {
+    transform: none;
   }
 }
 
-.qd-edge-tabs {
+// The tabs: one strip of joined handles, at the top or the bottom
+.qd-edge-hooks {
   display: flex;
   flex-direction: column;
-  gap: 0.3rem;
-}
-
-.qd-edge-chevron,
-.qd-edge-tab {
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: var(--qd-edge-tab-size);
-  height: var(--qd-edge-tab-size);
-  padding: 0;
-  border: 1px solid var(--qd-edge-tab-color, var(--qd-edge-bar-bg));
+  align-self: flex-start;
+  margin-top: 0.75rem;
+  border: 1px solid var(--qd-edge-bar-bg);
   background: var(--qd-edge-tab-bg);
-  color: var(--qd-edge-tab-color, var(--qd-edge-tab-ink));
-  cursor: pointer;
-  box-shadow: 0 1px 4px rgba(15, 23, 42, 0.18);
+  box-shadow: 0 1px 6px rgba(15, 23, 42, 0.2);
+  pointer-events: auto;
+
+  .qd-edge--tabs-bottom & {
+    align-self: flex-end;
+    margin-top: 0;
+    margin-bottom: 0.75rem;
+  }
 
   .qd-edge--right & {
     border-right: 0;
@@ -107,16 +116,67 @@
     border-left: 0;
     border-radius: 0 8px 8px 0;
   }
+}
+
+.qd-edge-tabs {
+  display: flex;
+  flex-direction: column;
+}
+
+.qd-edge-handle {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--qd-edge-tab-size);
+  height: var(--qd-edge-tab-size);
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--qd-edge-tab-color, var(--qd-edge-tab-ink));
+  cursor: pointer;
+
+  // A thin line between two handles
+  & + &,
+  .qd-edge-tabs + &,
+  & + .qd-edge-tabs > &:first-child {
+    border-top: 1px solid var(--p-content-border-color, rgba(127, 127, 127, 0.25));
+  }
 
   &:focus-visible {
+    z-index: 1;
     outline: 2px solid var(--p-primary-color, #3b82f6);
-    outline-offset: 2px;
+    outline-offset: -2px;
   }
 }
 
+.qd-edge-tabs > .qd-edge-handle + .qd-edge-handle {
+  border-top: 1px solid var(--p-content-border-color, rgba(127, 127, 127, 0.25));
+}
+
+// The strip's rounded outer end: its first and last handles
+.qd-edge--right .qd-edge-hooks > :first-child,
+.qd-edge--right .qd-edge-hooks > .qd-edge-tabs:first-child > :first-child {
+  border-top-left-radius: 7px;
+}
+
+.qd-edge--right .qd-edge-hooks > :last-child,
+.qd-edge--right .qd-edge-hooks > .qd-edge-tabs:last-child > :last-child {
+  border-bottom-left-radius: 7px;
+}
+
+.qd-edge--left .qd-edge-hooks > :first-child,
+.qd-edge--left .qd-edge-hooks > .qd-edge-tabs:first-child > :first-child {
+  border-top-right-radius: 7px;
+}
+
+.qd-edge--left .qd-edge-hooks > :last-child,
+.qd-edge--left .qd-edge-hooks > .qd-edge-tabs:last-child > :last-child {
+  border-bottom-right-radius: 7px;
+}
+
 .qd-edge-chevron {
-  height: calc(var(--qd-edge-tab-size) * 0.75);
-  border-color: var(--qd-edge-bar-bg);
+  height: calc(var(--qd-edge-tab-size) * 0.8);
   background: var(--qd-edge-bar-bg);
   color: #fff;
 }
@@ -128,63 +188,45 @@
 
 .qd-edge-badge {
   position: absolute;
-  top: -0.35rem;
-  min-width: 1.1rem;
-  height: 1.1rem;
+  top: 0.1rem;
+  min-width: 1.05rem;
+  height: 1.05rem;
   padding: 0 0.25rem;
   border-radius: 0.55rem;
   background: var(--qd-tone-critical, #dc2626);
   color: #fff;
-  font-size: 0.65rem;
+  font-size: 0.62rem;
   font-weight: 700;
-  line-height: 1.1rem;
+  line-height: 1.05rem;
   text-align: center;
 
   .qd-edge--right & {
-    left: -0.35rem;
+    left: -0.45rem;
   }
 
   .qd-edge--left & {
-    right: -0.35rem;
+    right: -0.45rem;
   }
 }
 
-// The panel, over the content
+// The panel: hidden once the drawer has slid shut, at once when it opens
 .qd-edge-panel {
-  position: absolute;
-  top: 0;
-  bottom: 0;
+  flex: none;
   width: var(--qd-edge-open-width);
+  height: 100%;
   display: flex;
   flex-direction: column;
   background: var(--qd-edge-panel-bg);
   box-shadow: var(--qd-edge-panel-shadow);
-  pointer-events: auto;
   outline: none;
-  animation: qd-edge-in 0.18s ease-out;
+  pointer-events: auto;
+  visibility: hidden;
+  transition: visibility 0s linear var(--qd-edge-duration);
 
-  .qd-edge--right & {
-    right: 100%;
-    --qd-edge-from: 1.5rem;
+  .qd-edge--open & {
+    visibility: visible;
+    transition: visibility 0s linear 0s;
   }
-
-  .qd-edge--left & {
-    left: 100%;
-    --qd-edge-from: -1.5rem;
-  }
-}
-
-// The tabs above the panel, so they stay at hand while it is open
-.qd-edge--open .qd-edge-hooks {
-  z-index: 1;
-}
-
-.qd-edge--open.qd-edge--right .qd-edge-hooks {
-  right: calc(100% + var(--qd-edge-open-width));
-}
-
-.qd-edge--open.qd-edge--left .qd-edge-hooks {
-  left: calc(100% + var(--qd-edge-open-width));
 }
 
 .qd-edge-panel-head {
@@ -212,15 +254,12 @@
   padding: 1rem;
 }
 
-@keyframes qd-edge-in {
-  from {
-    opacity: 0;
-    transform: translateX(var(--qd-edge-from, 1.5rem));
-  }
-}
-
 @media (prefers-reduced-motion: reduce) {
+  .qd-edge-drawer {
+    transition: none;
+  }
+
   .qd-edge-panel {
-    animation: none;
+    transition: none;
   }
 }

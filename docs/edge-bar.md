@@ -19,6 +19,7 @@ createKernel({
   features: {
     edgeBar: {
       side: 'right',     // or 'left'
+      tabsAt: 'top',     // or 'bottom': where the tabs sit along the bar
       width: '26rem',    // the panel's, at most 92vw
       narrowAt: 900,     // under it, the panel takes the screen's width
       panels: (context) => {
@@ -69,6 +70,13 @@ bar either, and a warning is logged.
 
 ## Gestures
 
+The tabs are one strip of joined handles, the chevron at its outer end. They
+and the panel form one drawer that slides as a single block: closed, only
+the tabs show past the edge; opening slides the panel in with the tabs on its
+edge, in one motion (`--qd-edge-duration`, 0.32s). Closing reverses it, the
+panel's content still drawn until the drawer is shut; once closed, the panel
+is hidden and inert.
+
 - A tab opens the panel on it; clicking the open tab closes it. The chevron,
   a click outside and Escape close it too.
 - The panel is closed when the app opens. The tab used last is kept for the
@@ -111,10 +119,11 @@ The tokens, set on `:root` (and under `.dark-mode`):
 | `--qd-edge-tab-bg`, `--qd-edge-tab-ink` | the content's |
 | `--qd-edge-panel-bg`, `--qd-edge-panel-shadow` | the content's, a soft shadow |
 | `--qd-edge-z` | `1050` |
+| `--qd-edge-duration` | `0.32s`, the drawer's slide |
 
 A layout of the app's own draws the bar with `<QdEdgeBar />`, which reads
 `features.edgeBar`. It can also draw `QdEdgePanel` directly, with `panels`,
-`v-model:open`, `v-model:tab`, `side`, `width`, `narrowAt`, and a slot per
+`v-model:open`, `v-model:tab`, `side`, `tabsAt`, `width`, `narrowAt`, and a slot per
 panel (`#tab-<key>`) or `#default` (`{ panel }`).
 
 The demo returns Activity on every page and Comments on a book's page

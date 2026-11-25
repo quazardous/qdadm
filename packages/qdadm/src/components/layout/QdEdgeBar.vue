@@ -61,6 +61,7 @@ const tab = computed({ get: () => edge.tab.value, set: (k: string | null) => k &
     v-model:tab="tab"
     :panels="edge.panels.value"
     :side="config?.side ?? 'right'"
+    :tabs-at="config?.tabsAt ?? 'top'"
     :width="config?.width ?? '26rem'"
     :narrow-at="config?.narrowAt ?? 900"
   />

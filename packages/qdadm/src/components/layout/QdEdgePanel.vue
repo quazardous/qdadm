@@ -11,6 +11,9 @@
  * - The focus goes into the panel when it opens, back to the tab (or the
  *   chevron) that opened it when it closes.
  * - Under `narrowAt`, the panel takes the screen's width.
+ * - One drawer (#5509): the tabs and the panel side by side, sliding as one
+ *   block; closed, only the tabs show past the edge. The tabs, one joined
+ *   strip, at the top or the bottom (`tabsAt`).
  *
  * Runtime props (#5469): an app's JavaScript build compiles qdadm's .vue.
  */
@@ -24,6 +27,7 @@ const props = defineProps({
   open: { type: Boolean, default: false },
   tab: { type: String as PropType<string | null>, default: null },
   side: { type: String as PropType<'right' | 'left'>, default: 'right' },
+  tabsAt: { type: String as PropType<'top' | 'bottom'>, default: 'top' },
   width: { type: String, default: '26rem' },
   narrowAt: { type: Number, default: 900 },
 })
@@ -93,13 +97,21 @@ function onTabKey(e: KeyboardEvent, i: number): void {
   tabs[(i + step + tabs.length) % tabs.length]!.focus()
 }
 
+// The panel's content stays drawn until the drawer has slid shut
+const drawn = ref(props.open)
+let undraw: ReturnType<typeof setTimeout> | null = null
 // The focus into the panel when it opens
 watch(
   () => props.open,
   async (open) => {
-    if (!open) return
+    if (undraw) clearTimeout(undraw)
+    if (!open) {
+      undraw = setTimeout(() => (drawn.value = false), 360)
+      return
+    }
+    drawn.value = true
     await nextTick()
-    panel.value?.focus()
+    panel.value?.focus({ preventScroll: true })
   }
 )
 
@@ -136,6 +148,7 @@ onBeforeUnmount(() => {
   document.removeEventListener('pointerdown', onDocDown, true)
   document.removeEventListener('keydown', onDocKey)
   media?.removeEventListener?.('change', onMedia)
+  if (undraw) clearTimeout(undraw)
 })
 </script>
 
@@ -143,16 +156,19 @@ onBeforeUnmount(() => {
   <div
     ref="root"
     class="qd-edge"
-    :class="[`qd-edge--${side}`, { 'qd-edge--open': open, 'qd-edge--narrow': narrow }]"
+    :class="[`qd-edge--${side}`, `qd-edge--tabs-${tabsAt}`, { 'qd-edge--open': open, 'qd-edge--narrow': narrow }]"
     :style="{ '--qd-edge-panel-width': width }"
     data-edge-bar
   >
-    <div class="qd-edge-bar">
-      <div class="qd-edge-hooks">
+    <div class="qd-edge-bar"></div>
+    <!-- One drawer: the tabs and the panel, sliding as one block (#5509) -->
+    <div class="qd-edge-drawer">
+      <div class="qd-edge-hooks" :data-tabs-at="tabsAt">
         <button
+          v-if="tabsAt === 'top'"
           ref="chevron"
           type="button"
-          class="qd-edge-chevron"
+          class="qd-edge-handle qd-edge-chevron"
           :aria-expanded="open ? 'true' : 'false'"
           :aria-controls="`${uid}-panel`"
           :aria-label="open ? tOr('core.edgeBar.close', 'Close the panel') : tOr('core.edgeBar.open', 'Open the panel')"
@@ -169,7 +185,7 @@ onBeforeUnmount(() => {
             :key="p.key"
             type="button"
             role="tab"
-            class="qd-edge-tab"
+            class="qd-edge-handle qd-edge-tab"
             :class="{ 'qd-edge-tab--active': open && tab === p.key }"
             :style="toneStyle(p)"
             :aria-selected="open && tab === p.key ? 'true' : 'false'"
@@ -185,29 +201,44 @@ onBeforeUnmount(() => {
             <span v-if="count(p)" class="qd-edge-badge" aria-hidden="true">{{ count(p)! > 99 ? '99+' : count(p) }}</span>
           </button>
         </div>
+        <button
+          v-if="tabsAt === 'bottom'"
+          ref="chevron"
+          type="button"
+          class="qd-edge-handle qd-edge-chevron"
+          :aria-expanded="open ? 'true' : 'false'"
+          :aria-controls="`${uid}-panel`"
+          :aria-label="open ? tOr('core.edgeBar.close', 'Close the panel') : tOr('core.edgeBar.open', 'Open the panel')"
+          :title="open ? tOr('core.edgeBar.close', 'Close the panel') : tOr('core.edgeBar.open', 'Open the panel')"
+          data-edge-chevron
+          @click="onChevron"
+        >
+          <i class="pi" :class="(side === 'right') === open ? 'pi-chevron-right' : 'pi-chevron-left'" aria-hidden="true"></i>
+        </button>
       </div>
-    </div>
-    <section
-      v-show="open && current"
-      :id="`${uid}-panel`"
-      ref="panel"
-      class="qd-edge-panel"
-      role="tabpanel"
-      tabindex="-1"
-      :aria-labelledby="current ? `${uid}-tab-${current.key}` : undefined"
-      data-edge-panel
-    >
-      <header v-if="current" class="qd-edge-panel-head" :style="toneStyle(current)">
-        <i v-if="current.icon" :class="current.icon" aria-hidden="true"></i>
-        <h2 class="qd-edge-panel-title">{{ label(current) }}</h2>
-      </header>
-      <div v-if="open && current" class="qd-edge-panel-body">
-        <slot :name="`tab-${current.key}`" :panel="current">
-          <slot :panel="current">
-            <component :is="current.component" v-if="current.component" v-bind="current.props ?? {}" />
+      <section
+        :id="`${uid}-panel`"
+        ref="panel"
+        class="qd-edge-panel"
+        role="tabpanel"
+        tabindex="-1"
+        :inert="open ? undefined : true"
+        :aria-hidden="open ? undefined : 'true'"
+        :aria-labelledby="current ? `${uid}-tab-${current.key}` : undefined"
+        data-edge-panel
+      >
+        <header v-if="current" class="qd-edge-panel-head" :style="toneStyle(current)">
+          <i v-if="current.icon" :class="current.icon" aria-hidden="true"></i>
+          <h2 class="qd-edge-panel-title">{{ label(current) }}</h2>
+        </header>
+        <div v-if="drawn && current" class="qd-edge-panel-body">
+          <slot :name="`tab-${current.key}`" :panel="current">
+            <slot :panel="current">
+              <component :is="current.component" v-if="current.component" v-bind="current.props ?? {}" />
+            </slot>
           </slot>
-        </slot>
-      </div>
-    </section>
+        </div>
+      </section>
+    </div>
   </div>
 </template>

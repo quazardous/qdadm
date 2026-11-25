@@ -46,6 +46,8 @@ export interface EdgeBarConfig {
   panels: (context: EdgeContext) => EdgePanelDef[] | null | undefined
   /** The edge it is on (default right) */
   side?: 'right' | 'left'
+  /** Where its tabs sit along the bar (#5509): top (default) or bottom */
+  tabsAt?: 'top' | 'bottom'
   /** The panel's width (default 26rem, at most 92vw) */
   width?: string
   /** Under this window width, the panel opens the screen's full width (default 900) */
