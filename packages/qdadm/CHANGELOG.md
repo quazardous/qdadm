@@ -1,5 +1,15 @@
 # Changelog
 
+## 2.79.0
+
+### Minor Changes
+
+- d21f6db: The edge bar's panel is resizable (#5519): a handle on its inner edge, dragged or moved from the keyboard (a `separator`: arrows, Shift, Home, End), within `minWidth` (default 18rem) and `maxWidth` (default 60vw, never past 92vw); a double click goes back to `width`. The browser keeps the width; pinned, the page's room follows it. No handle on a narrow screen; `resizable: false` takes it away. `useEdgeBar().width` and `resize(px)`.
+
+### Patch Changes
+
+- 44cdfc5: The edge bar's panel keeps its open state across navigation (#5518): a page that gives no panel no longer closes it (the bar goes, the panel opens again, on its tab and pinned if it was, on the next page that gives panels); whether it is open is kept for the session, so a reload opens it again; unpinned, a click outside that navigates (a menu link, a row opening a record) no longer closes it.
+
 ## 2.78.0
 
 ### Minor Changes
