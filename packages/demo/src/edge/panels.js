@@ -1,7 +1,7 @@
 /**
  * The demo's edge bar (#5506): what `features.edgeBar.panels(context)` gives.
- * A global panel, Activity, on every page; a contextual one, Comments, on a
- * book's page only, with that book. The badges stay live while it is closed.
+ * A global panel, Activity, on every page but the genres'; a contextual one,
+ * Comments, on a book's page only, with that book. The badges stay live while it is closed.
  */
 import { reactive, ref } from 'vue'
 import ActivityPanel from './ActivityPanel.vue'
@@ -20,6 +20,9 @@ export const comments = reactive({})
 export const commentsOf = (bookId) => (comments[bookId] ??= [])
 
 export function edgePanels(context) {
+  // The genres' pages give no panel (#5518): the bar goes there, and an open
+  // panel opens again on the next page that gives one
+  if (context.route.path.startsWith('/genres')) return []
   const book = context.entity('books')
   return [
     { key: 'activity', label: 'Activity', icon: 'pi pi-bolt', tone: 'info', component: ActivityPanel, badge: unseenActivity },

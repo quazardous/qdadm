@@ -82,12 +82,16 @@ panel's content still drawn until the drawer is shut; once closed, the panel
 is hidden and inert.
 
 - A tab opens the panel on it; clicking the open tab closes it. The chevron,
-  a click outside and Escape close it too.
-- The panel is closed when the app opens. The tab used last is kept for the
-  session.
+  a click outside and Escape close it too. A click outside that navigates (a
+  menu link, a row opening a record) does not: the panel goes along.
+- The panel is closed when the app first opens; then whether it is open, and
+  on which tab, is kept for the session: a reload opens it again.
 - From one page to the next, the panel stays open on its tab while that tab
   is still returned. When the tab is no longer returned (you left the task),
-  the open panel falls back to the first panel left, and closes when none is.
+  the open panel falls back to the first panel left.
+- A page that returns no panel has no bar, but the panel stays open in the
+  state: on the next page that returns panels, it opens again, on its tab,
+  pinned if it was.
 - The content keeps the bar's room (a margin on its side) only while there
   is a bar.
 
@@ -116,7 +120,7 @@ A pin in the panel's head keeps it beside the page:
   the chevron and the open tab still do;
 - it stays open from page to page, falling back as above when its tab is no
   longer returned; with no panel returned, the bar goes and the page takes
-  its room back;
+  its room back, until a page returns panels again;
 - the browser keeps the pin, with whether the panel was open and on which
   tab (`localStorage`): a reload opens it pinned again.
 

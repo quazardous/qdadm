@@ -5,7 +5,7 @@
  *
  * Run: npm test
  */
-import { describe, it, expect, beforeEach, vi } from 'vitest'
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { defineComponent, h, ref, nextTick } from 'vue'
 import { mount, flushPromises } from '@vue/test-utils'
 import { createRouter, createMemoryHistory } from 'vue-router'
@@ -40,7 +40,7 @@ const handler = vi.fn((context) => {
 })
 
 async function mountBar(edgeBar = { panels: handler }) {
-  const router = createRouter({ history: createMemoryHistory(), routes: [{ path: '/', name: 'home', component: { template: '<div/>' } }] })
+  const router = createRouter({ history: createMemoryHistory(), routes: [{ path: '/', name: 'home', component: { template: '<div/>' } }, { path: '/other', name: 'other', component: { template: '<div/>' } }] })
   await router.push('/')
   const s = fakeStack()
   const w = mount(QdEdgeBar, {
@@ -48,8 +48,11 @@ async function mountBar(edgeBar = { panels: handler }) {
     global: { plugins: [router], provide: { qdadmFeatures: { edgeBar }, qdadmActiveStack: s.stack, qdadmSignals: s.signals } },
   })
   await flushPromises()
-  return { w, s }
+  mounted.push(w)
+  return { w, s, router }
 }
+// One bar at a time, as in an app: each test's goes when it ends
+const mounted = []
 const tabs = (w) => w.findAll('[data-edge-tab]').map((t) => t.attributes('data-edge-tab') + (t.find('.qd-edge-badge').exists() ? `(${t.find('.qd-edge-badge').text()})` : ''))
 // Open: the drawer open, the panel neither inert nor hidden (#5509)
 const panelShown = (w) => {
@@ -58,6 +61,10 @@ const panelShown = (w) => {
 }
 
 describe('the edge bar (#5506)', () => {
+  afterEach(() => {
+    while (mounted.length) mounted.pop().unmount()
+  })
+
   beforeEach(() => {
     resetEdgeBar()
     unread.value = 2
@@ -258,5 +265,60 @@ describe('the edge bar (#5506)', () => {
     await nextTick()
     expect(narrow.w.find('[data-edge-resize]').exists()).toBe(false)
     window.matchMedia = mm
+  })
+
+  it('a page with no panel keeps it open in the state: back on a page with panels, open again (#5518)', async () => {
+    let none = false
+    const { w, s } = await mountBar({ panels: (ctx) => (none ? [] : handler(ctx)) })
+    s.set([task('12')])
+    await nextTick()
+    useEdgeBar().open('client')
+    useEdgeBar().pin(true)
+    await nextTick()
+    // The task list: no panel, no bar
+    none = true
+    s.set([])
+    await nextTick()
+    expect(w.find('[data-edge-bar]').exists()).toBe(false)
+    expect(useEdgeBar().isOpen.value).toBe(true)
+    expect(useEdgeBar().docked.value).toBe(false)
+    // Another task: open again, on its tab, beside the page
+    none = false
+    s.set([task('13')])
+    await nextTick()
+    await nextTick()
+    expect(panelShown(w)).toBe(true)
+    expect(useEdgeBar().tab.value).toBe('client')
+    expect(useEdgeBar().docked.value).toBe(true)
+    expect(w.find('.memory').text()).toBe('memory of 13')
+  })
+
+  it('the open state is kept for the session (#5518)', async () => {
+    await mountBar()
+    useEdgeBar().open('inbox')
+    expect(sessionStorage.getItem('qdadm_edge_open')).toBe('1')
+    useEdgeBar().close()
+    expect(sessionStorage.getItem('qdadm_edge_open')).toBe('0')
+  })
+
+  it('unpinned: a click outside closes it, unless that click navigates (#5518)', async () => {
+    const wait = (ms) => new Promise((r) => setTimeout(r, ms))
+    const { w, router } = await mountBar()
+    useEdgeBar().open('inbox')
+    await nextTick()
+    // A click that navigates, as a RouterLink does: push within the click
+    const nav = () => router.push('/other')
+    document.body.addEventListener('click', nav, { once: true })
+    document.body.dispatchEvent(new Event('pointerdown', { bubbles: true }))
+    document.body.dispatchEvent(new Event('click', { bubbles: true }))
+    await wait(30)
+    await flushPromises()
+    expect(panelShown(w)).toBe(true)
+    // A plain click
+    document.body.dispatchEvent(new Event('pointerdown', { bubbles: true }))
+    document.body.dispatchEvent(new Event('click', { bubbles: true }))
+    await wait(30)
+    await flushPromises()
+    expect(panelShown(w)).toBe(false)
   })
 })

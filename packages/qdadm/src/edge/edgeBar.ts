@@ -9,7 +9,7 @@
  * The state (open, which tab) is shared: the layout draws it, and a page can
  * open a panel with `useEdgeBar().open(key)`.
  */
-import { computed, ref, toValue, type Component, type ComputedRef, type MaybeRefOrGetter } from 'vue'
+import { computed, ref, shallowRef, toValue, type Component, type ComputedRef, type MaybeRefOrGetter } from 'vue'
 import type { StackLevel, DomainStackLevel } from '../chain/ActiveStack'
 
 /** What the app's handler is given */
@@ -89,12 +89,22 @@ const readPin = (): { pinned: boolean; open: boolean; tab: string | null } => {
     return { pinned: false, open: false, tab: null }
   }
 }
+/** Open or not, for the session, pinned or not (#5518) */
+const OPEN_KEY = 'qdadm_edge_open'
+const readOpen = (): boolean => {
+  try {
+    return typeof sessionStorage !== 'undefined' && sessionStorage.getItem(OPEN_KEY) === '1'
+  } catch {
+    return false
+  }
+}
 const saved = readPin()
 const pinned = ref(saved.pinned)
-// Pinned and open when the page was left: open again, on its tab
-const isOpen = ref(saved.pinned && saved.open)
+// Open when the page was left (this session, or pinned): open again, on its tab
+const isOpen = ref((saved.pinned && saved.open) || readOpen())
 const tab = ref<string | null>(saved.pinned && saved.open && saved.tab ? saved.tab : readLast())
-const panels = ref<EdgePanelDef[]>([])
+// Shallow: a panel's component is not made reactive
+const panels = shallowRef<EdgePanelDef[]>([])
 /** The screen is too narrow to share: no pin, the panel over the page */
 const narrow = ref(false)
 /** The width the person dragged it to, in px (#5519), kept by the browser; null: the configured width */
@@ -118,6 +128,11 @@ function remember(key: string | null): void {
 }
 function rememberPin(): void {
   try {
+    sessionStorage.setItem(OPEN_KEY, isOpen.value ? '1' : '0')
+  } catch {
+    // not kept for the session
+  }
+  try {
     if (pinned.value) localStorage.setItem(PIN_KEY, JSON.stringify({ pinned: true, open: isOpen.value, tab: tab.value }))
     else localStorage.removeItem(PIN_KEY)
   } catch {
@@ -133,12 +148,11 @@ function rememberPin(): void {
 export function setEdgePanels(next: EdgePanelDef[]): void {
   panels.value = next
   const keys = next.map((p) => p.key)
+  // No panel here (#5518): the bar goes, the panel stays open in the state,
+  // to open again, on its tab, on the next page that gives panels
+  if (!keys.length) return
   if (tab.value && keys.includes(tab.value)) return
-  if (isOpen.value && keys.length) tab.value = keys[0]!
-  else {
-    if (!keys.length) isOpen.value = false
-    tab.value = isOpen.value ? (keys[0] ?? null) : tab.value
-  }
+  if (isOpen.value) tab.value = keys[0]!
 }
 
 /** The screen's width, as the panel reads it (#5511): narrow, no pin */
@@ -157,6 +171,7 @@ export function resetEdgeBar(): void {
   try {
     localStorage.removeItem(PIN_KEY)
     localStorage.removeItem(WIDTH_KEY)
+    sessionStorage.removeItem(OPEN_KEY)
   } catch {
     // nothing kept
   }

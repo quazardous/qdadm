@@ -26,6 +26,7 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch, type PropType } from 'vue'
 import { useI18n } from '../../i18n/useI18n'
 import { badgeColor } from '../lists/filters/contract'
+import { useRouter } from 'vue-router'
 import { badgeCount, type EdgePanelDef } from '../../edge/edgeBar'
 
 const props = defineProps({
@@ -204,11 +205,31 @@ const refreshBounds = () => {
 const docked = computed(() => props.pinned && props.pinnable && !narrow.value)
 
 // A click outside, Escape: closed, unless pinned
+// A click outside that navigates (a menu link, a row opening a record) does not
+// close it (#5518): the close waits for the click, and is dropped when a
+// navigation began meanwhile
+const router = useRouter() as ReturnType<typeof useRouter> | undefined
+let navigations = 0
+let stopGuard: (() => void) | null = null
+let pending: { at: number; timer: ReturnType<typeof setTimeout> } | null = null
+function settle(): void {
+  if (!pending) return
+  const { at, timer } = pending
+  clearTimeout(timer)
+  pending = null
+  if (navigations === at) hide(false)
+}
+function onDocClick(): void {
+  // After the click's own handlers: a router.push they made has reached its guards
+  setTimeout(settle, 0)
+}
 function onDocDown(e: PointerEvent): void {
   if (!props.open || docked.value) return
   const t = e.target as Node | null
   if (t && root.value?.contains(t)) return
-  hide(false)
+  if (pending) clearTimeout(pending.timer)
+  // No click follows (a drag, a scroll bar): decided anyway
+  pending = { at: navigations, timer: setTimeout(settle, 400) }
 }
 function onDocKey(e: KeyboardEvent): void {
   if (e.key === 'Escape' && props.open && !docked.value) {
@@ -225,6 +246,10 @@ const onMedia = (): void => {
   emit('narrow', narrow.value)
 }
 onMounted(() => {
+  stopGuard = router?.beforeEach?.(() => {
+    navigations++
+  }) ?? null
+  document.addEventListener('click', onDocClick, true)
   document.addEventListener('pointerdown', onDocDown, true)
   document.addEventListener('keydown', onDocKey)
   refreshBounds()
@@ -235,6 +260,9 @@ onMounted(() => {
   }
 })
 onBeforeUnmount(() => {
+  stopGuard?.()
+  if (pending) clearTimeout(pending.timer)
+  document.removeEventListener('click', onDocClick, true)
   document.removeEventListener('pointerdown', onDocDown, true)
   document.removeEventListener('keydown', onDocKey)
   media?.removeEventListener?.('change', onMedia)
