@@ -30,6 +30,7 @@ import QdCardBlockScope from '../../cards/QdCardBlockScope.vue'
 import { computed, inject, nextTick, onBeforeUnmount, ref, watch, h, defineComponent, type Component, type VNode } from 'vue'
 import QdButton from '../base/QdButton.vue'
 import CardParamsForm from './CardParamsForm.vue'
+import QdCardSizePicker from './QdCardSizePicker.vue'
 import QdCardView from '../../cards/QdCardView.vue'
 import { getCard } from '../../cards/registry'
 import { DASHBOARD_ZONES } from '../../zones/zones'
@@ -41,6 +42,9 @@ import {
   cardGroup,
   cardSizes,
   cardSpan,
+  cardRows,
+  cardSize,
+  CARD_MAX,
   sectionOfCard,
   localArrangementStorage,
   type CardDef,
@@ -149,6 +153,7 @@ const root = ref<HTMLElement | null>(null)
 const slotSelector = (id: string) => `[data-card-id="${id.replace(/["\\]/g, '\\$&')}"]`
 const title = (c: CardDef) => tOr(c.card.title, c.card.title)
 const span = (c: CardDef) => cardSpan(arrangement.value, c)
+const rows = (c: CardDef) => cardRows(arrangement.value, c)
 const isPinned = (c: CardDef) => arrangement.value.pinned.includes(c.id)
 const groupFor = (c: CardDef) => cardGroup(arrangement.value, cards.value, c.id)
 /** An added card is drawn by its block, its parameters merged into the block's props */
@@ -167,13 +172,15 @@ const grids = computed(() => {
 })
 
 // ── Size and section (#5348) ──────────────────────────────────────────────
-const SIZE_LABEL = { s: 'core.cardsDashboard.sizeS', m: 'core.cardsDashboard.sizeM', l: 'core.cardsDashboard.sizeL' } as const
-const SIZE_FALLBACK = { s: 'Small', m: 'Medium', l: 'Large' } as const
-const sizeLabel = (size: 's' | 'm' | 'l') => tOr(SIZE_LABEL[size], SIZE_FALLBACK[size])
-const currentSize = (c: CardDef) => (['s', 'm', 'l'] as const)[span(c) - 1]!
+// Width × height, picked on a grid (#5503)
+const sizeLabel = (size: string) => {
+  const [w, hh] = size.split('x')
+  return tOr('core.cardsDashboard.sizeValue', '{w} × {h}', { w: w ?? '1', h: hh ?? '1' })
+}
+const currentSize = (c: CardDef): string => cardSize(arrangement.value, c)
 
 function onSize(c: CardDef, size: string): void {
-  if (state.resize(c.id, size as 's' | 'm' | 'l')) announce(tOr('core.cardsDashboard.resized', '{title}: {size}', { title: title(c), size: sizeLabel(size as 's' | 'm' | 'l') }))
+  if (state.resize(c.id, size as never)) announce(tOr('core.cardsDashboard.resized', '{title}: {size}', { title: title(c), size: sizeLabel(size) }))
 }
 
 const sectionTitle = (id: string | null) => arrangement.value.sections.find((s) => s.id === id)?.title ?? ''
@@ -511,7 +518,7 @@ function render(block: BlockConfig, props?: Record<string, unknown>): Component 
           :key="c.id"
           class="qd-cards-slot"
           :class="{ 'qd-cards-pinned': isPinned(c), 'qd-cards-dragging': dragging === c.id }"
-          :style="{ '--qd-card-span': span(c) }"
+          :style="{ '--qd-card-span': span(c), '--qd-card-rows': rows(c) }"
           :data-card-id="c.id"
           :data-zone-block="c.block ?? c.id"
         >
@@ -528,16 +535,16 @@ function render(block: BlockConfig, props?: Record<string, unknown>): Component 
               <i class="pi pi-arrows-alt" aria-hidden="true"></i>
             </button>
             <span class="qd-cards-title">{{ title(c) }}</span>
-            <select
+            <QdCardSizePicker
               v-if="cardSizes(c).length > 1"
               class="qd-cards-size"
-              :value="currentSize(c)"
-              :aria-label="tOr('core.cardsDashboard.size', 'Size of {title}', { title: title(c) })"
-              :title="tOr('core.cardsDashboard.size', 'Size of {title}', { title: title(c) })"
-              @change="onSize(c, ($event.target as HTMLSelectElement).value)"
-            >
-              <option v-for="size in cardSizes(c)" :key="size" :value="size">{{ sizeLabel(size) }}</option>
-            </select>
+              :model-value="currentSize(c)"
+              :allowed="cardSizes(c)"
+              :title="title(c)"
+              :cols="CARD_MAX.w"
+              :rows="CARD_MAX.h"
+              @update:model-value="onSize(c, $event)"
+            />
             <select
               v-if="arrangement.sections.length > 1 && !isPinned(c) && !c.card.fixed"
               class="qd-cards-section"
@@ -580,7 +587,7 @@ function render(block: BlockConfig, props?: Record<string, unknown>): Component 
               <i class="pi pi-trash" aria-hidden="true"></i>
             </button>
           </div>
-          <QdCardBlockScope :links="c.card.links" :blocks="c.card.blocks">
+          <QdCardBlockScope :links="c.card.links" :blocks="c.card.blocks" :size="currentSize(c)">
             <component :is="render(blockOf(c), propsOf(c))" v-bind="propsOf(c)" />
           </QdCardBlockScope>
         </div>
@@ -615,7 +622,7 @@ function render(block: BlockConfig, props?: Record<string, unknown>): Component 
           v-for="c in state.groups.value.hidden"
           :key="c.id"
           class="qd-cards-slot qd-cards-hidden"
-          :style="{ '--qd-card-span': span(c) }"
+          :style="{ '--qd-card-span': span(c), '--qd-card-rows': rows(c) }"
           :data-hidden-card-id="c.id"
         >
           <div class="qd-cards-bar">

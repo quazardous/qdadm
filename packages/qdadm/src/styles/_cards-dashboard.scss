@@ -30,6 +30,10 @@
 
 .qd-cards-slot {
   grid-column: span var(--qd-card-span, 1);
+  // Two rows high (#5503): the rows around it as tall as their cards, and
+  // the card at least two row units; a one-row card keeps its own height
+  grid-row: span var(--qd-card-rows, 1);
+  min-height: calc((var(--qd-card-rows, 1) - 1) * (var(--qd-card-row, 10rem) * 2 + 1rem));
   display: flex;
   flex-direction: column;
   min-width: 0;
@@ -43,6 +47,8 @@
 @container (max-width: 40rem) {
   .qd-cards-slot {
     grid-column: auto;
+    grid-row: auto;
+    min-height: 0;
   }
 }
 
@@ -253,7 +259,7 @@
   min-width: 6rem;
 }
 
-.qd-cards-size,
+.qd-size-picker-button,
 .qd-cards-section {
   max-width: 8rem;
   height: 2rem;
@@ -382,4 +388,107 @@
 .qd-card-params-actions {
   display: flex;
   gap: 0.5rem;
+}
+
+// The size picker (#5503): a button showing the size, a grid to pick it
+.qd-size-picker {
+  position: relative;
+  display: inline-flex;
+}
+
+.qd-size-picker-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.qd-size-picker-icon,
+.qd-size-picker-grid {
+  display: grid;
+  grid-template-columns: repeat(var(--cols, 3), 1fr);
+  grid-template-rows: repeat(var(--rows, 2), 1fr);
+}
+
+.qd-size-picker-icon {
+  gap: 1px;
+  width: 1.05rem;
+  height: 0.75rem;
+
+  > span {
+    border-radius: 1px;
+    background: var(--p-content-border-color, #cbd5e1);
+
+    &.on {
+      background: var(--p-primary-color, #3b82f6);
+    }
+  }
+}
+
+.qd-size-picker-panel {
+  position: absolute;
+  top: calc(100% + 0.3rem);
+  right: 0;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  padding: 0.5rem;
+  border: 1px solid var(--p-content-border-color, #d1d5db);
+  border-radius: var(--p-content-border-radius, 6px);
+  background: var(--p-content-background, #fff);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.14);
+  touch-action: none;
+  user-select: none;
+}
+
+.qd-size-picker-grid {
+  gap: 4px;
+}
+
+.qd-size-picker-cell {
+  width: 2.1rem;
+  height: 1.6rem;
+  padding: 0;
+  border: 1px solid var(--p-content-border-color, #cbd5e1);
+  border-radius: 3px;
+  background: var(--p-content-background, #fff);
+  cursor: pointer;
+
+  &.lit {
+    border-color: var(--p-primary-color, #3b82f6);
+    background: color-mix(in srgb, var(--p-primary-color, #3b82f6) 28%, transparent);
+  }
+
+  &.current {
+    box-shadow: inset 0 0 0 2px var(--p-primary-color, #3b82f6);
+  }
+
+  &.off {
+    cursor: not-allowed;
+    background-image: repeating-linear-gradient(135deg, transparent 0 4px, rgba(127, 127, 127, 0.18) 4px 5px);
+
+    &.lit {
+      border-color: var(--p-content-border-color, #cbd5e1);
+      background-color: color-mix(in srgb, var(--p-text-muted-color, #64748b) 18%, transparent);
+    }
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--p-primary-color, #3b82f6);
+    outline-offset: 1px;
+  }
+}
+
+.qd-size-picker-value {
+  font-size: 0.8125rem;
+  text-align: center;
+  color: var(--p-text-color);
+}
+
+.qd-size-picker-no {
+  display: block;
+  font-size: 0.75rem;
+  color: var(--p-text-muted-color, #64748b);
 }

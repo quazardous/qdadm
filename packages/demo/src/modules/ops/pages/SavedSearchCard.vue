@@ -4,14 +4,18 @@
  * button walks them one after the other (#5343). It is a repeatable block of
  * the ops-dashboard zone: each person adds it from the catalogue, once per
  * genre, and its parameters (genre, how many lines) arrive as its props.
+ * Two rows high on the dashboard (#5503), it lists twice the lines.
  */
 import { computed } from 'vue'
-import { useOrchestrator, useAsyncRead, QdCardView } from '@quazardous/qdadm'
+import { useOrchestrator, useAsyncRead, useCardSlotSize, QdCardView } from '@quazardous/qdadm'
 
 const props = defineProps({
   genre: { type: String, required: true },
   maxItems: { type: Number, default: 3 },
 })
+
+const slot = useCardSlotSize()
+const lines = computed(() => props.maxItems * (slot.value?.h ?? 1))
 
 const { getManager } = useOrchestrator()
 const books = getManager('books')
@@ -44,5 +48,5 @@ const data = computed(() => ({
 </script>
 
 <template>
-  <QdCardView type="queue" :envelope="envelope" :data="data" :options="{ maxItems }" />
+  <QdCardView type="queue" :envelope="envelope" :data="data" :options="{ maxItems: lines }" />
 </template>

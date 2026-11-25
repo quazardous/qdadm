@@ -435,7 +435,8 @@ both pills at once, without waiting for the next refresh.
 | `fixed` | Keeps its default place: no handle, no pin. The other cards flow around it. |
 | `pinned` | Pinned at the top by default; the user can unpin it. |
 | `span` | Columns the card spans, 1 to 3. On a narrow grid every card takes one column. |
-| `sizes` | The sizes the user may pick: `s`, `m`, `l` are 1, 2, 3 columns. Default all; `span` stays the default size. |
+| `rows` | Rows it spans, 1 or 2 (default 1). |
+| `sizes` | The sizes the user may pick, width × height: `'1x1'` to `'3x2'`; `s`, `m`, `l` say `1x1`, `2x1`, `3x1`. Default all six; `span` × `rows` stays the default size. |
 | `description` | What it shows, in the catalogue (an i18n key works). |
 | `repeatable` | Added from the catalogue, as many times as wanted, each with its own parameters (below). The block itself is not shown, nor by a classic `Zone`. |
 | `params` | A repeatable card's parameters: a JSON Schema in the cards' subset (`type`, `enum`, `required`, `minimum`…), with a `title` and a `description` per property. `enumLabels` gives a choice's words, keyed by value. |
@@ -490,7 +491,16 @@ cards, "Reset" and "Done". Outside edit mode only the cards show.
 - **"Add a card"** opens the catalogue: the repeatable cards, each with its
   description (and its question, for a [ready-made card](cards.md)), and the
   hidden cards, which come back where they were.
-- **The size:** a choice on the card's bar, among its `sizes`.
+- **The size:** a button on the card's bar shows it (« 2 × 1 ») and opens a
+  3 × 2 grid. Hovering or dragging from its top-left corner lights the
+  rectangle; a click or a release picks it. The sizes the card does not allow
+  are greyed out. From the keyboard: the focus on the current size, the arrows
+  move, Enter picks, Escape closes. The change is announced.
+- **Two rows high:** the card spans two rows of the grid, at least two row
+  units (`--qd-card-row`, 10rem); a one-row card keeps its own height. On a
+  narrow grid it takes one column and one row like the others. Its body reads
+  the slot's size with `useCardSlotSize()` (`{ w, h }`, null outside a
+  dashboard) to show more: the demo's saved search lists twice the lines.
 - **"Add a section"** groups the cards under names: the first time, it makes
   "Main", holding every card, and a new section to name. A section's name is
   edited in place; removing a section sends its cards to the first one. A card
@@ -651,7 +661,8 @@ On every load it is reconciled with the declared cards:
 - a `required` card is never hidden, a `fixed` card is back at its default place;
 - an added card whose block is gone, or whose parameters no longer fit its
   schema, is dropped (with a console warning); a size the card no longer
-  allows is dropped;
+  allows is dropped; a size saved by its old name (`s`, `m`, `l`) is read as
+  `1x1`, `2x1`, `3x1`, and saved by that name from then on;
 - an unknown version starts from the default.
 
 `useCardsArrangement(storageKey, cards, { storage, autoSave, loadGrace })` is

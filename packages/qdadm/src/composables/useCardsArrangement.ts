@@ -74,8 +74,25 @@ export interface CardsGroups {
 
 export const CARDS_ARRANGEMENT_VERSION = 2
 
-export const CARD_SIZES: readonly CardSizeName[] = ['s', 'm', 'l']
-const SPAN: Record<CardSizeName, number> = { s: 1, m: 2, l: 3 }
+/** Every size a card may take, width × height (#5503) */
+export const CARD_SIZES: readonly CardSizeName[] = ['1x1', '2x1', '3x1', '1x2', '2x2', '3x2']
+/** The widest and the tallest */
+export const CARD_MAX = { w: 3, h: 2 } as const
+const OLD_NAMES: Record<string, CardSizeName> = { s: '1x1', m: '2x1', l: '3x1' }
+
+/** A size by its canonical name (`'2x1'`), the old ones (`s`, `m`, `l`) read too; null when it is none */
+export function normalizeCardSize(size: unknown): CardSizeName | null {
+  if (typeof size !== 'string') return null
+  const name = OLD_NAMES[size] ?? size
+  return CARD_SIZES.includes(name as CardSizeName) ? (name as CardSizeName) : null
+}
+
+/** A size's width and height */
+export function cardSizeParts(size: CardSizeName): { w: number; h: number } {
+  const name = normalizeCardSize(size) ?? '1x1'
+  const [w, h] = name.split('x').map(Number)
+  return { w: w!, h: h! }
+}
 
 /** Migrations from an older saved version to the next */
 const MIGRATIONS: Record<number, (old: Record<string, unknown>) => Record<string, unknown>> = {
@@ -85,15 +102,28 @@ const MIGRATIONS: Record<number, (old: Record<string, unknown>) => Record<string
 
 /** The sizes a card may take */
 export function cardSizes(c: CardDef): CardSizeName[] {
-  const allowed = (c.card.sizes ?? CARD_SIZES).filter((s) => CARD_SIZES.includes(s))
+  const declared = new Set((c.card.sizes ?? CARD_SIZES).map(normalizeCardSize).filter((s): s is CardSizeName => !!s))
+  const allowed = CARD_SIZES.filter((s) => declared.has(s))
   return allowed.length ? allowed : [...CARD_SIZES]
+}
+
+/** A card's size: the one picked, else its declared span × rows (#5503) */
+export function cardSize(arrangement: CardsArrangement, c: CardDef): CardSizeName {
+  const picked = normalizeCardSize(arrangement.sizes[c.id])
+  if (picked && cardSizes(c).includes(picked)) return picked
+  const w = Math.max(1, Math.min(CARD_MAX.w, Math.round(c.card.span ?? 1)))
+  const h = Math.max(1, Math.min(CARD_MAX.h, Math.round(c.card.rows ?? 1)))
+  return `${w}x${h}` as CardSizeName
 }
 
 /** Columns a card spans: the size picked, else its declared span */
 export function cardSpan(arrangement: CardsArrangement, c: CardDef): number {
-  const size = arrangement.sizes[c.id]
-  if (size && cardSizes(c).includes(size)) return SPAN[size]
-  return Math.max(1, Math.min(3, Math.round(c.card.span ?? 1)))
+  return cardSizeParts(cardSize(arrangement, c)).w
+}
+
+/** Rows a card spans (#5503): the size picked, else its declared rows */
+export function cardRows(arrangement: CardsArrangement, c: CardDef): number {
+  return cardSizeParts(cardSize(arrangement, c)).h
 }
 
 /** The cards shown or hidden: the declared ones, without the repeatable blocks, then the instances */
@@ -198,7 +228,8 @@ export function reconcileArrangement(saved: unknown, cards: CardDef[]): CardsArr
   if (isRecord(data.sizes)) {
     for (const [id, size] of Object.entries(data.sizes)) {
       const c = byId.get(id)
-      if (c && cardSizes(c).includes(size as CardSizeName)) sizes[id] = size as CardSizeName
+      const name = normalizeCardSize(size)
+      if (c && name && cardSizes(c).includes(name)) sizes[id] = name
     }
   }
   const sections: CardsSection[] = []
@@ -308,9 +339,10 @@ export function setHidden(arrangement: CardsArrangement, cards: CardDef[], id: s
 }
 
 /** The size a person picked for a card, among the ones it allows; null: back to its default */
-export function setSize(arrangement: CardsArrangement, cards: CardDef[], id: string, size: CardSizeName | null): CardsArrangement {
+export function setSize(arrangement: CardsArrangement, cards: CardDef[], id: string, given: CardSizeName | null): CardsArrangement {
   const card = effectiveCards(arrangement, cards).find((c) => c.id === id)
-  if (!card || (size && !cardSizes(card).includes(size)) || (arrangement.sizes[id] ?? null) === size) return arrangement
+  const size = given === null ? null : normalizeCardSize(given)
+  if (!card || (given !== null && (!size || !cardSizes(card).includes(size))) || (normalizeCardSize(arrangement.sizes[id]) ?? null) === size) return arrangement
   const sizes = { ...arrangement.sizes }
   if (size) sizes[id] = size
   else delete sizes[id]

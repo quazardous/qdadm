@@ -17,6 +17,7 @@ export { default as PageNav } from './layout/PageNav.vue'
 export { default as EntityItemLayout } from './layout/EntityItemLayout.vue'
 export { default as Zone } from './layout/Zone.vue'
 export { default as CardsDashboard } from './layout/CardsDashboard.vue'
+export { default as QdCardSizePicker } from './layout/QdCardSizePicker.vue'
 export { default as SidebarBox } from './layout/SidebarBox.vue'
 export { default as NavlinksGroup } from './layout/NavlinksGroup.vue'
 

@@ -162,11 +162,18 @@ describe('CardsDashboard: size and sections (#5348)', () => {
   it('a card takes the size its person picks, among the ones it allows', async () => {
     const w = mountDashboard()
     await button(w, 'Customise').trigger('click')
-    const select = w.find('[data-card-id="sales"] .qd-cards-size')
-    expect(select.findAll('option').map((o) => o.text())).toEqual(['Small', 'Medium'])
-    await select.setValue('m')
+    // Picked on a grid, width × height (#5503); the sizes it does not allow greyed out
+    const picker = w.find('[data-card-id="sales"] [data-size-picker]')
+    expect(picker.text()).toBe('1 × 1')
+    await picker.trigger('click')
+    const cells = w.findAll('[data-card-id="sales"] .qd-size-picker-cell')
+    expect(cells.map((c) => c.attributes('data-size') + (c.classes('off') ? ':off' : ''))).toEqual(['1x1', '2x1', '3x1:off', '1x2:off', '2x2:off', '3x2:off'])
+    await w.find('[data-card-id="sales"] [data-size="3x1"]').trigger('click')
+    expect(w.find('[data-card-id="sales"] .qd-size-picker-panel').exists()).toBe(true)
+    await w.find('[data-card-id="sales"] [data-size="2x1"]').trigger('click')
     expect(w.find('[data-card-id="sales"]').attributes('style')).toContain('--qd-card-span: 2')
-    expect(status(w)).toBe('Sales: Medium')
+    expect(w.find('[data-card-id="sales"] .qd-size-picker-panel').exists()).toBe(false)
+    expect(status(w)).toBe('Sales: 2 × 1')
   })
 
   it('sections: added, named, a card moved to one, removed', async () => {

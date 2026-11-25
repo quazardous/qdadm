@@ -13,6 +13,7 @@ export { default as QdRecentCard } from './QdRecentCard.vue'
 export { registerCard, getCard, listCards, checkCardInput, resolveCardOptions, optionsSchema } from './registry'
 export { validateCardData, type CardSchema, type SchemaProblem } from './validate'
 export { BUILTIN_CARDS } from './builtin'
+export { useCardSlotSize } from './blockLinks'
 // The blocks a card is made of (#5414)
 export * from './blocks/index'
 export type {

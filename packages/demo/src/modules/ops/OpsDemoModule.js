@@ -160,7 +160,8 @@ export class OpsDemoModule extends Module {
         title: 'Saved search',
         description: 'The books of one genre, oldest first, to review one after the other',
         repeatable: true,
-        sizes: ['s', 'm'],
+        // One or two columns, one or two rows high (#5503): taller, it lists twice the lines
+        sizes: ['1x1', '2x1', '1x2', '2x2'],
         params: {
           type: 'object',
           required: ['genre'],

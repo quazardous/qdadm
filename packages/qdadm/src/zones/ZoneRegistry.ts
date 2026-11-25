@@ -100,9 +100,14 @@ export interface BlockCard {
   pinned?: boolean
   /** Columns it spans, 1 to 3 (default 1) */
   span?: number
+  /** Rows it spans, 1 or 2 (default 1) (#5503) */
+  rows?: number
   /** What it shows, in the catalogue of cards to add (an i18n key works) (#5348) */
   description?: string
-  /** The sizes a person may pick for it: s, m, l are 1, 2, 3 columns (default all) (#5348) */
+  /**
+   * The sizes a person may pick for it (#5348), width × height: `'1x1'` to
+   * `'3x2'`; `s`, `m`, `l` say `1x1`, `2x1`, `3x1` (#5503). Default: all six.
+   */
   sizes?: CardSizeName[]
   /**
    * Added from the catalogue, as many times as wanted, each with its own
@@ -118,8 +123,12 @@ export interface BlockCard {
   blocks?: CardBlock[]
 }
 
-/** A card's size on a dashboard: 1, 2 or 3 columns */
-export type CardSizeName = 's' | 'm' | 'l'
+/**
+ * A card's size on a dashboard (#5503): `'WxH'`, 1 to 3 columns by 1 or 2
+ * rows; `s`, `m`, `l` are the one-row sizes' old names, read as `1x1`, `2x1`,
+ * `3x1`
+ */
+export type CardSizeName = 's' | 'm' | 'l' | `${1 | 2 | 3}x${1 | 2}`
 
 export interface BlockConfig {
   /** Vue component to render */

@@ -286,9 +286,9 @@ export default `core:
     paramRequired: Fill this in
     paramInvalid: "Not a valid value: {problem}"
     size: "Size of {title}"
-    sizeS: Small
-    sizeM: Medium
-    sizeL: Large
+    sizeValue: "{w} × {h}"
+    sizeCell: "{w} wide, {h} high"
+    sizeUnavailable: not for this card
     resized: "{title}: {size}"
     addSection: Add a section
     firstSection: Main

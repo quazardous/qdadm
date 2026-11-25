@@ -91,7 +91,7 @@ describe('the arrangement v2 (#5348)', () => {
     const r = reconcileArrangement(saved, CARDS)
     expect(r.order).toEqual(['a', 'search~1', 'b', 'c'])
     expect(r.instances.map((i) => i.id)).toEqual(['search~1'])
-    expect(r.sizes).toEqual({ 'search~1': 'l' })
+    expect(r.sizes).toEqual({ 'search~1': '3x1' })
     expect(warn.mock.calls.map((w) => String(w[0])).join('\n')).toContain('search~2')
     warn.mockRestore()
   })
@@ -106,7 +106,8 @@ describe('the arrangement v2 (#5348)', () => {
     arr = setSize(arr, CARDS, 'b', null)
     expect(arr.sizes).toEqual({})
     // A saved size the card no longer allows is dropped
-    expect(reconcileArrangement({ ...arr, sizes: { b: 'l', a: 'm' } }, CARDS).sizes).toEqual({ a: 'm' })
+    // (the old names read as their width × height, #5503)
+    expect(reconcileArrangement({ ...arr, sizes: { b: 'l', a: 'm' } }, CARDS).sizes).toEqual({ a: '2x1' })
   })
 
   it('sections: cards in the first by default, moved to another, back to the first when theirs is removed', () => {
