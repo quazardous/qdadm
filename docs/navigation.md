@@ -119,9 +119,12 @@ settingsMenu: {
   home counts as a settings page: the settings menu opens there by itself.
 - **The breadcrumb** of a settings page, one whose entry is in the settings
   menu: « Home › Settings › Security › Users ». « Settings » links to the
-  home. The section has no page, so it has no link, and a `flat` menu has
-  none. On the home itself: « Home › Settings ». A route that declares its own
-  `meta.breadcrumb` keeps it.
+  home; the section links to its place on it (`#settings-<slug>`, the id each
+  section of `QdSettingsHome` carries; an app's own home can carry them too).
+  The section step is left out when it says nothing more: it has the home's
+  own name (« Settings › Settings »), the person sees a single settings
+  section, or the menu is `flat`. On the home itself: « Home › Settings ». A
+  route that declares its own `meta.breadcrumb` keeps it.
 
 ## The sidebar collapsed to its icons
 

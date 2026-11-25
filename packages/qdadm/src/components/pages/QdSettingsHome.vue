@@ -5,22 +5,40 @@
  * shown to whoever the menu shows it to. The root of every settings page's
  * breadcrumb.
  */
-import { RouterLink } from 'vue-router'
+import { nextTick, onMounted, watch } from 'vue'
+import { RouterLink, useRoute } from 'vue-router'
 import PageLayout from '../layout/PageLayout.vue'
 import { useNavigation } from '../../composables/useNavigation'
 import { useI18n } from '../../i18n/useI18n'
+import { settingsSectionAnchor } from '../../kernel/settingsHome'
 
 const nav = useNavigation()
 const { tOr } = useI18n()
 const sections = nav.settingsSections
 const flat = nav.settingsMenu.flat
+
+// A breadcrumb's section step leads here, to its section (#5501)
+const route = useRoute()
+async function toAnchor(): Promise<void> {
+  const id = route.hash?.replace(/^#/, '')
+  if (!id || typeof document === 'undefined') return
+  await nextTick()
+  document.getElementById(id)?.scrollIntoView({ block: 'start' })
+}
+onMounted(toAnchor)
+watch(() => route.hash, toAnchor)
 </script>
 
 <template>
   <PageLayout :title="nav.settingsMenu.label">
     <div class="qd-settings-home" data-settings-home-page>
       <p v-if="!sections.length" class="qd-settings-home-empty">{{ tOr('core.settingsMenu.empty', 'Nothing to set here.') }}</p>
-      <section v-for="section in sections" :key="section.title || section.label" class="qd-settings-home-section">
+      <section
+        v-for="section in sections"
+        :id="section.title ? settingsSectionAnchor(section.title) : undefined"
+        :key="section.title || section.label"
+        class="qd-settings-home-section"
+      >
         <h2 v-if="!flat && section.title" class="qd-settings-home-title">{{ section.title }}</h2>
         <div class="qd-settings-home-grid">
           <template v-for="item in section.items" :key="item.route ?? item.href">

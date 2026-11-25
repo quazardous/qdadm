@@ -57,3 +57,17 @@ export function settingsHomeRecords(
   }
   return [{ path, name: SETTINGS_HOME_ROUTE, component: () => import('../components/pages/QdSettingsHome.vue') }]
 }
+
+/** A title for comparing: no case, no accents, no surrounding space */
+const plain = (s: string): string => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim()
+
+/** Two names that read the same (#5501): « Paramètres » and « parametres » */
+export function sameName(a: string | null | undefined, b: string | null | undefined): boolean {
+  return !!a && !!b && plain(a) === plain(b)
+}
+
+/** The anchor of a section on the settings home (#5501): `settings-<slug>` */
+export function settingsSectionAnchor(title: string): string {
+  const slug = plain(title).replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '')
+  return `settings-${slug || 'section'}`
+}

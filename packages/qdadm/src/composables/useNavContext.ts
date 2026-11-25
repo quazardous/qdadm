@@ -27,7 +27,7 @@ import type { ActiveStack } from '../chain/ActiveStack'
 import { getDomain } from '../domain/registry'
 import { routeCrumbLabel } from './routeCrumbLabel'
 import { useNavigation } from './useNavigation'
-import { settingsBreadcrumbMode, type SettingsHomeConfig } from '../kernel/settingsHome'
+import { settingsBreadcrumbMode, sameName, settingsSectionAnchor, type SettingsHomeConfig } from '../kernel/settingsHome'
 import type { EntityManagerLike, OrchestratorLike } from '../entity/EntityManager.interface'
 
 // #1191 — shared minimal structural views (was: local redeclarations)
@@ -67,7 +67,7 @@ export interface NavChainSegment {
  */
 export interface BreadcrumbItem {
   label: string
-  to?: { name: string; params?: RouteParamsRawGeneric } | null
+  to?: { name: string; params?: RouteParamsRawGeneric; hash?: string } | null
   icon?: string
 }
 
@@ -343,8 +343,14 @@ export function useNavContext(_options: UseNavContextOptions = {}): UseNavContex
     if (route.name === home) return [{ label, to: null }]
     const section = settingsNav.settingsSection.value
     if (!section) return []
-    const items: BreadcrumbItem[] = [{ label, to: routeExists(home) ? { name: home } : null }]
-    if (mode === 'section' && !flat && section.title) items.push({ label: section.title })
+    const linked = routeExists(home)
+    const items: BreadcrumbItem[] = [{ label, to: linked ? { name: home } : null }]
+    // The section, leading to its place on the home (#5501); not when it says
+    // nothing more: the home's own name, or the menu's only section
+    const alone = settingsNav.settingsSections.value.length < 2
+    if (mode === 'section' && !flat && section.title && !alone && !sameName(section.title, label)) {
+      items.push({ label: section.title, to: linked ? { name: home, hash: `#${settingsSectionAnchor(section.title)}` } : null })
+    }
     return items
   })
 

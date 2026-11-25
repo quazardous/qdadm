@@ -14,7 +14,7 @@ import { useNavContext } from '../../src/composables/useNavContext'
 import { useNavigation } from '../../src/composables/useNavigation'
 import { useSettingsMenu } from '../../src/composables/useSettingsMenu'
 import { registry, resetRegistry } from '../../src/module/moduleRegistry'
-import { settingsHomeRoute, settingsBreadcrumbMode, settingsHomeRecords, SETTINGS_HOME_ROUTE } from '../../src/kernel/settingsHome'
+import { settingsHomeRoute, settingsBreadcrumbMode, settingsHomeRecords, sameName, settingsSectionAnchor, SETTINGS_HOME_ROUTE } from '../../src/kernel/settingsHome'
 import QdSidebarMenus from '../../src/components/layout/QdSidebarMenus.vue'
 import QdSettingsHome from '../../src/components/pages/QdSettingsHome.vue'
 
@@ -86,7 +86,26 @@ describe('the settings home (#5500)', () => {
 
   it('a settings page: Home › Settings › its section › the page', async () => {
     const { nav } = await mountWith('/groups', { home: true })
-    expect(trail(nav)).toBe('Home* › Settings* › Access › Groups')
+    expect(trail(nav)).toBe('Home* › Settings* › Access* › Groups')
+    // The section step leads to its place on the home (#5501)
+    expect(nav.breadcrumb.value[2].to).toEqual({ name: SETTINGS_HOME_ROUTE, hash: '#settings-access' })
+  })
+
+  it('the section step is left out when it is the home\'s own name, or the only section (#5501)', async () => {
+    resetRegistry()
+    registry.addNavItem({ section: 'Settings', route: 'groups', label: 'Groups', menu: 'settings' })
+    registry.addNavItem({ section: 'Access', route: 'policy', label: 'Policy', menu: 'settings' })
+    expect(trail((await mountWith('/groups', { home: true })).nav)).toBe('Home* › Settings* › Groups')
+    expect(trail((await mountWith('/groups', { home: true, label: 'SETTINGS' })).nav)).toBe('Home* › SETTINGS* › Groups')
+    resetRegistry()
+    registry.addNavItem({ section: 'Access', route: 'groups', label: 'Groups', menu: 'settings' })
+    expect(trail((await mountWith('/groups', { home: true })).nav)).toBe('Home* › Settings* › Groups')
+  })
+
+  it('names and anchors read the same without case or accents', () => {
+    expect(sameName('Paramètres', 'parametres')).toBe(true)
+    expect(sameName('Paramètres', 'Sécurité')).toBe(false)
+    expect(settingsSectionAnchor('Sécurité & accès')).toBe('settings-securite-acces')
   })
 
   it("breadcrumb: 'home' leaves the section out; false, the settings too", async () => {
@@ -146,5 +165,6 @@ describe('the settings home (#5500)', () => {
     expect(w.findAll('.qd-settings-home-title').map((t) => t.text())).toEqual(['Access', 'Security'])
     expect(w.findAll('.qd-settings-home-card').map((c) => c.text())).toEqual(['Groups', 'Own'])
     expect(w.find('.qd-settings-home-card').attributes('href')).toBe('/groups')
+    expect(w.findAll('.qd-settings-home-section').map((x) => x.attributes('id'))).toEqual(['settings-access', 'settings-security'])
   })
 })
