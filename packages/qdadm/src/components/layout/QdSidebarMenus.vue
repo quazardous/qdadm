@@ -41,8 +41,8 @@ onMounted(() => {
     console.warn('Failed to load nav state:', e)
   }
 })
-function toggleSection(title: string): void {
-  collapsedSections.value[title] = !collapsedSections.value[title]
+function toggleSection(key: string): void {
+  collapsedSections.value[key] = !collapsedSections.value[key]
   try {
     localStorage.setItem(STORAGE_KEY.value, JSON.stringify(collapsedSections.value))
   } catch (e) {
@@ -51,18 +51,27 @@ function toggleSection(title: string): void {
 }
 const titleOf = (section: NavSection) => section.title || section.label || ''
 type PaneKey = 'main' | 'settings'
+/**
+ * A section's fold, kept per menu (#5499): a « Security » of the settings is
+ * not the main menu's. The main menu keeps its bare titles, as saved before.
+ */
+const foldKey = (section: NavSection, pane: PaneKey) => (pane === 'settings' ? `settings:${titleOf(section)}` : titleOf(section))
 /** Section titles, even a lone one's (#5418); `flat` takes the settings menu's away */
 const titled = (pane: PaneKey, _count: number) => pane === 'main' || !props.settings.flat
 /** Never folded while it holds the current entry; nor without a title to unfold it */
 const isSectionExpanded = (section: NavSection, pane: PaneKey = 'main', count = 2) =>
-  !titled(pane, count) || sectionHasActiveItem(section) || !collapsedSections.value[titleOf(section)]
+  !titled(pane, count) || sectionHasActiveItem(section) || !collapsedSections.value[foldKey(section, pane)]
 
 // The section of the current page unfolds (not saved: the person may fold it again)
 watch(
   () => route?.path,
   () => {
-    for (const section of [...nav.navSections.value, ...nav.settingsSections.value]) {
-      if (sectionHasActiveItem(section) && collapsedSections.value[titleOf(section)]) collapsedSections.value[titleOf(section)] = false
+    const all: Array<[NavSection, PaneKey]> = [
+      ...nav.navSections.value.map((s): [NavSection, PaneKey] => [s, 'main']),
+      ...nav.settingsSections.value.map((s): [NavSection, PaneKey] => [s, 'settings']),
+    ]
+    for (const [section, pane] of all) {
+      if (sectionHasActiveItem(section) && collapsedSections.value[foldKey(section, pane)]) collapsedSections.value[foldKey(section, pane)] = false
     }
   }
 )
@@ -134,7 +143,7 @@ function entryName(section: NavSection, item: { label?: string }, pane: PaneKey,
             v-if="titled(pane.key, pane.sections.length)"
             class="nav-section-title"
             :class="{ 'nav-section-active': sectionHasActiveItem(section) }"
-            @click="toggleSection(titleOf(section))"
+            @click="toggleSection(foldKey(section, pane.key))"
           >
             <span>{{ section.title }}</span>
             <i class="nav-section-chevron pi" :class="isSectionExpanded(section, pane.key, pane.sections.length) ? 'pi-chevron-down' : 'pi-chevron-right'"></i>

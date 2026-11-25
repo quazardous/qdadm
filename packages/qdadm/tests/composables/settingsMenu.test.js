@@ -210,3 +210,34 @@ describe('the settings menu, lighter (#5410)', () => {
     expect(plain.w.find('[data-menu="settings"]').classes()).not.toContain('sidebar-menu--toned')
   })
 })
+
+describe('two sections of the same title, one per menu (#5499)', () => {
+  const titles = (w, menu) => w.findAll(`[data-menu="${menu}"] .nav-section-title span`).map((s) => s.text())
+  const folded = (w, menu) => w.findAll(`[data-menu="${menu}"] .nav-section-title .pi-chevron-right`).length
+  beforeEach(() => {
+    resetRegistry()
+    localStorage.removeItem('qdadm_nav_collapsed')
+    registry.addNavItem({ section: 'Security', route: 'groups', label: 'Access' })
+    registry.addNavItem({ section: 'Security', route: 'books', label: 'Sessions' })
+    registry.addNavItem({ section: 'Security', route: 'security', label: 'Security policy', menu: 'settings' })
+  })
+
+  it('stay two: each menu shows its own entries', async () => {
+    const { w } = await mountSidebar()
+    expect(titles(w, 'main')).toEqual(['Security'])
+    expect(labels(w, 'main')).toEqual(['Access', 'Sessions'])
+    expect(titles(w, 'settings')).toEqual(['Security'])
+    expect(labels(w, 'settings')).toEqual(['Security policy'])
+  })
+
+  it('fold apart: folding one leaves the other open', async () => {
+    const { w } = await mountSidebar()
+    await w.find('[data-menu="main"] .nav-section-title').trigger('click')
+    expect(folded(w, 'main')).toBe(1)
+    expect(folded(w, 'settings')).toBe(0)
+    expect(JSON.parse(localStorage.getItem('qdadm_nav_collapsed'))).toEqual({ Security: true })
+    await w.find('[data-menu="settings"] .nav-section-title').trigger('click')
+    expect(JSON.parse(localStorage.getItem('qdadm_nav_collapsed'))).toEqual({ Security: true, 'settings:Security': true })
+    localStorage.removeItem('qdadm_nav_collapsed')
+  })
+})

@@ -69,6 +69,17 @@ createKernel({
   menu by itself; a page of the main menu brings the main menu back.
 - **Sections:** it holds as many as are declared, each with its title, a
   lone one's too: it says which menu this is. `flat: true` draws no title.
+- **An entry or a whole section:** an entry's own `menu` decides first;
+  `settingsMenu.sections` sends the entries of a section that say nothing.
+  So a section of the same title can live in both menus, as two sections:
+  leave its name out of `settingsMenu.sections`, and give `menu: 'settings'`
+  to the entries that go behind the gear. Each menu shows its own entries
+  under the title, and each folds on its own.
+
+  ```js
+  ctx.navItem({ section: 'Security', route: 'sessions', label: 'Sessions' })              // main menu
+  ctx.navItem({ section: 'Security', route: 'security-policy', label: 'Policy', menu: 'settings' })
+  ```
 - **Its colours:** a deeper blue, light electric blue for the current entry
   and the accents, the gear the same while it is open. Each is a CSS custom
   property, to set on `:root` or `.sidebar` (and under `.dark-mode` for the
