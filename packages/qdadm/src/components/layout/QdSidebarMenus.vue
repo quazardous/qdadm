@@ -138,6 +138,19 @@ function entryName(section: NavSection, item: { label?: string }, pane: PaneKey,
           <i class="pi pi-arrow-left" aria-hidden="true"></i>
           <span>{{ tOr('core.settingsMenu.menu', 'Menu') }}</span>
         </button>
+        <!-- The settings home (#5500): the menu's first row -->
+        <RouterLink
+          v-if="pane.key === 'settings' && settings.home"
+          v-tooltip.right="iconsOnly ? settings.label : undefined"
+          :to="{ name: settings.home }"
+          class="nav-item sidebar-menu-home"
+          :class="{ 'nav-item-active': route?.name === settings.home }"
+          :aria-label="iconsOnly ? settings.label : undefined"
+          data-settings-home
+        >
+          <i class="pi pi-th-large" aria-hidden="true"></i>
+          <span>{{ settings.label }}</span>
+        </RouterLink>
         <div v-for="section in pane.sections" :key="titleOf(section)" class="nav-section">
           <div
             v-if="titled(pane.key, pane.sections.length)"

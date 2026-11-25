@@ -123,7 +123,8 @@ const kernel = new Kernel({
     breadcrumbModeToggle: true,
     // The settings menu behind the gear (#5401): the Security section and the
     // settings, for administrators only
-    settingsMenu: { sections: ['Security'], visible: (user) => user?.role === 'ROLE_ADMIN' },
+    // and its home (#5500), qdadm's own, the root of the settings pages' breadcrumb
+    settingsMenu: { sections: ['Security'], visible: (user) => user?.role === 'ROLE_ADMIN', home: true },
   },
 
   // PrimeVue

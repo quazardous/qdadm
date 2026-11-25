@@ -517,6 +517,7 @@ export default `core:
     label: Paramètres
     back: Retour au menu
     menu: Menu
+    empty: Rien à régler ici.
   favorites:
     seeAll: Tout voir
     seeAllCount: "Tout voir ({count})"

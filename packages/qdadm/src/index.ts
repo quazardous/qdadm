@@ -307,6 +307,7 @@ export {
   // NavItem already exported from kernel
 } from './composables/useNavigation'
 export { useSettingsMenu, SETTINGS_MENU_IDS, type UseSettingsMenuReturn } from './composables/useSettingsMenu'
+export { SETTINGS_HOME_ROUTE, type SettingsBreadcrumb } from './kernel/settingsHome'
 export {
   useUnsavedChangesGuard,
   type UseUnsavedChangesGuardOptions,

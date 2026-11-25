@@ -458,6 +458,12 @@ $nav-item-content-left: calc((var(--fad-sidebar-width-collapsed) + #{$nav-item-i
   color: var(--p-surface-0, white);
 }
 
+// The settings home (#5500): the settings menu's first row, apart from its sections
+.sidebar-nav .sidebar-menu-home {
+  margin-bottom: var(--fad-nav-section-gap);
+  font-weight: var(--fad-font-weight-medium);
+}
+
 // The gear, between the user block and "powered by"
 .sidebar-settings-toggle {
   position: relative;

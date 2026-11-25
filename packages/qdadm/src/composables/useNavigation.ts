@@ -19,6 +19,7 @@ import { useI18n } from '../i18n/useI18n'
 import type { HookRegistry } from '../hooks/HookRegistry'
 import type { OrchestratorLike } from '../entity/EntityManager.interface'
 import { leaveDomain } from '../domain/keep'
+import { settingsHomeRoute, settingsBreadcrumbMode, type SettingsBreadcrumb, type SettingsHomeConfig } from '../kernel/settingsHome'
 
 // #1191 — shared minimal structural view (was: local redeclaration)
 type Orchestrator = OrchestratorLike
@@ -79,6 +80,10 @@ export interface SettingsMenuLook {
   flat: boolean
   /** Its own colours (`--qd-settings-menu-*`) */
   tone: boolean
+  /** The settings home's route (#5500), or null */
+  home: string | null
+  /** What a settings page's breadcrumb gets after Home (#5500) */
+  breadcrumb: SettingsBreadcrumb
 }
 
 export interface UseNavigationReturn {
@@ -88,8 +93,10 @@ export interface UseNavigationReturn {
   settingsSections: ComputedRef<NavSection[]>
   /** There is a settings menu for this user */
   hasSettingsMenu: ComputedRef<boolean>
-  /** The page on screen is one of the settings menu's */
+  /** The page on screen is one of the settings menu's, or its home */
   settingsActive: ComputedRef<boolean>
+  /** The settings section holding the page on screen (#5500), or null */
+  settingsSection: ComputedRef<NavSection | null>
   /** The settings menu's name, icon and look (`features.settingsMenu`) */
   settingsMenu: SettingsMenuLook
   /** Whether menu:alter has completed */
@@ -211,7 +218,7 @@ export function useNavigation(): UseNavigationReturn {
   // alteration or locale change.
   // The settings menu (#5401): its entries say `menu: 'settings'`; the app
   // may narrow who sees it beyond its entries' permissions
-  const features = inject<{ settingsMenu?: { visible?: (user: unknown) => boolean; label?: string; icon?: string; sections?: string[]; back?: boolean; flat?: boolean; tone?: boolean } } | null>('qdadmFeatures', null)
+  const features = inject<{ settingsMenu?: { visible?: (user: unknown) => boolean; label?: string; icon?: string; sections?: string[]; back?: boolean; flat?: boolean; tone?: boolean } & SettingsHomeConfig } | null>('qdadmFeatures', null)
   const { user } = useAuth()
   const settingsConfig = features?.settingsMenu ?? {}
   const settingsSectionNames = new Set(settingsConfig.sections ?? [])
@@ -300,7 +307,11 @@ export function useNavigation(): UseNavigationReturn {
     }
   }
 
-  const settingsActive = computed(() => settingsSections.value.some((section) => sectionHasActiveItem(section)))
+  const settingsHome = settingsHomeRoute(settingsConfig)
+  const settingsSection = computed(() => settingsSections.value.find((section) => sectionHasActiveItem(section)) ?? null)
+  const settingsActive = computed(() =>
+    (!!settingsHome && route.name === settingsHome && settingsAllowed.value) || settingsSection.value !== null
+  )
 
   return {
     // Data (from moduleRegistry)
@@ -308,12 +319,15 @@ export function useNavigation(): UseNavigationReturn {
     settingsSections,
     hasSettingsMenu,
     settingsActive,
+    settingsSection,
     settingsMenu: {
       label: settingsConfig.label ?? resolveNavLabel('core.settingsMenu.label', 'Settings'),
       icon: settingsConfig.icon ?? 'pi pi-cog',
       back: settingsConfig.back === true,
       flat: settingsConfig.flat === true,
       tone: settingsConfig.tone !== false,
+      home: settingsHome,
+      breadcrumb: settingsBreadcrumbMode(settingsConfig),
     },
 
     // Ready state (menu:alter completed)

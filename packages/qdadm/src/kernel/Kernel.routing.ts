@@ -10,6 +10,7 @@ import { getRoutes, getItemTabs } from '../module/moduleRegistry'
 import { nestItemTabs } from './itemTabs'
 import { installChunkReload } from './chunkReload'
 import { homeRouteRecords } from './homeRoute'
+import { settingsHomeRecords } from './settingsHome'
 import { routeEntity, routePermissions, missingPermission, entityDenial } from '../security/routeAccess'
 import { resolveDomain, getDomain, DOMAIN_QUERY } from '../domain/registry'
 import { keptDomain, takeLeaveDomain } from '../domain/keep'
@@ -88,6 +89,10 @@ export function applyRoutingMethods(KernelClass: { prototype: Kernel }): void {
       ...homeRecords,
       ...(coreRoutes || []),
       ...protectedRoutes,
+      // qdadm's own settings home (#5500), after the app's: its /settings wins
+      ...settingsHomeRecords(this.options.features?.settingsMenu, (path) =>
+        moduleRoutes.some((r) => r.path.replace(/^\/+/, '') === path) || (coreRoutes || []).some((r) => r.path.replace(/^\/+/, '') === path)
+      ),
     ]
 
     let routes: RouteRecordRaw[]

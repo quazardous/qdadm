@@ -26,6 +26,8 @@ import { useActiveStack } from '../chain/useActiveStack'
 import type { ActiveStack } from '../chain/ActiveStack'
 import { getDomain } from '../domain/registry'
 import { routeCrumbLabel } from './routeCrumbLabel'
+import { useNavigation } from './useNavigation'
+import { settingsBreadcrumbMode, type SettingsHomeConfig } from '../kernel/settingsHome'
 import type { EntityManagerLike, OrchestratorLike } from '../entity/EntityManager.interface'
 
 // #1191 — shared minimal structural views (was: local redeclarations)
@@ -330,6 +332,22 @@ export function useNavContext(_options: UseNavContextOptions = {}): UseNavContex
     return { label: domain.label, to: to && routeExists(to.name) && route.name !== to.name ? to : null, ...(domain.icon ? { icon: domain.icon } : {}) }
   })
 
+  // A settings page (#5500): the settings home, then its section, after Home.
+  // Only with a settings home; a route's own meta.breadcrumb says it all.
+  const settingsConfig = inject<{ settingsMenu?: SettingsHomeConfig } | null>('qdadmFeatures', null)?.settingsMenu
+  const settingsNav = settingsBreadcrumbMode(settingsConfig) ? useNavigation() : null
+  const settingsItems = computed<BreadcrumbItem[]>(() => {
+    if (!settingsNav || route.meta?.breadcrumb) return []
+    const { home, breadcrumb: mode, label, flat } = settingsNav.settingsMenu
+    if (!home || !mode) return []
+    if (route.name === home) return [{ label, to: null }]
+    const section = settingsNav.settingsSection.value
+    if (!section) return []
+    const items: BreadcrumbItem[] = [{ label, to: routeExists(home) ? { name: home } : null }]
+    if (mode === 'section' && !flat && section.title) items.push({ label: section.title })
+    return items
+  })
+
   const breadcrumb = computed(() => {
     const items: BreadcrumbItem[] = []
     const chain = navChain.value
@@ -343,6 +361,11 @@ export function useNavContext(_options: UseNavContextOptions = {}): UseNavContex
     if (homeItem.value) {
       items.push(homeItem.value)
     }
+
+    // The settings, then the section (#5500); on the settings home, the settings alone
+    const settings = settingsItems.value
+    items.push(...settings)
+    if (settingsNav && route.name === settingsNav.settingsMenu.home && settings.length) return items
 
     // The domain, unless its board is the next crumb (the same page, said twice)
     const dom = domainItem.value

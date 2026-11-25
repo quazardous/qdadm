@@ -38,6 +38,8 @@ export interface UseSettingsMenuReturn {
   flat: boolean
   /** Its own colours, `--qd-settings-menu-*` (`features.settingsMenu.tone`, on by default) */
   tone: boolean
+  /** The settings home's route (`features.settingsMenu.home`, #5500): the menu's first row leads to it */
+  home: string | null
 }
 
 async function focusIn(id: string): Promise<void> {
@@ -55,7 +57,8 @@ export function useSettingsMenu(given: UseNavigationReturn = useNavigation()): U
     settingsSections: given.settingsSections ?? computed(() => []),
     hasSettingsMenu: given.hasSettingsMenu ?? computed(() => false),
     settingsActive: given.settingsActive ?? computed(() => false),
-    settingsMenu: { label: 'Settings', icon: 'pi pi-cog', back: false, flat: false, tone: true, ...(given.settingsMenu as Partial<UseNavigationReturn['settingsMenu']> | undefined) },
+    settingsSection: given.settingsSection ?? computed(() => null),
+    settingsMenu: { label: 'Settings', icon: 'pi pi-cog', back: false, flat: false, tone: true, home: null, breadcrumb: false, ...(given.settingsMenu as Partial<UseNavigationReturn['settingsMenu']> | undefined) },
   }
   const route = useRoute() as ReturnType<typeof useRoute> | undefined
   const available = computed(() => nav.hasSettingsMenu.value)
@@ -84,6 +87,6 @@ export function useSettingsMenu(given: UseNavigationReturn = useNavigation()): U
     void focusIn(SETTINGS_MENU_IDS.settings)
   }
 
-  const { label, icon, back, flat, tone } = nav.settingsMenu
-  return { nav, available, open, toggle, close, label, icon, back, flat, tone }
+  const { label, icon, back, flat, tone, home } = nav.settingsMenu
+  return { nav, available, open, toggle, close, label, icon, back, flat, tone, home }
 }

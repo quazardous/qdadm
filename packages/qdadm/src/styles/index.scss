@@ -47,6 +47,7 @@
 @use './markdown';
 @use './show-pages';
 @use './sidebar';
+@use './settings-home';
 
 // Responsive styles (must be last for specificity)
 @use './responsive';

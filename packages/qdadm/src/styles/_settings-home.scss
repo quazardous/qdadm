@@ -1,0 +1,55 @@
+// The settings home (#5500): the settings menu's entries as cards, by section
+.qd-settings-home {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.qd-settings-home-title {
+  margin: 0 0 0.75rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--qd-card-muted);
+}
+
+.qd-settings-home-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(12rem, 1fr));
+  gap: 0.75rem;
+}
+
+.qd-settings-home-card {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1rem 1.1rem;
+  border: 1px solid var(--qd-card-border);
+  border-radius: 10px;
+  background: var(--qd-card-bg);
+  color: var(--qd-card-ink);
+  text-decoration: none;
+  font-weight: 500;
+  transition: border-color 0.15s, box-shadow 0.15s;
+
+  i {
+    font-size: 1.25rem;
+    color: var(--p-primary-color, #3b82f6);
+  }
+
+  &:hover,
+  &:focus-visible {
+    border-color: var(--p-primary-color, #3b82f6);
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--p-primary-color, #3b82f6);
+    outline-offset: 2px;
+  }
+}
+
+.qd-settings-home-empty {
+  color: var(--qd-card-muted);
+}

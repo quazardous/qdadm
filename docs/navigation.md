@@ -94,7 +94,34 @@ Escape, or the back row when there is one). Under
   `prefers-reduced-motion`, the menus swap without sliding.
 - `useSettingsMenu()` gives the state (`available`, `open`, `toggle`,
   `close`) to a layout of the app's own; `useNavigation()` gives
-  `settingsSections`, `hasSettingsMenu` and `settingsActive`.
+  `settingsSections`, `hasSettingsMenu`, `settingsActive` and
+  `settingsSection` (the settings section holding the page on screen).
+
+### The settings home
+
+A page that gathers the settings, and the root of every settings page's
+breadcrumb.
+
+```js
+settingsMenu: {
+  home: true,            // qdadm's own page; or 'my-settings', the app's own route
+  breadcrumb: 'section', // 'home': the settings only; false: the breadcrumb as before
+}
+```
+
+- **`home: true`:** qdadm mounts `QdSettingsHome` as the route
+  `settings-home` (`SETTINGS_HOME_ROUTE`), on `/settings`, or on
+  `/settings-home` when the app already has a `/settings`. The page shows the
+  settings menu's entries as cards, one group per section, to whoever the
+  menu shows them to. `home: 'route-name'` names a page of the app's own
+  instead.
+- **The menu:** its first row leads to the home, under the menu's name. The
+  home counts as a settings page: the settings menu opens there by itself.
+- **The breadcrumb** of a settings page, one whose entry is in the settings
+  menu: « Home › Settings › Security › Users ». « Settings » links to the
+  home. The section has no page, so it has no link, and a `flat` menu has
+  none. On the home itself: « Home › Settings ». A route that declares its own
+  `meta.breadcrumb` keeps it.
 
 ## The sidebar collapsed to its icons
 

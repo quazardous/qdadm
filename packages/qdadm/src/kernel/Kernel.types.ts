@@ -85,6 +85,15 @@ export interface Features {
     flat?: boolean
     /** Its own colours, `--qd-settings-menu-*` (#5410); `false` keeps the main menu's */
     tone?: boolean
+    /**
+     * The settings home (#5500): `true` mounts qdadm's own (the menu's
+     * entries as cards, by section) as `settings-home`; a route name, the
+     * app's own page. A first row of the menu leads to it, and every settings
+     * page's breadcrumb starts from it.
+     */
+    home?: boolean | string
+    /** After Home, on a settings page (#5500): `'section'` (default) the settings then the section, `'home'` the settings only, `false` nothing */
+    breadcrumb?: 'section' | 'home' | false
   }
   /**
    * The favourites' look (#5402): the symbol, filled once a favourite; where a
