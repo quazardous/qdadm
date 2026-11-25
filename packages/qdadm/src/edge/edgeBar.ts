@@ -50,6 +50,12 @@ export interface EdgeBarConfig {
   tabsAt?: 'top' | 'bottom'
   /** A pin on the panel (#5511): pinned, beside the page and closed only on purpose (default true) */
   pinnable?: boolean
+  /** A handle on the panel's inner edge to resize it (#5519), within minWidth and maxWidth (default true) */
+  resizable?: boolean
+  /** The narrowest it may be dragged to (default 18rem) */
+  minWidth?: string
+  /** The widest (default 60vw; never past 92vw) */
+  maxWidth?: string
   /** The panel's width (default 26rem, at most 92vw) */
   width?: string
   /** Under this window width, the panel opens the screen's full width (default 900) */
@@ -91,6 +97,17 @@ const tab = ref<string | null>(saved.pinned && saved.open && saved.tab ? saved.t
 const panels = ref<EdgePanelDef[]>([])
 /** The screen is too narrow to share: no pin, the panel over the page */
 const narrow = ref(false)
+/** The width the person dragged it to, in px (#5519), kept by the browser; null: the configured width */
+const WIDTH_KEY = 'qdadm_edge_width'
+const readWidth = (): number | null => {
+  try {
+    const n = Number(typeof localStorage !== 'undefined' ? localStorage.getItem(WIDTH_KEY) : NaN)
+    return Number.isFinite(n) && n > 0 ? n : null
+  } catch {
+    return null
+  }
+}
+const width = ref<number | null>(readWidth())
 
 function remember(key: string | null): void {
   try {
@@ -136,8 +153,10 @@ export function resetEdgeBar(): void {
   panels.value = []
   pinned.value = false
   narrow.value = false
+  width.value = null
   try {
     localStorage.removeItem(PIN_KEY)
+    localStorage.removeItem(WIDTH_KEY)
   } catch {
     // nothing kept
   }
@@ -155,6 +174,10 @@ export interface UseEdgeBarReturn {
   pinned: typeof pinned
   /** Open, pinned and room to share: the page makes room for it */
   docked: ComputedRef<boolean>
+  /** The width dragged to, in px (#5519); null: the configured one */
+  width: typeof width
+  /** Set the width (px), or null for the configured one; `keep` saves it in the browser */
+  resize: (px: number | null, keep?: boolean) => void
   /** Open a panel (its key), or the last one used; false when it is not given here */
   open: (key?: string) => boolean
   close: () => void
@@ -189,5 +212,15 @@ export function useEdgeBar(): UseEdgeBarReturn {
     pinned.value = on
     rememberPin()
   }
-  return { panels, present, isOpen, tab, pinned, docked, open, close, toggle, pin }
+  function resize(px: number | null, keep = true): void {
+    width.value = px === null ? null : Math.round(px)
+    if (!keep) return
+    try {
+      if (width.value === null) localStorage.removeItem(WIDTH_KEY)
+      else localStorage.setItem(WIDTH_KEY, String(width.value))
+    } catch {
+      // not kept: this width holds for the page only
+    }
+  }
+  return { panels, present, isOpen, tab, pinned, docked, width, resize, open, close, toggle, pin }
 }

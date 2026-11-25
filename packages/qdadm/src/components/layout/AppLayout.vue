@@ -341,7 +341,7 @@ const showBreadcrumb = computed<boolean>(() => {
     <main
       class="main-content"
       :class="{ 'main-content--sidebar-collapsed': sidebarCollapsed, [`main-content--edge-${edgeSide}`]: edgeBar.present.value, [`main-content--edge-docked-${edgeSide}`]: edgeBar.docked.value }"
-      :style="edgeWidth ? { '--qd-edge-panel-width': edgeWidth } : undefined"
+      :style="edgeBar.width.value ? { '--qd-edge-panel-width': `${edgeBar.width.value}px` } : edgeWidth ? { '--qd-edge-panel-width': edgeWidth } : undefined"
     >
       <!-- Mobile header bar -->
       <div class="mobile-header">

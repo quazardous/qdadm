@@ -17,6 +17,9 @@
  * - Pinned (#5511): beside the page rather than over it (the layout makes
  *   room), and closed only on purpose (the chevron, the open tab): a click
  *   outside and Escape leave it. No pin on a narrow screen.
+ * - Resizable (#5519): a handle on its inner edge, dragged or moved with the
+ *   arrows, within `minWidth` and `maxWidth`; a double click goes back to
+ *   `width`. No handle on a narrow screen.
  *
  * Runtime props (#5469): an app's JavaScript build compiles qdadm's .vue.
  */
@@ -35,6 +38,11 @@ const props = defineProps({
   narrowAt: { type: Number, default: 900 },
   pinned: { type: Boolean, default: false },
   pinnable: { type: Boolean, default: true },
+  resizable: { type: Boolean, default: true },
+  minWidth: { type: String, default: '18rem' },
+  maxWidth: { type: String, default: '60vw' },
+  /** The width dragged to, in px; null: `width` */
+  size: { type: Number as PropType<number | null>, default: null },
 })
 const emit = defineEmits<{
   (e: 'update:open', open: boolean): void
@@ -44,6 +52,8 @@ const emit = defineEmits<{
   (e: 'update:pinned', pinned: boolean): void
   /** The screen became narrow, or wide again: no pin while narrow */
   (e: 'narrow', narrow: boolean): void
+  /** The width dragged to (px), or null back to `width`; `done` at the end of a gesture */
+  (e: 'update:size', px: number | null, done: boolean): void
 }>()
 const { tOr } = useI18n()
 
@@ -123,6 +133,73 @@ watch(
   }
 )
 
+// ── Resizing (#5519) ─────────────────────────────────────────────────────────
+/** A CSS length in px, as the browser reads it */
+function toPx(length: string): number {
+  if (typeof document === 'undefined') return 0
+  const probe = document.createElement('div')
+  probe.style.cssText = `position:absolute;visibility:hidden;width:${length}`
+  document.body.appendChild(probe)
+  const px = probe.getBoundingClientRect().width
+  probe.remove()
+  return px
+}
+const bounds = () => {
+  const max = Math.min(toPx(props.maxWidth), window.innerWidth * 0.92)
+  return { min: Math.min(toPx(props.minWidth), max), max }
+}
+const clamp = (px: number) => {
+  const b = bounds()
+  return Math.round(Math.max(b.min, Math.min(b.max, px)))
+}
+const canResize = computed(() => props.resizable && !narrow.value)
+const resizing = ref(false)
+/** The current width, in px, for the handle's value */
+const nowPx = computed(() => (props.size ?? 0) || Math.round(toPx(props.width)))
+const handleBounds = ref({ min: 0, max: 0 })
+function onHandleDown(e: PointerEvent): void {
+  if (!canResize.value) return
+  e.preventDefault()
+  resizing.value = true
+  document.documentElement.classList.add('qd-edge-resizing')
+  const edge = panel.value!.getBoundingClientRect()
+  let last = nowPx.value
+  const move = (ev: PointerEvent) => {
+    last = clamp(props.side === 'right' ? edge.right - ev.clientX : ev.clientX - edge.left)
+    emit('update:size', last, false)
+  }
+  const up = (ev: PointerEvent) => {
+    move(ev)
+    resizing.value = false
+    document.documentElement.classList.remove('qd-edge-resizing')
+    window.removeEventListener('pointermove', move)
+    window.removeEventListener('pointerup', up)
+    emit('update:size', last, true)
+  }
+  window.addEventListener('pointermove', move)
+  window.addEventListener('pointerup', up)
+}
+function onHandleKey(e: KeyboardEvent): void {
+  if (!canResize.value) return
+  const step = e.shiftKey ? 64 : 16
+  // The arrow towards the page widens it
+  const wider = props.side === 'right' ? 'ArrowLeft' : 'ArrowRight'
+  const narrower = props.side === 'right' ? 'ArrowRight' : 'ArrowLeft'
+  let px: number | null = null
+  if (e.key === wider) px = nowPx.value + step
+  else if (e.key === narrower) px = nowPx.value - step
+  else if (e.key === 'Home') px = bounds().min
+  else if (e.key === 'End') px = bounds().max
+  if (px === null) return
+  e.preventDefault()
+  emit('update:size', clamp(px), true)
+}
+const refreshBounds = () => {
+  if (typeof window === 'undefined') return
+  const b = bounds()
+  handleBounds.value = { min: Math.round(b.min), max: Math.round(b.max) }
+}
+
 /** Pinned, with room to share: it stays beside the page */
 const docked = computed(() => props.pinned && props.pinnable && !narrow.value)
 
@@ -150,6 +227,7 @@ const onMedia = (): void => {
 onMounted(() => {
   document.addEventListener('pointerdown', onDocDown, true)
   document.addEventListener('keydown', onDocKey)
+  refreshBounds()
   if (typeof window !== 'undefined' && typeof window.matchMedia === 'function') {
     media = window.matchMedia(`(max-width: ${props.narrowAt - 1}px)`)
     onMedia()
@@ -168,8 +246,8 @@ onBeforeUnmount(() => {
   <div
     ref="root"
     class="qd-edge"
-    :class="[`qd-edge--${side}`, `qd-edge--tabs-${tabsAt}`, { 'qd-edge--open': open, 'qd-edge--narrow': narrow, 'qd-edge--pinned': docked }]"
-    :style="{ '--qd-edge-panel-width': width }"
+    :class="[`qd-edge--${side}`, `qd-edge--tabs-${tabsAt}`, { 'qd-edge--open': open, 'qd-edge--narrow': narrow, 'qd-edge--pinned': docked, 'qd-edge--resizing': resizing }]"
+    :style="{ '--qd-edge-panel-width': size ? `${size}px` : width }"
     data-edge-bar
   >
     <div class="qd-edge-bar"></div>
@@ -239,6 +317,23 @@ onBeforeUnmount(() => {
         :aria-labelledby="current ? `${uid}-tab-${current.key}` : undefined"
         data-edge-panel
       >
+        <div
+          v-if="canResize"
+          class="qd-edge-resize"
+          role="separator"
+          aria-orientation="vertical"
+          tabindex="0"
+          :aria-label="tOr('core.edgeBar.resize', 'Resize the panel')"
+          :title="tOr('core.edgeBar.resizeHint', 'Drag to resize; double click for the default width')"
+          :aria-valuenow="nowPx"
+          :aria-valuemin="handleBounds.min"
+          :aria-valuemax="handleBounds.max"
+          data-edge-resize
+          @pointerdown="onHandleDown"
+          @keydown="onHandleKey"
+          @focus="refreshBounds"
+          @dblclick="emit('update:size', null, true)"
+        ></div>
         <header v-if="current" class="qd-edge-panel-head" :style="toneStyle(current)">
           <i v-if="current.icon" :class="current.icon" aria-hidden="true"></i>
           <h2 class="qd-edge-panel-title">{{ label(current) }}</h2>

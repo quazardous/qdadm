@@ -218,6 +218,62 @@
   }
 }
 
+// Resizable (#5519): a handle on the panel's inner edge
+.qd-edge-panel {
+  position: relative;
+}
+
+.qd-edge-resize {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  z-index: 2;
+  width: 8px;
+  cursor: col-resize;
+  touch-action: none;
+
+  .qd-edge--right & {
+    left: -4px;
+  }
+
+  .qd-edge--left & {
+    right: -4px;
+  }
+
+  &::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 3px;
+    width: 2px;
+    background: transparent;
+    transition: background 0.15s;
+  }
+
+  &:hover::after,
+  &:focus-visible::after,
+  .qd-edge--resizing &::after {
+    background: var(--p-primary-color, #3b82f6);
+  }
+
+  &:focus-visible {
+    outline: none;
+  }
+}
+
+// While dragging: the width (and a pinned panel's room) follows the pointer, no slide
+.qd-edge--resizing .qd-edge-drawer,
+.qd-edge--resizing .qd-edge-panel,
+html.qd-edge-resizing .main-content {
+  transition: none;
+}
+
+html.qd-edge-resizing {
+  cursor: col-resize;
+  user-select: none;
+}
+
 // Pinned (#5511): beside the page, a line rather than a shadow
 .qd-edge--pinned .qd-edge-panel {
   box-shadow: none;

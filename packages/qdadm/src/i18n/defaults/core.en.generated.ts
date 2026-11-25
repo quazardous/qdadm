@@ -518,6 +518,8 @@ export default `core:
     close: Close the panel
     pin: Pin the panel
     unpin: Unpin the panel
+    resize: Resize the panel
+    resizeHint: Drag to resize; double click for the default width
     panels: Side panels
     unread: "{label}, {count} unread"
   settingsMenu:

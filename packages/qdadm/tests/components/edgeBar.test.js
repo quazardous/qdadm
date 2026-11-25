@@ -210,4 +210,53 @@ describe('the edge bar (#5506)', () => {
     expect(useEdgeBar().docked.value).toBe(false)
     window.matchMedia = mm
   })
+
+  it('resizable: the handle\'s keys move the width within the bounds; a double click goes back; the width kept (#5519)', async () => {
+    // jsdom lays nothing out: lengths as px through a stub
+    const rect = HTMLElement.prototype.getBoundingClientRect
+    HTMLElement.prototype.getBoundingClientRect = function () {
+      const w = parseFloat(this.style?.width) || 0
+      const unit = (this.style?.width ?? '').endsWith('rem') ? 16 : (this.style?.width ?? '').endsWith('vw') ? window.innerWidth / 100 : 1
+      return { width: w * unit, left: 0, right: w * unit, top: 0, bottom: 0, height: 0, x: 0, y: 0 }
+    }
+    try {
+      const { w } = await mountBar({ panels: handler, minWidth: '300px', maxWidth: '500px' })
+      useEdgeBar().open('inbox')
+      await nextTick()
+      const handle = w.find('[data-edge-resize]')
+      expect(handle.attributes('role')).toBe('separator')
+      expect(handle.attributes('aria-valuenow')).toBe('416')
+      await handle.trigger('keydown', { key: 'ArrowRight' })
+      expect(useEdgeBar().width.value).toBe(400)
+      await handle.trigger('keydown', { key: 'ArrowLeft', shiftKey: true })
+      expect(useEdgeBar().width.value).toBe(464)
+      await handle.trigger('keydown', { key: 'End' })
+      expect(useEdgeBar().width.value).toBe(500)
+      await handle.trigger('keydown', { key: 'Home' })
+      expect(useEdgeBar().width.value).toBe(300)
+      expect(localStorage.getItem('qdadm_edge_width')).toBe('300')
+      expect(w.find('[data-edge-bar]').attributes('style')).toContain('--qd-edge-panel-width: 300px')
+      await handle.trigger('dblclick')
+      expect(useEdgeBar().width.value).toBe(null)
+      expect(localStorage.getItem('qdadm_edge_width')).toBe(null)
+    } finally {
+      HTMLElement.prototype.getBoundingClientRect = rect
+    }
+  })
+
+  it('resizable: false, or a narrow screen: no handle (#5519)', async () => {
+    const off = await mountBar({ panels: handler, resizable: false })
+    useEdgeBar().open('inbox')
+    await nextTick()
+    expect(off.w.find('[data-edge-resize]').exists()).toBe(false)
+    off.w.unmount()
+    resetEdgeBar()
+    const mm = window.matchMedia
+    window.matchMedia = () => ({ matches: true, addEventListener() {}, removeEventListener() {} })
+    const narrow = await mountBar()
+    useEdgeBar().open('inbox')
+    await nextTick()
+    expect(narrow.w.find('[data-edge-resize]').exists()).toBe(false)
+    window.matchMedia = mm
+  })
 })

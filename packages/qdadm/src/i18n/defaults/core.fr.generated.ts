@@ -518,6 +518,8 @@ export default `core:
     close: Fermer le panneau
     pin: Épingler le panneau
     unpin: Désépingler le panneau
+    resize: Redimensionner le panneau
+    resizeHint: Glisser pour redimensionner ; double clic pour la largeur par défaut
     panels: Panneaux latéraux
     unread: "{label}, {count} non lus"
   settingsMenu:

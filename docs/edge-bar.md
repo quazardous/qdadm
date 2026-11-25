@@ -21,6 +21,9 @@ createKernel({
       side: 'right',     // or 'left'
       tabsAt: 'top',     // or 'bottom': where the tabs sit along the bar
       pinnable: true,    // a pin on the panel (false: none)
+      resizable: true,   // a handle on its inner edge (false: none)
+      minWidth: '18rem', // the narrowest it may be dragged to
+      maxWidth: '60vw',  // the widest (never past 92vw)
       width: '26rem',    // the panel's, at most 92vw
       narrowAt: 900,     // under it, the panel takes the screen's width
       panels: (context) => {
@@ -88,6 +91,21 @@ is hidden and inert.
 - The content keeps the bar's room (a margin on its side) only while there
   is a bar.
 
+## Resized
+
+A handle on the panel's inner edge, the side facing the page, sets its
+width:
+
+- dragging it moves the width within `minWidth` and `maxWidth`;
+- a double click goes back to `width`;
+- from the keyboard, the handle is a `separator` with its value, min and
+  max: the arrows move 16px (64 with Shift), Home and End go to min and max;
+- the browser keeps the width (`localStorage`);
+- pinned, the page's room follows it while dragging.
+
+On a narrow screen there is no handle: the panel takes the screen's width.
+`resizable: false` takes the handle away.
+
 ## Pinned
 
 A pin in the panel's head keeps it beside the page:
@@ -113,7 +131,8 @@ const edge = useEdgeBar()
 edge.open('client')   // false when that panel is not returned for this page
 edge.close()
 edge.pin(true)        // pinned, beside the page
-// edge.isOpen, edge.tab, edge.panels, edge.present, edge.pinned, edge.docked
+edge.resize(480)      // px; null: back to the configured width
+// edge.isOpen, edge.tab, edge.panels, edge.present, edge.pinned, edge.docked, edge.width
 ```
 
 ## Accessibility
@@ -142,7 +161,8 @@ The tokens, set on `:root` (and under `.dark-mode`):
 
 A layout of the app's own draws the bar with `<QdEdgeBar />`, which reads
 `features.edgeBar`. It can also draw `QdEdgePanel` directly, with `panels`,
-`v-model:open`, `v-model:tab`, `v-model:pinned`, `pinnable`, `side`,
+`v-model:open`, `v-model:tab`, `v-model:pinned`, `pinnable`, `size`
+(`update:size`), `resizable`, `minWidth`, `maxWidth`, `side`,
 `tabsAt`, `width`, `narrowAt`, and a slot per
 panel (`#tab-<key>`) or `#default` (`{ panel }`).
 
