@@ -1,5 +1,15 @@
 # Changelog
 
+## 2.75.0
+
+### Minor Changes
+
+- 07eae07: The settings home (#5500): `settingsMenu.home: true` mounts qdadm's own settings page (`QdSettingsHome`, the settings menu's entries as cards by section, as the menu shows them) as `settings-home` on `/settings` (`/settings-home` when the app has a `/settings`); `home: 'route-name'` names the app's own. The settings menu's first row leads to it and it opens the settings menu. Every settings page's breadcrumb starts from it: « Home › Settings › Section › Page », set by `settingsMenu.breadcrumb` (`'section'` default, `'home'`, `false`); a route's own `meta.breadcrumb` keeps it. `useNavigation()` gives `settingsSection`.
+
+### Patch Changes
+
+- b7b4500: A section of the same title in the main menu and in the settings menu folds on its own: the settings menu keeps its folds under keys of its own (`settings:<title>`), the main menu's saved folds unchanged. navigation.md says how to have such a section in both menus: `menu: 'settings'` on the entries, the section left out of `settingsMenu.sections` (#5499).
+
 ## 2.74.0
 
 ### Minor Changes
