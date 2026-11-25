@@ -124,11 +124,11 @@ export interface BlockCard {
 }
 
 /**
- * A card's size on a dashboard (#5503): `'WxH'`, 1 to 3 columns by 1 or 2
- * rows; `s`, `m`, `l` are the one-row sizes' old names, read as `1x1`, `2x1`,
- * `3x1`
+ * A card's size on a dashboard (#5503): `'WxH'`, 1x1 to 3x2 by default, up
+ * to 6x4 when the app allows it (#5513); `s`, `m`, `l` are the one-row
+ * sizes' old names, read as `1x1`, `2x1`, `3x1`
  */
-export type CardSizeName = 's' | 'm' | 'l' | `${1 | 2 | 3}x${1 | 2}`
+export type CardSizeName = 's' | 'm' | 'l' | `${1 | 2 | 3 | 4 | 5 | 6}x${1 | 2 | 3 | 4}`
 
 export interface BlockConfig {
   /** Vue component to render */

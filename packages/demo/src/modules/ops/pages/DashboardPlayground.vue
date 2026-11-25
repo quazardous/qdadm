@@ -52,13 +52,20 @@ const serverStorage = {
     <label v-if="mode === 'server'" class="fail-saves">
       <Checkbox v-model="failSaves" binary input-id="fail-saves" /> The server refuses saves
     </label>
-    <CardsDashboard v-if="mode === 'cards'" zone="ops-dashboard" id="ops" min-card-width="16rem" />
+    <!-- Sizes up to 4 × 3 here (#5513), its grid set by tokens in the style below -->
+    <CardsDashboard v-if="mode === 'cards'" zone="ops-dashboard" id="ops" :card-sizes="{ min: '1x1', max: '4x3' }" />
     <CardsDashboard v-else-if="mode === 'server'" zone="ops-dashboard" id="ops-server" min-card-width="16rem" :storage="serverStorage" />
     <Zone v-else name="ops-dashboard" class="classic-grid" />
   </div>
 </template>
 
 <style scoped>
+/* The grid's dimensions are tokens (#5513): this dashboard's own */
+[data-dashboard='ops'] {
+  --qd-card-min: 16rem;
+  --qd-card-row: 8rem;
+  --qd-cards-gap: 0.75rem;
+}
 .head {
   display: flex;
   align-items: flex-start;

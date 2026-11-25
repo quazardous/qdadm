@@ -74,17 +74,23 @@ export interface CardsGroups {
 
 export const CARDS_ARRANGEMENT_VERSION = 2
 
-/** Every size a card may take, width × height (#5503) */
+/** The default sizes a card may take, width × height (#5503): 1x1 to 3x2 */
 export const CARD_SIZES: readonly CardSizeName[] = ['1x1', '2x1', '3x1', '1x2', '2x2', '3x2']
-/** The widest and the tallest */
+/** The default widest and tallest */
 export const CARD_MAX = { w: 3, h: 2 } as const
+/** The most an app may allow (#5513): 6 columns, 4 rows */
+export const CARD_LIMIT = { w: 6, h: 4 } as const
 const OLD_NAMES: Record<string, CardSizeName> = { s: '1x1', m: '2x1', l: '3x1' }
 
 /** A size by its canonical name (`'2x1'`), the old ones (`s`, `m`, `l`) read too; null when it is none */
 export function normalizeCardSize(size: unknown): CardSizeName | null {
   if (typeof size !== 'string') return null
   const name = OLD_NAMES[size] ?? size
-  return CARD_SIZES.includes(name as CardSizeName) ? (name as CardSizeName) : null
+  const m = /^([1-9])x([1-9])$/.exec(name)
+  if (!m) return null
+  const w = Number(m[1])
+  const h = Number(m[2])
+  return w <= CARD_LIMIT.w && h <= CARD_LIMIT.h ? (`${w}x${h}` as CardSizeName) : null
 }
 
 /** A size's width and height */
@@ -92,6 +98,39 @@ export function cardSizeParts(size: CardSizeName): { w: number; h: number } {
   const name = normalizeCardSize(size) ?? '1x1'
   const [w, h] = name.split('x').map(Number)
   return { w: w!, h: h! }
+}
+
+/** The smallest and the largest size the app allows on a dashboard (#5513) */
+export interface CardSizeBounds {
+  min?: CardSizeName | string
+  max?: CardSizeName | string
+}
+
+/** The bounds, read: min and max as parts, max within the limit, min within max */
+export function cardBounds(bounds: CardSizeBounds | null | undefined): { min: { w: number; h: number }; max: { w: number; h: number } } {
+  const max = bounds?.max && normalizeCardSize(bounds.max) ? cardSizeParts(normalizeCardSize(bounds.max)!) : { ...CARD_MAX }
+  const asked = bounds?.min && normalizeCardSize(bounds.min) ? cardSizeParts(normalizeCardSize(bounds.min)!) : { w: 1, h: 1 }
+  return { min: { w: Math.min(asked.w, max.w), h: Math.min(asked.h, max.h) }, max }
+}
+
+/** Every size within the bounds, row by row (#5513) */
+export function sizesWithin(bounds: CardSizeBounds | null | undefined): CardSizeName[] {
+  const { min, max } = cardBounds(bounds)
+  const out: CardSizeName[] = []
+  for (let h = min.h; h <= max.h; h++) for (let w = min.w; w <= max.w; w++) out.push(`${w}x${h}` as CardSizeName)
+  return out
+}
+
+/**
+ * A card's sizes under the dashboard's bounds (#5513): its own `sizes`
+ * within them, else all of them; none of its own within: all of them
+ */
+export function boundCardSizes(declared: Array<CardSizeName | string> | undefined, bounds: CardSizeBounds | null | undefined): CardSizeName[] {
+  const within = sizesWithin(bounds)
+  if (!declared) return within
+  const own = new Set(declared.map(normalizeCardSize).filter((s): s is CardSizeName => !!s))
+  const kept = within.filter((s) => own.has(s))
+  return kept.length ? kept : within
 }
 
 /** Migrations from an older saved version to the next */
@@ -102,18 +141,27 @@ const MIGRATIONS: Record<number, (old: Record<string, unknown>) => Record<string
 
 /** The sizes a card may take */
 export function cardSizes(c: CardDef): CardSizeName[] {
-  const declared = new Set((c.card.sizes ?? CARD_SIZES).map(normalizeCardSize).filter((s): s is CardSizeName => !!s))
-  const allowed = CARD_SIZES.filter((s) => declared.has(s))
-  return allowed.length ? allowed : [...CARD_SIZES]
+  if (!c.card.sizes) return [...CARD_SIZES]
+  const allowed = [...new Set(c.card.sizes.map(normalizeCardSize).filter((s): s is CardSizeName => !!s))]
+  const order = (s: CardSizeName) => { const p = cardSizeParts(s); return p.h * 10 + p.w }
+  return allowed.length ? allowed.sort((a, b) => order(a) - order(b)) : [...CARD_SIZES]
 }
 
-/** A card's size: the one picked, else its declared span × rows (#5503) */
+/**
+ * A card's size: the one picked, else its declared span × rows (#5503); one
+ * it does not allow (out of the dashboard's bounds, #5513) gives the nearest
+ * it does
+ */
 export function cardSize(arrangement: CardsArrangement, c: CardDef): CardSizeName {
+  const allowed = cardSizes(c)
   const picked = normalizeCardSize(arrangement.sizes[c.id])
-  if (picked && cardSizes(c).includes(picked)) return picked
-  const w = Math.max(1, Math.min(CARD_MAX.w, Math.round(c.card.span ?? 1)))
-  const h = Math.max(1, Math.min(CARD_MAX.h, Math.round(c.card.rows ?? 1)))
-  return `${w}x${h}` as CardSizeName
+  if (picked && allowed.includes(picked)) return picked
+  const w = Math.max(1, Math.round(c.card.span ?? 1))
+  const h = Math.max(1, Math.round(c.card.rows ?? 1))
+  const exact = `${w}x${h}` as CardSizeName
+  if (allowed.includes(exact)) return exact
+  const distance = (s: CardSizeName) => { const p = cardSizeParts(s); return Math.abs(p.w - w) + Math.abs(p.h - h) }
+  return allowed.reduce((best, s) => (distance(s) < distance(best) ? s : best), allowed[0]!)
 }
 
 /** Columns a card spans: the size picked, else its declared span */

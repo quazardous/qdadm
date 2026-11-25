@@ -19,6 +19,9 @@ import {
   cardRows,
   setSize,
   defaultArrangement,
+  cardBounds,
+  sizesWithin,
+  boundCardSizes,
   reconcileArrangement,
   CARD_SIZES,
 } from '../../src/composables/useCardsArrangement'
@@ -31,7 +34,10 @@ describe('card sizes, width × height (#5503)', () => {
     expect(normalizeCardSize('m')).toBe('2x1')
     expect(normalizeCardSize('l')).toBe('3x1')
     expect(normalizeCardSize('2x2')).toBe('2x2')
-    expect(normalizeCardSize('4x1')).toBe(null)
+    // Up to 6 × 4 (#5513)
+    expect(normalizeCardSize('4x3')).toBe('4x3')
+    expect(normalizeCardSize('7x1')).toBe(null)
+    expect(normalizeCardSize('1x5')).toBe(null)
     expect(normalizeCardSize(3)).toBe(null)
   })
 
@@ -117,3 +123,37 @@ describe('the slot size, given to the card (#5503)', () => {
     expect(outside.value).toBe(null)
   })
 })
+
+describe("the app's bounds on card sizes (#5513)", () => {
+  it('reads min and max, max within 6 × 4, min within max', () => {
+    expect(cardBounds(null)).toEqual({ min: { w: 1, h: 1 }, max: { w: 3, h: 2 } })
+    expect(cardBounds({ max: '4x3' })).toEqual({ min: { w: 1, h: 1 }, max: { w: 4, h: 3 } })
+    expect(cardBounds({ min: '2x1', max: '9x9' })).toEqual({ min: { w: 2, h: 1 }, max: { w: 3, h: 2 } })
+    expect(cardBounds({ min: '4x4', max: '2x2' })).toEqual({ min: { w: 2, h: 2 }, max: { w: 2, h: 2 } })
+  })
+
+  it("the sizes within, row by row; a card's own within them, else all", () => {
+    expect(sizesWithin({ min: '2x1', max: '3x2' })).toEqual(['2x1', '3x1', '2x2', '3x2'])
+    expect(boundCardSizes(['s', 'm', '4x3'], { max: '4x3' })).toEqual(['1x1', '2x1', '4x3'])
+    expect(boundCardSizes(['1x1'], { min: '2x1' })).toEqual(['2x1', '3x1', '2x2', '3x2'])
+    expect(boundCardSizes(undefined, { max: '2x1' })).toEqual(['1x1', '2x1'])
+  })
+
+  it('a default or saved size out of bounds gives the nearest allowed', () => {
+    const cards = [c('a', { span: 3, rows: 2, sizes: boundCardSizes(undefined, { max: '2x1' }) })]
+    const arr = { ...defaultArrangement(cards), sizes: { a: '3x2' } }
+    expect(cardSize(arr, cards[0])).toBe('2x1')
+    expect(reconcileArrangement(arr, cards).sizes).toEqual({})
+  })
+})
+
+describe('the picker on larger bounds (#5513)', () => {
+  it('draws max columns × max rows', async () => {
+    const w = mount(QdCardSizePicker, { attachTo: document.body, props: { modelValue: '1x1', allowed: sizesWithin({ max: '4x3' }), cols: 4, rows: 3 } })
+    await w.find('[data-size-picker]').trigger('click')
+    expect(w.findAll('.qd-size-picker-cell').length).toBe(12)
+    expect(w.find('[data-size="4x3"]').classes('off')).toBe(false)
+    w.unmount()
+  })
+})
+

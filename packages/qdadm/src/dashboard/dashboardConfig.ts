@@ -9,13 +9,15 @@
  *     },
  *   })
  */
-import type { CardsArrangementStorage } from '../composables/useCardsArrangement'
+import type { CardsArrangementStorage, CardSizeBounds } from '../composables/useCardsArrangement'
 
 export interface DashboardsOptions {
   /** Where arrangements are kept (default: localStorage) */
   storage?: CardsArrangementStorage
   /** Ms an async load may take before the default order shows (default 150) */
   loadGrace?: number
+  /** The smallest and largest card size on every dashboard (#5513), `'WxH'`: default 1x1 to 3x2, at most 6x4 */
+  cardSizes?: CardSizeBounds
 }
 
 const app: DashboardsOptions = {}
@@ -33,4 +35,5 @@ export function getDashboardsConfig(): Readonly<DashboardsOptions> {
 export function resetDashboards(): void {
   delete app.storage
   delete app.loadGrace
+  delete app.cardSizes
 }

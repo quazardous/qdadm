@@ -44,8 +44,10 @@ import {
   cardSpan,
   cardRows,
   cardSize,
-  CARD_MAX,
+  cardBounds,
+  boundCardSizes,
   sectionOfCard,
+  type CardSizeBounds,
   localArrangementStorage,
   type CardDef,
   type CardsArrangement,
@@ -60,8 +62,10 @@ const props = withDefaults(
     zone?: string
     /** The dashboard's name in the storage key (default: the zone's) */
     id?: string | null
-    /** The narrowest a card gets before the grid drops a column */
-    minCardWidth?: string
+    /** The narrowest a card gets before the grid drops a column; default the `--qd-card-min` token (18rem) */
+    minCardWidth?: string | null
+    /** The smallest and largest card size (#5513), `'WxH'`; default configureDashboards's, else 1x1 to 3x2 */
+    cardSizes?: CardSizeBounds | null
     /** Show the "Customise" button */
     editable?: boolean
     /** How the edit mode's tray shows hidden cards by default: whole, or as chips; the user's toggle wins */
@@ -71,7 +75,7 @@ const props = withDefaults(
     /** Ms an async load may take before the default order shows (default 150) */
     loadGrace?: number | null
   }>(),
-  { zone: DASHBOARD_ZONES.WIDGETS, id: null, minCardWidth: '18rem', editable: true, hiddenView: 'cards', storage: null, loadGrace: null }
+  { zone: DASHBOARD_ZONES.WIDGETS, id: null, minCardWidth: null, cardSizes: null, editable: true, hiddenView: 'cards', storage: null, loadGrace: null }
 )
 
 const registry = inject<ZoneRegistry | null>('qdadmZoneRegistry', null)
@@ -88,10 +92,13 @@ const blockById = computed(() => new Map(blocks.value.filter((b) => b.id).map((b
 // Any block with an id is a card: the same block serves a classic Zone and
 // this dashboard. `card` only adds what arranging needs; without it the title
 // comes from the block's `title` prop, else its id.
+// The sizes the app allows here (#5513): a card's own within them
+const bounds = computed(() => props.cardSizes ?? getDashboardsConfig().cardSizes ?? null)
+const gridMax = computed(() => cardBounds(bounds.value).max)
 const cards = computed<CardDef[]>(() =>
   blocks.value.filter((b) => b.id).map((b) => {
     const fallback = typeof b.props?.title === 'string' ? (b.props.title as string) : (b.id as string)
-    return { id: b.id as string, card: { ...b.card, title: b.card?.title ?? fallback } }
+    return { id: b.id as string, card: { ...b.card, title: b.card?.title ?? fallback, sizes: boundCardSizes(b.card?.sizes, bounds.value) } }
   })
 )
 // A block without an id has no key to save: shown after the cards, as declared
@@ -400,7 +407,7 @@ function render(block: BlockConfig, props?: Record<string, unknown>): Component 
 </script>
 
 <template>
-  <div ref="root" class="qd-cards-dashboard" :class="{ 'qd-cards-editing': editing }" :data-zone="zone">
+  <div ref="root" class="qd-cards-dashboard" :class="{ 'qd-cards-editing': editing }" :data-zone="zone" :data-dashboard="id ?? zone">
     <div v-if="editable && cards.length" class="qd-cards-toolbar">
       <template v-if="editing">
         <QdButton
@@ -512,7 +519,7 @@ function render(block: BlockConfig, props?: Record<string, unknown>): Component 
           @click="removeSection(grid.section.id)"
         />
       </div>
-      <div class="qd-cards-grid" :class="{ 'qd-cards-loading': state.loading.value }" :aria-busy="state.loading.value || undefined" :style="{ '--qd-card-min': minCardWidth }">
+      <div class="qd-cards-grid" :class="{ 'qd-cards-loading': state.loading.value }" :aria-busy="state.loading.value || undefined" :style="minCardWidth ? { '--qd-card-min': minCardWidth } : undefined">
         <div
           v-for="c in grid.cards"
           :key="c.id"
@@ -541,8 +548,8 @@ function render(block: BlockConfig, props?: Record<string, unknown>): Component 
               :model-value="currentSize(c)"
               :allowed="cardSizes(c)"
               :title="title(c)"
-              :cols="CARD_MAX.w"
-              :rows="CARD_MAX.h"
+              :cols="gridMax.w"
+              :rows="gridMax.h"
               @update:model-value="onSize(c, $event)"
             />
             <select
@@ -617,7 +624,7 @@ function render(block: BlockConfig, props?: Record<string, unknown>): Component 
         </div>
       </div>
       <!-- Whole cards: the same grid, dimmed and inert; only "Show" acts -->
-      <div v-if="trayView === 'cards' && state.groups.value.hidden.length" class="qd-cards-grid" :style="{ '--qd-card-min': minCardWidth }">
+      <div v-if="trayView === 'cards' && state.groups.value.hidden.length" class="qd-cards-grid" :style="minCardWidth ? { '--qd-card-min': minCardWidth } : undefined">
         <div
           v-for="c in state.groups.value.hidden"
           :key="c.id"

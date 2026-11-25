@@ -478,7 +478,8 @@ own.
 |---|---|---|
 | `zone` | `DASHBOARD_ZONES.WIDGETS` | The zone whose blocks are the cards |
 | `id` | the zone's name | The dashboard's name in the storage key |
-| `minCardWidth` | `18rem` | The narrowest a card gets before the grid drops a column |
+| `minCardWidth` | the `--qd-card-min` token | The narrowest a card gets before the grid drops a column |
+| `cardSizes` | `configureDashboards`'s, else `{ min: '1x1', max: '3x2' }` | The smallest and largest card size, `'WxH'`, at most `6x4` |
 | `editable` | `true` | Show the "Customise" button |
 | `hiddenView` | `'cards'` | How the tray shows hidden cards by default: `'cards'` (whole) or `'compact'` (chips) |
 | `storage` | `configureDashboards`'s, else `localStorage` | Where the arrangement is kept (see below) |
@@ -492,12 +493,13 @@ cards, "Reset" and "Done". Outside edit mode only the cards show.
   description (and its question, for a [ready-made card](cards.md)), and the
   hidden cards, which come back where they were.
 - **The size:** a button on the card's bar shows it (« 2 × 1 ») and opens a
-  3 × 2 grid. Hovering or dragging from its top-left corner lights the
+  grid as large as the dashboard's largest size (3 × 2 by default). Hovering or dragging from its top-left corner lights the
   rectangle; a click or a release picks it. The sizes the card does not allow
   are greyed out. From the keyboard: the focus on the current size, the arrows
   move, Enter picks, Escape closes. The change is announced.
-- **Two rows high:** the card spans two rows of the grid, at least two row
-  units (`--qd-card-row`, 10rem); a one-row card keeps its own height. On a
+- **Several rows high:** the card spans its rows of the grid, at least that
+  many row units (`--qd-card-row`) and the gaps between them; a one-row card
+  keeps its own height. On a
   narrow grid it takes one column and one row like the others. Its body reads
   the slot's size with `useCardSlotSize()` (`{ w, h }`, null outside a
   dashboard) to show more: the demo's saved search lists twice the lines.
@@ -507,6 +509,50 @@ cards, "Reset" and "Done". Outside edit mode only the cards show.
   goes to another section with the choice on its bar, and moves within its
   section. Pinned cards stay on top, above the sections. With no section, the
   board is one group.
+
+### Sizes
+
+The app chooses the smallest and the largest size a card may take, for every
+dashboard or for one:
+
+```js
+configureDashboards({ cardSizes: { min: '1x1', max: '4x3' } })   // every dashboard
+```
+```vue
+<CardsDashboard zone="ops" :card-sizes="{ min: '1x1', max: '4x3' }" />
+```
+
+- The default is `1x1` to `3x2`; widths go up to 6 and heights up to 4.
+- A card's own `sizes` are kept within the bounds. When none of them fall
+  within, it takes all of the bounds.
+- A default size (`span` × `rows`), or a saved one, that falls outside gives
+  the nearest allowed size.
+- The picker draws max columns × max rows. The sizes outside, or that the card
+  does not allow, are greyed out.
+
+### Styling the grid
+
+The grid's dimensions are CSS tokens. Set them on `:root` for every
+dashboard, or on `[data-dashboard="<id>"]` (the dashboard's `id`, else its
+zone) for one:
+
+| Token | Default | |
+|---|---|---|
+| `--qd-card-min` | `18rem` | A column's narrowest before the grid drops one |
+| `--qd-card-row` | `10rem` | The row unit of a card more than one row high |
+| `--qd-cards-gap` | `1rem` | Between cards |
+| `--qd-cards-columns` | `auto-fill` | As many columns as fit, or a number |
+
+```css
+[data-dashboard='ops'] {
+  --qd-card-min: 16rem;
+  --qd-card-row: 8rem;
+  --qd-cards-gap: 0.75rem;
+}
+```
+
+Under a grid width of 40rem, every card takes one column and one row. That
+threshold is a container query, which cannot read a token, so it is fixed.
 
 The tray shows the hidden cards whole, dimmed and inert, in the same grid; or,
 with its Cards / Compact switch, as one chip each. "Show" restores a card in its

@@ -1,7 +1,21 @@
 /**
  * CardsDashboard (#4320): an auto grid of cards, an edit bar on each card in
  * edit mode, the hidden cards' tray.
+ *
+ * The grid's dimensions are tokens (#5513): set them on :root for every
+ * dashboard, or on [data-dashboard="<id>"] for one.
  */
+
+:root {
+  /** A column's narrowest before the grid drops one */
+  --qd-card-min: 18rem;
+  /** The row unit of a card more than one row high */
+  --qd-card-row: 10rem;
+  /** Between cards */
+  --qd-cards-gap: 1rem;
+  /** auto-fill (as many as fit), or a number of columns */
+  --qd-cards-columns: auto-fill;
+}
 
 .qd-cards-dashboard {
   display: flex;
@@ -18,8 +32,8 @@
 .qd-cards-grid {
   container-type: inline-size;
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(min(var(--qd-card-min, 18rem), 100%), 1fr));
-  gap: 1rem;
+  grid-template-columns: repeat(var(--qd-cards-columns, auto-fill), minmax(min(var(--qd-card-min, 18rem), 100%), 1fr));
+  gap: var(--qd-cards-gap, 1rem);
 }
 
 // An async arrangement in its grace (#4338): held back, room kept, so the
@@ -33,7 +47,11 @@
   // Two rows high (#5503): the rows around it as tall as their cards, and
   // the card at least two row units; a one-row card keeps its own height
   grid-row: span var(--qd-card-rows, 1);
-  min-height: calc((var(--qd-card-rows, 1) - 1) * (var(--qd-card-row, 10rem) * 2 + 1rem));
+  // N rows: N row units and the gaps between them; one row: its own height
+  min-height: calc(
+    min(var(--qd-card-rows, 1) - 1, 1) * var(--qd-card-row, 10rem) +
+      (var(--qd-card-rows, 1) - 1) * (var(--qd-card-row, 10rem) + var(--qd-cards-gap, 1rem))
+  );
   display: flex;
   flex-direction: column;
   min-width: 0;
@@ -43,7 +61,8 @@
   }
 }
 
-// Too narrow for a wide card: it takes one column like the others
+// Too narrow for a wide card: it takes one column like the others. A container
+// query cannot read a token: 40rem is fixed
 @container (max-width: 40rem) {
   .qd-cards-slot {
     grid-column: auto;
