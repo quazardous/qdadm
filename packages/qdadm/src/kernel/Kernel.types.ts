@@ -3,6 +3,7 @@
  *
  * Extracted from Kernel.ts for maintainability.
  */
+import type { EdgeBarConfig } from '../edge/edgeBar'
 import type { Component } from 'vue'
 import type { RouteLocationRaw, RouteMeta, RouteRecordRaw } from 'vue-router'
 import type { SignalBus } from './SignalBus'
@@ -100,6 +101,13 @@ export interface Features {
    * list's search bookmark goes; the text beside the icons or not
    */
   favorites?: { icon?: string; iconActive?: string; saveSearch?: 'filters' | 'header' | false; labels?: boolean }
+  /**
+   * The edge bar (#5506): a thin bar on an edge of the layout, its tabs
+   * hooked onto it, a panel over the content. `panels(context)` gives the
+   * panels for the page's context (the stack, the route, the user), called
+   * again whenever it changes: global ones always, contextual ones in theirs
+   */
+  edgeBar?: EdgeBarConfig
   /** Entity lists (#5462): `refresh: false` hides the refresh button on every list that does not say otherwise */
   lists?: { refresh?: boolean }
   /** Every domain bar's look, unless its domain says otherwise (#5396) */

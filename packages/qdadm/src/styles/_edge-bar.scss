@@ -1,0 +1,226 @@
+// The edge bar (#5506): a thin bar on an edge, its chevron and tabs hooked
+// onto its inner side, a panel laid over the content, full height.
+:root {
+  --qd-edge-bar-width: 8px;
+  --qd-edge-tab-size: 2.25rem;
+  --qd-edge-bar-bg: var(--p-primary-color, #3b82f6);
+  --qd-edge-tab-bg: var(--p-content-background, #fff);
+  --qd-edge-tab-ink: var(--p-text-color, #1e293b);
+  --qd-edge-panel-bg: var(--p-content-background, #fff);
+  --qd-edge-panel-shadow: 0 0 28px rgba(15, 23, 42, 0.22);
+  --qd-edge-panel-width: 26rem;
+  --qd-edge-z: 1050;
+}
+
+:root.dark-mode,
+.dark-mode {
+  --qd-edge-tab-bg: #1f2937;
+  --qd-edge-tab-ink: #e5e7eb;
+  --qd-edge-panel-bg: #111827;
+  --qd-edge-panel-shadow: 0 0 28px rgba(0, 0, 0, 0.55);
+}
+
+// The content keeps the bar's room
+.main-content.main-content--edge-right {
+  margin-right: var(--qd-edge-bar-width);
+}
+
+.main-content.main-content--edge-left {
+  margin-left: calc(var(--fad-sidebar-width, 0px) + var(--qd-edge-bar-width));
+}
+
+.qd-edge {
+  position: fixed;
+  top: var(--qd-banner-height, 0px);
+  bottom: 0;
+  z-index: var(--qd-edge-z);
+  width: var(--qd-edge-bar-width);
+  pointer-events: none;
+  // The open panel's width: bounded; on a narrow screen, all but the tabs' room
+  --qd-edge-open-width: min(var(--qd-edge-panel-width), 92vw);
+
+  &--narrow {
+    --qd-edge-open-width: calc(100vw - var(--qd-edge-bar-width) - var(--qd-edge-tab-size));
+  }
+
+  &--right {
+    right: 0;
+  }
+
+  &--left {
+    left: 0;
+  }
+}
+
+.qd-edge-bar {
+  position: absolute;
+  inset: 0;
+  background: var(--qd-edge-bar-bg);
+  pointer-events: auto;
+}
+
+// The chevron and the tabs, hooked onto the bar's inner side
+.qd-edge-hooks {
+  position: absolute;
+  top: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  pointer-events: auto;
+
+  .qd-edge--right & {
+    right: 100%;
+  }
+
+  .qd-edge--left & {
+    left: 100%;
+  }
+}
+
+.qd-edge-tabs {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.qd-edge-chevron,
+.qd-edge-tab {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--qd-edge-tab-size);
+  height: var(--qd-edge-tab-size);
+  padding: 0;
+  border: 1px solid var(--qd-edge-tab-color, var(--qd-edge-bar-bg));
+  background: var(--qd-edge-tab-bg);
+  color: var(--qd-edge-tab-color, var(--qd-edge-tab-ink));
+  cursor: pointer;
+  box-shadow: 0 1px 4px rgba(15, 23, 42, 0.18);
+
+  .qd-edge--right & {
+    border-right: 0;
+    border-radius: 8px 0 0 8px;
+  }
+
+  .qd-edge--left & {
+    border-left: 0;
+    border-radius: 0 8px 8px 0;
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--p-primary-color, #3b82f6);
+    outline-offset: 2px;
+  }
+}
+
+.qd-edge-chevron {
+  height: calc(var(--qd-edge-tab-size) * 0.75);
+  border-color: var(--qd-edge-bar-bg);
+  background: var(--qd-edge-bar-bg);
+  color: #fff;
+}
+
+.qd-edge-tab--active {
+  background: var(--qd-edge-tab-color, var(--qd-edge-bar-bg));
+  color: #fff;
+}
+
+.qd-edge-badge {
+  position: absolute;
+  top: -0.35rem;
+  min-width: 1.1rem;
+  height: 1.1rem;
+  padding: 0 0.25rem;
+  border-radius: 0.55rem;
+  background: var(--qd-tone-critical, #dc2626);
+  color: #fff;
+  font-size: 0.65rem;
+  font-weight: 700;
+  line-height: 1.1rem;
+  text-align: center;
+
+  .qd-edge--right & {
+    left: -0.35rem;
+  }
+
+  .qd-edge--left & {
+    right: -0.35rem;
+  }
+}
+
+// The panel, over the content
+.qd-edge-panel {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: var(--qd-edge-open-width);
+  display: flex;
+  flex-direction: column;
+  background: var(--qd-edge-panel-bg);
+  box-shadow: var(--qd-edge-panel-shadow);
+  pointer-events: auto;
+  outline: none;
+  animation: qd-edge-in 0.18s ease-out;
+
+  .qd-edge--right & {
+    right: 100%;
+    --qd-edge-from: 1.5rem;
+  }
+
+  .qd-edge--left & {
+    left: 100%;
+    --qd-edge-from: -1.5rem;
+  }
+}
+
+// The tabs above the panel, so they stay at hand while it is open
+.qd-edge--open .qd-edge-hooks {
+  z-index: 1;
+}
+
+.qd-edge--open.qd-edge--right .qd-edge-hooks {
+  right: calc(100% + var(--qd-edge-open-width));
+}
+
+.qd-edge--open.qd-edge--left .qd-edge-hooks {
+  left: calc(100% + var(--qd-edge-open-width));
+}
+
+.qd-edge-panel-head {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.85rem 1rem;
+  border-bottom: 3px solid var(--qd-edge-tab-color, var(--qd-edge-bar-bg));
+
+  i {
+    color: var(--qd-edge-tab-color, var(--qd-edge-bar-bg));
+  }
+}
+
+.qd-edge-panel-title {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.qd-edge-panel-body {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 1rem;
+}
+
+@keyframes qd-edge-in {
+  from {
+    opacity: 0;
+    transform: translateX(var(--qd-edge-from, 1.5rem));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .qd-edge-panel {
+    animation: none;
+  }
+}

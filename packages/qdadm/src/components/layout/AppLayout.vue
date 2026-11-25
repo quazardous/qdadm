@@ -35,6 +35,8 @@ import QdDomainBarZone from '../../domain/QdDomainBarZone.vue'
 import QdRunBar from '../run/QdRunBar.vue'
 import { RUN_BAR_HOST } from '../run/host'
 import QdSidebarMenus from './QdSidebarMenus.vue'
+import QdEdgeBar from './QdEdgeBar.vue'
+import { useEdgeBar } from '../../edge/edgeBar'
 import { useSettingsMenu, SETTINGS_MENU_IDS } from '../../composables/useSettingsMenu'
 import qdadmLogo from '../../assets/logo.svg'
 import { version as qdadmVersion } from '../../../package.json'
@@ -54,6 +56,9 @@ interface SignalBus {
 
 const features = inject<FeaturesConfig>('qdadmFeatures', { poweredBy: true, breadcrumb: true })
 const homeRoute = inject<string>('qdadmHomeRoute', 'home')
+// The edge bar (#5506): the content keeps its room while there is one
+const edgeBar = useEdgeBar()
+const edgeSide = (features.edgeBar as { side?: string } | undefined)?.side === 'left' ? 'left' : 'right'
 
 // Guard dialog from shared store (registered by useBareForm/useEntityItemFormPage when a form is active)
 const guardDialog = useGuardDialog()
@@ -331,7 +336,7 @@ const showBreadcrumb = computed<boolean>(() => {
     </aside>
 
     <!-- Main content -->
-    <main class="main-content" :class="{ 'main-content--sidebar-collapsed': sidebarCollapsed }">
+    <main class="main-content" :class="{ 'main-content--sidebar-collapsed': sidebarCollapsed, [`main-content--edge-${edgeSide}`]: edgeBar.present.value }">
       <!-- Mobile header bar -->
       <div class="mobile-header">
         <QdButton
@@ -396,6 +401,9 @@ const showBreadcrumb = computed<boolean>(() => {
       @stay="guardDialog.onStay"
     />
     <!-- Note: guardDialog is a shallowRef, Vue auto-unwraps it in templates -->
+
+    <!-- The edge bar (#5506): the app's panels for this context, over the content -->
+    <QdEdgeBar />
   </div>
 </template>
 

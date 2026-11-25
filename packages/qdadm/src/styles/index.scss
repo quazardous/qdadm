@@ -48,6 +48,7 @@
 @use './show-pages';
 @use './sidebar';
 @use './settings-home';
+@use './edge-bar';
 
 // Responsive styles (must be last for specificity)
 @use './responsive';

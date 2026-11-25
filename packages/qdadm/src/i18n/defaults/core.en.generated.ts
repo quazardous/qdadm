@@ -513,6 +513,11 @@ export default `core:
       todo: to do
   # Favourites and recents: the star, "Save this search", the two cards (#5349)
   # The settings menu behind the gear (#5401)
+  edgeBar:
+    open: Open the panel
+    close: Close the panel
+    panels: Side panels
+    unread: "{label}, {count} unread"
   settingsMenu:
     label: Settings
     back: Back to the menu

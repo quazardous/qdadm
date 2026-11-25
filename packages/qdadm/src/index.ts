@@ -308,6 +308,7 @@ export {
 } from './composables/useNavigation'
 export { useSettingsMenu, SETTINGS_MENU_IDS, type UseSettingsMenuReturn } from './composables/useSettingsMenu'
 export { SETTINGS_HOME_ROUTE, type SettingsBreadcrumb } from './kernel/settingsHome'
+export { useEdgeBar, badgeCount, resetEdgeBar, type EdgeBarConfig, type EdgeContext, type EdgePanelDef, type UseEdgeBarReturn } from './edge/edgeBar'
 export {
   useUnsavedChangesGuard,
   type UseUnsavedChangesGuardOptions,
