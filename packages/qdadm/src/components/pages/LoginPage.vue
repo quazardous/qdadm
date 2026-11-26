@@ -24,6 +24,7 @@
  */
 import { ref, inject, computed, nextTick, type PropType, type Component } from 'vue'
 import { useRouter } from 'vue-router'
+import { safeRedirect } from '../../auth/safeRedirect'
 import Card from 'primevue/card'
 import InputText from 'primevue/inputtext'
 import Password from 'primevue/password'
@@ -252,6 +253,11 @@ const emit = defineEmits<{
 }>()
 
 const router = useRouter()
+// Where to go once logged in (#5524): the page asked for (?redirect=, a local
+// path only), else the redirectTo prop
+const target = computed(() =>
+  safeRedirect((router as { currentRoute?: { value?: { query?: Record<string, unknown> } } } | undefined)?.currentRoute?.value?.query?.redirect, props.redirectTo)
+)
 const authAdapter = inject<AuthAdapter | null>('authAdapter', null)
 const orchestrator = inject<Orchestrator | null>('qdadmOrchestrator', null)
 const appConfig = inject<AppConfig>('qdadmApp', {})
@@ -307,7 +313,7 @@ async function handleSso(): Promise<void> {
   ssoLoading.value = true
   try {
     if (sso.start) await sso.start()
-    else if (authAdapter?.beginLogin) await authAdapter.beginLogin(props.redirectTo)
+    else if (authAdapter?.beginLogin) await authAdapter.beginLogin(target.value)
     else throw new Error(label('noSso', 'No sign-in flow configured for this button'))
   } catch (err) {
     ssoError.value = err instanceof Error ? err.message : String(err)
@@ -342,7 +348,7 @@ async function handleLogin(): Promise<void> {
     }
 
     emit('login', result)
-    router.push(props.redirectTo)
+    router.push(target.value)
   } catch (error) {
     password.value = ''
 

@@ -35,6 +35,7 @@ const completions = new Map<string, Promise<{ user?: unknown; redirectTo: string
  */
 import { ref, inject, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { safeRedirect } from '../../auth/safeRedirect'
 import QdButton from '../base/QdButton.vue'
 
 interface OAuthCapableAdapter {
@@ -95,7 +96,8 @@ onMounted(async () => {
       if (key) completions.set(key, completion)
     }
     const result = await completion
-    const target = result.redirectTo || props.fallbackRedirect
+    // A local path only (#5524): the attempt's redirect came from the address
+    const target = safeRedirect(result.redirectTo, props.fallbackRedirect)
 
     // Navigate, THEN signal (#4329): auth:login remounts the whole app, and on
     // the callback route that remount would run this page again

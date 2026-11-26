@@ -243,7 +243,10 @@ export function applyRoutingMethods(KernelClass: { prototype: Kernel }): void {
         }
 
         if (!this.router!.hasRoute('login')) return '/'
-        return sessionLost ? { name: 'login', query: { session_lost: '1' } } : { name: 'login' }
+        // The page asked for (#5524): the login brings you back to it
+        const back = to.name !== 'login' && typeof to.fullPath === 'string' && to.fullPath !== '/' ? { redirect: to.fullPath } : {}
+        const query = { ...(sessionLost ? { session_lost: '1' } : {}), ...back }
+        return Object.keys(query).length ? { name: 'login', query } : { name: 'login' }
       }
 
       // Who may open it (#4962): the same rule as the menu and PageNav —

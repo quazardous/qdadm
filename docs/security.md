@@ -506,6 +506,25 @@ expired-session guard, role loading in a `PersistableRolesProvider`, and the
 live-entity stream ([live-entities.md](./live-entities.md)). None of them
 fails loudly when it never arrives — they simply never happen.
 
+### Back to the page asked for
+
+A page opened without a session (a deep link, a bookmark) goes to `login` with
+`?redirect=<the page>`; an expired session does the same with
+`?expired=1&redirect=<the page that was open>`. `LoginPage` sends you there
+once logged in, by its form and by `beginLogin` (the identity provider keeps
+it through the callback, `OAuthCallbackPage` goes back to it). Without
+`redirect`, the `redirectTo` prop, `/` by default.
+
+Only a local path of the app is followed: `safeRedirect(value, fallback)`
+keeps `/books/12/edit?tab=loans`, and turns `//evil.com`, `https://…`,
+`/\evil.com` or `javascript:` into the fallback. A login page of your own
+reads `?redirect=` through it the same way:
+
+```js
+import { safeRedirect } from '@quazardous/qdadm'
+router.push(safeRedirect(route.query.redirect, '/'))
+```
+
 ### Restoring a session before the app mounts
 
 `isAuthenticated()` is **synchronous**. The route guard calls it and decides in

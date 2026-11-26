@@ -90,8 +90,11 @@ export function applyAuthMethods(KernelClass: { prototype: Kernel }): void {
       const payloadData = typeof payload.data === 'object' && payload.data !== null ? payload.data : {}
       await this.signals!.emit('auth:logout', { reason: 'expired', ...payloadData })
 
-      if (this.router!.currentRoute.value.name !== 'login') {
-        this.router!.push({ name: 'login', query: { expired: '1' } })
+      const current = this.router!.currentRoute.value
+      if (current.name !== 'login') {
+        // Back to the page that was open, once logged in again (#5524)
+        const back = typeof current.fullPath === 'string' && current.fullPath && current.fullPath !== '/' ? { redirect: current.fullPath } : {}
+        this.router!.push({ name: 'login', query: { expired: '1', ...back } })
       }
 
       if (onAuthExpired) {
