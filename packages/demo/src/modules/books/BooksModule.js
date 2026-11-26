@@ -395,6 +395,7 @@ export class BooksModule extends Module {
         // stays out while nothing fills it
         {
           id: 'topGenre',
+          label: 'Top genre',
           card: 'metric',
           load: async () => {
             const counts = {}
@@ -409,6 +410,7 @@ export class BooksModule extends Module {
         },
         {
           id: 'future',
+          label: 'From the future',
           card: 'metric',
           title: (d) => d?.label,
           // Books from the future: none, so the slot is left out
@@ -418,8 +420,38 @@ export class BooksModule extends Module {
           },
           visible: (d) => !!d,
         },
+        // Added by an admin, once per genre (#5526): its parameters reach its
+        // functions; the "Library bar" settings page lays the bar out
+        {
+          id: 'genreCount',
+          label: 'Books of a genre',
+          card: 'metric',
+          repeatable: true,
+          description: 'How many books of one genre',
+          params: {
+            type: 'object',
+            required: ['genre'],
+            properties: {
+              genre: {
+                type: 'string',
+                title: 'Genre',
+                enum: ['fantasy', 'fiction', 'mystery', 'non-fiction', 'sci-fi'],
+                enumLabels: { fantasy: 'Fantasy', fiction: 'Fiction', mystery: 'Mystery', 'non-fiction': 'Non-fiction', 'sci-fi': 'Sci-fi' },
+              },
+            },
+          },
+          title: (d, p) => `Genre: ${p?.genre ?? '?'}`,
+          icon: 'pi pi-tag',
+          load: async (p) => ({ value: (await list('books')).filter((b) => b.genre === p?.genre).length, label: 'books' }),
+          to: (d, p) => ({ name: 'book', query: { 'books.genre': p?.genre } }),
+        },
       ],
     })
+    // The bar's layout, chosen on a settings page (#5526)
+    ctx.routes('library-bar', [
+      { path: '', name: 'library-bar', component: () => import('./pages/LibraryBarSettings.vue'), meta: { navLabel: 'Library bar' } },
+    ])
+    ctx.navItem({ section: 'Library', route: 'library-bar', icon: 'pi pi-sliders-h', label: 'Library bar', menu: 'settings' })
   }
 }
 

@@ -29,8 +29,9 @@
 import QdCardBlockScope from '../../cards/QdCardBlockScope.vue'
 import { computed, inject, nextTick, onBeforeUnmount, ref, watch, h, defineComponent, type Component, type VNode } from 'vue'
 import QdButton from '../base/QdButton.vue'
-import CardParamsForm from './CardParamsForm.vue'
 import QdCardSizePicker from './QdCardSizePicker.vue'
+import QdLayoutCatalogue from './QdLayoutCatalogue.vue'
+import { useLayoutReorder } from '../../composables/useLayoutReorder'
 import QdCardView from '../../cards/QdCardView.vue'
 import { getCard } from '../../cards/registry'
 import { DASHBOARD_ZONES } from '../../zones/zones'
@@ -222,7 +223,6 @@ function removeSection(id: string): void {
 
 // ── The catalogue (#5348) ─────────────────────────────────────────────────
 const catalogueOpen = ref(false)
-const adding = ref<CardDef | null>(null)
 const templates = computed(() => cards.value.filter((c) => c.card.repeatable))
 /** What a card type answers, when the block draws a registered card */
 function question(c: CardDef): string | null {
@@ -231,27 +231,18 @@ function question(c: CardDef): string | null {
   const q = type ? getCard(type)?.meta.question : undefined
   return q ?? null
 }
-const description = (c: CardDef) => (c.card.description ? tOr(c.card.description, c.card.description) : null)
 
 async function openCatalogue(): Promise<void> {
   catalogueOpen.value = !catalogueOpen.value
-  adding.value = null
   if (catalogueOpen.value) {
     await nextTick()
     root.value?.querySelector<HTMLElement>('.qd-cards-catalogue h2')?.focus()
   }
 }
 
-async function chooseTemplate(c: CardDef): Promise<void> {
-  adding.value = c
-  await nextTick()
-  root.value?.querySelector<HTMLInputElement>('.qd-cards-catalogue form input, .qd-cards-catalogue form select')?.focus()
-}
-
 function addInstance(c: CardDef, value: { params: Record<string, unknown>; title: string; section: string | null }): void {
   const id = state.add(c.id, value.params, { title: value.title === title(c) ? undefined : value.title, section: value.section })
   if (!id) return
-  adding.value = null
   catalogueOpen.value = false
   announce(tOr('core.cardsDashboard.added', '{title} added', { title: value.title }))
   void focusHandle(id)
@@ -282,18 +273,6 @@ async function focusHandle(id: string): Promise<void> {
   root.value?.querySelector<HTMLElement>(`${slotSelector(id)} .qd-cards-handle`)?.focus()
 }
 
-function onHandleKey(event: KeyboardEvent, c: CardDef): void {
-  const group = groupFor(c)
-  const from = group.findIndex((g) => g.id === c.id)
-  const to = { ArrowUp: from - 1, ArrowLeft: from - 1, ArrowDown: from + 1, ArrowRight: from + 1, Home: 0, End: group.length - 1 }[event.key]
-  if (to === undefined) return
-  event.preventDefault()
-  if (state.move(c.id, to)) {
-    announcePosition(c)
-    void focusHandle(c.id)
-  }
-}
-
 function togglePin(c: CardDef): void {
   const pinned = !isPinned(c)
   state.pin(c.id, pinned)
@@ -317,74 +296,37 @@ async function reset(): Promise<void> {
   announce(tOr('core.cardsDashboard.resetDone', 'Default arrangement restored'))
 }
 
-// ── Drag with pointer events: mouse, touch and pen, no dependency ─────────
-// Followed on window, not with pointer capture: the preview moves the slot in
-// the DOM, which drops a capture and would lose the pointerup.
-const dragging = ref<string | null>(null)
-let snapshot: CardsArrangement | null = null
-let dragged: CardDef | null = null
-
-function onPointerDown(event: PointerEvent, c: CardDef): void {
-  if (c.card.fixed || (event.pointerType === 'mouse' && event.button !== 0)) return
-  event.preventDefault()
-  // A plain copy: the arrangement's arrays are reactive proxies, which structuredClone refuses
-  snapshot = JSON.parse(JSON.stringify(state.arrangement.value)) as CardsArrangement
-  dragging.value = c.id
-  dragged = c
-  window.addEventListener('pointermove', onPointerMove)
-  window.addEventListener('pointerup', onPointerUp)
-  window.addEventListener('pointercancel', onPointerCancel)
-  window.addEventListener('keydown', onDragKey)
+// ── Moving cards (#5526): the layouts' shared reorder, by handle, pointer and keyboard
+const reorder = useLayoutReorder({
+  group: (id) => groupOf(id),
+  isFixed: (id) => !!cardById(id)?.card.fixed,
+  locate: (id) => root.value?.querySelector<HTMLElement>(slotSelector(id)) ?? null,
+  move: (id, to) => state.move(id, to),
+  preview: (id, to) => state.preview(moveCard(state.arrangement.value, cards.value, id, to)),
+  snapshot: () => {
+    // A plain copy: the arrangement's arrays are reactive proxies, which structuredClone refuses
+    const saved = JSON.parse(JSON.stringify(state.arrangement.value)) as CardsArrangement
+    return () => state.preview(saved)
+  },
+  onMoved: (id) => {
+    const c = cardById(id)
+    if (!c) return
+    announcePosition(c)
+    void focusHandle(id)
+  },
+  onCancel: () => announce(tOr('core.cardsDashboard.dragCancelled', 'Move cancelled')),
+})
+const dragging = reorder.dragging
+const cardById = (id: string) => state.allCards.value.find((c) => c.id === id)
+const groupOf = (id: string) => {
+  const c = cardById(id)
+  return c ? groupFor(c).map((g) => g.id) : []
 }
-
-function stopDrag(): void {
-  window.removeEventListener('pointermove', onPointerMove)
-  window.removeEventListener('pointerup', onPointerUp)
-  window.removeEventListener('pointercancel', onPointerCancel)
-  window.removeEventListener('keydown', onDragKey)
-  dragging.value = null
-  dragged = null
-  snapshot = null
-}
-
-function onPointerMove(event: PointerEvent): void {
-  const c = dragged
-  if (!c) return
-  // The card of the same group under the pointer is the drop place
-  const group = groupFor(c)
-  for (let i = 0; i < group.length; i++) {
-    if (group[i]!.id === c.id || group[i]!.card.fixed) continue
-    const r = root.value?.querySelector<HTMLElement>(slotSelector(group[i]!.id))?.getBoundingClientRect()
-    if (r && event.clientX >= r.left && event.clientX <= r.right && event.clientY >= r.top && event.clientY <= r.bottom) {
-      state.preview(moveCard(state.arrangement.value, cards.value, c.id, i))
-      return
-    }
-  }
-}
-
-function onPointerUp(): void {
-  const c = dragged
-  if (!c) return
-  stopDrag()
-  announcePosition(c)
-}
-
-function cancelDrag(): void {
-  if (snapshot) state.preview(snapshot)
-  stopDrag()
-  announce(tOr('core.cardsDashboard.dragCancelled', 'Move cancelled'))
-}
-
-function onPointerCancel(): void {
-  if (dragged) cancelDrag()
-}
-
-function onDragKey(event: KeyboardEvent): void {
-  if (event.key === 'Escape' && dragged) cancelDrag()
-}
+const onHandleKey = (event: KeyboardEvent, c: CardDef) => reorder.onHandleKey(event, c.id)
+const onPointerDown = (event: PointerEvent, c: CardDef) => reorder.onPointerDown(event, c.id)
 
 onBeforeUnmount(() => {
-  stopDrag()
+  reorder.stop()
   // Left in the middle of an edit: keep what was arranged
   if (editing.value && state.dirty.value) void state.commit()
 })
@@ -462,38 +404,15 @@ function render(block: BlockConfig, props?: Record<string, unknown>): Component 
     <!-- The catalogue (#5348): the hidden cards, and the cards to add with their parameters -->
     <section v-if="editing && catalogueOpen" id="qd-cards-catalogue" class="qd-cards-catalogue" aria-labelledby="qd-cards-catalogue-title">
       <h2 id="qd-cards-catalogue-title" tabindex="-1">{{ tOr('core.cardsDashboard.catalogue', 'Add a card') }}</h2>
-      <template v-if="adding">
-        <h3>{{ title(adding) }}</h3>
-        <p v-if="description(adding)" class="qd-cards-catalogue-desc">{{ description(adding) }}</p>
-        <CardParamsForm
-          :schema="adding.card.params ?? null"
-          :title="title(adding)"
-          :sections="arrangement.sections"
-          :id-prefix="`qd-cards-param-${zone}`"
-          @submit="addInstance(adding!, $event)"
-          @cancel="adding = null"
-        />
-      </template>
-      <template v-else>
-        <ul class="qd-cards-catalogue-list">
-          <li v-for="c in templates" :key="c.id" class="qd-cards-catalogue-item" :data-catalogue-card="c.id">
-            <div class="qd-cards-catalogue-text">
-              <strong>{{ title(c) }}</strong>
-              <span v-if="description(c)">{{ description(c) }}</span>
-              <span v-if="question(c)" class="qd-cards-catalogue-question">{{ question(c) }}</span>
-            </div>
-            <QdButton type="button" size="small" outlined icon="pi pi-plus" :label="tOr('core.cardsDashboard.add', 'Add')" :aria-label="tOr('core.cardsDashboard.addOne', 'Add {title}', { title: title(c) })" @click="chooseTemplate(c)" />
-          </li>
-          <li v-for="c in state.groups.value.hidden" :key="`hidden-${c.id}`" class="qd-cards-catalogue-item" :data-catalogue-hidden="c.id">
-            <div class="qd-cards-catalogue-text">
-              <strong>{{ title(c) }}</strong>
-              <span>{{ tOr('core.cardsDashboard.hiddenNow', 'Hidden: it comes back where it was') }}</span>
-            </div>
-            <QdButton type="button" size="small" text icon="pi pi-eye" :label="tOr('core.cardsDashboard.show', 'Show')" :aria-label="tOr('core.cardsDashboard.restore', 'Show {title}', { title: title(c) })" @click="restore(c)" />
-          </li>
-        </ul>
-        <p v-if="!templates.length && !state.groups.value.hidden.length" class="qd-cards-tray-empty">{{ tOr('core.cardsDashboard.catalogueEmpty', 'Every card is already on the board') }}</p>
-      </template>
+      <QdLayoutCatalogue
+        :templates="templates"
+        :hidden="state.groups.value.hidden"
+        :sections="arrangement.sections"
+        :id-prefix="`qd-cards-param-${zone}`"
+        :describe="question"
+        @add="addInstance"
+        @restore="restore"
+      />
     </section>
 
     <div v-for="(grid, gi) in grids" :key="grid.key" class="qd-cards-group" :data-section-id="grid.section?.id">

@@ -236,8 +236,22 @@ function keptInstances(list: unknown, cards: CardDef[]): CardInstance[] {
   return kept
 }
 
+/**
+ * What applies to a layout (#5526): the dashboards' (sizes, sections, pins,
+ * new cards shown) or a bar's (new items hidden until someone turns them on,
+ * at most `max` shown). An app's own is a plain object.
+ */
+export interface LayoutProfile {
+  /** A declared item the saved layout does not know yet starts hidden */
+  newHidden?: boolean
+  /** At most this many shown (shownItems) */
+  max?: number
+}
+export const DASHBOARD_PROFILE: LayoutProfile = {}
+export const BAR_PROFILE: LayoutProfile = { newHidden: true, max: 8 }
+
 /** Bring a saved arrangement (any shape, any version) in line with the declared cards. */
-export function reconcileArrangement(saved: unknown, cards: CardDef[]): CardsArrangement {
+export function reconcileArrangement(saved: unknown, cards: CardDef[], profile: LayoutProfile = DASHBOARD_PROFILE): CardsArrangement {
   const fallback = defaultArrangement(cards)
   let data = isRecord(saved) ? saved : null
   if (!data) return fallback
@@ -267,7 +281,9 @@ export function reconcileArrangement(saved: unknown, cards: CardDef[]): CardsArr
     order.splice(at, 0, c.id)
   })
 
-  const hidden = ids(data.hidden).filter((id) => !byId.get(id)!.card.required)
+  // A bar's new item waits for someone to turn it on (#5526)
+  const unknownNew = profile.newHidden ? all.filter((c) => !known.has(c.id) && !instanceIds.has(c.id) && !c.card.required).map((c) => c.id) : []
+  const hidden = [...ids(data.hidden), ...unknownNew].filter((id) => !byId.get(id)!.card.required)
   // A fixed card keeps its declared pin; a new card takes its default
   const pinned = new Set(ids(data.pinned).filter((id) => !byId.get(id)!.card.fixed))
   for (const c of all) if (c.card.pinned && (c.card.fixed || !known.has(c.id))) pinned.add(c.id)
@@ -301,6 +317,25 @@ export function reconcileArrangement(saved: unknown, cards: CardDef[]): CardsArr
     sections,
     sectionOf,
     instances,
+  }
+}
+
+/** The items shown, in order (#5526): pinned first, at most `max` */
+export function shownItems(arrangement: CardsArrangement, cards: CardDef[], max?: number): CardDef[] {
+  const g = groupCards(arrangement, cards)
+  const all = [...g.pinned, ...g.rest]
+  return max && max > 0 ? all.slice(0, max) : all
+}
+
+/** An added item's parameters, changed (#5526): kept only when they fit its schema */
+export function setParams(arrangement: CardsArrangement, cards: CardDef[], id: string, params: Record<string, unknown>, title?: string): CardsArrangement {
+  const inst = arrangement.instances.find((i) => i.id === id)
+  const template = inst && cards.find((c) => c.id === inst.block && c.card.repeatable)
+  if (!inst || !template) return arrangement
+  if (template.card.params && validateCardData(params, template.card.params, 'params').length) return arrangement
+  return {
+    ...arrangement,
+    instances: arrangement.instances.map((i) => (i.id === id ? { ...i, params: { ...params }, ...(title !== undefined ? (title ? { title } : { title: undefined }) : {}) } : i)),
   }
 }
 
@@ -703,4 +738,14 @@ export function useCardsArrangement(
       return write(null)
     },
   }
+}
+
+// ── The layout core's generic names (#5526): the same functions, for any layout
+/** Bring a saved layout in line with the catalogue, under a profile */
+export const reconcileLayout = reconcileArrangement
+/** Move an item to an index of its group */
+export const moveItem = moveCard
+/** Show or hide an item */
+export function setShown(layout: CardsArrangement, items: CardDef[], id: string, shown: boolean): CardsArrangement {
+  return setHidden(layout, items, id, !shown)
 }

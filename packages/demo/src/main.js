@@ -28,6 +28,7 @@ import DotsChart from './charts/DotsChart.vue'
 import ChangesContent from './dialogs/ChangesContent.vue'
 import { openNews } from './dialogs/news'
 import { edgePanels } from './edge/panels'
+import { domainBarLayout } from './edge/libraryBar'
 import { version } from '../package.json'
 import { authAdapter } from './adapters/authAdapter'
 import { moduleDefs, modulesOptions, sectionOrder, registerHooks } from './config'
@@ -128,6 +129,8 @@ const kernel = new Kernel({
     settingsMenu: { sections: ['Security'], visible: (user) => user?.role === 'ROLE_ADMIN', home: true },
     // The edge bar (#5506): Activity everywhere, Comments on a book's page
     edgeBar: { panels: edgePanels },
+    // The Library bar's layout, chosen on a settings page (#5526)
+    domainBar: { layout: domainBarLayout },
   },
 
   // PrimeVue

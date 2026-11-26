@@ -35,11 +35,20 @@ import { normalizeSeries } from '../cards/blocks/viz'
 import QdBadge from './QdBadge.vue'
 import { acquireSource, type SourceRead, type SourceSignals } from './sources'
 import { badgeTone, type DomainDefinition, type DomainIndicator, type DomainIndicatorProps, type DomainLook, type DomainNavEntry } from './registry'
+import { domainBarIndicators } from './layout'
 
-const props = defineProps<{ domain: DomainDefinition }>()
+const props = defineProps<{
+  domain: DomainDefinition
+  /**
+   * The app's layout (#5526): which indicators, in which order, with which
+   * parameters; null or none: the declared ones. Read once: a new layout is a
+   * new bar (the zone keys it)
+   */
+  layout?: unknown
+}>()
 
 // The look (#5400): the domain's, else the app's, else the toolbox
-const features = inject<{ domainBar?: { look?: DomainLook } } | null>('qdadmFeatures', null)
+const features = inject<{ domainBar?: { look?: DomainLook; maxCards?: number } } | null>('qdadmFeatures', null)
 let warned = false
 const look = computed<'toolbox' | 'card'>(() => {
   const asked = props.domain.look ?? features?.domainBar?.look ?? 'toolbox'
@@ -240,10 +249,16 @@ function watchIndicator(def: DomainIndicator): Ref<IndicatorView> {
   })
 }
 
-const indicators = (props.domain.indicators ?? []).map(watchIndicator)
+// The app's layout (#5526): every declared indicator is read (its count feeds
+// the nav badges), the added ones too; the layout says which are drawn
+const laid = domainBarIndicators(props.domain, props.layout, features?.domainBar?.maxCards ?? null)
+const indicators = laid.indicators.map(watchIndicator)
 const byId = computed(() => new Map(indicators.map((i) => [i.value.def.id, i.value])))
-/** The ones drawn: a slot whose data says so is left out (#5438) */
-const shown = computed(() => indicators.filter((i) => !i.value.hidden))
+/** The ones drawn: the layout's, in its order; a slot whose data says so is left out (#5438) */
+const shown = computed(() => {
+  const inLayout = laid.shown ? laid.shown.map((id) => indicators.find((i) => i.value.def.id === id)).filter((i): i is (typeof indicators)[number] => !!i) : indicators
+  return inLayout.filter((i) => !i.value.hidden)
+})
 
 // ── The navigation ────────────────────────────────────────────────────────────
 function targetOf(entry: DomainNavEntry): RouteLocationRaw | null {

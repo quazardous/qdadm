@@ -511,6 +511,12 @@ core:
       todo: to do
   # Favourites and recents: the star, "Save this search", the two cards (#5349)
   # The settings menu behind the gear (#5401)
+  layout:
+    count: "{count} shown"
+    countOf: "{count} of {max} shown"
+    overMax: "beyond the maximum: not shown"
+    params: "Parameters of {title}"
+    apply: Apply
   edgeBar:
     open: Open the panel
     close: Close the panel

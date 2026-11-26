@@ -308,6 +308,7 @@ export {
   // NavItem already exported from kernel
 } from './composables/useNavigation'
 export { useSettingsMenu, SETTINGS_MENU_IDS, type UseSettingsMenuReturn } from './composables/useSettingsMenu'
+export { useLayoutReorder, type LayoutReorderOptions, type UseLayoutReorderReturn } from './composables/useLayoutReorder'
 export { SETTINGS_HOME_ROUTE, type SettingsBreadcrumb } from './kernel/settingsHome'
 export { useEdgeBar, badgeCount, resetEdgeBar, type EdgeBarConfig, type EdgeContext, type EdgePanelDef, type UseEdgeBarReturn } from './edge/edgeBar'
 export {
@@ -424,6 +425,14 @@ export {
   cardBounds,
   sizesWithin,
   boundCardSizes,
+  shownItems,
+  setParams,
+  reconcileLayout,
+  moveItem,
+  setShown,
+  DASHBOARD_PROFILE,
+  BAR_PROFILE,
+  type LayoutProfile,
   type CardSizeBounds,
   localArrangementStorage,
   type CardInstance,

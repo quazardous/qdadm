@@ -267,6 +267,43 @@ ctx.domain('library', {
   it is drawn as usual). The card reads only the fields its schema declares,
   so the data may carry more for these functions. A "top N" bar:
 
+### Its layout from the app
+
+Which indicators the bar shows, in which order, with which parameters, can be
+the app's: chosen by an admin on a page of its own, the same for everyone
+who sees the domain, on the [card layouts](./layouts.md) core.
+
+```js
+createKernel({
+  features: {
+    domainBar: {
+      // The layout, a promise of one, or null for the declared indicators
+      layout: (domain) => api.get(`/bars/${domain.name}`),
+      maxCards: 8,   // default; a domain's own maxCards wins
+    },
+  },
+})
+```
+
+- **The catalogue** is the domain's `indicators`. A `repeatable` one, with a
+  `params` schema, is added by the layout as many times as wanted; its
+  functions (`load`, `value`, `status`, `visible`, `title`, `icon`, `to`)
+  receive the instance's parameters as their last argument, and they are
+  merged into its `options`. `label` names an indicator in an editor when its
+  title is a function of its data; `description` says what it shows.
+- **Read with the bar's profile:** an indicator the layout does not know yet
+  waits hidden until an admin shows it; at most `maxCards` are shown. Every
+  declared indicator is still read, so a navigation entry's badge keeps its
+  count, shown or not.
+- **No layout** (no source, or `null`): the declared indicators, as declared.
+  A promise: the declared bar until it answers, then the layout.
+- **After a save**, `reloadDomainBar(name)` (or `useDomainBar().reload(name)`)
+  reads it again; without a name, every domain's.
+- **A preview:** `<QdDomainBar :domain :layout>` draws the bar of a given
+  layout; key it on the layout, it is read once per bar.
+
+The editor is the app's, made of the [layout blocks](./layouts.md#the-building-blocks).
+
   ```js
   sources: { top: { load: () => api.get('/tasks/top'), refresh: 60 } },   // one read for the four slots
   indicators: [0, 1, 2, 3].map((i) => ({

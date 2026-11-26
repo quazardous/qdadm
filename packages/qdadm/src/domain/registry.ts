@@ -14,6 +14,10 @@ import type { Component } from 'vue'
 import type { RouteLocationNormalizedLoaded, RouteLocationRaw } from 'vue-router'
 import type { CardPillMode, CardStatus } from '../cards/types'
 import type { DomainDataSource } from './sources'
+import type { CardSchema } from '../cards/validate'
+
+/** An added indicator's parameters (#5526), given to its functions as their last argument */
+export type IndicatorParams = Record<string, unknown>
 
 export type { DomainDataSource } from './sources'
 
@@ -51,34 +55,46 @@ export interface DomainIndicator {
   /** When the bar is compact: options merged over `options`, another component */
   compact?: { options?: Record<string, unknown>; component?: Component }
   /** Its name, read beside the pill and by screen readers; or a function of its data (#5438) */
-  title: string | ((data: unknown) => string | undefined)
+  title: string | ((data: unknown, params?: IndicatorParams) => string | undefined)
   /** An icon class, or a function of its data (#5438) */
-  icon?: string | ((data: unknown) => string | undefined)
+  icon?: string | ((data: unknown, params?: IndicatorParams) => string | undefined)
+  /** Its name in a layout editor (#5526), where there is no data to read a title from; default its title when a string, else its id */
+  label?: string
+  /** What it shows, in a layout editor's catalogue (#5526; an i18n key works) */
+  description?: string
+  /**
+   * Added by the app's layout, as many times as wanted, each with its own
+   * parameters (#5526): not drawn itself; its instances are, their
+   * parameters given to its functions
+   */
+  repeatable?: boolean
+  /** A repeatable indicator's parameters: a JSON Schema in the cards' subset */
+  params?: CardSchema
   /** The data, as the card type takes it */
   data?: unknown
   /** Or read it: called at once, then every `refresh` seconds */
-  load?: () => unknown | Promise<unknown>
+  load?: (params?: IndicatorParams) => unknown | Promise<unknown>
   /**
    * Or take it from one of the domain's `sources` (#5461), read once for
    * every indicator that names it; its error is theirs
    */
   source?: string
   /** With `source`: this indicator's part of the source's answer (default: all of it) */
-  value?: (data: unknown) => unknown
+  value?: (data: unknown, params?: IndicatorParams) => unknown
   /** Seconds between two reads (default: none) */
   refresh?: number
   /** The card type's options */
   options?: Record<string, unknown>
   /** How things stand: fixed, or from the data */
-  status?: CardStatus | ((data: unknown) => CardStatus | undefined | null)
+  status?: CardStatus | ((data: unknown, params?: IndicatorParams) => CardStatus | undefined | null)
   /** Where the pill leads, or a function of its data (#5438) */
-  to?: RouteLocationRaw | ((data: unknown) => RouteLocationRaw | undefined)
+  to?: RouteLocationRaw | ((data: unknown, params?: IndicatorParams) => RouteLocationRaw | undefined)
   /**
    * Drawn or not, once its data is read (#5438): false leaves the slot out,
    * full or compact (a "top N" slot with nothing in it). While it loads, or
    * when its source is unreachable, it is drawn as usual.
    */
-  visible?: (data: unknown) => boolean
+  visible?: (data: unknown, params?: IndicatorParams) => boolean
 }
 
 /** One entry of the domain's navigation */
@@ -109,6 +125,8 @@ export interface DomainConfig {
   to?: RouteLocationRaw
   nav?: DomainNavEntry[]
   indicators?: DomainIndicator[]
+  /** The most indicators its bar shows from an app's layout (#5526); default features.domainBar.maxCards, else 8 */
+  maxCards?: number
   /**
    * Reads its indicators share (#5461): each read once per refresh, whatever
    * the number of indicators naming it, and again when one of its

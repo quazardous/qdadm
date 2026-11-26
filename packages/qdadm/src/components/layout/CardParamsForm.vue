@@ -21,8 +21,12 @@ const props = withDefaults(
     /** The sections to choose from; none: no choice */
     sections?: Array<{ id: string; title: string }>
     idPrefix: string
+    /** The values to start from: an added item's own, to change them (#5526) */
+    initial?: Record<string, unknown> | null
+    /** The submit button's label (default: Add) */
+    submitLabel?: string | null
   }>(),
-  { schema: null, sections: () => [] }
+  { schema: null, sections: () => [], initial: null, submitLabel: null }
 )
 
 const emit = defineEmits<{
@@ -61,7 +65,7 @@ const fields = computed<Field[]>(() =>
 )
 
 const values = reactive<Record<string, unknown>>(
-  Object.fromEntries(Object.entries(props.schema?.properties ?? {}).map(([key, p]) => [key, p.default ?? (p.type === 'boolean' ? false : '')]))
+  Object.fromEntries(Object.entries(props.schema?.properties ?? {}).map(([key, p]) => [key, props.initial?.[key] ?? p.default ?? (p.type === 'boolean' ? false : '')]))
 )
 const title = ref(props.title)
 const section = ref<string | null>(props.sections[0]?.id ?? null)
@@ -150,7 +154,7 @@ function submit(): void {
       </select>
     </div>
     <div class="qd-card-params-actions">
-      <QdButton type="submit" size="small" icon="pi pi-plus" :label="tOr('core.cardsDashboard.add', 'Add')" />
+      <QdButton type="submit" size="small" icon="pi pi-plus" :label="submitLabel ?? tOr('core.cardsDashboard.add', 'Add')" />
       <QdButton type="button" size="small" text :label="tOr('core.actions.cancel', 'Cancel')" @click="emit('cancel')" />
     </div>
   </form>

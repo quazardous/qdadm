@@ -511,6 +511,12 @@ core:
       todo: à traiter
   # Favoris et récents : l'étoile, « Enregistrer cette recherche », les deux cartes (#5349)
   # The settings menu behind the gear (#5401)
+  layout:
+    count: "{count} affichés"
+    countOf: "{count} sur {max} affichés"
+    overMax: "au-delà du maximum : non affiché"
+    params: "Paramètres de {title}"
+    apply: Appliquer
   edgeBar:
     open: Ouvrir le panneau
     close: Fermer le panneau

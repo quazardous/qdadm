@@ -511,3 +511,101 @@
   font-size: 0.75rem;
   color: var(--p-text-muted-color, #64748b);
 }
+
+// ── Layout building blocks (#5526): an ordered list of a layout's items ──────
+.qd-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+.qd-layout-order {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.qd-layout-count {
+  margin: 0;
+  font-size: 0.8125rem;
+  color: var(--qd-card-muted);
+
+  &--over {
+    color: var(--qd-tone-watch, #b45309);
+  }
+}
+
+.qd-layout-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.qd-layout-item {
+  padding: 0.35rem 0.5rem;
+  border: 1px solid var(--qd-card-border);
+  border-radius: 8px;
+  background: var(--qd-card-bg);
+
+  &--over {
+    opacity: 0.55;
+  }
+
+  &--dragging {
+    outline: 2px dashed var(--p-primary-color, #3b82f6);
+  }
+}
+
+.qd-layout-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.qd-layout-title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.qd-layout-over {
+  font-size: 0.75rem;
+  color: var(--qd-card-muted);
+}
+
+.qd-layout-handle,
+.qd-layout-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.9rem;
+  height: 1.9rem;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: none;
+  color: var(--qd-card-muted);
+  cursor: pointer;
+
+  &:hover {
+    border-color: var(--qd-card-border);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--p-primary-color, #3b82f6);
+    outline-offset: 1px;
+  }
+}
+
+.qd-layout-handle {
+  cursor: grab;
+  touch-action: none;
+}
