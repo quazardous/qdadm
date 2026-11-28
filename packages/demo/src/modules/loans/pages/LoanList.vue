@@ -58,6 +58,26 @@ list.addFilter('book_id', {
   component: 'autocomplete'  // Force autocomplete for testing
 })
 
+// Searched on the server (#5576): the admin as a quick choice, the other
+// borrowers searched as one types in the open list (a slow server simulated);
+// a borrower given in the address shows by name (labelFor), not by id
+const ADMIN = '01JFXYZ001USER0ADMIN001'
+const users = () => getManager('users').list({ page_size: 1000 }).then((r) => r.items)
+list.addFilter('user_id', {
+  placeholder: 'Any borrower',
+  options: [{ label: 'Admin', value: ADMIN, badge: { label: 'ME', tone: 'info' } }],
+  searchOptions: async (q, { limit, signal }) => {
+    await new Promise((r) => setTimeout(r, 300))
+    if (signal.aborted) return []
+    const needle = q.toLowerCase()
+    return (await users())
+      .filter((u) => u.id !== ADMIN && u.username.toLowerCase().includes(needle))
+      .slice(0, limit)
+      .map((u) => ({ label: u.username, value: u.id, group: u.role === 'ROLE_ADMIN' ? 'Admins' : 'Readers' }))
+  },
+  labelFor: async (id) => (await users()).find((u) => u.id === id)?.username,
+})
+
 // Virtual filter - status maps to returned_at field
 // toQuery transforms the value to MongoDB-like query for QueryExecutor
 // default: 'active' - show only active loans by default (blue indicator)

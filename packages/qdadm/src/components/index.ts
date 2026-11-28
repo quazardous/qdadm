@@ -62,6 +62,8 @@ export { default as ParentCard } from './show/ParentCard.vue'
 export { default as ListPage } from './lists/ListPage.vue'
 // The filter contract (#5467): qdadm's filter of several values, and what an app's own filter receives and gives back
 export { default as QdMultiFilter } from './lists/filters/QdMultiFilter.vue'
+export { default as QdSearchFilter } from './lists/filters/QdSearchFilter.vue'
+export { useRemoteChoices, asChoices } from './lists/filters/remoteChoices'
 export { useFilterModel, shapeFilterValue, badgeColor } from './lists/filters/contract'
 export type { QdFilterProps, QdFilterEmits } from './lists/filters/contract'
 export { default as ActionButtons } from './lists/ActionButtons.vue'

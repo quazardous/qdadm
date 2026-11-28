@@ -130,7 +130,21 @@ export interface FilterChoice {
   group?: string
   /** A short tag before its label (#5467) */
   badge?: FilterChoiceBadge
+  /**
+   * Not one of the filter's choices (#5576): the value it filters on, from the
+   * address, a link or a card, added so it shows; its label from `labelFor`,
+   * else the raw value. Never a quick choice
+   */
+  unlisted?: boolean
   [key: string]: unknown
+}
+
+/** What a filter's search is told (#5576) */
+export interface FilterSearchContext {
+  /** The most results to give */
+  limit: number
+  /** Aborted when a newer search starts */
+  signal: AbortSignal
 }
 
 export interface FilterOptions {
@@ -143,6 +157,27 @@ export interface FilterOptions {
    * filter names its own `component`. `type: 'multiselect'` says the same.
    */
   multiple?: boolean
+  /**
+   * Choices searched as one types in the open list (#5576): called after
+   * `searchDelay` ms, from `searchMinChars` characters, for at most
+   * `searchLimit`; a newer search aborts an older one. Its results go under
+   * the fixed `options` (the quick choices), by their `group`
+   */
+  searchOptions?: (query: string, context: FilterSearchContext) => FilterChoice[] | Promise<FilterChoice[]>
+  /** Or the endpoint asked, `GET <endpoint>?q=<query>&limit=<n>`, its answer read as `optionsEndpoint`'s */
+  searchEndpoint?: string
+  /** Ms after the last key before the search (default 250) */
+  searchDelay?: number
+  /** Characters before a search (default 1) */
+  searchMinChars?: number
+  /** The most results kept (default 50) */
+  searchLimit?: number
+  /**
+   * The label of a value missing from the choices (#5576): one from the
+   * address, a link or a card. A string, or a promise of one; cached per
+   * value. Without it, or while it answers, the raw value
+   */
+  labelFor?: (value: unknown) => string | null | undefined | Promise<string | null | undefined>
   /**
    * The height of a `multiple` filter's list (#5470), any CSS length
    * (`'20rem'`, `'50vh'`). Default: as tall as the room between the filter

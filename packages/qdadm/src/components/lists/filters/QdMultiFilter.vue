@@ -14,6 +14,11 @@
  * - Its list as tall as the window allows when it opens (#5470), or
  *   `filter.scrollHeight`.
  *
+ * - Searched on the server too, with `searchOptions` / `searchEndpoint`
+ *   (#5576): the results under the choices, by their group. A value from the
+ *   address that is no choice (`unlisted`) shows by its label, never as a
+ *   choice.
+ *
  * Runtime props, not `defineProps<QdFilterProps>()` (#5469): qdadm ships its
  * .vue sources, and a type imported from another file makes the app's build
  * load TypeScript to resolve it, which a JavaScript app does not have.
@@ -23,6 +28,7 @@ import MultiSelect from 'primevue/multiselect'
 import { useI18n } from '../../../i18n/useI18n'
 import type { FilterChoice, FilterConfig } from '../../../composables/useListPage.types'
 import { badgeColor, panelListHeight, useFilterModel } from './contract'
+import { searches, useRemoteChoices } from './remoteChoices'
 
 // The filter contract's props (QdFilterProps), declared at runtime
 const props = defineProps({
@@ -42,10 +48,19 @@ const chosen = computed<unknown[]>(() => (Array.isArray(model.value) ? model.val
 const SEARCH_PAST = 8
 const SHOWN = 3
 
+const same = (a: unknown, b: unknown): boolean => a === b || String(a) === String(b)
+const remote = useRemoteChoices(() => props.filter)
+const searchable = computed(() => searches(props.filter))
+/** The choices: never a value added from the address (#5576) */
 const choices = computed<FilterChoice[]>(() =>
-  (props.options ?? []).filter((o) => o && o.value !== null && o.value !== undefined)
+  (props.options ?? []).filter((o) => o && !o.unlisted && !o._unlisted && o.value !== null && o.value !== undefined)
 )
-const grouped = computed(() => choices.value.some((o) => o.group))
+/** The searched ones (#5576), after the choices, not repeating them */
+const found = computed<FilterChoice[]>(() =>
+  remote.results.value
+    .filter((r) => !choices.value.some((c) => same(c.value, r.value)))
+    .map((r) => ({ ...r, group: r.group ?? (choices.value.length ? tOr('core.filters.found', 'Found') : undefined), _searched: true }))
+)
 
 interface Group {
   label: string
@@ -55,8 +70,9 @@ interface Group {
 const groups = computed<Group[]>(() => {
   const byLabel = new Map<string, Group>()
   const loose: Group = { label: '', items: [] }
-  for (const o of choices.value) {
-    const item = { ...o, _search: [o.label, o.badge?.label, o.group].filter(Boolean).join(' ') }
+  for (const o of [...choices.value, ...found.value]) {
+    // A searched one always matches what was typed: the server matched it
+    const item = { ...o, _search: o._searched ? `${remote.query.value} ${o.label}` : [o.label, o.badge?.label, o.group].filter(Boolean).join(' ') }
     if (!o.group) {
       loose.items.push(item)
       continue
@@ -67,9 +83,21 @@ const groups = computed<Group[]>(() => {
   return [...(loose.items.length ? [loose] : []), ...byLabel.values()]
 })
 const flat = computed(() => groups.value.flatMap((g) => g.items))
+const grouped = computed(() => groups.value.some((g) => g.label))
 
-const same = (a: unknown, b: unknown): boolean => a === b || String(a) === String(b)
-const choiceOf = (v: unknown): FilterChoice | undefined => choices.value.find((o) => same(o.value, v))
+// A chosen value's choice (#5576): among the choices, the searched ones, the
+// ones searched before, the one added from the address with its label
+const remembered = ref<FilterChoice[]>([])
+const choiceOf = (v: unknown): FilterChoice | undefined =>
+  [...choices.value, ...remote.results.value, ...remembered.value, ...(props.options ?? [])].find((o) => same(o.value, v))
+function onPick(values: unknown): void {
+  const list = Array.isArray(values) ? values : []
+  for (const v of list) {
+    const r = remote.results.value.find((o) => same(o.value, v))
+    if (r && !remembered.value.some((o) => same(o.value, v))) remembered.value = [...remembered.value, r]
+  }
+  model.value = list
+}
 
 /** A heading: all its choices on, or all off when they all are */
 function toggleGroup(group: Group): void {
@@ -104,6 +132,14 @@ function fit(): void {
   fitted.value = `${panelListHeight(el.getBoundingClientRect(), window.innerHeight, { rem, search: flat.value.length > SEARCH_PAST })}px`
 }
 
+/** What the open list says when it has nothing to show (#5576) */
+const emptyText = computed(() => {
+  if (remote.searching.value) return tOr('core.filters.searching', 'Searching…')
+  if (remote.failed.value) return tOr('core.filters.searchFailed', 'The search failed: {error}', { error: remote.failed.value })
+  if (remote.query.value.trim().length < (props.filter.searchMinChars ?? 1)) return tOr('core.filters.typeToSearch', 'Type to search')
+  return tOr('core.filters.nothingFound', 'Nothing found')
+})
+
 const style = (tone?: string) => {
   const color = badgeColor(tone)
   return color ? { '--qd-filter-badge-color': color } : undefined
@@ -113,16 +149,16 @@ const style = (tone?: string) => {
 <template>
   <MultiSelect
     ref="select"
-    v-model="model"
+    :model-value="model"
     :options="grouped ? groups : flat"
     :option-group-label="grouped ? 'label' : undefined"
     :option-group-children="grouped ? 'items' : undefined"
     option-label="label"
     option-value="value"
-    :filter="flat.length > SEARCH_PAST"
+    :filter="searchable || flat.length > SEARCH_PAST"
     :filter-fields="['_search']"
     :placeholder="filter.placeholder"
-    :loading="loading"
+    :loading="loading || remote.searching.value"
     :show-toggle-all="false"
     :scroll-height="listHeight"
     overlay-class="qd-multi-filter-panel"
@@ -133,6 +169,9 @@ const style = (tone?: string) => {
     :title="allChosen || undefined"
     :data-filter="filter.name"
     @before-show="fit"
+    @update:model-value="onPick"
+    @filter="searchable && remote.search($event.value ?? '')"
+    @hide="searchable && remote.search('')"
   >
     <template #value>
       <span v-if="!chosen.length" class="qd-multi-filter-placeholder">{{ filter.placeholder }}</span>
@@ -162,6 +201,9 @@ const style = (tone?: string) => {
         <span v-if="option.badge" class="qd-filter-badge" :style="style(option.badge.tone)">{{ option.badge.label }}</span>
         <span>{{ option.label }}</span>
       </span>
+    </template>
+    <template v-if="searchable" #emptyfilter>
+      <span class="qd-search-filter-empty" data-search-state>{{ emptyText }}</span>
     </template>
   </MultiSelect>
 </template>

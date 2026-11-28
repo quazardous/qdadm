@@ -178,3 +178,17 @@
     outline-offset: 2px;
   }
 }
+
+// Searched on the server (#5576): a group's heading, what the list says when empty
+.qd-search-filter-group {
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--p-text-muted-color, #64748b);
+}
+
+.qd-search-filter-empty {
+  color: var(--p-text-muted-color, #64748b);
+  font-size: 0.875rem;
+}

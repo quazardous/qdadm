@@ -31,6 +31,8 @@ import Select from 'primevue/select'
 import AutoComplete from 'primevue/autocomplete'
 import SplitButton from 'primevue/splitbutton'
 import QdMultiFilter from './filters/QdMultiFilter.vue'
+import QdSearchFilter from './filters/QdSearchFilter.vue'
+import { searches } from './filters/remoteChoices'
 import { shapeFilterValue } from './filters/contract'
 import { isMultiple } from '../../composables/useListPage.filters'
 import type { FilterConfig, CardConfig, ResolvedAction, ResolvedHeaderAction, ColumnConfig } from '../../composables/useListPage'
@@ -298,11 +300,16 @@ function onFilterChange(_name: string): void {
 }
 
 // ── Filters drawn under the filter contract (#5467) ──────────────────────────
-/** The app's own component, or QdMultiFilter for several values; null for the built-in select / autocomplete */
+/**
+ * The app's own component; QdMultiFilter for several values; QdSearchFilter
+ * for one value searched on the server (#5576); null for the built-in select
+ * / autocomplete
+ */
 function contractComponent(filter: FilterConfig): Component | null {
   const own = filter.component
   if (own && typeof own !== 'string') return markRaw(toRaw(own as Component))
-  return isMultiple(filter) ? (QdMultiFilter as Component) : null
+  if (isMultiple(filter)) return QdMultiFilter as Component
+  return searches(filter) ? (QdSearchFilter as Component) : null
 }
 /** Its value, as the contract gives it: never undefined, `[]` for none when several */
 function contractValue(filter: FilterConfig): unknown {

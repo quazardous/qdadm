@@ -346,6 +346,42 @@ on it as "any of" (`$in`). `ApiStorage` sends it comma-joined by default; see
 When its choices are read again (`dependsOn`), the values still among them
 stay and the others go.
 
+### Searched on the server
+
+When the choices are too many to load, a filter searches them as one types,
+in its open list; its field is not typed into. The fixed `options` are the
+quick choices, on top; the results come under them, by their `group`.
+
+```js
+list.addFilter('taken_by', {
+  options: [{ label: 'Me', value: '@me' }, { label: 'My team', value: '@team' }],   // the quick choices
+  searchOptions: async (q, { limit, signal }) =>
+    (await api.get('/actors', { params: { q, limit }, signal })).map((a) => ({
+      label: a.name, value: a.id, group: a.kind === 'group' ? 'Groups' : 'People',
+    })),
+  labelFor: async (id) => (await api.get(`/actors/${id}`)).name,
+})
+```
+
+- `searchOptions(query, { limit, signal })` gives choices, `{ label, value,
+  group?, badge? }` (or a promise). `searchEndpoint: 'tasks/actors'` asks the
+  entity's storage instead, `GET tasks/actors?q=…&limit=…`, its answer read
+  as `optionsEndpoint`'s.
+- It is called `searchDelay` ms (250) after the last key, from
+  `searchMinChars` characters (1), for at most `searchLimit` results (50). A
+  newer search aborts the older one (`signal`); one that fails says so in the
+  list.
+- One value is drawn by `QdSearchFilter`; with `multiple: true`, by
+  `QdMultiFilter`, searched the same way.
+
+**A value that is no choice.** A value from the address, a link or a card
+that the choices lack is still shown: the list adds it to the choices it
+gives the bar, marked `unlisted: true`. `labelFor(value)` gives its label, at
+once or as a promise, cached per value (the raw value meanwhile, and without
+it). It is never a quick choice: QdSearchFilter and QdMultiFilter leave it out
+of the open list, and a filter of your own reads `unlisted` to do the same.
+The label serves « Save this search » and a run's filter too.
+
 ### Your own filter
 
 A filter can be drawn by the app's own component: `component` takes a Vue

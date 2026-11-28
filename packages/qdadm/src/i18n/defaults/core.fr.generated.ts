@@ -7,6 +7,13 @@ export default `core:
     # A filter of several values (#5467): past the first few chosen; a group heading
     more: "+{count}"
     toggleGroup: "Tout {group}"
+    # Cherché sur le serveur (#5576)
+    search: Rechercher
+    found: Trouvés
+    searching: Recherche…
+    searchFailed: "La recherche a échoué : {error}"
+    typeToSearch: Tapez pour chercher
+    nothingFound: Rien trouvé
   # The list's refresh button (#5462)
   list:
     refresh: Actualiser

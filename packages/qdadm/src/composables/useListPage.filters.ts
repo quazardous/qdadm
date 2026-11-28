@@ -470,16 +470,65 @@ export function useListFilters(deps: UseListFiltersDeps): UseListFiltersReturn {
    * the select blank while it filters. Added as its raw value, to the choices
    * the bar is given only.
    */
+  // The labels `labelFor` gave (#5576), by filter and value; a promise's when it answers
+  const unlistedLabels = ref<Record<string, string>>({})
+  const asking = new Set<string>()
+  function unlistedLabel(filter: FilterConfig, v: unknown): string {
+    const key = `${filter.name}\u0000${String(v)}`
+    const known = unlistedLabels.value[key]
+    if (known !== undefined) return known
+    if (typeof filter.labelFor !== 'function' || asking.has(key)) return String(v)
+    let given: unknown
+    try {
+      given = filter.labelFor(v)
+    } catch (err) {
+      console.warn(`[qdadm] Filter "${filter.name}": labelFor failed:`, err)
+      return String(v)
+    }
+    if (given && typeof (given as PromiseLike<unknown>).then === 'function') {
+      asking.add(key)
+      ;(given as Promise<unknown>).then(
+        (label) => {
+          asking.delete(key)
+          if (typeof label === 'string' && label) unlistedLabels.value = { ...unlistedLabels.value, [key]: label }
+        },
+        (err) => {
+          asking.delete(key)
+          console.warn(`[qdadm] Filter "${filter.name}": labelFor failed:`, err)
+        }
+      )
+      return String(v)
+    }
+    return typeof given === 'string' && given ? given : String(v)
+  }
+
   function withActiveValue(filter: FilterConfig): FilterConfig {
     const value = filterValues.value[filter.name]
     if (!Array.isArray(filter.options) || !isSet(value)) return filter
     const known = new Set(filter.options.map((o) => String((o as { value?: unknown })?.value)))
     const missing = (Array.isArray(value) ? value : [value]).filter((v) => isSet(v) && !known.has(String(v)))
     if (!missing.length) return filter
-    return { ...filter, options: [...filter.options, ...missing.map((v) => ({ label: String(v), value: v, _unlisted: true }))] }
+    // Marked (#5576): shown by its label, never a quick choice
+    return { ...filter, options: [...filter.options, ...missing.map((v) => ({ label: unlistedLabel(filter, v), value: v, unlisted: true, _unlisted: true }))] }
   }
 
-  const filters = computed(() => Array.from(filtersMap.value.values()).map(withActiveValue))
+  /**
+   * `searchEndpoint` (#5576): a search asking the entity's storage,
+   * `GET <endpoint>?q=…&limit=…`, its answer read as `optionsEndpoint`'s
+   */
+  function withSearch(filter: FilterConfig): FilterConfig {
+    if (typeof filter.searchOptions === 'function' || !filter.searchEndpoint || !manager?.request) return filter
+    const endpoint = filter.searchEndpoint
+    return {
+      ...filter,
+      searchOptions: async (q: string, { limit }: { limit: number }) => {
+        const response = await manager.request!('GET', endpoint, { params: { q, limit } })
+        return (Array.isArray(response) ? response : ((response as Record<string, unknown>)?.items as unknown[]) || []) as never
+      },
+    }
+  }
+
+  const filters = computed(() => Array.from(filtersMap.value.values()).map((f) => withActiveValue(withSearch(f))))
 
   /**
    * Check if a filter is at its default value
