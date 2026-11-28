@@ -28,6 +28,7 @@ export function asChoices(found: unknown): FilterChoice[] {
       value,
       ...(r.group !== undefined && r.group !== null ? { group: String(r.group) } : {}),
       ...(r.badge ? { badge: r.badge as FilterChoice['badge'] } : {}),
+      ...(typeof r.icon === 'string' && r.icon ? { icon: r.icon } : {}),
     }]
   })
 }

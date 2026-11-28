@@ -299,6 +299,27 @@ function onFilterChange(_name: string): void {
   emit('update:filterValues', { ...localFilterValues.value })
 }
 
+// ── The plain select's choices (#5578): their label and icon ────────────────
+function choiceLabel(filter: FilterConfig, option: unknown): string {
+  if (option === null || option === undefined) return ''
+  if (typeof option !== 'object') return String(option)
+  const o = option as Record<string, unknown>
+  return String(o[filter.optionLabel || 'label'] ?? o.label ?? '')
+}
+/** The chosen one's choice, for the field; none when nothing is chosen */
+function chosenChoice(filter: FilterConfig, value: unknown): (FilterOption & { icon?: string }) | null {
+  if (value === null || value === undefined || value === '') return null
+  const key = filter.optionValue || 'value'
+  for (const o of filter.options ?? []) {
+    if (o === null || o === undefined) continue
+    if (typeof o !== 'object') {
+      if (String(o) === String(value)) return { label: String(o) } as FilterOption & { icon?: string }
+    } else if (String((o as Record<string, unknown>)[key]) === String(value)) return o as FilterOption & { icon?: string }
+  }
+  // Not among them: the value itself, as the select showed it
+  return { label: String(value) } as FilterOption & { icon?: string }
+}
+
 // ── Filters drawn under the filter contract (#5467) ──────────────────────────
 /**
  * The app's own component; QdMultiFilter for several values; QdSearchFilter
@@ -578,7 +599,22 @@ function getFilterClass(filter: FilterConfig): Record<string, boolean> {
             :placeholder="filter.placeholder"
             :style="{ minWidth: filter.width || '160px' }"
             :class="getFilterClass(filter)"
-          />
+          >
+            <!-- A choice's icon (#5578), in the list and in the field -->
+            <template #option="{ option }">
+              <span class="qd-multi-filter-option">
+                <i v-if="option?.icon" :class="option.icon" class="qd-filter-icon" aria-hidden="true"></i>
+                <span>{{ choiceLabel(filter, option) }}</span>
+              </span>
+            </template>
+            <template #value="{ value, placeholder }">
+              <span v-if="chosenChoice(filter, value)" class="qd-multi-filter-option">
+                <i v-if="chosenChoice(filter, value)!.icon" :class="chosenChoice(filter, value)!.icon" class="qd-filter-icon" aria-hidden="true"></i>
+                <span>{{ choiceLabel(filter, chosenChoice(filter, value)) }}</span>
+              </span>
+              <span v-else>{{ placeholder }}</span>
+            </template>
+          </Select>
         </template>
         <slot name="filters" ></slot>
         <!-- Clear and the bookmark stay together, inside the bar, at the end of its last line (#5432) -->

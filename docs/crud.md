@@ -327,6 +327,10 @@ qdadm draws it with `QdMultiFilter`:
   app's own `--qd-tone-<name>`, or any CSS colour.
 - **Closed:** the chosen values as their badges (or their labels), up to 3,
   then « +N »; the tooltip lists them all.
+- **Icons:** `icon: 'pi pi-users'` on a choice draws it before its label, in
+  the open list and in the field (narrower than a badge there). Every filter
+  draws it: the plain select, QdMultiFilter, QdSearchFilter; choices read
+  from `optionsEndpoint`, `searchEndpoint` or `searchOptions` keep theirs.
 - **Search:** past 8 choices, a search box matches the label, the badge and
   the group.
 - **Height:** the open list is as tall as the room between the filter and
@@ -378,7 +382,7 @@ list.addFilter('taken_by', {
 that the choices lack is still shown: the list adds it to the choices it
 gives the bar, marked `unlisted: true`. `labelFor(value)` gives its label, at
 once or as a promise, cached per value (the raw value meanwhile, and without
-it). It is never a quick choice: QdSearchFilter and QdMultiFilter leave it out
+it); or its label and icon, `{ label, icon }`. It is never a quick choice: QdSearchFilter and QdMultiFilter leave it out
 of the open list, and a filter of your own reads `unlisted` to do the same.
 The label serves « Save this search » and a run's filter too.
 

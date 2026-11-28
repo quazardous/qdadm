@@ -11,6 +11,7 @@ import { defineComponent, h, ref } from 'vue'
 import { mount, flushPromises } from '@vue/test-utils'
 import { useListFilters } from '../../src/composables/useListPage.filters'
 import { useRemoteChoices, asChoices } from '../../src/components/lists/filters/remoteChoices'
+import PrimeVue from 'primevue/config'
 
 function makeDeps(overrides = {}) {
   return {
@@ -122,5 +123,40 @@ describe('a value that is no choice (#5576)', () => {
     const f = useListFilters(makeDeps({ savedFilters: { by: 'zoe' } }))
     f.addFilter('by', { options: [{ label: 'Me', value: '@me' }] })
     expect(optionsOf(f, 'by').find((o) => o.value === 'zoe')).toMatchObject({ label: 'zoe', unlisted: true })
+  })
+})
+
+describe('a choice\'s icon (#5578)', () => {
+  it('kept from search answers and endpoints', async () => {
+    expect(asChoices([{ id: 'g:1', label: 'Admins', icon: 'pi pi-users' }])[0].icon).toBe('pi pi-users')
+    const deps = makeDeps({ manager: { request: vi.fn(async () => [{ id: 'u1', label: 'Ann', icon: 'pi pi-user' }]) } })
+    const f = useListFilters(deps)
+    f.addFilter('by', { optionsEndpoint: 'actors' })
+    await f.loadFilterOptions()
+    expect(optionsOf(f, 'by').find((o) => o.value === 'u1').icon).toBe('pi pi-user')
+  })
+
+  it('labelFor gives { label, icon }: sync, and as a promise', async () => {
+    const f = useListFilters(makeDeps({ savedFilters: { a: 'g:1', b: 'u:1' } }))
+    f.addFilter('a', { options: [], labelFor: () => ({ label: 'Admins', icon: 'pi pi-users' }) })
+    f.addFilter('b', { options: [], labelFor: async () => ({ label: 'Ann', icon: 'pi pi-user' }) })
+    expect(optionsOf(f, 'a').find((o) => o.unlisted)).toMatchObject({ label: 'Admins', icon: 'pi pi-users' })
+    expect(optionsOf(f, 'b').find((o) => o.unlisted)).toMatchObject({ label: 'u:1' })
+    await flushPromises()
+    expect(optionsOf(f, 'b').find((o) => o.unlisted)).toMatchObject({ label: 'Ann', icon: 'pi pi-user' })
+  })
+
+  it('drawn in the field: QdSearchFilter and QdMultiFilter', async () => {
+    // PrimeVue's Select asks the screen's width: jsdom has no matchMedia
+    window.matchMedia ??= () => ({ matches: false, addEventListener() {}, removeEventListener() {}, addListener() {}, removeListener() {} })
+    const { default: QdSearchFilter } = await import('../../src/components/lists/filters/QdSearchFilter.vue')
+    const { default: QdMultiFilter } = await import('../../src/components/lists/filters/QdMultiFilter.vue')
+    const options = [{ label: 'Admins', value: 'g:1', icon: 'pi pi-users' }, { label: 'Ann', value: 'u:1', icon: 'pi pi-user' }]
+    const one = mount(QdSearchFilter, { props: { modelValue: 'g:1', filter: { name: 'by', placeholder: 'By', searchOptions: async () => [] }, options }, global: { plugins: [PrimeVue] } })
+    expect(one.find('.qd-filter-icon').classes()).toContain('pi-users')
+    expect(one.text()).toContain('Admins')
+    const many = mount(QdMultiFilter, { props: { modelValue: ['g:1', 'u:1'], filter: { name: 'by', placeholder: 'By', multiple: true }, options }, global: { plugins: [PrimeVue] } })
+    const icons = many.findAll('.qd-multi-filter-chosen .qd-filter-icon').map((i) => i.classes().find((c) => c.startsWith('pi-')))
+    expect(icons).toEqual(['pi-users', 'pi-user'])
   })
 })

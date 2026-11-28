@@ -192,3 +192,23 @@
   color: var(--p-text-muted-color, #64748b);
   font-size: 0.875rem;
 }
+
+// A choice's icon (#5578), before its label: in the list and in the field
+.qd-filter-icon {
+  flex: none;
+  font-size: 0.875rem;
+  color: var(--p-text-muted-color, #64748b);
+}
+
+.qd-multi-filter-chip--icon {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+// A chosen value outside the open list's choices (one from the address):
+// PrimeVue's Select draws its label as a placeholder; it is a value. Against
+// _main.scss's placeholder colour, which is !important
+.qd-search-filter--chosen .p-select-label.p-placeholder {
+  color: var(--p-select-color, var(--p-text-color)) !important;
+}

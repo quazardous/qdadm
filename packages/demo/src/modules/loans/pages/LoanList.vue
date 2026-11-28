@@ -65,7 +65,8 @@ const ADMIN = '01JFXYZ001USER0ADMIN001'
 const users = () => getManager('users').list({ page_size: 1000 }).then((r) => r.items)
 list.addFilter('user_id', {
   placeholder: 'Any borrower',
-  options: [{ label: 'Admin', value: ADMIN, badge: { label: 'ME', tone: 'info' } }],
+  // An icon before each choice (#5578): narrower than a badge in the field
+  options: [{ label: 'Admin', value: ADMIN, icon: 'pi pi-shield' }],
   searchOptions: async (q, { limit, signal }) => {
     await new Promise((r) => setTimeout(r, 300))
     if (signal.aborted) return []
@@ -73,9 +74,12 @@ list.addFilter('user_id', {
     return (await users())
       .filter((u) => u.id !== ADMIN && u.username.toLowerCase().includes(needle))
       .slice(0, limit)
-      .map((u) => ({ label: u.username, value: u.id, group: u.role === 'ROLE_ADMIN' ? 'Admins' : 'Readers' }))
+      .map((u) => ({ label: u.username, value: u.id, group: u.role === 'ROLE_ADMIN' ? 'Admins' : 'Readers', icon: u.role === 'ROLE_ADMIN' ? 'pi pi-shield' : 'pi pi-user' }))
   },
-  labelFor: async (id) => (await users()).find((u) => u.id === id)?.username,
+  labelFor: async (id) => {
+    const u = (await users()).find((x) => x.id === id)
+    return u ? { label: u.username, icon: u.role === 'ROLE_ADMIN' ? 'pi pi-shield' : 'pi pi-user' } : null
+  },
 })
 
 // Virtual filter - status maps to returned_at field

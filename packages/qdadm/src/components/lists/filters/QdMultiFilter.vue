@@ -177,7 +177,9 @@ const style = (tone?: string) => {
       <span v-if="!chosen.length" class="qd-multi-filter-placeholder">{{ filter.placeholder }}</span>
       <span v-else class="qd-multi-filter-chosen">
         <template v-for="c in shownChosen" :key="String(c.value)">
-          <span v-if="c.choice?.badge" class="qd-filter-badge" :style="style(c.choice.badge.tone)">{{ c.choice.badge.label }}</span>
+          <!-- An icon keeps the field narrow (#5578): the icon and the label -->
+          <span v-if="c.choice?.icon && !c.choice?.badge" class="qd-multi-filter-chip qd-multi-filter-chip--icon"><i :class="c.choice.icon" class="qd-filter-icon" aria-hidden="true"></i>{{ c.choice.label }}</span>
+          <span v-else-if="c.choice?.badge" class="qd-filter-badge" :style="style(c.choice.badge.tone)">{{ c.choice.badge.label }}</span>
           <span v-else class="qd-multi-filter-chip">{{ c.choice?.label ?? String(c.value) }}</span>
         </template>
         <span v-if="more" class="qd-multi-filter-more">{{ tOr('core.filters.more', '+{count}', { count: more }) }}</span>
@@ -198,6 +200,7 @@ const style = (tone?: string) => {
     </template>
     <template #option="{ option }">
       <span class="qd-multi-filter-option">
+        <i v-if="option.icon" :class="option.icon" class="qd-filter-icon" aria-hidden="true"></i>
         <span v-if="option.badge" class="qd-filter-badge" :style="style(option.badge.tone)">{{ option.badge.label }}</span>
         <span>{{ option.label }}</span>
       </span>

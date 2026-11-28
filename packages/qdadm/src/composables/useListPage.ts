@@ -83,6 +83,7 @@ export type {
   FilterType,
   FilterChoice,
   FilterChoiceBadge,
+  FilterLabel,
   FilterSearchContext,
   ActionConfig,
   ResolvedAction,

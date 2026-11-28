@@ -471,35 +471,46 @@ export function useListFilters(deps: UseListFiltersDeps): UseListFiltersReturn {
    * the bar is given only.
    */
   // The labels `labelFor` gave (#5576), by filter and value; a promise's when it answers
-  const unlistedLabels = ref<Record<string, string>>({})
+  const unlistedLabels = ref<Record<string, { label: string; icon?: string }>>({})
   const asking = new Set<string>()
-  function unlistedLabel(filter: FilterConfig, v: unknown): string {
+  /** labelFor's answer, read: a string, or `{ label, icon }` (#5578) */
+  const readLabel = (given: unknown): { label: string; icon?: string } | null => {
+    if (typeof given === 'string' && given) return { label: given }
+    if (given && typeof given === 'object' && typeof (given as { label?: unknown }).label === 'string' && (given as { label: string }).label) {
+      const g = given as { label: string; icon?: unknown }
+      return { label: g.label, ...(typeof g.icon === 'string' && g.icon ? { icon: g.icon } : {}) }
+    }
+    return null
+  }
+  function unlistedLabel(filter: FilterConfig, v: unknown): { label: string; icon?: string } {
     const key = `${filter.name}\u0000${String(v)}`
     const known = unlistedLabels.value[key]
     if (known !== undefined) return known
-    if (typeof filter.labelFor !== 'function' || asking.has(key)) return String(v)
+    const raw = { label: String(v) }
+    if (typeof filter.labelFor !== 'function' || asking.has(key)) return raw
     let given: unknown
     try {
       given = filter.labelFor(v)
     } catch (err) {
       console.warn(`[qdadm] Filter "${filter.name}": labelFor failed:`, err)
-      return String(v)
+      return raw
     }
     if (given && typeof (given as PromiseLike<unknown>).then === 'function') {
       asking.add(key)
       ;(given as Promise<unknown>).then(
-        (label) => {
+        (answer) => {
           asking.delete(key)
-          if (typeof label === 'string' && label) unlistedLabels.value = { ...unlistedLabels.value, [key]: label }
+          const read = readLabel(answer)
+          if (read) unlistedLabels.value = { ...unlistedLabels.value, [key]: read }
         },
         (err) => {
           asking.delete(key)
           console.warn(`[qdadm] Filter "${filter.name}": labelFor failed:`, err)
         }
       )
-      return String(v)
+      return raw
     }
-    return typeof given === 'string' && given ? given : String(v)
+    return readLabel(given) ?? raw
   }
 
   function withActiveValue(filter: FilterConfig): FilterConfig {
@@ -509,7 +520,7 @@ export function useListFilters(deps: UseListFiltersDeps): UseListFiltersReturn {
     const missing = (Array.isArray(value) ? value : [value]).filter((v) => isSet(v) && !known.has(String(v)))
     if (!missing.length) return filter
     // Marked (#5576): shown by its label, never a quick choice
-    return { ...filter, options: [...filter.options, ...missing.map((v) => ({ label: unlistedLabel(filter, v), value: v, unlisted: true, _unlisted: true }))] }
+    return { ...filter, options: [...filter.options, ...missing.map((v) => ({ ...unlistedLabel(filter, v), value: v, unlisted: true, _unlisted: true }))] }
   }
 
   /**
@@ -749,6 +760,7 @@ export function useListFilters(deps: UseListFiltersDeps): UseListFiltersReturn {
                 // Grouped and badged choices (#5467)
                 ...(o.group !== undefined && o.group !== null ? { group: o.group } : {}),
                 ...(o.badge ? { badge: o.badge } : {}),
+                ...(typeof o.icon === 'string' && o.icon ? { icon: o.icon } : {}),
               }
             }
             return { label: snakeToTitle(String(opt)), value: opt }

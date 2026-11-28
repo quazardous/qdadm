@@ -130,6 +130,8 @@ export interface FilterChoice {
   group?: string
   /** A short tag before its label (#5467) */
   badge?: FilterChoiceBadge
+  /** An icon class before its label (#5578): `pi pi-users`; narrower than a badge in the field */
+  icon?: string
   /**
    * Not one of the filter's choices (#5576): the value it filters on, from the
    * address, a link or a card, added so it shows; its label from `labelFor`,
@@ -138,6 +140,9 @@ export interface FilterChoice {
   unlisted?: boolean
   [key: string]: unknown
 }
+
+/** What `labelFor` gives (#5576): a label, or a label and its icon (#5578) */
+export type FilterLabel = string | { label: string; icon?: string } | null | undefined
 
 /** What a filter's search is told (#5576) */
 export interface FilterSearchContext {
@@ -177,7 +182,7 @@ export interface FilterOptions {
    * address, a link or a card. A string, or a promise of one; cached per
    * value. Without it, or while it answers, the raw value
    */
-  labelFor?: (value: unknown) => string | null | undefined | Promise<string | null | undefined>
+  labelFor?: (value: unknown) => FilterLabel | Promise<FilterLabel>
   /**
    * The height of a `multiple` filter's list (#5470), any CSS length
    * (`'20rem'`, `'50vh'`). Default: as tall as the room between the filter

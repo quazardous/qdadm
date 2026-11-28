@@ -248,6 +248,7 @@ export {
   type FilterType,
   type FilterChoice,
   type FilterChoiceBadge,
+  type FilterLabel,
   type FilterSearchContext,
   type ActionConfig as ListActionConfig,
   type ResolvedAction,

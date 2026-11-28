@@ -105,7 +105,7 @@ const style = (tone?: string) => {
     :loading="loading || remote.searching.value"
     :placeholder="filter.placeholder"
     class="qd-search-filter"
-    :class="{ 'filter-default': atDefault && labelOf !== null, 'filter-modified': !atDefault }"
+    :class="{ 'filter-default': atDefault && labelOf !== null, 'filter-modified': !atDefault, 'qd-search-filter--chosen': labelOf !== null }"
     :style="{ minWidth: (filter.width as string) || '180px' }"
     :aria-label="filter.placeholder"
     :data-filter="filter.name"
@@ -115,6 +115,7 @@ const style = (tone?: string) => {
   >
     <template #value>
       <span v-if="labelOf" class="qd-multi-filter-option">
+        <i v-if="labelOf.icon" :class="labelOf.icon" class="qd-filter-icon" aria-hidden="true"></i>
         <span v-if="labelOf.badge" class="qd-filter-badge" :style="style(labelOf.badge.tone)">{{ labelOf.badge.label }}</span>
         <span>{{ labelOf.label }}</span>
       </span>
@@ -125,6 +126,7 @@ const style = (tone?: string) => {
     </template>
     <template #option="{ option }">
       <span class="qd-multi-filter-option">
+        <i v-if="option.icon" :class="option.icon" class="qd-filter-icon" aria-hidden="true"></i>
         <span v-if="option.badge" class="qd-filter-badge" :style="style(option.badge.tone)">{{ option.badge.label }}</span>
         <span>{{ option.label }}</span>
       </span>
