@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.82.0
+
+### Minor Changes
+
+- 9f41811: A filter choice's icon (#5578): `icon: 'pi pi-users'` on a choice is drawn before its label, in the open list and in the field, by the plain select, QdMultiFilter (its chosen ones too) and QdSearchFilter; choices read from `optionsEndpoint`, `searchEndpoint` and `searchOptions` keep it. `labelFor(value)` may give `{ label, icon }` for a value that is no choice.
+- 32843e7: feat(editors): a rule builder for rules kept in YAML (QdRuleBuilder, `YamlConfigEditor`'s `rules` prop and its « Rules » view): rules, all / any groups nested up to `maxDepth`, conditions and actions from a vocabulary (text, number, boolean, enum, threshold, keyed threshold) or from the rules' JSON Schema (`vocabularyFromSchema`); every click is a patch of the text, so comments and layout stay; rules reordered by drag or keyboard, their comments moving with them; `update:text` (debounced by `textDelay`) and the exposed `text` / `document`, for a live trial (#5581)
+
 ## 2.81.0
 
 ### Minor Changes
