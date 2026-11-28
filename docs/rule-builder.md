@@ -59,7 +59,7 @@ const vocabulary = {
     level: { label: 'Level at least', param: { type: 'threshold' } },
   },
   actions: {
-    route: { label: 'Route', param: { type: 'text', placeholder: 'team.queue' } },
+    route: { label: 'Route', param: { type: 'text', placeholder: 'team.queue', suggestions: ['it', 'purchases.b2b'] } },
     notify: { label: 'Notify', param: { type: 'boolean' } },
   },
   template: { name: 'New rule', when: { all: [] }, then: { route: '' } }, // « Add a rule »
@@ -68,7 +68,7 @@ const vocabulary = {
 
 | `param.type` | In the YAML | Edited with |
 |---|---|---|
-| `text` | `route: it` | an input (`placeholder`) |
+| `text` | `route: it` | an input (`placeholder`); `suggestions: ['it', { value, label }]` are offered while typing (a native datalist), the text staying free |
 | `number` | `retries: 3` | a number input |
 | `boolean` | `notify: true` | a checkbox |
 | `enum` | `severity: critical` | a select (`options: [{ value, label? }]`) |
@@ -89,7 +89,8 @@ the one `YamlConfigEditor` already loads:
 - the actions are the `properties` of the rules' `then`.
 
 A parameter is an `enum` (labels in `x-enumLabels`), a number, a boolean, a
-string with `x-qd-param: threshold` (`x-unit: '%'`), an object with one property
+string with `x-qd-param: threshold` (`x-unit: '%'`), a string with `examples`
+(its suggestions, labelled by `x-enumLabels`), an object with one property
 drawn from `propertyNames.enum` and `maxProperties: 1` (a keyed threshold, its
 units in `x-units`), else a text.
 

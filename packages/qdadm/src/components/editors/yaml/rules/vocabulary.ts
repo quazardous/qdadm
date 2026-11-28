@@ -22,7 +22,8 @@ export interface ParamChoice {
 
 /** A condition's or an action's value */
 export type ParamSpec =
-  | { type: 'text'; placeholder?: string }
+  /** `suggestions`: offered while typing, the text staying free (#5585) */
+  | { type: 'text'; placeholder?: string; suggestions?: Array<string | ParamChoice> }
   | { type: 'number' }
   | { type: 'boolean' }
   | { type: 'enum'; options: ParamChoice[] }
@@ -130,6 +131,9 @@ export function paramFromSchema(s: Schema): ParamSpec {
   if (Array.isArray(s.enum)) return { type: 'enum', options: (s.enum as ParamChoice['value'][]).map((v) => ({ value: v, ...(labels[String(v)] ? { label: labels[String(v)] } : {}) })) }
   if (s.type === 'number' || s.type === 'integer') return { type: 'number' }
   if (s.type === 'boolean') return { type: 'boolean' }
+  // A string's examples: suggested, the text staying free (#5585)
+  const examples = Array.isArray(s.examples) ? (s.examples as unknown[]).filter((v): v is string | number => typeof v === 'string' || typeof v === 'number') : []
+  if (examples.length) return { type: 'text', suggestions: examples.map((v) => (labels[String(v)] ? { value: v, label: labels[String(v)] } : String(v))) }
   return { type: 'text' }
 }
 
@@ -140,7 +144,8 @@ export function paramFromSchema(s: Schema): ParamSpec {
  *   schema is the parameter; its `title` is the label;
  * - the actions are the `properties` of the rules' `then`.
  * A parameter: an `enum` (labels in `x-enumLabels`), a number, a boolean, a
- * string with `x-qd-param: threshold`, or an object with one property drawn
+ * string with `x-qd-param: threshold`, a string with `examples` (suggested
+ * while typing), or an object with one property drawn
  * from `propertyNames.enum` and `maxProperties: 1` (a keyed threshold; units
  * in `x-units`), else a text.
  */

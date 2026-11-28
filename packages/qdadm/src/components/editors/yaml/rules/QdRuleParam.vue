@@ -1,13 +1,13 @@
 <script setup lang="ts">
 /**
  * QdRuleParam (#5581): one condition's or action's value, edited by its type:
- * a text, a number, a switch, a choice, a threshold (`>= 20%`) or a keyed
+ * a text (with suggestions, #5585), a number, a switch, a choice, a threshold (`>= 20%`) or a keyed
  * threshold (`{ refused_ratio: ">= 20%" }`). Each change is a patch of the
  * YAML at `path`, given to the builder.
  *
  * Runtime props (#5469): an app's JavaScript build compiles qdadm's .vue.
  */
-import { computed, type PropType } from 'vue'
+import { computed, useId, type PropType } from 'vue'
 import { useI18n } from '../../../../i18n/useI18n'
 import { OPERATORS, formatThreshold, parseThreshold, type ParamSpec, type Operator } from './vocabulary'
 import { renameKeyAt, setAt, type YamlPath } from './ruleDoc'
@@ -23,6 +23,10 @@ const props = defineProps({
 })
 const emit = defineEmits<{ (e: 'apply', change: (text: string) => string): void }>()
 const { tOr } = useI18n()
+
+// A text's suggestions (#5585): a datalist, the typing staying free
+const listId = `qd-rule-suggest-${useId()}`
+const suggestions = computed(() => (props.param.type === 'text' && props.param.suggestions ? props.param.suggestions : []).map((x) => (typeof x === 'object' ? { value: String(x.value), label: x.label ? tOr(x.label, x.label) : '' } : { value: String(x), label: '' })))
 
 const set = (value: unknown) => emit('apply', (text) => setAt(text, props.path, value))
 
@@ -68,7 +72,10 @@ const opLabel = (op: Operator) => op
 <template>
   <span class="qd-rule-param" :data-param="param.type">
     <template v-if="param.type === 'text'">
-      <input class="p-inputtext p-component qd-rule-input" :value="value ?? ''" :aria-label="label" :placeholder="param.placeholder" :disabled="readOnly" @change="set(($event.target as HTMLInputElement).value)" />
+      <input class="p-inputtext p-component qd-rule-input" :value="value ?? ''" :aria-label="label" :placeholder="param.placeholder" :disabled="readOnly" :list="suggestions.length ? listId : undefined" autocomplete="off" @change="set(($event.target as HTMLInputElement).value)" />
+      <datalist v-if="suggestions.length" :id="listId" data-suggestions>
+        <option v-for="s in suggestions" :key="s.value" :value="s.value" :label="s.label || undefined"></option>
+      </datalist>
     </template>
     <template v-else-if="param.type === 'number'">
       <input class="p-inputtext p-component qd-rule-input qd-rule-number" type="number" :value="value ?? 0" :aria-label="label" :disabled="readOnly" @change="set(num($event))" />

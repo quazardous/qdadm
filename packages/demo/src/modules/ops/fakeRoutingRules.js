@@ -45,7 +45,7 @@ export const VOCABULARY = {
     level: { label: 'Level at least', param: { type: 'threshold' } },
   },
   actions: {
-    route: { label: 'Route', param: { type: 'text', placeholder: 'team.queue' } },
+    route: { label: 'Route', param: { type: 'text', placeholder: 'team.queue', suggestions: ['it', 'purchases.b2b', { value: 'finance.payments', label: 'Finance — payments' }] } },
     severity: { label: 'Severity', param: { type: 'enum', options: [{ value: 'info', label: 'Info' }, { value: 'warning', label: 'Warning' }, { value: 'critical', label: 'Critical' }] } },
     notify: { label: 'Notify', param: { type: 'boolean' } },
   },

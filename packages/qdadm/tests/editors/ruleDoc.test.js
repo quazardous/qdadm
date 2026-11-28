@@ -125,3 +125,14 @@ describe('the vocabulary (#5581)', () => {
     expect(v.actions.severity.param.type).toBe('enum')
   })
 })
+
+describe('a text with suggestions (#5585)', () => {
+  it('a string\'s examples become its suggestions, labelled by x-enumLabels', async () => {
+    const { paramFromSchema } = await import('../../src/components/editors/yaml/rules/vocabulary')
+    expect(paramFromSchema({ type: 'string', examples: ['it', 'supplier.*'], 'x-enumLabels': { it: 'IT' } }))
+      .toEqual({ type: 'text', suggestions: [{ value: 'it', label: 'IT' }, 'supplier.*'] })
+    expect(paramFromSchema({ type: 'string' })).toEqual({ type: 'text' })
+    // still free: any text fits
+    expect(fitsParam({ type: 'text', suggestions: ['it'] }, 'anything.else')).toBe(true)
+  })
+})
