@@ -52,15 +52,15 @@ export function moveItem(text: string, seqPath: YamlPath, from: number, to: numb
   return doc.toString(SERIALIZE)
 }
 
-/** A list's item copied right after it; a map's `name` gets « (copy) » */
-export function duplicateItem(text: string, seqPath: YamlPath, index: number, copySuffix = ' (copy)'): string {
+/** A list's item copied right after it; a map's title key (`name`; null: none) gets « (copy) » */
+export function duplicateItem(text: string, seqPath: YamlPath, index: number, copySuffix = ' (copy)', titleKey: string | null = 'name'): string {
   const { doc, seq } = seqAt(text, seqPath)
   const item = seq.items[index] as YamlNode | undefined
   if (!item) return text
   const copy = (item as YamlNode & { clone(): YamlNode }).clone()
-  if (isMap(copy)) {
-    const name = copy.get('name')
-    if (typeof name === 'string') copy.set('name', `${name}${copySuffix}`)
+  if (titleKey && isMap(copy)) {
+    const name = copy.get(titleKey)
+    if (typeof name === 'string') copy.set(titleKey, `${name}${copySuffix}`)
   }
   seq.items.splice(index + 1, 0, copy)
   return doc.toString(SERIALIZE)

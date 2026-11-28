@@ -534,6 +534,7 @@ export default `core:
     remove: "Retirer {name}"
     when: Quand
     then: Alors
+    single: Cette condition
     combinator: Correspondance
     all: Toutes
     any: Au moins une
@@ -550,6 +551,21 @@ export default `core:
     empty: Aucune règle pour l'instant.
     unparsable: "Le YAML a des erreurs de syntaxe : corrigez-les d'abord dans le texte."
     failed: "Ce changement n'a pas pu être fait : {error}"
+  schemaBuilder:
+    builder: Constructeur
+    empty: Aucun élément.
+    item: "Élément {n}"
+    newItem: Nouvel élément
+    addItem: Ajouter un élément
+    addField: Ajouter un champ
+    removeField: "Retirer {name}"
+    noSections: "Le schéma n'a aucune liste à construire."
+    key: Clé
+    valueOf: "Valeur de {key}"
+    addKey: Ajouter une clé
+    removeKey: "Retirer {key}"
+    addEntry: Ajouter une valeur
+    removeEntry: Retirer cette valeur
   layout:
     count: "{count} affichés"
     countOf: "{count} sur {max} affichés"

@@ -303,6 +303,7 @@ AuthCollector shows: user, token, permissions, role hierarchy, impersonation eve
 | Navigation (breadcrumb, navlinks, View↔Edit toggle) | `docs/navigation.md` |
 | Forms & field widgets | `docs/forms.md` |
 | Rules in a YAML file, built by clicking | `docs/rule-builder.md` |
+| A YAML document built from its JSON Schema (x-… annotations, app handlers) | `docs/schema-builder.md` |
 | Architecture (PAC) | `docs/architecture.md` |
 | Extension overview | `docs/extension.md` |
 | A storage's list contract (params, `{ items, total }`, the local cache) | `docs/storage.md` |

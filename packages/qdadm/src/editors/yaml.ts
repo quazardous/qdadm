@@ -48,3 +48,7 @@ export {
 } from '../components/editors/yaml/rules/vocabulary'
 export { moveItem, duplicateItem, addItemAt, addRule, removeAt, setAt, addKeyAt, renameKeyAt, setEnabled } from '../components/editors/yaml/rules/ruleDoc'
 export type { YamlDocument, YamlPath } from '@quazardous/vanilla-yamleditor'
+// The schema builder (#5587): the whole document built by clicking, its structure from its JSON Schema
+export { default as QdSchemaBuilder } from '../components/editors/yaml/schema/QdSchemaBuilder.vue'
+export { sectionsOf, fieldKind, conditionTypes, defaultFor, newItem, addListItem, resolverOf, type Section, type FieldKind } from '../components/editors/yaml/schema/schemaModel'
+export type { SchemaHandlers } from '../components/editors/yaml/schema/context'

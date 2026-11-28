@@ -181,3 +181,108 @@
   gap: 0.25rem;
   margin-bottom: 0.5rem;
 }
+
+// The schema builder (#5587): sections, fields by schema, key tables
+.qd-schema-sections {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  border-bottom: 1px solid var(--p-content-border-color, #e2e8f0);
+}
+
+.qd-schema-section-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.4rem 0.75rem;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: none;
+  color: var(--p-text-muted-color, #64748b);
+  font: inherit;
+  cursor: pointer;
+
+  &--active {
+    border-bottom-color: var(--p-primary-color, #3b82f6);
+    color: var(--p-text-color, #1e293b);
+    font-weight: 600;
+  }
+}
+
+.qd-schema-section-count {
+  padding: 0 0.4rem;
+  border-radius: 999px;
+  background: var(--p-content-hover-background, #f1f5f9);
+  font-size: 0.75rem;
+  font-weight: 400;
+}
+
+.qd-schema-items {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.qd-schema-item-title {
+  flex: 1;
+  font-weight: 600;
+}
+
+.qd-schema-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+
+  // A nested object: indented under its label
+  .qd-schema-fields {
+    padding-left: 0.75rem;
+    border-left: 2px solid var(--p-content-border-color, #e2e8f0);
+  }
+}
+
+.qd-schema-field {
+  display: grid;
+  grid-template-columns: minmax(7rem, 11rem) minmax(0, 1fr);
+  gap: 0.5rem;
+  align-items: start;
+
+  @media (max-width: 640px) {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.qd-schema-field-head {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  min-height: 2.25rem;
+
+  .qd-rule-action {
+    visibility: hidden;
+  }
+}
+
+.qd-schema-field:hover > .qd-schema-field-head .qd-rule-action,
+.qd-schema-field:focus-within > .qd-schema-field-head .qd-rule-action {
+  visibility: visible;
+}
+
+.qd-schema-field-label {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--p-text-muted-color, #64748b);
+}
+
+.qd-schema-field-body {
+  display: flex;
+  min-width: 0;
+
+  > * {
+    flex: 1;
+    min-width: 0;
+  }
+}
+
+.qd-schema-add-field {
+  align-self: flex-start;
+}

@@ -97,6 +97,13 @@ export class OpsDemoModule extends Module {
         component: () => import('./pages/RoutingRulesPlayground.vue'),
         meta: { layout: 'page' },
       },
+      // The schema builder (#5587)
+      {
+        path: 'log-rules',
+        name: 'ops-log-rules',
+        component: () => import('./pages/LogRulesPlayground.vue'),
+        meta: { layout: 'page' },
+      },
       {
         path: 'dashboard',
         name: 'ops-dashboard',
@@ -198,6 +205,7 @@ export class OpsDemoModule extends Module {
     ctx.navItem({ section: 'Features', route: 'ops-pending', icon: 'pi pi-hourglass', label: 'Pending reads' })
     ctx.navItem({ section: 'Features', route: 'ops-yaml-config', icon: 'pi pi-file-edit', label: 'YAML config' })
     ctx.navItem({ section: 'Features', route: 'ops-routing-rules', icon: 'pi pi-sitemap', label: 'Routing rules' })
+    ctx.navItem({ section: 'Features', route: 'ops-log-rules', icon: 'pi pi-th-large', label: 'Log rules' })
   }
 }
 

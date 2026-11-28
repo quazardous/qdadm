@@ -15,6 +15,8 @@ and save gesture:
 
 A working page: the demo's « Routing rules » (`packages/demo/src/modules/ops`).
 
+A document whose shape the app owns (several lists, fields of its own) is built from its JSON Schema instead: the [schema builder](schema-builder.md).
+
 ## The shape of a rule
 
 ```yaml

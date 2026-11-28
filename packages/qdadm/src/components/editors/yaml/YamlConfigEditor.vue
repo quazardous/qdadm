@@ -15,7 +15,9 @@
  * The text being edited (#5581): `update:text` after `textDelay` ms, and
  * `text` / `document` exposed, for a live trial. With `rules`, a « Rules »
  * view beside the editor builds the rules by clicking (QdRuleBuilder), on the
- * same document: save, check, diff and history are unchanged.
+ * same document: save, check, diff and history are unchanged. With
+ * `builder`, a « Builder » view builds the whole document from its schema
+ * (QdSchemaBuilder, #5587).
  */
 import { computed, nextTick, onMounted, onUnmounted, ref, shallowRef, watch } from 'vue'
 import Textarea from 'primevue/textarea'
@@ -26,6 +28,8 @@ import SimpleDialog from '../../dialogs/SimpleDialog.vue'
 import PayloadDiff from '../../display/PayloadDiff.vue'
 import VanillaYamlEditor from './VanillaYamlEditor.vue'
 import QdRuleBuilder from './rules/QdRuleBuilder.vue'
+import QdSchemaBuilder from './schema/QdSchemaBuilder.vue'
+import type { SchemaHandlers } from './schema/context'
 import type { RuleVocabulary } from './rules/vocabulary'
 import type { YamlDocument } from '@quazardous/vanilla-yamleditor'
 import { YamlConflictError, normalizeProblems, type YamlConfigAdapter, type YamlConfigDocument, type YamlHistoryEntry, type YamlRevision } from './yamlConfigAdapter'
@@ -50,6 +54,8 @@ interface Props {
   guard?: boolean
   /** A « Rules » view (#5581): where the rule list is, its vocabulary, how deep groups go */
   rules?: { path?: YamlPath; vocabulary: RuleVocabulary; maxDepth?: number } | null
+  /** A « Builder » view (#5587): the document built by clicking, its structure read from the loaded schema; `handlers` draw its `x-widget` properties */
+  builder?: boolean | { handlers?: SchemaHandlers } | null
   /** Ms after the last edit before `update:text` (#5581) */
   textDelay?: number
 }
@@ -63,6 +69,7 @@ const props = withDefaults(defineProps<Props>(), {
   height: '28rem',
   guard: true,
   rules: null,
+  builder: null,
   textDelay: 300,
 })
 
@@ -103,12 +110,15 @@ watch(editorRef, async (r) => {
   await nextTick()
   yamlDocument.value = (r?.editor() as { document?: YamlDocument } | null)?.document ?? null
 })
-const view = ref<'rules' | 'editor'>('rules')
-watch(
-  () => props.rules,
-  (r) => (view.value = r ? view.value : 'editor'),
-  { immediate: true }
-)
+const builderOn = computed(() => !!props.builder && !!original.value?.schema)
+const builderHandlers = computed<SchemaHandlers>(() => (props.builder && typeof props.builder === 'object' ? props.builder.handlers ?? {} : {}))
+const views = computed(() => [...(builderOn.value ? (['builder'] as const) : []), ...(props.rules ? (['rules'] as const) : [])])
+// The view picked by a click; else the first offered (they come with the loaded schema)
+const picked = ref<'builder' | 'rules' | 'editor' | null>(null)
+const view = computed<'builder' | 'rules' | 'editor'>({
+  get: () => (picked.value && (picked.value === 'editor' || (views.value as readonly string[]).includes(picked.value)) ? picked.value : views.value[0] ?? 'editor'),
+  set: (v) => (picked.value = v),
+})
 /** « Edit in the text »: the editor, its text, the line */
 async function revealInText(path: YamlPath): Promise<void> {
   view.value = 'editor'
@@ -373,11 +383,20 @@ defineExpose({
 
     <QdMessage v-if="message" :severity="message.severity" :closable="true" @close="message = null">{{ message.text }}</QdMessage>
 
-    <!-- The rules, built by clicking, or the editor (#5581) -->
-    <div v-if="original && rules" class="qd-yaml-config-views" role="tablist">
-      <QdButton :label="tOr('core.ruleBuilder.rules', 'Rules')" icon="pi pi-sitemap" size="small" :severity="view === 'rules' ? undefined : 'secondary'" :text="view !== 'rules'" role="tab" :aria-selected="view === 'rules'" data-yaml-view="rules" @click="view = 'rules'" />
+    <!-- The builder (#5587), the rules (#5581), or the editor -->
+    <div v-if="original && views.length" class="qd-yaml-config-views" role="tablist">
+      <QdButton v-if="builderOn" :label="tOr('core.schemaBuilder.builder', 'Builder')" icon="pi pi-th-large" size="small" :severity="view === 'builder' ? undefined : 'secondary'" :text="view !== 'builder'" role="tab" :aria-selected="view === 'builder'" data-yaml-view="builder" @click="view = 'builder'" />
+      <QdButton v-if="rules" :label="tOr('core.ruleBuilder.rules', 'Rules')" icon="pi pi-sitemap" size="small" :severity="view === 'rules' ? undefined : 'secondary'" :text="view !== 'rules'" role="tab" :aria-selected="view === 'rules'" data-yaml-view="rules" @click="view = 'rules'" />
       <QdButton :label="tOr('core.ruleBuilder.editor', 'Editor')" icon="pi pi-file-edit" size="small" :severity="view === 'editor' ? undefined : 'secondary'" :text="view !== 'editor'" role="tab" :aria-selected="view === 'editor'" data-yaml-view="editor" @click="view = 'editor'" />
     </div>
+    <QdSchemaBuilder
+      v-if="original && builderOn && view === 'builder' && yamlDocument"
+      :document="yamlDocument"
+      :schema="(original.schema as Record<string, unknown>)"
+      :handlers="builderHandlers"
+      :read-only="readOnly"
+      @reveal="revealInText"
+    />
     <QdRuleBuilder
       v-if="original && rules && view === 'rules' && yamlDocument"
       :document="yamlDocument"
@@ -389,7 +408,7 @@ defineExpose({
     />
     <VanillaYamlEditor
       v-if="original"
-      v-show="!rules || view === 'editor'"
+      v-show="!views.length || view === 'editor'"
       ref="editorRef"
       v-model="text"
       :schema="original.schema"

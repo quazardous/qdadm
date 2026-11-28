@@ -532,6 +532,7 @@ core:
     remove: "Remove {name}"
     when: When
     then: Then
+    single: This condition
     combinator: Match
     all: All of
     any: Any of
@@ -548,6 +549,21 @@ core:
     empty: No rule yet.
     unparsable: "The YAML has syntax errors: fix them in the text first."
     failed: "That change could not be made: {error}"
+  schemaBuilder:
+    builder: Builder
+    empty: No item yet.
+    item: "Item {n}"
+    newItem: New item
+    addItem: Add an item
+    addField: Add a field
+    removeField: "Remove {name}"
+    noSections: The schema has no list to build.
+    key: Key
+    valueOf: "Value of {key}"
+    addKey: Add a key
+    removeKey: "Remove {key}"
+    addEntry: Add a value
+    removeEntry: Remove this value
   layout:
     count: "{count} shown"
     countOf: "{count} of {max} shown"

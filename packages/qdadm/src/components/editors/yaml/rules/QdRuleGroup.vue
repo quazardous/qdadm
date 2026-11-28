@@ -24,6 +24,8 @@ const props = defineProps({
   depth: { type: Number, default: 1 },
   maxDepth: { type: Number, default: 3 },
   readOnly: { type: Boolean, default: false },
+  /** A bare condition (`when: { channel: … }`) taken as a group of one, wrapped in `all` when one is added (#5587) */
+  bare: { type: Boolean, default: false },
 })
 const emit = defineEmits<{
   (e: 'apply', change: (text: string) => string): void
@@ -42,6 +44,14 @@ const rows = computed<unknown[]>(() => {
   const c = combinator.value
   const list = c && isObj(props.value) ? props.value[c] : null
   return Array.isArray(list) ? list : []
+})
+// A bare condition: its type, when the vocabulary knows it and its value fits
+const bareType = computed<string | null>(() => {
+  if (!props.bare || combinator.value || !isObj(props.value)) return null
+  const keys = Object.keys(props.value)
+  if (keys.length !== 1) return null
+  const spec = props.vocabulary.conditions[keys[0]!]
+  return spec && fitsParam(spec.param, props.value[keys[0]!]) ? keys[0]! : null
 })
 const rowsPath = computed<YamlPath>(() => [...props.path, combinator.value ?? 'all'])
 
@@ -87,12 +97,48 @@ function addGroup(): void {
 function remove(i: number): void {
   apply((text) => removeAt(text, [...rowsPath.value, i]))
 }
+// A bare condition's edits: the condition replaced, or wrapped in a group
+function bareChangeType(type: string): void {
+  const spec = props.vocabulary.conditions[type]
+  if (spec) apply((text) => setAt(text, props.path, { [type]: defaultParam(spec.param) }))
+}
+function bareWrap(c: Combinator, extra?: unknown): void {
+  apply((text) => setAt(text, props.path, { [c]: extra === undefined ? [props.value] : [props.value, extra] }))
+}
+function bareAdd(type: string): void {
+  const spec = props.vocabulary.conditions[type]
+  if (spec) bareWrap('all', { [type]: defaultParam(spec.param) })
+}
 const yamlOf = (v: unknown) => stringify(v, { lineWidth: 0 }).trimEnd()
 </script>
 
 <template>
   <div class="qd-rule-group" :data-depth="depth">
-    <template v-if="combinator">
+    <template v-if="bareType">
+      <div class="qd-rule-group-head">
+        <select class="p-inputtext p-component qd-rule-select qd-rule-combinator" :aria-label="t('combinator', 'Match')" :disabled="readOnly" data-combinator @change="bareWrap(($event.target as HTMLSelectElement).value as Combinator)">
+          <option value="" selected disabled>{{ t('single', 'This condition') }}</option>
+          <option value="all">{{ t('all', 'All of') }}</option>
+          <option value="any">{{ t('any', 'Any of') }}</option>
+        </select>
+      </div>
+      <ul class="qd-rule-rows">
+        <li class="qd-rule-row" data-row="0" data-bare>
+          <select class="p-inputtext p-component qd-rule-select qd-rule-type" :aria-label="t('conditionType', 'Condition')" :disabled="readOnly" @change="bareChangeType(($event.target as HTMLSelectElement).value)">
+            <option v-for="[key] in types" :key="key" :value="key" :selected="key === bareType">{{ label(key) }}</option>
+          </select>
+          <QdRuleParam :param="vocabulary.conditions[bareType]!.param" :value="(value as Record<string, unknown>)[bareType]" :path="[...path, bareType]" :label="label(bareType)" :read-only="readOnly" @apply="apply" />
+        </li>
+      </ul>
+      <div v-if="!readOnly" class="qd-rule-add">
+        <select class="p-inputtext p-component qd-rule-select" :aria-label="t('addCondition', 'Add a condition')" data-add-condition @change="bareAdd(($event.target as HTMLSelectElement).value); ($event.target as HTMLSelectElement).selectedIndex = 0">
+          <option value="" selected disabled>{{ t('addCondition', 'Add a condition') }}</option>
+          <option v-for="[key] in types" :key="key" :value="key">{{ label(key) }}</option>
+        </select>
+        <button v-if="depth < maxDepth" type="button" class="qd-rule-link" data-add-group @click="bareWrap('all', { any: [] })">{{ t('addGroup', 'Add a group') }}</button>
+      </div>
+    </template>
+    <template v-else-if="combinator">
       <div class="qd-rule-group-head">
         <select class="p-inputtext p-component qd-rule-select qd-rule-combinator" :aria-label="t('combinator', 'Match')" :disabled="readOnly" data-combinator @change="switchCombinator(($event.target as HTMLSelectElement).value as Combinator)">
           <option value="all" :selected="combinator === 'all'">{{ t('all', 'All of') }}</option>

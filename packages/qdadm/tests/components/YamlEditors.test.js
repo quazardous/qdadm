@@ -422,3 +422,26 @@ describe('YamlConfigEditor: the text followed, the rules view (#5581)', () => {
     expect(onText).toHaveBeenLastCalledWith(w.vm.text)
   })
 })
+
+describe('YamlConfigEditor: the builder view (#5587)', () => {
+  it('builder: a Builder view from the loaded schema, shown first; the editor a click away', async () => {
+    const schema = { type: 'object', properties: { items: { type: 'array', title: 'Items', items: { type: 'object', 'x-title': 'name', properties: { name: { type: 'string' }, note: { type: 'string' } } } } } }
+    const yaml = '# head\nitems:\n  - name: one # first\n'
+    const w = mountConfig(makeAdapter({ load: vi.fn(async () => ({ yaml, schema, revision: 'r1' })) }), { builder: true, textDelay: 0 })
+    await flushPromises()
+    await nextTick()
+    expect(w.find('[data-yaml-view="builder"]').exists()).toBe(true)
+    expect(w.find('.qd-schema-builder [data-item-title]').element.value).toBe('one')
+    const title = w.find('[data-item-title]')
+    title.element.value = 'uno'
+    await title.trigger('change')
+    await flushPromises()
+    expect(w.vm.text).toBe('# head\nitems:\n  - name: uno # first\n')
+  })
+
+  it('no schema loaded: no Builder view', async () => {
+    const w = mountConfig(makeAdapter({ load: vi.fn(async () => ({ yaml: 'a: 1\n', revision: 'r1' })) }), { builder: true })
+    await flushPromises()
+    expect(w.find('[data-yaml-view="builder"]').exists()).toBe(false)
+  })
+})
