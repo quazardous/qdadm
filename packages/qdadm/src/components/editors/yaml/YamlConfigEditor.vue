@@ -11,8 +11,13 @@
  * <YamlConfigEditor :adapter="restYamlAdapter('/api/filters')" @saved="…" />
  *
  * Leaving the page with unsaved changes asks first (`guard`, default on).
+ *
+ * The text being edited (#5581): `update:text` after `textDelay` ms, and
+ * `text` / `document` exposed, for a live trial. With `rules`, a « Rules »
+ * view beside the editor builds the rules by clicking (QdRuleBuilder), on the
+ * same document: save, check, diff and history are unchanged.
  */
-import { computed, onMounted, onUnmounted, ref, shallowRef } from 'vue'
+import { computed, nextTick, onMounted, onUnmounted, ref, shallowRef, watch } from 'vue'
 import Textarea from 'primevue/textarea'
 import { validate, yamlChangedPaths, type YamlEditorMode, type YamlEditorStatus, type YamlPath, type YamlProblem } from '@quazardous/vanilla-yamleditor'
 import QdButton from '../../base/QdButton.vue'
@@ -20,6 +25,9 @@ import QdMessage from '../../base/QdMessage.vue'
 import SimpleDialog from '../../dialogs/SimpleDialog.vue'
 import PayloadDiff from '../../display/PayloadDiff.vue'
 import VanillaYamlEditor from './VanillaYamlEditor.vue'
+import QdRuleBuilder from './rules/QdRuleBuilder.vue'
+import type { RuleVocabulary } from './rules/vocabulary'
+import type { YamlDocument } from '@quazardous/vanilla-yamleditor'
 import { YamlConflictError, normalizeProblems, type YamlConfigAdapter, type YamlConfigDocument, type YamlHistoryEntry, type YamlRevision } from './yamlConfigAdapter'
 import { useI18n } from '../../../i18n/useI18n'
 import { useUnsavedChangesGuard } from '../../../composables/useUnsavedChangesGuard'
@@ -40,6 +48,10 @@ interface Props {
   height?: string
   /** Ask before leaving the page with unsaved changes. */
   guard?: boolean
+  /** A « Rules » view (#5581): where the rule list is, its vocabulary, how deep groups go */
+  rules?: { path?: YamlPath; vocabulary: RuleVocabulary; maxDepth?: number } | null
+  /** Ms after the last edit before `update:text` (#5581) */
+  textDelay?: number
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -50,12 +62,16 @@ const props = withDefaults(defineProps<Props>(), {
   lint: true,
   height: '28rem',
   guard: true,
+  rules: null,
+  textDelay: 300,
 })
 
 const emit = defineEmits<{
   loaded: [doc: YamlConfigDocument]
   saved: [result: { yaml: string; reason: string; revision?: YamlRevision }]
   'update:dirty': [dirty: boolean]
+  /** The text being edited, after a pause (#5581): a live trial */
+  'update:text': [text: string]
 }>()
 
 const { tOr } = useI18n()
@@ -72,6 +88,36 @@ const saving = ref(false)
 const message = ref<{ severity: 'success' | 'info' | 'warn' | 'error'; text: string } | null>(null)
 
 const readOnly = computed(() => props.readOnly || !!original.value?.readOnly)
+
+// The text, told after a pause (#5581)
+let textTimer: ReturnType<typeof setTimeout> | null = null
+watch(text, (value) => {
+  if (textTimer) clearTimeout(textTimer)
+  textTimer = setTimeout(() => emit('update:text', value), props.textDelay)
+})
+onUnmounted(() => textTimer && clearTimeout(textTimer))
+
+// The editor's document, once it is drawn: the rule builder edits it too
+const yamlDocument = shallowRef<YamlDocument | null>(null)
+watch(editorRef, async (r) => {
+  await nextTick()
+  yamlDocument.value = (r?.editor() as { document?: YamlDocument } | null)?.document ?? null
+})
+const view = ref<'rules' | 'editor'>('rules')
+watch(
+  () => props.rules,
+  (r) => (view.value = r ? view.value : 'editor'),
+  { immediate: true }
+)
+/** « Edit in the text »: the editor, its text, the line */
+async function revealInText(path: YamlPath): Promise<void> {
+  view.value = 'editor'
+  await nextTick()
+  const ed = editorRef.value?.editor() as { setMode?: (m: YamlEditorMode) => void } | null
+  ed?.setMode?.('text')
+  await nextTick()
+  editorRef.value?.revealPath(path as (string | number)[])
+}
 const dirty = computed(() => !!original.value && text.value !== original.value.yaml)
 const syntaxErrors = computed(() => status.value?.syntaxErrors.length ?? 0)
 const stateText = computed(() =>
@@ -268,7 +314,16 @@ if (props.guard) {
   onUnmounted(() => unregisterGuardDialog(guardDialog))
 }
 
-defineExpose({ reload: load, check: runCheck, save: startSave, dirty })
+defineExpose({
+  reload: load,
+  check: runCheck,
+  save: startSave,
+  dirty,
+  /** The text being edited (#5581) */
+  text: computed(() => text.value),
+  /** The vanilla-yamleditor document (#5581): mount more views on it, or edit it */
+  document: yamlDocument,
+})
 </script>
 
 <template>
@@ -318,8 +373,23 @@ defineExpose({ reload: load, check: runCheck, save: startSave, dirty })
 
     <QdMessage v-if="message" :severity="message.severity" :closable="true" @close="message = null">{{ message.text }}</QdMessage>
 
+    <!-- The rules, built by clicking, or the editor (#5581) -->
+    <div v-if="original && rules" class="qd-yaml-config-views" role="tablist">
+      <QdButton :label="tOr('core.ruleBuilder.rules', 'Rules')" icon="pi pi-sitemap" size="small" :severity="view === 'rules' ? undefined : 'secondary'" :text="view !== 'rules'" role="tab" :aria-selected="view === 'rules'" data-yaml-view="rules" @click="view = 'rules'" />
+      <QdButton :label="tOr('core.ruleBuilder.editor', 'Editor')" icon="pi pi-file-edit" size="small" :severity="view === 'editor' ? undefined : 'secondary'" :text="view !== 'editor'" role="tab" :aria-selected="view === 'editor'" data-yaml-view="editor" @click="view = 'editor'" />
+    </div>
+    <QdRuleBuilder
+      v-if="original && rules && view === 'rules' && yamlDocument"
+      :document="yamlDocument"
+      :path="rules.path ?? []"
+      :vocabulary="rules.vocabulary"
+      :max-depth="rules.maxDepth ?? 3"
+      :read-only="readOnly"
+      @reveal="revealInText"
+    />
     <VanillaYamlEditor
       v-if="original"
+      v-show="!rules || view === 'editor'"
       ref="editorRef"
       v-model="text"
       :schema="original.schema"

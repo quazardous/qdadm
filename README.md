@@ -265,6 +265,7 @@ ctx.block('books-list-header', { id: 'export-btn', component: ExportButton, weig
 - [Card dashboards](docs/dashboard.md) - Ready-made cards (an envelope and fourteen types; the [bestiary](docs/cards.md)), a domain's board, and boards each user arranges
 - [Sessions](docs/sessions.md) - Who else is signed in (a banner), the Sessions page and the sign-in history, over an HTTP contract
 - [YAML editors](docs/forms.md#yaml-family) - Live YAML configuration: text and form views that keep comments, check, diff, reason, conflict, history
+- [Rule builder](docs/rule-builder.md) - Rules in a YAML file (routing, alerting) built by clicking, the comments kept
 - [Sign-in with an OIDC provider](docs/auth-oidc.md) - Keycloak, Auth0, Google: code + PKCE, your backend issues the session
 - [Branding](docs/branding.md) - App name, logo, page icon (`app.favicon`), top banner (`app.banner`)
 - [Sidebar user box](docs/user-box.md) - Profile link on the user name and avatar, avatar picture

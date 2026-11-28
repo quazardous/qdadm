@@ -350,6 +350,10 @@ If someone saved in between, the server answers 409 and the editor shows their v
 
 **History** lists past revisions (who, when, reason, diff). "Load this version" puts one back in the editor, and you save it like any other change. Leaving the page with unsaved changes asks first (`guard`, on by default). `readOnly` comes from the prop or from the loaded document; `mode`, `modes`, `modeSwitch` and `lint` go to the `VanillaYamlEditor` inside.
 
+`rules: { vocabulary, path?, maxDepth? }` adds a **Rules** view beside the editor, where the rules of the document are built by clicking ([rule-builder.md](rule-builder.md)); both views edit the same document, with one undo history.
+
+`@update:text` gives the text being edited, `textDelay` ms (300) after the last change, for a live trial of it; the component also exposes `text` and `document` (the vanilla-yamleditor `YamlDocument`) by ref.
+
 `restYamlAdapter(url, { path?, fetch?, headers? })` speaks this contract. Pass your app's `fetch` for authentication. `path` adds `?path=a.b` to every call, to edit part of a document.
 
 | Call | Request | Response |

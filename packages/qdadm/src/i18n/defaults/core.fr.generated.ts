@@ -520,6 +520,36 @@ export default `core:
       todo: à traiter
   # Favoris et récents : l'étoile, « Enregistrer cette recherche », les deux cartes (#5349)
   # The settings menu behind the gear (#5401)
+  ruleBuilder:
+    rules: Règles
+    editor: Éditeur
+    addRule: Ajouter une règle
+    newRule: Nouvelle règle
+    unnamed: "Règle {n}"
+    name: Nom
+    enabled: Active
+    move: "Déplacer {name}"
+    duplicate: "Dupliquer {name}"
+    copySuffix: " (copie)"
+    remove: "Retirer {name}"
+    when: Quand
+    then: Alors
+    combinator: Correspondance
+    all: Toutes
+    any: Au moins une
+    conditionType: Condition
+    operator: Opérateur
+    threshold: Seuil
+    addCondition: Ajouter une condition
+    addConditions: Ajouter des conditions
+    addGroup: Ajouter un groupe
+    removeCondition: Retirer cette condition
+    addAction: Ajouter une action
+    removeAction: Retirer cette action
+    editInText: Modifier dans le texte
+    empty: Aucune règle pour l'instant.
+    unparsable: "Le YAML a des erreurs de syntaxe : corrigez-les d'abord dans le texte."
+    failed: "Ce changement n'a pas pu être fait : {error}"
   layout:
     count: "{count} affichés"
     countOf: "{count} sur {max} affichés"

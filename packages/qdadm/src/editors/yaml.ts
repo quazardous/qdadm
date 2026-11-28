@@ -27,3 +27,24 @@ export {
   type YamlSaveInput,
 } from '../components/editors/yaml/yamlConfigAdapter'
 export type { JsonSchema, YamlProblem, YamlProblemInput, YamlEditorMode, YamlEditorStatus } from '@quazardous/vanilla-yamleditor'
+// The rule builder (#5581): rules built by clicking, the YAML's comments kept
+export { default as QdRuleBuilder } from '../components/editors/yaml/rules/QdRuleBuilder.vue'
+export {
+  vocabularyFromSchema,
+  paramFromSchema,
+  parseThreshold,
+  formatThreshold,
+  defaultParam,
+  fitsParam,
+  COMBINATORS,
+  OPERATORS,
+  type RuleVocabulary,
+  type TermSpec,
+  type ParamSpec,
+  type ParamChoice,
+  type Threshold,
+  type Operator,
+  type Combinator,
+} from '../components/editors/yaml/rules/vocabulary'
+export { moveItem, duplicateItem, addItemAt, addRule, removeAt, setAt, addKeyAt, renameKeyAt, setEnabled } from '../components/editors/yaml/rules/ruleDoc'
+export type { YamlDocument, YamlPath } from '@quazardous/vanilla-yamleditor'

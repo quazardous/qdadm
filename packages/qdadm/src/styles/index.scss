@@ -49,6 +49,7 @@
 @use './sidebar';
 @use './settings-home';
 @use './edge-bar';
+@use './rule-builder';
 
 // Responsive styles (must be last for specificity)
 @use './responsive';

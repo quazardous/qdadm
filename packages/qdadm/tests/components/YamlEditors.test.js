@@ -364,3 +364,61 @@ describe('restYamlAdapter (#4303)', () => {
     expect(normalizeProblemPath(['a', '1'])).toEqual(['a', 1])
   })
 })
+
+describe('YamlConfigEditor: the text followed, the rules view (#5581)', () => {
+  const RULES = `# rules
+
+# the purchases
+- name: purchases
+  when:
+    all:
+      - measure: { refused_ratio: ">= 20%" } # the share refused
+  then:
+    route: b2b
+`
+  const vocabulary = {
+    conditions: { measure: { label: 'Measure', param: { type: 'keyedThreshold', keys: [{ value: 'refused' }, { value: 'refused_ratio', unit: '%' }] } } },
+    actions: { route: { label: 'Route', param: { type: 'text' } } },
+  }
+  const rulesAdapter = () => makeAdapter({ load: vi.fn(async () => ({ yaml: RULES, revision: 'r1' })) })
+
+  it('update:text after textDelay, once for a burst of edits; text exposed', async () => {
+    vi.useFakeTimers()
+    try {
+      const onText = vi.fn()
+      const w = mountConfig(makeAdapter(), { textDelay: 300, 'onUpdate:text': onText })
+      await flushPromises()
+      const editor = w.findComponent(VanillaYamlEditor)
+      editor.vm.$emit('update:modelValue', YAML.replace('min_stock: 3', 'min_stock: 4'))
+      await nextTick()
+      vi.advanceTimersByTime(200)
+      editor.vm.$emit('update:modelValue', YAML.replace('min_stock: 3', 'min_stock: 5'))
+      await nextTick()
+      vi.advanceTimersByTime(299)
+      expect(onText).not.toHaveBeenCalledWith(expect.stringContaining('min_stock: 4'))
+      vi.advanceTimersByTime(1)
+      expect(onText).toHaveBeenLastCalledWith(YAML.replace('min_stock: 3', 'min_stock: 5'))
+      expect(onText.mock.calls.filter(([t]) => t.includes('min_stock: 4'))).toHaveLength(0)
+      expect(w.vm.text).toBe(YAML.replace('min_stock: 3', 'min_stock: 5'))
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('rules: a Rules view that edits the document, its comments kept', async () => {
+    const onText = vi.fn()
+    const w = mountConfig(rulesAdapter(), { rules: { vocabulary }, textDelay: 0, 'onUpdate:text': onText })
+    await flushPromises()
+    await nextTick()
+    expect(w.find('[data-yaml-view="rules"]').exists()).toBe(true)
+    expect(w.findAll('[data-rule-name]').map((i) => i.element.value)).toEqual(['purchases'])
+    const value = w.find('[data-rule="0"] [data-keyed-value]')
+    value.element.value = '35'
+    await value.trigger('change')
+    await flushPromises()
+    await new Promise((r) => setTimeout(r, 5))
+    expect(w.vm.text).toContain('refused_ratio: ">= 35%" } # the share refused')
+    expect(w.vm.text.startsWith('# rules\n')).toBe(true)
+    expect(onText).toHaveBeenLastCalledWith(w.vm.text)
+  })
+})

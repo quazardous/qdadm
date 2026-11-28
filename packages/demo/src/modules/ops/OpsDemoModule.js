@@ -90,6 +90,13 @@ export class OpsDemoModule extends Module {
         component: () => import('./pages/YamlConfigPlayground.vue'),
         meta: { layout: 'page' },
       },
+      // The rule builder (#5581)
+      {
+        path: 'routing-rules',
+        name: 'ops-routing-rules',
+        component: () => import('./pages/RoutingRulesPlayground.vue'),
+        meta: { layout: 'page' },
+      },
       {
         path: 'dashboard',
         name: 'ops-dashboard',
@@ -190,6 +197,7 @@ export class OpsDemoModule extends Module {
     ctx.navItem({ section: 'Features', route: 'ops-tasks', icon: 'pi pi-cog', label: 'Tasks' })
     ctx.navItem({ section: 'Features', route: 'ops-pending', icon: 'pi pi-hourglass', label: 'Pending reads' })
     ctx.navItem({ section: 'Features', route: 'ops-yaml-config', icon: 'pi pi-file-edit', label: 'YAML config' })
+    ctx.navItem({ section: 'Features', route: 'ops-routing-rules', icon: 'pi pi-sitemap', label: 'Routing rules' })
   }
 }
 

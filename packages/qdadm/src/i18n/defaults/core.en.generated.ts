@@ -520,6 +520,36 @@ export default `core:
       todo: to do
   # Favourites and recents: the star, "Save this search", the two cards (#5349)
   # The settings menu behind the gear (#5401)
+  ruleBuilder:
+    rules: Rules
+    editor: Editor
+    addRule: Add a rule
+    newRule: New rule
+    unnamed: "Rule {n}"
+    name: Name
+    enabled: Enabled
+    move: "Move {name}"
+    duplicate: "Duplicate {name}"
+    copySuffix: " (copy)"
+    remove: "Remove {name}"
+    when: When
+    then: Then
+    combinator: Match
+    all: All of
+    any: Any of
+    conditionType: Condition
+    operator: Operator
+    threshold: Threshold
+    addCondition: Add a condition
+    addConditions: Add conditions
+    addGroup: Add a group
+    removeCondition: Remove this condition
+    addAction: Add an action
+    removeAction: Remove this action
+    editInText: Edit in the text
+    empty: No rule yet.
+    unparsable: "The YAML has syntax errors: fix them in the text first."
+    failed: "That change could not be made: {error}"
   layout:
     count: "{count} shown"
     countOf: "{count} of {max} shown"
